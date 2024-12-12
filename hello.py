@@ -12,7 +12,7 @@ DRAG_INFO = {}
 RECTS = None
 WRANGE = [50, 100]
 HRANGE = [50, 100]
-QTY = 20
+QTY = 2
 
 def hittest(pos, rects):
     # Check whether pos is inside any of rects
@@ -159,12 +159,12 @@ class MainWindow(QMainWindow):
         global RECTS
         if dir == 'left':
             graph = compact.update_graph_xleft(RECTS)
-            lp = compact.longest_path_bellman_ford_xleft(graph, minx=0)
+            lp = compact.longest_path_bellman_ford(graph)
             for rect, pos in zip(RECTS.values(), lp[1:]):
                 rect['pos'].setX(pos)
         elif dir == 'right':
             graph = compact.update_graph_xright(RECTS)
-            lp = compact.longest_path_bellman_ford_xleft(graph, minx=0)
+            lp = compact.longest_path_bellman_ford(graph)
             for rect, pos in zip(RECTS.values(), lp[1:]):
                 newpos = self.canvas.width() - pos - rect['size'].width()
                 rect['pos'].setX(newpos)
@@ -173,11 +173,15 @@ class MainWindow(QMainWindow):
         global RECTS
         if dir == 'up':
             graph = compact.update_graph_yup(RECTS)
+            lp = compact.longest_path_bellman_ford(graph)
+            for rect, pos in zip(RECTS.values(), lp[1:]):
+                rect['pos'].setY(pos)
         elif dir == 'dn':
             graph = compact.update_graph_ydn(RECTS)
-        lp = compact.longest_path_bellman_ford(graph)
-        for rect, pos in zip(RECTS.values(), lp[1:]):
-            rect['pos'].setY(pos)
+            lp = compact.longest_path_bellman_ford(graph)
+            for rect, pos in zip(RECTS.values(), lp[1:]):
+                newpos = self.canvas.height() - pos - rect['size'].height()
+                rect['pos'].setY(newpos)
         self.canvas.update()
     def butt_random_click(self):
         global RECTS
