@@ -12,7 +12,7 @@ DRAG_INFO = {}
 RECTS = None
 WRANGE = [50, 100]
 HRANGE = [50, 100]
-QTY = 2
+QTY = 3
 
 def hittest(pos, rects):
     # Check whether pos is inside any of rects
@@ -45,10 +45,9 @@ class BlockCanvas(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         for id, rect in rects.items():
             painter.setBrush(QBrush(rect['brushcolor'], Qt.BrushStyle.SolidPattern))
-            painter.drawRect(QRect(rect['pos'], rect['size']))
-            txtx = rect['pos'].x() + rect['size'].width()//2
-            txty = rect['pos'].y() + rect['size'].height()//2
-            painter.drawText(txtx, txty, str(id),)
+            qr = QRect(rect['pos'], rect['size'])
+            painter.drawRect(qr)
+            painter.drawText(qr, Qt.AlignmentFlag.AlignCenter, str(id))
         painter.end()
 
     def paintEvent(self, event):
@@ -245,18 +244,21 @@ def init_rects(maxx, maxy):
     rects = {}
     r255  = lambda: random.randint(0,255)
     randcolor = lambda: QColor(r255(), r255(), r255())
-    for n in range(1, QTY+1):
-        x0    = random.randint(0, maxx - WRANGE[1] - 1)
-        y0    = random.randint(0, maxy - HRANGE[1] - 1)
-        wrect = random.randint(WRANGE[0], WRANGE[1])
-        hrect = random.randint(HRANGE[0], HRANGE[1])
-        pos   = QPoint(x0, y0)
-        size  = QSize (wrect, hrect)
-        rects[n] = {'id':n, 'pos':pos, 'size':size, 'pencolor':randcolor(), 'brushcolor':randcolor()}
-        # rects = {1: {'id': 1, 'pos': QPoint( 10,  10), 'size': QSize(40,40), 'pencolor': randcolor(), 'brushcolor': randcolor()},
-        #          2: {'id': 2, 'pos': QPoint( 60,  60), 'size': QSize(50,50), 'pencolor': randcolor(), 'brushcolor': randcolor()},
-        #          3: {'id': 3, 'pos': QPoint(120, 120), 'size': QSize(60,60), 'pencolor': randcolor(), 'brushcolor': randcolor()},
-        #          }
+    rects[1] = {'id':1, 'pos':QPoint(0,0), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
+    rects[2] = {'id':2, 'pos':QPoint(65,50), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
+    #rects[3] = {'id':3, 'pos':QPoint(55,50), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
+    # for n in range(1, QTY+1):
+    #     x0    = random.randint(0, maxx - WRANGE[1] - 1)
+    #     y0    = random.randint(0, maxy - HRANGE[1] - 1)
+    #     wrect = random.randint(WRANGE[0], WRANGE[1])
+    #     hrect = random.randint(HRANGE[0], HRANGE[1])
+    #     pos   = QPoint(x0, y0)
+    #     size  = QSize (wrect, hrect)
+    #     rects[n] = {'id':n, 'pos':pos, 'size':size, 'pencolor':randcolor(), 'brushcolor':randcolor()}
+    #     # rects = {1: {'id': 1, 'pos': QPoint( 10,  10), 'size': QSize(40,40), 'pencolor': randcolor(), 'brushcolor': randcolor()},
+    #     #          2: {'id': 2, 'pos': QPoint( 60,  60), 'size': QSize(50,50), 'pencolor': randcolor(), 'brushcolor': randcolor()},
+    #     #          3: {'id': 3, 'pos': QPoint(120, 120), 'size': QSize(60,60), 'pencolor': randcolor(), 'brushcolor': randcolor()},
+    #     #          }
     return rects
 
 def main():

@@ -7,17 +7,19 @@
 
 
 
-def sort_rects(rects, ids, key, reverse=False):
-    # from list of rects, sort from left to right
+def sort_rects(rects, ids, keyfn, reverse=False):
+    # from list of rects, select ids and sort 
+    # using keyfn ascending or descending
+    # return sorted ids
     chosen_rects = [r for id, r in rects.items() if id in ids]
-    sorted_rects = sorted(chosen_rects, key=key, reverse=reverse)
+    sorted_rects = sorted(chosen_rects, key=keyfn, reverse=reverse)
     sorted_ids = [r['id'] for r in sorted_rects]
     return sorted_ids
 
 def compose_graph(active_edges, rects, dir):
     graph = {}
     for ae in active_edges:
-        sorted_edges = ae['sorted']
+        sorted_edges = ae['sorted_ids']
         ge = (0, sorted_edges[0])
         if ge not in graph:
             graph[ge] = 0
@@ -57,15 +59,16 @@ def update_graph_xleft(rects):
             if edge['tb'] == 'top':
                 last_ids.append(id)
             tmp_edges = {'y': y, 'ids': last_ids}
-            tmp_edges['sorted'] = sort_rects(rects, tmp_edges['ids'], 
-                                             key=lambda x: x['pos'].x(), 
-                                             reverse=False)
+            tmp_edges['sorted_ids'] = sort_rects(rects, tmp_edges['ids'], 
+                                                 keyfn=lambda x: x['pos'].x(), 
+                                                 reverse=False)
             if y == active_edges[-1]['y']:
                 active_edges.pop()
             active_edges.append(tmp_edges)
         else:
-            tmp_edges = {'y':y, 'ids':[id], 'sorted':[id]}
+            tmp_edges = {'y':y, 'ids':[id], 'sorted_ids':[id]}
             active_edges.append(tmp_edges)
+    for ae in active_edges: del ae['ids']
     graph = compose_graph(active_edges, rects, 'x')
     return graph
 
@@ -199,25 +202,3 @@ def longest_path_bellman_ford(graph):
             if dist[frm] != float('-inf') and dist[frm] + weight > dist[to]:
                 dist[to] = dist[frm] + weight
     return dist
-
-# This one works, but you still have to subtract
-# the width of the rectangle as newpos = pos - rect['size'].width()
-# So we'll just use the default one and do the extra math
-# def longest_path_bellman_ford_xright(graph, maxx):
-#     MINDIST = 0
-#     edges = graph.keys()
-#     nodes = set()
-#     for edge in edges:
-#         nodes.add(edge[0])
-#         nodes.add(edge[1])
-#     num_nodes = len(nodes)
-#     dist = [float('+inf')] * num_nodes
-#     dist[0] = maxx  # [0] is the start node at far right
-
-#     # looks like O(num_nodes * num_edges)
-#     for _ in range(num_nodes - 1):
-#         for frm, to in edges:
-#             weight = graph[(frm,to)] + MINDIST
-#             if dist[frm] != float('+inf') and dist[frm] - weight < dist[to]:
-#                 dist[to] = dist[frm] - weight
-#     return dist
