@@ -34,10 +34,46 @@ def compose_graph(active_edges, rects, dir):
             last_e = e
     return graph                    
 
+def update_graph_xxleft(rects):
+    # Returns dict of edges with other information
+    # [{id:, 'top':[...], 'mid':[...], 'bot':[...]}, ...]
+
+    #                               top   mid    bot     graph
+    #  5  ┌───┐                      1                   0->1
+    # 10  │   │   ┌──────┐  ┌─────┐  2,4   1             0->1, 1->2, 2->4
+    # 15  │   │   │      │  │  4  │             
+    # 20  │   │   │  2   │  ├─────┤  3    1,2    4       0->1, 1->2, 2->3, 2->4
+    # 25  │ 1 │   │      │  │     │         
+    # 30  │   │   └──────┘  │  3  │               2      0->1, 1->2, 2->3
+    # 35  │   │             │     │  
+    # 40  │   │             └─────┘        1      3      0->1, 1->3
+    # 45  └───┘                                   1      0->1
+    # 50           ┌────┐            5                   0->5
+    # 55           │ 5  │     
+    # 60           └────┘                        5       0->5
+
+    edges = []
+    for r in rects:
+        edges.append({'id':r['id'], 'y':r['pos'].y(),                 'tb':'top'})
+        edges.append({'id':r['id'], 'y':r['pos'].y() + r['size'].y(), 'tb':'bot'})
+    edges = sorted(edges, key=lambda t:t['y'])
+    tagged_edges = []
+    last_edge = {'top':[], 'mid':[], 'bot':[]}
+    for tup in edges:
+        tmp = last_edge.copy()
+        if tup['tb'] == 'top':
+            tmp['mid'].extend(tmp['top'])
+            tmp['top'] 
+
+
+
 def update_graph_xleft(rects):
     # Returns DAG = {(from_node, to_node): weight, ...}
     # Scan line top-to-bottom, keep track of vertical edges that intersect
     # Lists of top and bottom edges, then combine and sort
+
+    junk = update_graph_xxleft(rects)
+
     tops = [{'y':r['pos'].y()                     , 'id':r['id'], 'tb':'top'} for r in rects.values()]
     bots = [{'y':r['pos'].y() + r['size'].height(), 'id':r['id'], 'tb':'bot'} for r in rects.values()]
     sorted_edges = sorted(tops+bots, key=lambda e: e['y'])
@@ -97,14 +133,14 @@ def update_graph_xright(rects):
             if edge['tb'] == 'top':
                 last_ids.append(id)
             tmp_edges = {'y': y, 'ids': last_ids}
-            tmp_edges['sorted'] = sort_rects(rects, tmp_edges['ids'], 
-                                             key=lambda x: x['pos'].x() + x['size'].width(), 
-                                             reverse=True)
+            tmp_edges['sorted_ids'] = sort_rects(rects, tmp_edges['ids'], 
+                                                keyfn=lambda x: x['pos'].x() + x['size'].width(), 
+                                                reverse=True)
             if y == active_edges[-1]['y']:
                 active_edges.pop()
             active_edges.append(tmp_edges)
         else:
-            tmp_edges = {'y':y, 'ids':[id], 'sorted':[id]}
+            tmp_edges = {'y':y, 'ids':[id], 'sorted_ids':[id]}
             active_edges.append(tmp_edges)
     graph = compose_graph(active_edges, rects, 'x')
     return graph
@@ -134,14 +170,14 @@ def update_graph_yup(rects):
             if edge['lr'] == 'left':
                 last_ids.append(id)
             tmp_edges = {'x': x, 'ids': last_ids}
-            tmp_edges['sorted'] = sort_rects(rects, tmp_edges['ids'],
-                                              key=lambda x: x['pos'].y(),
-                                              reverse=False)
+            tmp_edges['sorted_ids'] = sort_rects(rects, tmp_edges['ids'],
+                                                 keyfn=lambda x: x['pos'].y(),
+                                                 reverse=False)
             if x == active_edges[-1]['x']:
                 active_edges.pop()
             active_edges.append(tmp_edges)
         else:
-            tmp_edges = {'x':x, 'ids':[id], 'sorted':[id]}
+            tmp_edges = {'x':x, 'ids':[id], 'sorted_ids':[id]}
             active_edges.append(tmp_edges)
     graph = compose_graph(active_edges, rects, 'y')
     return graph
@@ -171,15 +207,15 @@ def update_graph_ydn(rects):
             if edge['lr'] == 'left':
                 last_ids.append(id)
             tmp_edges = {'x': x, 'ids': last_ids}
-            tmp_edges['sorted'] = sort_rects(rects, 
-                                             tmp_edges['ids'], 
-                                             key=lambda x: x['pos'].y() + x['size'].width(),
-                                             reverse=True)
+            tmp_edges['sorted_ids'] = sort_rects(rects, 
+                                                 tmp_edges['ids'], 
+                                                 key=lambda x: x['pos'].y() + x['size'].width(),
+                                                 reverse=True)
             if x == active_edges[-1]['x']:
                 active_edges.pop()
             active_edges.append(tmp_edges)
         else:
-            tmp_edges = {'x':x, 'ids':[id], 'sorted':[id]}
+            tmp_edges = {'x':x, 'ids':[id], 'sorted_ids':[id]}
             active_edges.append(tmp_edges)
     graph = compose_graph(active_edges, rects, 'y')
     return graph

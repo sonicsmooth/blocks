@@ -245,7 +245,7 @@ def init_rects(maxx, maxy):
     r255  = lambda: random.randint(0,255)
     randcolor = lambda: QColor(r255(), r255(), r255())
     rects[1] = {'id':1, 'pos':QPoint(0,0), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
-    rects[2] = {'id':2, 'pos':QPoint(65,50), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
+    rects[2] = {'id':2, 'pos':QPoint(65,60), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
     #rects[3] = {'id':3, 'pos':QPoint(55,50), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
     # for n in range(1, QTY+1):
     #     x0    = random.randint(0, maxx - WRANGE[1] - 1)
