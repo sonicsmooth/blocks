@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import sys
 from PyQt6 import QtCore
 from PyQt6.QtGui import *
@@ -43,11 +44,11 @@ class BlockCanvas(QWidget):
         painter.setFont(QFont('times', 20))
         painter.setPen(QPen(QColor('black')))
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        for id, rect in rects.items():
+        for rect in rects:
             painter.setBrush(QBrush(rect['brushcolor'], Qt.BrushStyle.SolidPattern))
             qr = QRect(rect['pos'], rect['size'])
             painter.drawRect(qr)
-            painter.drawText(qr, Qt.AlignmentFlag.AlignCenter, str(id))
+            painter.drawText(qr, Qt.AlignmentFlag.AlignCenter, str(rect['id']))
         painter.end()
 
     def paintEvent(self, event):
@@ -159,12 +160,13 @@ class MainWindow(QMainWindow):
         if dir == 'left':
             graph = compact.update_graph_xleft(RECTS)
             lp = compact.longest_path_bellman_ford(graph)
-            for rect, pos in zip(RECTS.values(), lp[1:]):
+            rlu = [compact.lookup_rect(RECTS, i) for i in range(1,len(graph))]
+            for rect, pos in zip(rlu, lp[1:]):
                 rect['pos'].setX(pos)
         elif dir == 'right':
             graph = compact.update_graph_xright(RECTS)
             lp = compact.longest_path_bellman_ford(graph)
-            for rect, pos in zip(RECTS.values(), lp[1:]):
+            for rect, pos in zip(RECTS, lp[1:]):
                 newpos = self.canvas.width() - pos - rect['size'].width()
                 rect['pos'].setX(newpos)
         self.canvas.update()
@@ -173,12 +175,12 @@ class MainWindow(QMainWindow):
         if dir == 'up':
             graph = compact.update_graph_yup(RECTS)
             lp = compact.longest_path_bellman_ford(graph)
-            for rect, pos in zip(RECTS.values(), lp[1:]):
+            for rect, pos in zip(RECTS, lp[1:]):
                 rect['pos'].setY(pos)
         elif dir == 'dn':
             graph = compact.update_graph_ydn(RECTS)
             lp = compact.longest_path_bellman_ford(graph)
-            for rect, pos in zip(RECTS.values(), lp[1:]):
+            for rect, pos in zip(RECTS, lp[1:]):
                 newpos = self.canvas.height() - pos - rect['size'].height()
                 rect['pos'].setY(newpos)
         self.canvas.update()
@@ -241,12 +243,14 @@ def init_rects(maxx, maxy):
     # Returns dict of dicts
     # Top level dict keys is rect id
     # print(f'init_rects maxx, maxy = {maxx},{maxy}')
-    rects = {}
+    rects = []
     r255  = lambda: random.randint(0,255)
     randcolor = lambda: QColor(r255(), r255(), r255())
-    rects[1] = {'id':1, 'pos':QPoint(0,0), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
-    rects[2] = {'id':2, 'pos':QPoint(65,60), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
-    #rects[3] = {'id':3, 'pos':QPoint(55,50), 'size':QSize(50,50), 'pencolor':randcolor(), 'brushcolor':randcolor()}
+    rects.append({'id':4, 'pos':QPoint(80,10), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.append({'id':3, 'pos':QPoint(80,20), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.append({'id':2, 'pos':QPoint(50,10), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.append({'id':1, 'pos':QPoint( 0, 5), 'size':QSize(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.append({'id':5, 'pos':QPoint(50,50), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
     # for n in range(1, QTY+1):
     #     x0    = random.randint(0, maxx - WRANGE[1] - 1)
     #     y0    = random.randint(0, maxy - HRANGE[1] - 1)
