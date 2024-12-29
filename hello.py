@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt, QRect, QPoint, QSize
 import random
 import compact
+from rectdb import Rects
 
 
 
@@ -155,87 +156,85 @@ class MainWindow(QMainWindow):
         butt_ydxl.clicked.connect(self.butt_ydxl_click)
         butt_ydxr.clicked.connect(self.butt_ydxr_click)
 
-    def compact_x(self, dir):
+    def compact_xy(self, axis, reverse):
         global RECTS
-        if dir == 'left':
-            graph = compact.update_graph_xleft(RECTS)
-            lp = compact.longest_path_bellman_ford(graph)
-            rlu = [compact.lookup_rect(RECTS, i) for i in range(1,len(graph))]
-            for rect, pos in zip(rlu, lp[1:]):
-                rect['pos'].setX(pos)
-        elif dir == 'right':
-            graph = compact.update_graph_xright(RECTS)
-            lp = compact.longest_path_bellman_ford(graph)
-            for rect, pos in zip(RECTS, lp[1:]):
-                newpos = self.canvas.width() - pos - rect['size'].width()
-                rect['pos'].setX(newpos)
+        graph = compact.make_graph(RECTS, axis, reverse)
+        lp = compact.longest_path_bellman_ford(graph)
+        if axis == 'x':
+            setter = lambda rect, pos: rect['pos'].setX(pos)
+            if reverse: offset = self.canvas.width()
+        elif axis == 'y':
+            setter = lambda rect, pos: rect['pos'].setY(pos)
+            if reverse: offset = self.canvas.height()
+        if reverse: posfn = lambda i,p: setter(RECTS[i], offset - p)
+        else:       posfn = lambda i,p: setter(RECTS[i], pos)
+        for i, pos in enumerate(lp[1:], 1):
+            posfn(i, pos)
         self.canvas.update()
-    def compact_y(self, dir):
-        global RECTS
-        if dir == 'up':
-            graph = compact.update_graph_yup(RECTS)
-            lp = compact.longest_path_bellman_ford(graph)
-            for rect, pos in zip(RECTS, lp[1:]):
-                rect['pos'].setY(pos)
-        elif dir == 'dn':
-            graph = compact.update_graph_ydn(RECTS)
-            lp = compact.longest_path_bellman_ford(graph)
-            for rect, pos in zip(RECTS, lp[1:]):
-                newpos = self.canvas.height() - pos - rect['size'].height()
-                rect['pos'].setY(newpos)
-        self.canvas.update()
+    # def compact_y(self, dir):
+    #     global RECTS
+    #     graph = compact.make_graph(RECTS, 'x', reverse = dir == 'right')
+    #     lp = compact.longest_path_bellman_ford(graph)
+    #     if dir == 'left':
+    #         posfn = lambda i,p: RECTS[i]['pos'].setX(pos)
+    #     elif dir == 'right':
+    #         offset = self.canvas.width()
+    #         posfn = lambda i,p: RECTS[i]['pos'].setX(offset - p)
+    #     for i, pos in enumerate(lp[1:], 1):
+    #         posfn(i, pos)
+    #     self.canvas.update()
     def butt_random_click(self):
         global RECTS
         RECTS = init_rects(self.canvas.width(), self.canvas.height())
         self.canvas.update()
     def butt_xleft_click(self):
-        self.compact_x('left')
+        self.compact_xy(axis='x', reverse=False)
     def butt_xright_click(self):
-        self.compact_x('right')
+        self.compact_xy(axis='x', reverse=True)
     def butt_yup_click(self):
-        self.compact_y('up')
+        self.compact_xy(axis='y', reverse=False)
     def butt_ydn_click(self):
-        self.compact_y('dn')
+        self.compact_xy(axis='y', reverse=True)
     def butt_xlyu_click(self):
-        self.compact_x('left')
-        self.compact_y('up')
-        self.compact_x('left')
-        self.compact_y('up')
+        self.compact_xy(axis='x', reverse=False)
+        self.compact_xy(axis='y', reverse=False)
+        self.compact_xy(axis='x', reverse=False)
+        self.compact_xy(axis='y', reverse=False)
     def butt_xlyd_click(self):
-        self.compact_x('left')
-        self.compact_y('dn')
-        self.compact_x('left')
-        self.compact_y('dn')
+        self.compact_xy(axis='x', reverse=False)
+        self.compact_xy(axis='y', reverse=True)
+        self.compact_xy(axis='x', reverse=False)
+        self.compact_xy(axis='y', reverse=True)
     def butt_xryu_click(self):
-        self.compact_x('right')
-        self.compact_y('up')
-        self.compact_x('right')
-        self.compact_y('up')
+        self.compact_xy(axis='x', reverse=True)
+        self.compact_xy(axis='y', reverse=False)
+        self.compact_xy(axis='x', reverse=True)
+        self.compact_xy(axis='y', reverse=False)
     def butt_xryd_click(self):
-        self.compact_x('right')
-        self.compact_y('dn')
-        self.compact_x('right')
-        self.compact_y('dn')
+        self.compact_xy(axis='x', reverse=True)
+        self.compact_xy(axis='y', reverse=True)
+        self.compact_xy(axis='x', reverse=True)
+        self.compact_xy(axis='y', reverse=True)
     def butt_yuxl_click(self):
-        self.compact_y('up')
-        self.compact_x('left')
-        self.compact_y('up')
-        self.compact_x('left')
+        self.compact_xy(axis='y', reverse=False)
+        self.compact_xy(axis='x', reverse=False)
+        self.compact_xy(axis='y', reverse=False)
+        self.compact_xy(axis='x', reverse=False)
     def butt_yuxr_click(self):
-        self.compact_y('up')
-        self.compact_x('right')
-        self.compact_y('up')
-        self.compact_x('right')
+        self.compact_xy(axis='y', reverse=False)
+        self.compact_xy(axis='x', reverse=True)
+        self.compact_xy(axis='y', reverse=False)
+        self.compact_xy(axis='x', reverse=True)
     def butt_ydxl_click(self):
-        self.compact_y('dn')
-        self.compact_x('left')
-        self.compact_y('dn')
-        self.compact_x('left')
+        self.compact_xy(axis='y', reverse=True)
+        self.compact_xy(axis='x', reverse=False)
+        self.compact_xy(axis='y', reverse=True)
+        self.compact_xy(axis='x', reverse=False)
     def butt_ydxr_click(self):
-        self.compact_y('dn')
-        self.compact_x('right')
-        self.compact_y('dn')
-        self.compact_x('right')
+        self.compact_xy(axis='y', reverse=True)
+        self.compact_xy(axis='x', reverse=True)
+        self.compact_xy(axis='y', reverse=True)
+        self.compact_xy(axis='x', reverse=True)
 
 
 
@@ -243,14 +242,14 @@ def init_rects(maxx, maxy):
     # Returns dict of dicts
     # Top level dict keys is rect id
     # print(f'init_rects maxx, maxy = {maxx},{maxy}')
-    rects = []
+    rects = Rects()
     r255  = lambda: random.randint(0,255)
     randcolor = lambda: QColor(r255(), r255(), r255())
-    rects.append({'id':4, 'pos':QPoint(80,10), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.append({'id':3, 'pos':QPoint(80,20), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.append({'id':2, 'pos':QPoint(50,10), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.append({'id':1, 'pos':QPoint( 0, 5), 'size':QSize(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.append({'id':5, 'pos':QPoint(50,50), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':4, 'pos':QPoint(80,10), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':3, 'pos':QPoint(80,20), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':2, 'pos':QPoint(50,10), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':1, 'pos':QPoint( 0, 5), 'size':QSize(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':5, 'pos':QPoint(50,50), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
     # for n in range(1, QTY+1):
     #     x0    = random.randint(0, maxx - WRANGE[1] - 1)
     #     y0    = random.randint(0, maxy - HRANGE[1] - 1)
