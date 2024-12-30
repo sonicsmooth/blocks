@@ -14,7 +14,12 @@ def sort_rects(rects, ids, keyfn, reverse=False):
     sorted_ids = [r['id'] for r in sorted_rects]
     return sorted_ids
 
-def compose_graph(lines, rects, dim, reverse=False, offset=0):
+def edge_aligned(src, dst, line):
+    return \
+        src in line['top'] and dst in line['bot'] or \
+        src in line['bot'] and dst in line['top']
+
+def compose_graph(lines, rects, dim, reverse=False):
     # lines comes from scanlines_[xy][leftright](...)
     # The graph represents distances from the reference
     # So it doesn't know about rightmost, etc.
@@ -23,28 +28,27 @@ def compose_graph(lines, rects, dim, reverse=False, offset=0):
     if   dim == 'x': wh = lambda rect: rect['size'].width()
     elif dim == 'y': wh = lambda rect: rect['size'].height()
     for line in lines:
-        ids = line['sorted']
         src = 0
-        dst = ids[0]
-        ge = (src, dst)
-        if ge not in graph:
-            if not reverse:
-                graph[ge] = 0
-            else:
-                graph[ge] = wh(rects[dst])
-        src = dst
-        for dst in ids[1:]:
-            aligned = src in line['top'] and dst in line['bot'] or \
-                      src in line['bot'] and dst in line['top']
-            #aligned = False
-            if not aligned:
-                ge = (src, dst)
-                if ge not in graph:
-                    if not reverse:
-                        graph[ge] = wh(rects[src]) # push left/top
-                    else:
-                        graph[ge] = wh(rects[dst]) # push right/bottom
+        for dst in line['sorted']:
+            if dst in line['bot']:
+                continue
+            if (ge := (src, dst)) not in graph:
+                if not reverse:
+                    graph[ge] = src in rects and wh(rects[src]) or 0
+                else:
+                    graph[ge] = dst in rects and wh(rects[dst]) or 0
             src = dst
+        src = 0
+        for dst in line['sorted']:
+            if dst in line['top']:
+                continue
+            if (ge := (src, dst)) not in graph:
+                if not reverse:
+                    graph[ge] = src in rects and wh(rects[src]) or 0
+                else:
+                    graph[ge] = dst in rects and wh(rects[dst]) or 0
+            src = dst
+
     return graph                    
 
 def scanlines(rects, axis, reverse=False):
@@ -109,9 +113,14 @@ def scanlines(rects, axis, reverse=False):
 
         line['sorted'] = line['top'] + line['mid'] + line['bot']
         if len(line['sorted']) > 1:
-            #srtd = sort_rects(rects, line['sorted'], keyfn=lambda r:r['pos'].x(), reverse=reverse)
             srtd = sort_rects(rects, line['sorted'], keyfn=prim_pos, reverse=reverse)
             line['sorted'][:] = srtd[:]
+        if len(line['top']) > 1:
+            srtd = sort_rects(rects, line['top'], keyfn=prim_pos, reverse=reverse)
+            line['top'][:] = srtd[:]
+        if len(line['bot']) > 1:
+            srtd = sort_rects(rects, line['bot'], keyfn=prim_pos, reverse=reverse)
+            line['bot'][:] = srtd[:]
         lastpos = pos
     lines.append(copy.deepcopy(line))
     return lines

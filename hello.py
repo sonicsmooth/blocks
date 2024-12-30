@@ -243,13 +243,9 @@ def init_rects(maxx, maxy):
     # Top level dict keys is rect id
     # print(f'init_rects maxx, maxy = {maxx},{maxy}')
     rects = Rects()
-    r255  = lambda: random.randint(0,255)
-    randcolor = lambda: QColor(r255(), r255(), r255())
-    rects.add({'id':4, 'pos':QPoint(80,10), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':3, 'pos':QPoint(80,20), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':2, 'pos':QPoint(50,10), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':1, 'pos':QPoint( 0, 5), 'size':QSize(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':5, 'pos':QPoint(50,50), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    #r255  = lambda: random.randint(0,255)
+    #randcolor = lambda: QColor(r255(), r255(), r255())
+    r1(rects)
     # for n in range(1, QTY+1):
     #     x0    = random.randint(0, maxx - WRANGE[1] - 1)
     #     y0    = random.randint(0, maxy - HRANGE[1] - 1)
@@ -263,6 +259,25 @@ def init_rects(maxx, maxy):
     #     #          3: {'id': 3, 'pos': QPoint(120, 120), 'size': QSize(60,60), 'pencolor': randcolor(), 'brushcolor': randcolor()},
     #     #          }
     return rects
+
+def r1(rects):
+    # Set up rects like in scanline comments
+    r255  = lambda: random.randint(0,255)
+    randcolor = lambda: QColor(r255(), r255(), r255())
+    rects.add({'id':4, 'pos':QPoint(80,10), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':3, 'pos':QPoint(80,20), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':2, 'pos':QPoint(50,10), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':1, 'pos':QPoint( 0, 5), 'size':QSize(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':5, 'pos':QPoint(50,50), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+
+def r2(rects):
+    r255  = lambda: random.randint(0,255)
+    randcolor = lambda: QColor(r255(), r255(), r255())
+    rects.add({'id':1, 'pos':QPoint( 30,15), 'size':QSize(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':2, 'pos':QPoint( 205,65), 'size':QSize(80,50), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':3, 'pos':QPoint( 200, 115), 'size':QSize(60,50), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':4, 'pos':QPoint( 0,0), 'size':QSize(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+
 
 def main():
     app = QApplication(sys.argv)
