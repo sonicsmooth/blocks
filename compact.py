@@ -136,8 +136,6 @@ def make_graph(rects, axis, reverse=False):
     graph = compose_graph(lines, rects, axis, reverse)
     return graph
 
-
-
 def longest_path_bellman_ford(graph):
     MINDIST = 0
     nodes = set()
@@ -154,4 +152,48 @@ def longest_path_bellman_ford(graph):
             weight += MINDIST
             if dist[frm] != float('-inf') and dist[frm] + weight > dist[to]:
                 dist[to] = dist[frm] + weight
-    return dist
+        return dist
+
+def randgraph(numnodes, numedges, weightrng):
+    # Generate random graph
+    from random import randint
+    rnd_node = lambda: randint(0, numnodes - 1)
+    rnd_weight = lambda: randint(0, weightrng)
+    rnd_srcdst = lambda: randint(0, 1)
+    graph = {}
+    for n in range(numnodes):
+        other = rnd_node()
+        while n == other:
+            other = rnd_node()
+        if rnd_srcdst():
+            graph[(n, other)] = rnd_weight()
+        else:
+            graph[(other, n)] = rnd_weight()
+    for _ in range(numedges - numnodes):
+        frm = rnd_node()
+        to = rnd_node()
+        while frm == to or (frm, to) in graph:
+            frm = rnd_node()
+            to = rnd_node()
+        graph[(frm, to)] = rnd_weight()
+    return graph
+
+if __name__ == '__main__':
+    # graph = randgraph(5, 10, 20)
+    # pprint(graph)
+
+    import timeit
+    num = 1000
+    loop = 5
+    numnodes = 1000
+    numedges = 4*numnodes
+    weight_rng = 50
+    runstr1 = f'graph = randgraph(numnodes, numedges, weight_rng)'
+    result = timeit.timeit(runstr1, globals=globals(), number=num)
+    print(f'Create graph time per loop is {1000 * result/num:.5f} ms')
+
+    graph = randgraph(numnodes, numedges, weight_rng)
+    runstr2 = 'lp = longest_path_bellman_ford(graph)'
+    result = timeit.timeit(runstr2, globals=globals(), number=num)
+    print(f'Longest path time per loop is {1000 * result/num:.5f} ms')
+    

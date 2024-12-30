@@ -12,9 +12,9 @@ from rectdb import Rects
 
 DRAG_INFO = {}
 RECTS = None
-WRANGE = [50, 100]
-HRANGE = [50, 100]
-QTY = 3
+WRANGE = [25, 50]
+HRANGE = [25, 50]
+QTY = 200
 
 def hittest(pos, rects):
     # Check whether pos is inside any of rects
@@ -49,7 +49,8 @@ class BlockCanvas(QWidget):
             painter.setBrush(QBrush(rect['brushcolor'], Qt.BrushStyle.SolidPattern))
             qr = QRect(rect['pos'], rect['size'])
             painter.drawRect(qr)
-            painter.drawText(qr, Qt.AlignmentFlag.AlignCenter, str(rect['id']))
+            s = str(rect['id']) + '*' * int(rect['selected'])
+            painter.drawText(qr, Qt.AlignmentFlag.AlignCenter, s)
         painter.end()
 
     def paintEvent(self, event):
@@ -68,11 +69,14 @@ class BlockCanvas(QWidget):
         self.update()
 
     def mousePressEvent(self, e):
+        global RECTS
         pos = e.position().toPoint()
         if (hits := hittest(pos, RECTS)):
             global DRAG_INFO
             DRAG_INFO['hits'] = hits
             DRAG_INFO['lastpos'] = pos
+            RECTS[hits[-1]]['selected'] = not RECTS[hits[-1]]['selected']
+            self.update()
 
     def mouseReleaseEvent(self, e):
         global DRAG_INFO
@@ -118,7 +122,6 @@ class MainWindow(QMainWindow):
 
         space1 = QSpacerItem(40, 1000, QSizePolicy.Policy.Preferred)
         vbl.addWidget(butt_random)
-        #vbl.addItem(space1)
         vbl.addWidget(butt_xleft)
         vbl.addWidget(butt_xright)
         vbl.addWidget(butt_yup)
@@ -171,18 +174,6 @@ class MainWindow(QMainWindow):
         for i, pos in enumerate(lp[1:], 1):
             posfn(i, pos)
         self.canvas.update()
-    # def compact_y(self, dir):
-    #     global RECTS
-    #     graph = compact.make_graph(RECTS, 'x', reverse = dir == 'right')
-    #     lp = compact.longest_path_bellman_ford(graph)
-    #     if dir == 'left':
-    #         posfn = lambda i,p: RECTS[i]['pos'].setX(pos)
-    #     elif dir == 'right':
-    #         offset = self.canvas.width()
-    #         posfn = lambda i,p: RECTS[i]['pos'].setX(offset - p)
-    #     for i, pos in enumerate(lp[1:], 1):
-    #         posfn(i, pos)
-    #     self.canvas.update()
     def butt_random_click(self):
         global RECTS
         RECTS = init_rects(self.canvas.width(), self.canvas.height())
@@ -236,6 +227,21 @@ class MainWindow(QMainWindow):
         self.compact_xy(axis='y', reverse=True)
         self.compact_xy(axis='x', reverse=True)
 
+def randcolor():
+    return QColor(random.randint(0,255),
+                  random.randint(0,255),
+                  random.randint(0,255))
+
+def randrect(id, maxx, maxy):
+    x0    = random.randint(0, maxx - WRANGE[1] - 1)
+    y0    = random.randint(0, maxy - HRANGE[1] - 1)
+    wrect = random.randint(WRANGE[0], WRANGE[1])
+    hrect = random.randint(HRANGE[0], HRANGE[1])
+    pos   = QPoint(x0, y0)
+    size  = QSize (wrect, hrect)
+    rect = {'id':id, 'pos':pos, 'size':size, 'selected': False,
+            'pencolor':randcolor(), 'brushcolor':randcolor()}
+    return rect
 
 
 def init_rects(maxx, maxy):
@@ -243,21 +249,8 @@ def init_rects(maxx, maxy):
     # Top level dict keys is rect id
     # print(f'init_rects maxx, maxy = {maxx},{maxy}')
     rects = Rects()
-    #r255  = lambda: random.randint(0,255)
-    #randcolor = lambda: QColor(r255(), r255(), r255())
-    r1(rects)
-    # for n in range(1, QTY+1):
-    #     x0    = random.randint(0, maxx - WRANGE[1] - 1)
-    #     y0    = random.randint(0, maxy - HRANGE[1] - 1)
-    #     wrect = random.randint(WRANGE[0], WRANGE[1])
-    #     hrect = random.randint(HRANGE[0], HRANGE[1])
-    #     pos   = QPoint(x0, y0)
-    #     size  = QSize (wrect, hrect)
-    #     rects[n] = {'id':n, 'pos':pos, 'size':size, 'pencolor':randcolor(), 'brushcolor':randcolor()}
-    #     # rects = {1: {'id': 1, 'pos': QPoint( 10,  10), 'size': QSize(40,40), 'pencolor': randcolor(), 'brushcolor': randcolor()},
-    #     #          2: {'id': 2, 'pos': QPoint( 60,  60), 'size': QSize(50,50), 'pencolor': randcolor(), 'brushcolor': randcolor()},
-    #     #          3: {'id': 3, 'pos': QPoint(120, 120), 'size': QSize(60,60), 'pencolor': randcolor(), 'brushcolor': randcolor()},
-    #     #          }
+    for id in range(1, QTY+1):
+        rects[id] = randrect(id, maxx, maxy)
     return rects
 
 def r1(rects):
