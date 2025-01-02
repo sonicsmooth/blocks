@@ -11,8 +11,10 @@ from collections import namedtuple
 
 
 
-DRAG_INFO = {}
 RECTS = None
+MOUSE_DOWN_DATA = {} # 'ids', 'lastpos'
+#MOUSE_UP_DATA = {} # 'ids', 'lastpos'
+#MOUSE_LAST_POS = None
 SELECTED = set()
 WRANGE = [25, 50]
 HRANGE = [25, 50]
@@ -27,9 +29,9 @@ def hittest(pos, rects):
     for id,rect in rects.items():
         rpos = rect['pos']
         size = rect['size']
-        lrcorner = QPoint(rpos.x + size.w, rpos.y + size.h)
-        if pos.x >= rpos.x and pos.x <= lrcorner.x() and \
-           pos.y >= rpos.y and pos.y <= lrcorner.y():
+        lrcorner = Point(rpos.x + size.w, rpos.y + size.h)
+        if pos.x >= rpos.x and pos.x <= lrcorner.x and \
+           pos.y >= rpos.y and pos.y <= lrcorner.y:
             hits.append(id)
     return hits
 
@@ -49,6 +51,12 @@ def move_rect(rect, oldpos, newpos):
     dy = newpos.y - oldpos.y
     delta = Point(dx, dy)
     move_rect_delta(rect, delta)
+
+def PtFromEvent(event):
+    pospt = event.position().toPoint() # QPoint
+    pos = Point(int(pospt.x()), int(pospt.y()))
+    return pos
+
 
 class BlockCanvas(QWidget):
     def __init__(self):
@@ -76,39 +84,38 @@ class BlockCanvas(QWidget):
         pass
 
     def mouseMoveEvent(self, e):
-        hits = DRAG_INFO['hits'] # Returns id
+        hits = MOUSE_DOWN_DATA['ids'] # Returns id
         if not hits: return
-        pospt = e.position().toPoint() # QPoint
-        pos = Point(int(pospt.x()), int(pospt.y()))
+        pos = PtFromEvent(e)
         movable_rect = RECTS[hits[-1]]
-        move_rect(movable_rect, DRAG_INFO['lastpos'], pos)
-        DRAG_INFO['lastpos'] = pos
+        move_rect(movable_rect, MOUSE_DOWN_DATA['lastpos'], pos)
+        MOUSE_DOWN_DATA['lastpos'] = pos
         self.update()
 
     def mousePressEvent(self, e):
         global RECTS
         global SELECTED
-        pospt = e.position().toPoint() # QPoint
-        pos = Point(int(pospt.x()), int(pospt.y()))
+        pos = PtFromEvent(e)
         if (hits := hittest(pos, RECTS)):
-            global DRAG_INFO
-            DRAG_INFO['hits'] = hits
-            DRAG_INFO['lastpos'] = pos
-            if RECTS[hits[-1]]['selected']:
-                RECTS[hits[-1]]['selected'] = False
-                SELECTED.remove(hits[-1])
-            else:
-                RECTS[hits[-1]]['selected'] = True
-                SELECTED.add(hits[-1])
+            global MOUSE_DOWN_DATA
+            MOUSE_DOWN_DATA['ids'          ] = hits
+            MOUSE_DOWN_DATA['lastpos'      ] = pos
+            MOUSE_DOWN_DATA['clickpos'     ] = pos
+            MOUSE_DOWN_DATA['clear_pending'] = False
         else:
-            for id in SELECTED:
-                RECTS[id]['selected'] = False
-            SELECTED.clear()
-        self.update()
+            MOUSE_DOWN_DATA['clear_pending'] = True
+
 
     def mouseReleaseEvent(self, e):
-        global DRAG_INFO
-        DRAG_INFO['hits'].clear()
+        pos = PtFromEvent(e)
+        if pos == MOUSE_DOWN_DATA['clickpos']:
+            toggle_rect_selection(MOUSE_DOWN_DATA['ids'][-1])
+        elif MOUSE_DOWN_DATA['clear_pending']:
+            clear_rect_selection()
+            MOUSE_DOWN_DATA['clear_pending'] = False
+
+        MOUSE_DOWN_DATA['ids'].clear()
+        self.update()
 
     def keyPressEvent(self, e):
         global SELECTED
@@ -134,6 +141,24 @@ class BlockCanvas(QWidget):
         
         self.update()
         return super().keyPressEvent(e)
+
+def toggle_rect_selection(rectid):
+    global RECTS
+    global SELECTED
+    if RECTS[rectid]['selected']:
+        RECTS[rectid]['selected'] = False
+        SELECTED.remove(rectid)
+    else:
+        RECTS[rectid]['selected'] = True
+        SELECTED.add(rectid)
+
+def clear_rect_selection():
+    global RECTS
+    global SELECTED
+    for id in SELECTED:
+        RECTS[id]['selected'] = False
+    SELECTED.clear()
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -354,7 +379,9 @@ def main():
     window.canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
     global RECTS
     RECTS = init_rects(width, height)
-    DRAG_INFO['hits'] = []
+    MOUSE_DOWN_DATA['ids'     ] = []
+    MOUSE_DOWN_DATA['clickpos'] = None
+    MOUSE_DOWN_DATA['lastpos' ] = None
 
     window.show()
     app.exec()
