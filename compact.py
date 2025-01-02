@@ -143,15 +143,18 @@ def longest_path_bellman_ford(graph):
         nodes.add(edge[0])
         nodes.add(edge[1])
     num_nodes = len(nodes)
-    dist = [float('-inf')] * num_nodes
+    dist = {}
+    for n in nodes:
+        dist[n] = float('-inf')
+    #dist = [float('-inf')] * num_nodes
     dist[0] = 0  # Assuming 0 is the start node
 
-    # looks like O(num_nodes * num_edges)
     for _ in range(num_nodes - 1):
         for (frm, to), weight in graph.items():
             weight += MINDIST
             if dist[frm] != float('-inf') and dist[frm] + weight > dist[to]:
                 dist[to] = dist[frm] + weight
+        del dist[0]
         return dist
 
 def randgraph(numnodes, numedges, weightrng):

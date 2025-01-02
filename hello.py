@@ -12,9 +12,10 @@ from rectdb import Rects
 
 DRAG_INFO = {}
 RECTS = None
+SELECTED = set()
 WRANGE = [25, 50]
 HRANGE = [25, 50]
-QTY = 200
+QTY = 8
 
 def hittest(pos, rects):
     # Check whether pos is inside any of rects
@@ -24,16 +25,26 @@ def hittest(pos, rects):
     for id,rect in rects.items():
         rpos = rect['pos']
         size = rect['size']
-        p1 = QPoint(rpos.x() + size.width(), rpos.y() + size.height())
-        if px >= rpos.x() and px <= p1.x() and \
-           py >= rpos.y() and py <= p1.y():
+        p1 = QPoint(rpos[0] + size[0], rpos[1] + size[1])
+        if px >= rpos[0] and px <= p1.x() and \
+           py >= rpos[1] and py <= p1.y():
             hits.append(id)
     return hits
 
+def move_rect_delta(rect, delta):
+    # rect is dict
+    # delta is tuple
+    # Updates rect coordinates in-place
+    newpos = (rect['pos'][0] + delta[0],
+              rect['pos'][1] + delta[1])
+    rect['pos'] = newpos
+
 def move_rect(rect, oldpos, newpos):
+    # rect is dict
+    # oldpos, newpos are QPoint
     # Updates rect coordinates in-place
     delta = newpos - oldpos
-    rect['pos'] += delta
+    move_rect_delta(rect, (delta.x(), delta.y()))
 
 class BlockCanvas(QWidget):
     def __init__(self):
@@ -46,8 +57,9 @@ class BlockCanvas(QWidget):
         painter.setPen(QPen(QColor('black')))
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         for rect in rects:
-            painter.setBrush(QBrush(rect['brushcolor'], Qt.BrushStyle.SolidPattern))
-            qr = QRect(rect['pos'], rect['size'])
+            painter.setBrush(QBrush(QColor(*rect['brushcolor']), 
+                                    Qt.BrushStyle.SolidPattern))
+            qr = QRect(QPoint(*rect['pos']), QSize(*rect['size']))
             painter.drawRect(qr)
             s = str(rect['id']) + '*' * int(rect['selected'])
             painter.drawText(qr, Qt.AlignmentFlag.AlignCenter, s)
@@ -70,17 +82,52 @@ class BlockCanvas(QWidget):
 
     def mousePressEvent(self, e):
         global RECTS
+        global SELECTED
         pos = e.position().toPoint()
         if (hits := hittest(pos, RECTS)):
             global DRAG_INFO
             DRAG_INFO['hits'] = hits
             DRAG_INFO['lastpos'] = pos
-            RECTS[hits[-1]]['selected'] = not RECTS[hits[-1]]['selected']
-            self.update()
+            if RECTS[hits[-1]]['selected']:
+                RECTS[hits[-1]]['selected'] = False
+                SELECTED.remove(hits[-1])
+            else:
+                RECTS[hits[-1]]['selected'] = True
+                SELECTED.add(hits[-1])
+        else:
+            for id in SELECTED:
+                RECTS[id]['selected'] = False
+            SELECTED.clear()
+        self.update()
 
     def mouseReleaseEvent(self, e):
         global DRAG_INFO
         DRAG_INFO['hits'].clear()
+
+    def keyPressEvent(self, e):
+        global SELECTED
+        global RECTS
+        if not SELECTED:
+            return
+        if e.key() == Qt.Key.Key_Left:
+            for id in SELECTED:
+                move_rect_delta(RECTS[id], (-1, 0))
+        elif e.key() == Qt.Key.Key_Right:
+            for id in SELECTED:
+                move_rect_delta(RECTS[id], ( 1, 0))
+        elif e.key() == Qt.Key.Key_Up:
+            for id in SELECTED:
+                move_rect_delta(RECTS[id], ( 0,-1))
+        elif e.key() == Qt.Key.Key_Down:
+            for id in SELECTED:
+                move_rect_delta(RECTS[id], ( 0, 1))
+        elif e.key() == Qt.Key.Key_Delete:
+            for id in SELECTED:
+                RECTS.remove(id)
+            SELECTED.clear()
+        
+        self.update()
+        return super().keyPressEvent(e)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -105,6 +152,8 @@ class MainWindow(QMainWindow):
         butt_yuxr   = QPushButton('Compact Y↑ then X→')
         butt_ydxl   = QPushButton('Compact Y↓ then X←')
         butt_ydxr   = QPushButton('Compact Y↓ then X→')
+        butt_save   = QPushButton('Save')
+        butt_load   = QPushButton('Load')
         
         butt_random.setFixedHeight(40)
         butt_xleft.setFixedHeight(40)
@@ -119,8 +168,9 @@ class MainWindow(QMainWindow):
         butt_yuxr.setFixedHeight(40)
         butt_ydxl.setFixedHeight(40)
         butt_ydxr.setFixedHeight(40)
+        butt_save.setFixedHeight(40)
+        butt_load.setFixedHeight(40)
 
-        space1 = QSpacerItem(40, 1000, QSizePolicy.Policy.Preferred)
         vbl.addWidget(butt_random)
         vbl.addWidget(butt_xleft)
         vbl.addWidget(butt_xright)
@@ -134,6 +184,8 @@ class MainWindow(QMainWindow):
         vbl.addWidget(butt_yuxr)
         vbl.addWidget(butt_ydxl)
         vbl.addWidget(butt_ydxr)
+        vbl.addWidget(butt_save)
+        vbl.addWidget(butt_load)
         leftbar.setLayout(vbl)
 
         mainw = QWidget()
@@ -158,6 +210,8 @@ class MainWindow(QMainWindow):
         butt_yuxr.clicked.connect(self.butt_yuxr_click)
         butt_ydxl.clicked.connect(self.butt_ydxl_click)
         butt_ydxr.clicked.connect(self.butt_ydxr_click)
+        butt_save.clicked.connect(self.save)
+        butt_load.clicked.connect(self.load)
 
     def compact_xy(self, axis, reverse):
         global RECTS
@@ -171,7 +225,7 @@ class MainWindow(QMainWindow):
             if reverse: offset = self.canvas.height()
         if reverse: posfn = lambda i,p: setter(RECTS[i], offset - p)
         else:       posfn = lambda i,p: setter(RECTS[i], pos)
-        for i, pos in enumerate(lp[1:], 1):
+        for i, pos in lp.items():
             posfn(i, pos)
         self.canvas.update()
     def butt_random_click(self):
@@ -226,19 +280,27 @@ class MainWindow(QMainWindow):
         self.compact_xy(axis='x', reverse=True)
         self.compact_xy(axis='y', reverse=True)
         self.compact_xy(axis='x', reverse=True)
+    def save(self):
+        import json
+        with open('rects.json', 'w') as f:
+            json.dump(RECTS, f)
+    def load(self):
+        import json
+        global RECTS
+        RECTS = json.load(open('rects.json', 'r'))
 
 def randcolor():
-    return QColor(random.randint(0,255),
-                  random.randint(0,255),
-                  random.randint(0,255))
+    return (random.randint(0,255),
+            random.randint(0,255),
+            random.randint(0,255))
 
 def randrect(id, maxx, maxy):
     x0    = random.randint(0, maxx - WRANGE[1] - 1)
     y0    = random.randint(0, maxy - HRANGE[1] - 1)
     wrect = random.randint(WRANGE[0], WRANGE[1])
     hrect = random.randint(HRANGE[0], HRANGE[1])
-    pos   = QPoint(x0, y0)
-    size  = QSize (wrect, hrect)
+    pos   = (x0, y0)
+    size  = (wrect, hrect)
     rect = {'id':id, 'pos':pos, 'size':size, 'selected': False,
             'pencolor':randcolor(), 'brushcolor':randcolor()}
     return rect
@@ -247,8 +309,8 @@ def randrect(id, maxx, maxy):
 def init_rects(maxx, maxy):
     # Returns dict of dicts
     # Top level dict keys is rect id
-    # print(f'init_rects maxx, maxy = {maxx},{maxy}')
     rects = Rects()
+    #r3(rects)
     for id in range(1, QTY+1):
         rects[id] = randrect(id, maxx, maxy)
     return rects
@@ -256,20 +318,25 @@ def init_rects(maxx, maxy):
 def r1(rects):
     # Set up rects like in scanline comments
     r255  = lambda: random.randint(0,255)
-    randcolor = lambda: QColor(r255(), r255(), r255())
-    rects.add({'id':4, 'pos':QPoint(80,10), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':3, 'pos':QPoint(80,20), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':2, 'pos':QPoint(50,10), 'size':QSize(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':1, 'pos':QPoint( 0, 5), 'size':QSize(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':5, 'pos':QPoint(50,50), 'size':QSize(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':4, 'pos':(80,10), 'size':(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':3, 'pos':(80,20), 'size':(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':(50,10), 'size':(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':1, 'pos':( 0, 5), 'size':(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':5, 'pos':(50,50), 'size':(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 def r2(rects):
+    # Sets up another edge condition
     r255  = lambda: random.randint(0,255)
-    randcolor = lambda: QColor(r255(), r255(), r255())
-    rects.add({'id':1, 'pos':QPoint( 30,15), 'size':QSize(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':2, 'pos':QPoint( 205,65), 'size':QSize(80,50), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':3, 'pos':QPoint( 200, 115), 'size':QSize(60,50), 'pencolor':randcolor(), 'brushcolor':randcolor()})
-    rects.add({'id':4, 'pos':QPoint( 0,0), 'size':QSize(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor()})
+    rects.add({'id':1, 'pos':(30,15), 'size':(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':(205,65), 'size':(80,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':3, 'pos':(200, 115), 'size':(60,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':4, 'pos':(0,0), 'size':(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+
+def r3(rects):
+    # Sets up another edge condition
+    r255  = lambda: random.randint(0,255)
+    rects.add({'id':1, 'pos':(0, 0), 'size':(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':(0, 0), 'size':(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 
 def main():
@@ -278,6 +345,7 @@ def main():
     window.resize(800,600)
     width = window.canvas.width()
     height = window.canvas.height()
+    window.canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
     global RECTS
     RECTS = init_rects(width, height)
     DRAG_INFO['hits'] = []
