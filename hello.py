@@ -103,16 +103,14 @@ class BlockCanvas(QWidget):
         else:
             MOUSE_DOWN_DATA['clear_pending'] = True
 
-
     def mouseReleaseEvent(self, e):
         pos = PtFromEvent(e)
         if pos == MOUSE_DOWN_DATA['clickpos']:
             if ids := MOUSE_DOWN_DATA['ids']:
                 toggle_rect_selection(ids[-1])
-            if MOUSE_DOWN_DATA['clear_pending']:
+            elif MOUSE_DOWN_DATA['clear_pending']:
                 clear_rect_selection()
                 MOUSE_DOWN_DATA['clear_pending'] = False
-
         MOUSE_DOWN_DATA['ids'].clear()
         self.update()
 
