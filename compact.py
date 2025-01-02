@@ -25,8 +25,8 @@ def compose_graph(lines, rects, dim, reverse=False):
     # So it doesn't know about rightmost, etc.
     # The reverse flag just adds the dst width/height
     graph = {}
-    if   dim == 'x': wh = lambda rect: rect['size'].width()
-    elif dim == 'y': wh = lambda rect: rect['size'].height()
+    if   dim == 'x': wh = lambda rect: rect['size'].w
+    elif dim == 'y': wh = lambda rect: rect['size'].h
     for line in lines:
         src = 0
         for dst in line['sorted']:
@@ -73,15 +73,15 @@ def scanlines(rects, axis, reverse=False):
     # 60          └────┘                         5      0->5
 
     if axis == 'x':
-        prim_pos = lambda rect: rect['pos'].x()
-        prim_sz  = lambda rect: rect['size'].width()
-        sec_pos  = lambda rect: rect['pos'].y()
-        sec_sz   = lambda rect: rect['size'].height()
+        prim_pos = lambda rect: rect['pos' ].x
+        prim_sz  = lambda rect: rect['size'].w
+        sec_pos  = lambda rect: rect['pos' ].y
+        sec_sz   = lambda rect: rect['size'].h
     elif axis == 'y':
-        prim_pos = lambda rect: rect['pos'].y()
-        prim_sz  = lambda rect: rect['size'].height()
-        sec_pos  = lambda rect: rect['pos'].x()
-        sec_sz   = lambda rect: rect['size'].width()
+        prim_pos = lambda rect: rect['pos' ].y
+        prim_sz  = lambda rect: rect['size'].h
+        sec_pos  = lambda rect: rect['pos' ].x
+        sec_sz   = lambda rect: rect['size'].w
 
     top_edges = [{'id':r['id'], 'pos':sec_pos(r),             'tb':'top'} for r in rects]
     bot_edges = [{'id':r['id'], 'pos':sec_pos(r) + sec_sz(r), 'tb':'bot'} for r in rects]

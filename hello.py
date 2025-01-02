@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QRect, QPoint, QSize
 import random
 import compact
 from rectdb import Rects
+from collections import namedtuple
 
 
 
@@ -17,17 +18,18 @@ WRANGE = [25, 50]
 HRANGE = [25, 50]
 QTY = 8
 
+Point = namedtuple('Point', ['x', 'y'])
+Size = namedtuple('Size', ['w', 'h'])
+
 def hittest(pos, rects):
-    # Check whether pos is inside any of rects
+    # Check whether pos tuple is inside any of rects
     hits = []
-    px = int(pos.x())
-    py = int(pos.y())
     for id,rect in rects.items():
         rpos = rect['pos']
         size = rect['size']
-        p1 = QPoint(rpos[0] + size[0], rpos[1] + size[1])
-        if px >= rpos[0] and px <= p1.x() and \
-           py >= rpos[1] and py <= p1.y():
+        lrcorner = QPoint(rpos.x + size.w, rpos.y + size.h)
+        if pos.x >= rpos.x and pos.x <= lrcorner.x() and \
+           pos.y >= rpos.y and pos.y <= lrcorner.y():
             hits.append(id)
     return hits
 
@@ -35,16 +37,18 @@ def move_rect_delta(rect, delta):
     # rect is dict
     # delta is tuple
     # Updates rect coordinates in-place
-    newpos = (rect['pos'][0] + delta[0],
-              rect['pos'][1] + delta[1])
+    newpos = Point(rect['pos'].x + delta.x,
+                   rect['pos'].y + delta.y)
     rect['pos'] = newpos
 
 def move_rect(rect, oldpos, newpos):
     # rect is dict
     # oldpos, newpos are QPoint
     # Updates rect coordinates in-place
-    delta = newpos - oldpos
-    move_rect_delta(rect, (delta.x(), delta.y()))
+    dx = newpos.x - oldpos.x
+    dy = newpos.y - oldpos.y
+    delta = Point(dx, dy)
+    move_rect_delta(rect, delta)
 
 class BlockCanvas(QWidget):
     def __init__(self):
@@ -74,7 +78,8 @@ class BlockCanvas(QWidget):
     def mouseMoveEvent(self, e):
         hits = DRAG_INFO['hits'] # Returns id
         if not hits: return
-        pos = e.position().toPoint()
+        pospt = e.position().toPoint() # QPoint
+        pos = Point(int(pospt.x()), int(pospt.y()))
         movable_rect = RECTS[hits[-1]]
         move_rect(movable_rect, DRAG_INFO['lastpos'], pos)
         DRAG_INFO['lastpos'] = pos
@@ -83,7 +88,8 @@ class BlockCanvas(QWidget):
     def mousePressEvent(self, e):
         global RECTS
         global SELECTED
-        pos = e.position().toPoint()
+        pospt = e.position().toPoint() # QPoint
+        pos = Point(int(pospt.x()), int(pospt.y()))
         if (hits := hittest(pos, RECTS)):
             global DRAG_INFO
             DRAG_INFO['hits'] = hits
@@ -111,16 +117,16 @@ class BlockCanvas(QWidget):
             return
         if e.key() == Qt.Key.Key_Left:
             for id in SELECTED:
-                move_rect_delta(RECTS[id], (-1, 0))
+                move_rect_delta(RECTS[id], Point(-1, 0))
         elif e.key() == Qt.Key.Key_Right:
             for id in SELECTED:
-                move_rect_delta(RECTS[id], ( 1, 0))
+                move_rect_delta(RECTS[id], Point( 1, 0))
         elif e.key() == Qt.Key.Key_Up:
             for id in SELECTED:
-                move_rect_delta(RECTS[id], ( 0,-1))
+                move_rect_delta(RECTS[id], Point( 0,-1))
         elif e.key() == Qt.Key.Key_Down:
             for id in SELECTED:
-                move_rect_delta(RECTS[id], ( 0, 1))
+                move_rect_delta(RECTS[id], Point( 0, 1))
         elif e.key() == Qt.Key.Key_Delete:
             for id in SELECTED:
                 RECTS.remove(id)
@@ -218,10 +224,10 @@ class MainWindow(QMainWindow):
         graph = compact.make_graph(RECTS, axis, reverse)
         lp = compact.longest_path_bellman_ford(graph)
         if axis == 'x':
-            setter = lambda rect, pos: rect['pos'].setX(pos)
+            def setter(rect, pos): rect['pos'] = Point(pos, rect['pos'].y)
             if reverse: offset = self.canvas.width()
         elif axis == 'y':
-            setter = lambda rect, pos: rect['pos'].setY(pos)
+            def setter(rect, pos): rect['pos'] = Point(rect['pos'].x, pos)
             if reverse: offset = self.canvas.height()
         if reverse: posfn = lambda i,p: setter(RECTS[i], offset - p)
         else:       posfn = lambda i,p: setter(RECTS[i], pos)
@@ -299,8 +305,8 @@ def randrect(id, maxx, maxy):
     y0    = random.randint(0, maxy - HRANGE[1] - 1)
     wrect = random.randint(WRANGE[0], WRANGE[1])
     hrect = random.randint(HRANGE[0], HRANGE[1])
-    pos   = (x0, y0)
-    size  = (wrect, hrect)
+    pos   = Point(x0, y0)
+    size  = Size(wrect, hrect)
     rect = {'id':id, 'pos':pos, 'size':size, 'selected': False,
             'pencolor':randcolor(), 'brushcolor':randcolor()}
     return rect
@@ -318,25 +324,25 @@ def init_rects(maxx, maxy):
 def r1(rects):
     # Set up rects like in scanline comments
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':4, 'pos':(80,10), 'size':(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':3, 'pos':(80,20), 'size':(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':2, 'pos':(50,10), 'size':(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':1, 'pos':( 0, 5), 'size':(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':5, 'pos':(50,50), 'size':(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':4, 'pos':Point(80,10), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':3, 'pos':Point(80,20), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':Point(50,10), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':1, 'pos':Point( 0, 5), 'size':Size(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':5, 'pos':Point(50,50), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 def r2(rects):
     # Sets up another edge condition
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':1, 'pos':(30,15), 'size':(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':2, 'pos':(205,65), 'size':(80,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':3, 'pos':(200, 115), 'size':(60,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':4, 'pos':(0,0), 'size':(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':1, 'pos':Point(30,15),    'size':Size(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':Point(205,65),   'size':Size(80,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':3, 'pos':Point(200, 115), 'size':Size(60,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':4, 'pos':Point(0,0),      'size':Size(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 def r3(rects):
     # Sets up another edge condition
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':1, 'pos':(0, 0), 'size':(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':2, 'pos':(0, 0), 'size':(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':1, 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 
 def main():
