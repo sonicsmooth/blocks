@@ -311,11 +311,25 @@ class MainWindow(QMainWindow):
     def save(self):
         import json
         with open('rects.json', 'w') as f:
-            json.dump(RECTS, f)
+            json.dump(RECTS, f, indent=2)
     def load(self):
-        import json
+        rects = create_rects_from_json('rects.json')
         global RECTS
-        RECTS = json.load(open('rects.json', 'r'))
+        RECTS = rects
+        self.update()
+
+def create_rects_from_json(filename):
+    import json
+    jdict = json.load(open('rects.json', 'r'))
+    rects = Rects()
+    for id, rdict in jdict.items():
+        rects[id] = {'id': rdict['id'],
+                     'pos': Point(rdict['pos'][0],rdict['pos'][1]),
+                     'size': Size(rdict['size'][0],rdict['size'][1]),
+                     'selected': rdict['selected'],
+                     'pencolor': tuple(rdict['pencolor']),
+                     'brushcolor': tuple(rdict['brushcolor'])}
+    return rects
 
 def randcolor():
     return (random.randint(0,255),
@@ -333,38 +347,38 @@ def randrect(id, maxx, maxy):
             'pencolor':randcolor(), 'brushcolor':randcolor()}
     return rect
 
-
 def init_rects(maxx, maxy):
     # Returns dict of dicts
     # Top level dict keys is rect id
     rects = Rects()
     #r3(rects)
     for id in range(1, QTY+1):
-        rects[id] = randrect(id, maxx, maxy)
+        strid = str(id)
+        rects[strid] = randrect(strid, maxx, maxy)
     return rects
 
 def r1(rects):
     # Set up rects like in scanline comments
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':4, 'pos':Point(80,10), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':3, 'pos':Point(80,20), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':2, 'pos':Point(50,10), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':1, 'pos':Point( 0, 5), 'size':Size(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':5, 'pos':Point(50,50), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'4', 'pos':Point(80,10), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'3', 'pos':Point(80,20), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'2', 'pos':Point(50,10), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'1', 'pos':Point( 0, 5), 'size':Size(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'5', 'pos':Point(50,50), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 def r2(rects):
     # Sets up another edge condition
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':1, 'pos':Point(30,15),    'size':Size(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':2, 'pos':Point(205,65),   'size':Size(80,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':3, 'pos':Point(200, 115), 'size':Size(60,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':4, 'pos':Point(0,0),      'size':Size(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'1', 'pos':Point(30,15),    'size':Size(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'2', 'pos':Point(205,65),   'size':Size(80,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'3', 'pos':Point(200, 115), 'size':Size(60,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'4', 'pos':Point(0,0),      'size':Size(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 def r3(rects):
     # Sets up another edge condition
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':1, 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':2, 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'1', 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':'2', 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 
 def main():
