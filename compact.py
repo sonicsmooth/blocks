@@ -28,7 +28,7 @@ def compose_graph(lines, rects, dim, reverse=False):
     if   dim == 'x': wh = lambda rect: rect['size'].w
     elif dim == 'y': wh = lambda rect: rect['size'].h
     for line in lines:
-        src = 0
+        src = '0'
         for dst in line['sorted']:
             if dst in line['bot']:
                 continue
@@ -38,7 +38,7 @@ def compose_graph(lines, rects, dim, reverse=False):
                 else:
                     graph[ge] = dst in rects and wh(rects[dst]) or 0
             src = dst
-        src = 0
+        src = '0'
         for dst in line['sorted']:
             if dst in line['top']:
                 continue
@@ -138,6 +138,7 @@ def make_graph(rects, axis, reverse=False):
 
 def longest_path_bellman_ford(graph):
     MINDIST = 0
+    MININT = -1000
     nodes = set()
     for edge in graph.keys():
         nodes.add(edge[0])
@@ -145,17 +146,15 @@ def longest_path_bellman_ford(graph):
     num_nodes = len(nodes)
     dist = {}
     for n in nodes:
-        dist[n] = float('-inf')
-    #dist = [float('-inf')] * num_nodes
-    dist[0] = 0  # Assuming 0 is the start node
+        dist[n] = MININT
+    dist['0'] = 0  # Assuming 0 is the start node
 
     for _ in range(num_nodes - 1):
         for (frm, to), weight in graph.items():
-            weight += MINDIST
-            if dist[frm] != float('-inf') and dist[frm] + weight > dist[to]:
-                dist[to] = dist[frm] + weight
-        del dist[0]
-        return dist
+            if dist[frm] == MININT: continue
+            dist[to] = max(dist[to], dist[frm]+weight)
+    del dist['0']
+    return dist
 
 def randgraph(numnodes, numedges, weightrng):
     # Generate random graph
