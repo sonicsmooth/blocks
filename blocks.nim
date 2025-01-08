@@ -1,6 +1,6 @@
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wPaintDC, wBrush,
              wStatusBar, wMenuBar,]
-import std/[random, strformat, bitops]
+import std/[random, bitops]
 import winim
 
 
@@ -13,56 +13,29 @@ proc EventParam(event: wEvent): tuple =
   let hi_word:int = event.mLparam.bitand(0xffff_0000).shr(16)
   result = (lo_word, hi_word)
 
-
-
-proc `$`(event: wEvent): string =
-  let (lo_word, hi_word) = EventParam(event)
-  echo "mWindow.HWND:", event.mWindow.mHwnd
-  #echo "mWindow.parent.HWND:", event.mWindow.mParent.mHwnd
-  echo "mOrigin:", event.mOrigin #: HWND
-  echo "mMsg:", event.mMsg #: UINT
-  echo "mId:", event.mId #: wCommandID
-  echo "mWparam:", event.mWparam #: WPARAM
-  echo "mLparam:", event.mLparam #: LPARAM
-  echo "mUserData:", event.mUserData #: int
-  echo "mSkip:", event.mSkip #: bool
-  echo "mPropagationLevel:", event.mPropagationLevel #: int
-  echo "mResult:", event.mResult #: LRESULT
-  #echo "mKeyStatus:", event.mKeyStatus #: array[256, int8] # use int8 so that we can test if it < 0
-  echo "mMousePos:", event.mMousePos #: wPoint
-  echo "mClientPos:", event.mClientPos #: wPoint
-  echo "getMousePos:", event.getMousePos()
-  echo "lo_word:", lo_word
-  echo "hi_word:", hi_word
-
-
 wClass(wBlockPanel of wPanel):
   # Declare out-of-order procs
   proc onPaint(self: wBlockPanel, event: wEvent)
   proc randrgb(self: wBlockPanel): int
 
   proc init(self: wBlockPanel, parent: wWindow) = 
-    wPanel(self).init(parent)#, style=wBorderSimple)
+    wPanel(self).init(parent)
     self.backgroundColor = parent.backgroundColor
     self.doubleBuffered = true
     self.setDoubleBuffered(true)
-    self.wEvent_Paint do (event: wEvent): self.onPaint(event) 
+    self.wEvent_Paint do (event: wEvent): 
+      self.onPaint(event) 
     self.wEvent_MouseMove do (event: wEvent):
       broadcastTopLevelMessage(wBaseApp, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
     self.wEvent_Size do (event: wEvent):
       broadcastTopLevelMessage(wBaseApp, USER_SIZE, event.mWparam, event.mLparam)
 
   proc onPaint(self: wBlockPanel, event: wEvent) = 
-    var dc: wPaintDC = PaintDC(event.window)
-    var sz = dc.mCanvas.size
+    var dc = PaintDC(event.window)
+    var (szw, szh) = dc.mCanvas.size
     for i in 1..100:
-      var brush = Brush(wColor(self.randrgb()))
-      setBrush(dc, brush)
-      var x = rand(sz.width)
-      var y = rand(sz.height)
-      var w = rand(10..50)
-      var h = rand(10..50)
-      var rect = (x,y,w,h)
+      setBrush(dc, Brush(wColor(self.randrgb())))
+      var rect = (rand(szw), rand(szh), rand(10..50), rand(10..50))
       drawRectangle(dc, rect)
 
   proc randrgb(self: wBlockPanel): int = 
@@ -95,18 +68,13 @@ wClass(wMainPanel of wPanel):
 
     proc layout_internal() =
       let 
+        (cszw, cszh) = self.clientSize
         bmarg = 8
-        lmarg = 0
-        rmarg = 0
         bw = 130
         bh = 30
         butts = [b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12,b13,b14,b15]
-        new_x = bw + 2*bmarg + lmarg
-        new_y = 0
-        new_width  = self.clientSize.width - bw - 2*bmarg - lmarg - rmarg
-        new_height = self.clientSize.height # - 2*marg
-      blockPanel.position = (new_x, new_y)
-      blockPanel.size = (new_width, new_height)
+      blockPanel.position = (bw + 2*bmarg, 0)
+      blockPanel.size = (cszw - bw - 2*bmarg, cszh)
       for i, butt in butts:
         butt.position = (bmarg, bmarg + i * bh)
         butt.size     = (bw, bh)
@@ -114,30 +82,30 @@ wClass(wMainPanel of wPanel):
     self.wEvent_Size do(event: wEvent):
       layout_internal()
 
+wClass(wMainFrame of wFrame):
+  proc init(self: wMainFrame) = 
+    wFrame(self).init(title="Blocks Frame", size=(800,600))
+    let
+      mainPanel = MainPanel(self)
+      menuBar = MenuBar(self)
+      menuFile = Menu(menuBar, "&File")
+      statusBar = StatusBar(self)
+    menuFile.append(1, "Open")
+    statusBar.setStatusWidths([-2, -1, 100])
+    self.center()
+    self.show()
+
+    self.wEvent_Size do (e: wEvent): 
+      mainPanel.size = (e.size.width, e.size.height - statusBar.size.height)
+    self.USER_SIZE do (e: wEvent): 
+      statusBar.setStatusText($e.EventParam.wSize, 1)
+    self.USER_MOUSE_MOVE do (e: wEvent): 
+      statusBar.setStatusText($e.mMousePos, 2)
 
 
 when isMainModule:
-  let 
-    app = App()
-    frame = Frame(title="Blocks Frame", size=(800,600))
-    mainPanel = MainPanel(frame)
-    menuBar = MenuBar(frame)
-    menuFile = Menu(menuBar, "&File")
-    statusBar = StatusBar(frame)
-  menuFile.append(1, "Open")
-  statusBar.setStatusWidths([-2, -1, 100])
-  
-  frame.wEvent_Size do (event: wEvent):
-    mainPanel.size = (event.size.width, 
-                      event.size.height - statusBar.size.height)
-  
-  frame.USER_SIZE do (event: wEvent):
-    statusBar.setStatusText($event.EventParam.wSize, 1)
-
-  frame.USER_MOUSE_MOVE do (event: wEvent):
-      statusBar.setStatusText($event.mMousePos, 2)
-  
-  frame.center()
-  frame.show()
+  let app = App()
+  let mainFrame = MainFrame()
+  discard mainFrame
   randomize()
   app.mainLoop()
