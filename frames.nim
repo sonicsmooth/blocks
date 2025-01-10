@@ -1,7 +1,7 @@
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wPaintDC, wBrush,
              wStatusBar, wMenuBar,]
 import std/[random, bitops]
-import winim
+import winim, rects
 
 
 const
@@ -12,6 +12,9 @@ proc EventParam(event: wEvent): tuple =
   let lo_word:int = event.mLparam.bitand(0x0000_ffff)
   let hi_word:int = event.mLparam.bitand(0xffff_0000).shr(16)
   result = (lo_word, hi_word)
+
+type wBlockPanel = ref object of wPanel
+  mRectTable: RectTable
 
 wClass(wBlockPanel of wPanel):
   # Declare out-of-order procs
@@ -31,12 +34,22 @@ wClass(wBlockPanel of wPanel):
       broadcastTopLevelMessage(wBaseApp, USER_SIZE, event.mWparam, event.mLparam)
 
   proc onPaint(self: wBlockPanel, event: wEvent) = 
+    echo "paint"
+    echo self.mRectTable
+    echo type(self.mRectTable)
+    #var keyz = self.mRectTable.keys()
+    #echo len(keyz)
+    echo "done"
+    #if len(self.mRectTableRef) == 0:
+    #  echo "empty"
+    #else:
+    # echo "not empty"
     var dc = PaintDC(event.window)
-    var (szw, szh) = dc.mCanvas.size
-    for i in 1..100:
-      setBrush(dc, Brush(wColor(self.randrgb())))
-      var rect = (rand(szw), rand(szh), rand(10..50), rand(10..50))
-      drawRectangle(dc, rect)
+    # var (szw, szh) = dc.mCanvas.size
+    # for i in 1..100:
+    #   setBrush(dc, Brush(wColor(self.randrgb())))
+    #   var rect = (rand(szw), rand(szh), rand(10..50), rand(10..50))
+    #   drawRectangle(dc, rect)
 
   proc randrgb(self: wBlockPanel): int = 
     var r: int = rand(255).shl(16)
@@ -44,10 +57,13 @@ wClass(wBlockPanel of wPanel):
     var b: int = rand(255).shl(0)
     return r or g or b
 
+type wMainPanel = ref object of wPanel
+  mBlockPanel: wBlockPanel
 
 wClass(wMainPanel of wPanel):
   proc init(self: wMainPanel, parent: wWindow) =
     wPanel(self).init(parent, style=wBorderSimple)
+    self.mBlockPanel = BlockPanel(self)
     let
       b1  = Button(self, label = "Randomize"         )
       b2  = Button(self, label = "Compact X←"        )
@@ -64,7 +80,6 @@ wClass(wMainPanel of wPanel):
       b13 = Button(self, label = "Compact Y↓ then X→")
       b14 = Button(self, label = "Save"              )
       b15 = Button(self, label = "Load"              )
-      blockPanel = BlockPanel(self)
 
     proc layout_internal() =
       let 
@@ -73,8 +88,8 @@ wClass(wMainPanel of wPanel):
         bw = 130
         bh = 30
         butts = [b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12,b13,b14,b15]
-      blockPanel.position = (bw + 2*bmarg, 0)
-      blockPanel.size = (cszw - bw - 2*bmarg, cszh)
+      self.mBlockPanel.position = (bw + 2*bmarg, 0)
+      self.mBlockPanel.size = (cszw - bw - 2*bmarg, cszh)
       for i, butt in butts:
         butt.position = (bmarg, bmarg + i * bh)
         butt.size     = (bw, bh)
@@ -83,13 +98,16 @@ wClass(wMainPanel of wPanel):
       layout_internal()
 
 wClass(wMainFrame of wFrame):
-  proc init*(self: wMainFrame) = 
+  proc init*(self: wMainFrame, rectTable: RectTable) = 
     wFrame(self).init(title="Blocks Frame", size=(800,600))
     let
       mainPanel = MainPanel(self)
       menuBar = MenuBar(self)
       menuFile = Menu(menuBar, "&File")
       statusBar = StatusBar(self)
+    echo "setting"
+    mainPanel.mBlockPanel.mRectTable = rectTable
+    echo "done setting"
     menuFile.append(1, "Open")
     statusBar.setStatusWidths([-2, -1, 100])
     self.center()
