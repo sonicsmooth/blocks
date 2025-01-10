@@ -1,9 +1,6 @@
 #import strfmt
 import std/strformat
 
-let msg = "hello"
-echo fmt"{msg}"
+let msg* = "hello"
 
-let x = 5
-echo msg + msg
 
