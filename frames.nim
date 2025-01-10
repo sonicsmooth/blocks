@@ -19,7 +19,6 @@ type wBlockPanel = ref object of wPanel
 wClass(wBlockPanel of wPanel):
   # Declare out-of-order procs
   proc onPaint(self: wBlockPanel, event: wEvent)
-  proc randrgb(self: wBlockPanel): int
 
   proc init(self: wBlockPanel, parent: wWindow) = 
     wPanel(self).init(parent)
@@ -34,28 +33,11 @@ wClass(wBlockPanel of wPanel):
       broadcastTopLevelMessage(wBaseApp, USER_SIZE, event.mWparam, event.mLparam)
 
   proc onPaint(self: wBlockPanel, event: wEvent) = 
-    echo "paint"
-    echo self.mRectTable
-    echo type(self.mRectTable)
-    #var keyz = self.mRectTable.keys()
-    #echo len(keyz)
-    echo "done"
-    #if len(self.mRectTableRef) == 0:
-    #  echo "empty"
-    #else:
-    # echo "not empty"
     var dc = PaintDC(event.window)
-    # var (szw, szh) = dc.mCanvas.size
-    # for i in 1..100:
-    #   setBrush(dc, Brush(wColor(self.randrgb())))
-    #   var rect = (rand(szw), rand(szh), rand(10..50), rand(10..50))
-    #   drawRectangle(dc, rect)
+    for rect in self.mRectTable.values():
+      setBrush(dc, Brush(rect.brushcolor))
+      drawRectangle(dc, rect.pos, rect.size)
 
-  proc randrgb(self: wBlockPanel): int = 
-    var r: int = rand(255).shl(16)
-    var g: int = rand(255).shl(8)
-    var b: int = rand(255).shl(0)
-    return r or g or b
 
 type wMainPanel = ref object of wPanel
   mBlockPanel: wBlockPanel

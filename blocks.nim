@@ -1,18 +1,13 @@
 import wNim/[wApp]
-import std/[random]
+import std/[random, tables]
 import frames, rects
 
 
   
 
-var rt: RectTable
-
 when isMainModule:
   randomize()
   let rectTable = InitRects(800, 600)
-
   let app = App()
-  let mf = MainFrame(rectTable)
-  #mf.setRects()
-
+  discard MainFrame(rectTable)
   app.mainLoop()
