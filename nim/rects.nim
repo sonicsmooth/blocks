@@ -1,5 +1,6 @@
 import std/[random, tables, strformat]
 import wNim/[wTypes]
+export tables
 
 const
   WRANGE: tuple[min:Natural, max:Natural] = (min:25, max:50)
@@ -8,12 +9,12 @@ const
 
 type 
   Rect* = ref object
-    id: string
-    pos: wPoint
-    size: wSize
-    pencolor: wColor
-    brushcolor: wColor
-    selected: bool
+    id*: string
+    pos*: wPoint
+    size*: wSize
+    pencolor*: wColor
+    brushcolor*: wColor
+    selected*: bool
   RectTable* = Table[string, Rect]
 
 proc `$`*(r: Rect): string =
@@ -25,7 +26,7 @@ proc `$`*(r: Rect): string =
     "brushcolor: " & &"0x{r.brushcolor:0x}" & ", " &
     "selected: " & $r.selected & "}"
 
-proc add(table: var RectTable, rect: Rect) = 
+proc add*(table: var RectTable, rect: Rect) = 
   table[rect.id] = rect
 
 proc `$`*(table: RectTable): string =
@@ -51,4 +52,4 @@ proc RandRect*(id: string, maxx, maxy: Natural): Rect =
 
 proc InitRects*(maxx, maxy: Natural): RectTable =
   for i in 1..QTY:
-    result.add(RandRect(&"hello{i}", maxx, maxy))
+    result.add(RandRect($i, maxx, maxy))
