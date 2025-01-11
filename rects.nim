@@ -3,8 +3,8 @@ import wNim/[wTypes]
 export tables
 
 const
-  WRANGE: tuple[min:Natural, max:Natural] = (min:25, max:50)
-  HRANGE: tuple[min:Natural, max:Natural] = (min:25, max:50)
+  WRANGE = (min:15, max:50)
+  HRANGE = (min:15, max:50)
   QTY = 10
 
 type 
@@ -40,16 +40,17 @@ proc RandColor*: wColor =
     b: int = rand(255)
   result = wColor(r or g or b)
 
-proc RandRect*(id: string, maxx, maxy: Natural): Rect = 
+proc RandRect*(id: string, size: wSize): Rect = 
   result = Rect(id: id, 
-                pos: (rand(maxx - WRANGE.max - 1), 
-                      rand(maxy - HRANGE.max - 1)), 
+                pos: (rand(size.width  - WRANGE.max - 1), 
+                      rand(size.height - HRANGE.max - 1)), 
                 size: (rand(WRANGE.min..WRANGE.max),
                        rand(HRANGE.min..HRANGE.max)), 
                 selected: false,
                 pencolor: RandColor(), 
                 brushcolor: RandColor())
 
-proc InitRects*(maxx, maxy: Natural): RectTable =
+proc InitRects*(size: wSize): RectTable =
+  # wSize is max extent of rects
   for i in 1..QTY:
-    result.add(RandRect($i, maxx, maxy))
+    result.add(RandRect($i, size))

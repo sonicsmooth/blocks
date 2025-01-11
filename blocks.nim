@@ -7,7 +7,8 @@ import frames, rects
 
 when isMainModule:
   randomize()
-  let rectTable = InitRects(800, 600)
+  let init_size = (800, 800)
+  let rectTable = InitRects(init_size)
   let app = App()
-  discard MainFrame(rectTable)
+  discard MainFrame(init_size, rectTable)
   app.mainLoop()
