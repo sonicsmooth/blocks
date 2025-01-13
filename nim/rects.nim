@@ -50,7 +50,6 @@ proc RandRect*(id: string, size: wSize): Rect =
                 pencolor: RandColor(), 
                 brushcolor: RandColor())
 
-proc InitRects*(size: wSize): RectTable =
-  # wSize is max extent of rects
+proc RandomizeRects*(table: ref RectTable, size: wSize) = 
   for i in 1..QTY:
-    result.add(RandRect($i, size))
+    table[].add(RandRect($i, size))

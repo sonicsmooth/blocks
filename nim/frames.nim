@@ -1,5 +1,6 @@
-import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wPaintDC, wBrush,
-             wStatusBar, wMenuBar,]
+import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
+             wStatusBar, wMenuBar,
+             wPaintDC, wMemoryDC, wBitmap]
 import std/[bitops, sugar]
 import winim, rects
 
@@ -14,7 +15,7 @@ proc EventParam(event: wEvent): tuple =
   result = (lo_word, hi_word)
 
 type wBlockPanel = ref object of wPanel
-  mRectTable: RectTable
+  mRectTable: ref RectTable
 
 wClass(wBlockPanel of wPanel):
   # Declare out-of-order procs
@@ -22,8 +23,7 @@ wClass(wBlockPanel of wPanel):
   proc init(self: wBlockPanel, parent: wWindow) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.doubleBuffered = true
-    self.setDoubleBuffered(true)
+    #self.doubleBuffered = true
     self.wEvent_Paint do (event: wEvent): 
       self.onPaint(event) 
     self.wEvent_MouseMove do (event: wEvent):
@@ -32,13 +32,20 @@ wClass(wBlockPanel of wPanel):
       broadcastTopLevelMessage(wBaseApp, USER_SIZE, event.mWparam, event.mLparam)
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     var dc = PaintDC(event.window)
+    let sz = dc.size
+    let bmp = Bitmap(sz)
+    var memDc = MemoryDC(dc)
+    memDc.selectObject(bmp)
+    memDc.setBackground(dc.getBackground())
+    memDc.clear()
     for rect in self.mRectTable.values():
-      setBrush(dc, Brush(rect.brushcolor))
-      drawRectangle(dc, rect.pos, rect.size)
-
+      memDc.setBrush(Brush(rect.brushcolor))
+      memDc.drawRectangle(rect.pos, rect.size)
+    dc.blit(0, 0, sz.width, sz.height, memDc)
 
 type wMainPanel = ref object of wPanel
   mBlockPanel: wBlockPanel
+  mRectTable: ref RectTable
 
 wClass(wMainPanel of wPanel):
   proc init(self: wMainPanel, parent: wWindow) =
@@ -61,6 +68,12 @@ wClass(wMainPanel of wPanel):
       b14 = Button(self, label = "Save"              )
       b15 = Button(self, label = "Load"              )
 
+    b1.wEvent_button do ():
+      RandomizeRects(self.mRectTable, self.clientSize)
+      self.refresh(false)
+    # b2.wEvent_button do ():
+      
+
     proc layout_internal() =
       let 
         (cszw, cszh) = self.clientSize
@@ -79,7 +92,7 @@ wClass(wMainPanel of wPanel):
       layout_internal()
 
 wClass(wMainFrame of wFrame):
-  proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: RectTable) = 
+  proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: ref RectTable) = 
     wFrame(self).init(title="Blocks Frame")
     let
       mainPanel = MainPanel(self)
@@ -90,7 +103,9 @@ wClass(wMainFrame of wFrame):
       otherHeight = self.size.height - mainPanel.mBlockPanel.clientSize.height
       newWidth  = newBlockSz.width  + otherWidth
       newHeight = newBlockSz.height + otherHeight + 23
+    mainPanel.mRectTable = rectTable
     mainPanel.mBlockPanel.mRectTable = rectTable
+    RandomizeRects(rectTable, newBlockSz)
     self.size = (newWidth, newHeight)
     menuFile.append(1, "Open")
     statusBar.setStatusWidths([-2, -1, 100])
