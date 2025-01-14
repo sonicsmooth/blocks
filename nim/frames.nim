@@ -99,7 +99,7 @@ wClass(wBlockPanel of wPanel):
       memDc.setBrush(Brush(rect.brushcolor))
       memDc.drawRectangle(rect.pos, rect.size)
       memDc.setTextBackground(rect.brushcolor)
-      var idstr: RectID = $rect.id
+      var idstr = $rect.id
       if rect.selected: idstr &= "*"
       memDc.drawLabel(idstr, rect.ToRect, wCenter or wMiddle)
     dc.blit(0, 0, sz.width, sz.height, memDc)
