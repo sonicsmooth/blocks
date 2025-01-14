@@ -264,9 +264,9 @@ wClass(wMainPanel of wPanel):
 
 type wMainFrame = ref object of wFrame
   mMainPanel: wMainPanel
-  #mMenuBar:   wMenuBar
+  #mMenuBar:   wMenuBar # already defined by wNim
   mMenuFile:  wMenu
-  #mStatusBar: wStatusBar
+  #mStatusBar: wStatusBar # already defined by wNim
 wClass(wMainFrame of wFrame):
   proc OnResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
