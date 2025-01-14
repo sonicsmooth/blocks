@@ -33,6 +33,9 @@ proc `$`*(table: RectTable): string =
   for k,v in table:
     result.add(&"{k}: {v}\n")
 
+proc ToRect*(rect: Rect): wRect =
+  (rect.pos.x, rect.pos.y, rect.size.width, rect.size.height)
+
 proc RandColor*: wColor = 
   let 
     r: int = rand(255).shl(16)
