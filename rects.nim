@@ -1,5 +1,6 @@
 import std/[random, tables, strformat]
 import wNim/[wTypes]
+import wNim/private/wHelper
 export tables
 
 const
@@ -8,14 +9,15 @@ const
   #QTY = 10
 
 type 
+  RectID* = string
   Rect* = ref object
-    id*: string
+    id*: RectID
     pos*: wPoint
     size*: wSize
     pencolor*: wColor
     brushcolor*: wColor
     selected*: bool
-  RectTable* = Table[string, Rect]
+  RectTable* = Table[RectID, Rect]
 
 proc `$`*(r: Rect): string =
   result =
@@ -43,7 +45,7 @@ proc RandColor*: wColor =
     b: int = rand(255)
   result = wColor(r or g or b)
 
-proc RandRect*(id: string, size: wSize): Rect = 
+proc RandRect*(id: RectID, size: wSize): Rect = 
   result = Rect(id: id, 
                 pos: (rand(size.width  - WRANGE.max - 1), 
                       rand(size.height - HRANGE.max - 1)), 
@@ -57,3 +59,11 @@ proc RandomizeRects*(refTable: ref RectTable, size: wSize, qty:int) =
   refTable.clear()
   for i in 1..qty:
     refTable[].add(RandRect($i, size))
+
+# This seems to work with rect: Rect also
+proc MoveRectDelta(rect: var Rect, delta: wPoint) =
+  rect.pos = rect.pos + delta
+
+proc MoveRect*(rect: var Rect, oldpos, newpos: wPoint) = 
+  let delta = newpos - oldpos
+  MoveRectDelta(rect, delta)
