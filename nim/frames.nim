@@ -13,9 +13,11 @@ const
   USER_SIZE       = WM_APP + 2
 
 proc EventParam(event: wEvent): tuple = 
-  let lo_word:int = event.mLparam.bitand(0x0000_ffff)
-  let hi_word:int = event.mLparam.bitand(0xffff_0000).shr(16)
+  let lp = event.getlParam
+  let lo_word:int = lp.bitand(0x0000_ffff)
+  let hi_word:int = lp.bitand(0xffff_0000).shr(16)
   result = (lo_word, hi_word)
+
 
 type wBlockPanel = ref object of wPanel
   mRefRectTable: ref RectTable
@@ -25,11 +27,9 @@ wClass(wBlockPanel of wPanel):
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
-
   proc OnMouseMove(self: wBlockPanel, event: wEvent) = 
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
-
   proc OnPaint(self: wBlockPanel, event: wEvent) = 
     var dc = PaintDC(event.window)
     let sz = dc.size
@@ -42,7 +42,6 @@ wClass(wBlockPanel of wPanel):
       memDc.setBrush(Brush(rect.brushcolor))
       memDc.drawRectangle(rect.pos, rect.size)
     dc.blit(0, 0, sz.width, sz.height, memDc)
-
   proc init(self: wBlockPanel, parent: wWindow, refRectTable: ref RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.mRefRectTable = refRectTable
@@ -181,9 +180,11 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Size do (e: wEvent):
       mainPanel.size = (e.size.width, e.size.height - statusBar.size.height)
     self.USER_SIZE do (e: wEvent): 
-      statusBar.setStatusText($e.EventParam.wSize, 1)
+      #statusBar.setStatusText($e.EventParam.wSize, 1)
+      statusBar.setStatusText($wSize(e.EventParam), 1)
     self.USER_MOUSE_MOVE do (e: wEvent): 
-      statusBar.setStatusText($e.mMousePos, 2)
+      #statusBar.setStatusText($e.mMousePos, 2)
+      statusBar.setStatusText($e.mouseScreenPos, 2)
 
     self.center()
     self.show()
