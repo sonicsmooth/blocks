@@ -5,7 +5,7 @@ export tables
 const
   WRANGE = (min:15, max:50)
   HRANGE = (min:15, max:50)
-  QTY = 10
+  #QTY = 10
 
 type 
   Rect* = ref object
@@ -50,6 +50,7 @@ proc RandRect*(id: string, size: wSize): Rect =
                 pencolor: RandColor(), 
                 brushcolor: RandColor())
 
-proc RandomizeRects*(table: ref RectTable, size: wSize) = 
-  for i in 1..QTY:
-    table[].add(RandRect($i, size))
+proc RandomizeRects*(refTable: ref RectTable, size: wSize, qty:int) = 
+  refTable.clear()
+  for i in 1..qty:
+    refTable[].add(RandRect($i, size))
