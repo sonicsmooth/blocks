@@ -17,12 +17,6 @@ var
   SELECTED: HashSet[RectID]
 
 
-proc EventParam(event: wEvent): tuple = 
-  let lp = event.getlParam
-  let lo_word:int = lp.bitand(0x0000_ffff)
-  let hi_word:int = lp.bitand(0xffff_0000).shr(16)
-  result = (lo_word, hi_word)
-
 # Perhaps these belong in another module like db, selection, interaction, etc.
 proc hittest(pos: wPoint, table: ref RectTable): seq[RectID] = 
   for id, rect in table:
@@ -31,6 +25,7 @@ proc hittest(pos: wPoint, table: ref RectTable): seq[RectID] =
     if pos.x >= rect.pos.x and pos.x <= lrcorner.x and
        pos.y >= rect.pos.y and pos.y <= lrcorner.y:
         result.add(id)
+
 proc toggle_rect_selection(table: ref RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
@@ -38,6 +33,7 @@ proc toggle_rect_selection(table: ref RectTable, id: RectID) =
   else:
     table[id].selected = true
     SELECTED.incl(id)
+
 proc clear_rect_selection(table: ref RectTable) = 
   for id in SELECTED:
     table[id].selected = false
@@ -276,7 +272,10 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
 
   proc OnUserSizeNotify(self: wMainFrame, event: wEvent) =
-    self.mStatusBar.setStatusText($wSize(event.EventParam), 1)
+    let lo_word:int = event.getlParam.bitand(0x0000_ffff)
+    let hi_word:int = event.getlParam.bitand(0xffff_0000).shr(16)
+    let sz:wSize = (lo_word, hi_word)
+    self.mStatusBar.setStatusText($sz, index=1)
 
   proc OnUserMouseNotify(self: wMainFrame, event: wEvent) =
     self.mStatusBar.setStatusText($event.mouseScreenPos, 2)
@@ -300,10 +299,11 @@ wClass(wMainFrame of wFrame):
     self.size = (newWidth, newHeight)
     self.mMenuFile.append(1, "Open")
     self.mStatusBar.setStatusWidths([-2, -1, 100])
+    self.mStatusBar.setStatusText($newBlockSz, index=1) # Cheat: set this directly on startup
 
     # Connect Events
-    self.wEvent_Size do (event: wEvent): self.OnResize(event)
-    self.USER_SIZE do (event: wEvent): self.OnUserSizeNotify(event)
+    self.wEvent_Size     do (event: wEvent): self.OnResize(event)
+    self.USER_SIZE       do (event: wEvent): self.OnUserSizeNotify(event)
     self.USER_MOUSE_MOVE do (event: wEvent): self.OnUserMouseNotify(event)
 
     # Show!
