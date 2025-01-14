@@ -1,8 +1,11 @@
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
-             wStatusBar, wMenuBar,
+             wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
              wPaintDC, wMemoryDC, wBitmap]
-import std/[bitops, sugar]
+import std/[bitops]
 import winim, rects
+
+
+
 
 
 const
@@ -15,22 +18,19 @@ proc EventParam(event: wEvent): tuple =
   result = (lo_word, hi_word)
 
 type wBlockPanel = ref object of wPanel
-  mRectTable: ref RectTable
+  mRefRectTable: ref RectTable
 
 wClass(wBlockPanel of wPanel):
-  # Declare out-of-order procs
-  proc onPaint(self: wBlockPanel, event: wEvent)
-  proc init(self: wBlockPanel, parent: wWindow) = 
-    wPanel(self).init(parent, style=wBorderSimple)
-    self.backgroundColor = wLightBlue
-    #self.doubleBuffered = true
-    self.wEvent_Paint do (event: wEvent): 
-      self.onPaint(event) 
-    self.wEvent_MouseMove do (event: wEvent):
-      broadcastTopLevelMessage(wBaseApp, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
-    self.wEvent_Size do (event: wEvent):
-      broadcastTopLevelMessage(wBaseApp, USER_SIZE, event.mWparam, event.mLparam)
-  proc onPaint(self: wBlockPanel, event: wEvent) = 
+  proc OnResize(self: wBlockPanel, event: wEvent) =
+    # Post user message so top frame can show new size
+    let hWnd = GetAncestor(self.handle, GA_ROOT)
+    SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+
+  proc OnMouseMove(self: wBlockPanel, event: wEvent) = 
+    let hWnd = GetAncestor(self.handle, GA_ROOT)
+    SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+
+  proc OnPaint(self: wBlockPanel, event: wEvent) = 
     var dc = PaintDC(event.window)
     let sz = dc.size
     let bmp = Bitmap(sz)
@@ -38,64 +38,134 @@ wClass(wBlockPanel of wPanel):
     memDc.selectObject(bmp)
     memDc.setBackground(dc.getBackground())
     memDc.clear()
-    for rect in self.mRectTable.values():
+    for rect in self.mRefRectTable.values():
       memDc.setBrush(Brush(rect.brushcolor))
       memDc.drawRectangle(rect.pos, rect.size)
     dc.blit(0, 0, sz.width, sz.height, memDc)
 
+  proc init(self: wBlockPanel, parent: wWindow, refRectTable: ref RectTable) = 
+    wPanel(self).init(parent, style=wBorderSimple)
+    self.mRefRectTable = refRectTable
+    self.backgroundColor = wLightBlue
+    self.wEvent_Size      do (event: wEvent): self.OnResize(event)
+    self.wEvent_MouseMove do (event: wEvent): self.OnMouseMove(event)
+    self.wEvent_Paint     do (event: wEvent): self.OnPaint(event) 
+
+
+
+
+
+
+
+
+
 type wMainPanel = ref object of wPanel
   mBlockPanel: wBlockPanel
-  mRectTable: ref RectTable
+  mRefRectTable: ref RectTable
+  mSpnr:  wSpinCtrl
+  mTxt: wStaticText
+  mB1:  wButton
+  mB2:  wButton
+  mB3:  wButton
+  mB4:  wButton
+  mB5:  wButton
+  mB6:  wButton
+  mB7:  wButton
+  mB8:  wButton
+  mB9:  wButton
+  mB10: wButton
+  mB11: wButton
+  mB12: wButton
+  mB13: wButton
+  mB14: wButton
+  mB15: wButton
 
 wClass(wMainPanel of wPanel):
-  proc init(self: wMainPanel, parent: wWindow) =
-    wPanel(self).init(parent)
-    self.mBlockPanel = BlockPanel(self)
-    let
-      b1  = Button(self, label = "Randomize"         )
-      b2  = Button(self, label = "Compact X←"        )
-      b3  = Button(self, label = "Compact X→"        )
-      b4  = Button(self, label = "Compact Y↑"        )
-      b5  = Button(self, label = "Compact Y↓"        )
-      b6  = Button(self, label = "Compact X← then Y↑")
-      b7  = Button(self, label = "Compact X← then Y↓")
-      b8  = Button(self, label = "Compact X→ then Y↑")
-      b9  = Button(self, label = "Compact X→ then Y↓")
-      b10 = Button(self, label = "Compact Y↑ then X←")
-      b11 = Button(self, label = "Compact Y↑ then X→")
-      b12 = Button(self, label = "Compact Y↓ then X←")
-      b13 = Button(self, label = "Compact Y↓ then X→")
-      b14 = Button(self, label = "Save"              )
-      b15 = Button(self, label = "Load"              )
+  proc Layout(self: wMainPanel) =
+    let 
+      (cszw, cszh) = self.clientSize
+      bmarg = 8
+      (bw, bh) = (130, 30)
+      (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
+    self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
+    self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
+                              cszh - tbpmarg - bbpmarg)
+    # Static text position, size
+    self.mTxt.position = (bmarg, bmarg+8)
+    self.mTxt.size     = (bw div 2, bh)
 
-    b1.wEvent_button do ():
-      RandomizeRects(self.mRectTable, self.clientSize)
+    # Spin Ctrl position, size
+    self.mSpnr.position = (bmarg + (bw div 2), bmarg)
+    self.mSpnr.size     = (bw div 2, bh)
+
+    # Buttons position, size
+    let  butts = [self.mB1, self.mB2, self.mB3, self.mB4, self.mB5, self.mB6, self.mB7, self.mB8,
+                  self.mB9, self.mB10, self.mB11, self.mB12, self.mB13, self.mB14, self.mB15]
+    for i, butt in butts:
+      butt.position = (bmarg, bmarg + (i+1) * bh)
+      butt.size     = (bw, bh)
+  proc OnResize(self: wMainPanel) =
+      self.Layout()
+  proc OnSpinSpin(self: wMainPanel, event: wEvent) =
+    let val = event.getSpinPos() + event.getSpinDelta()
+    RandomizeRects(self.mRefRectTable, self.clientSize, val)
+    self.refresh(false)
+  proc OnSpinTextEnter(self: wMainPanel, event: wEvent) =
+    if self.mSpnr.value > 0:
+      RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
       self.refresh(false)
-    # b2.wEvent_button do ():
-      
+  proc OnButtonRandomize(self: wMainPanel) =
+    RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
+    self.refresh(false)
+  proc init(self: wMainPanel, parent: wWindow, refRectTable: ref RectTable) =
+    wPanel(self).init(parent)
 
-    proc layout_internal() =
-      let 
-        (cszw, cszh) = self.clientSize
-        bmarg = 8
-        (bw, bh) = (130, 30)
-        (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
-        butts = [b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,b12,b13,b14,b15]
-      self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
-      self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
-                               cszh - tbpmarg - bbpmarg)
-      for i, butt in butts:
-        butt.position = (bmarg, bmarg + i * bh)
-        butt.size     = (bw, bh)
-    layout_internal()
-    self.wEvent_Size do (event: wEvent):
-      layout_internal()
+    # Create controls
+    self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=10, style=wAlignRight)
+    self.mTxt = StaticText(self, label="Qty", style=wSpRight)
+    self.mB1  = Button(self, label = "Randomize"         )
+    self.mB2  = Button(self, label = "Compact X←"        )
+    self.mB3  = Button(self, label = "Compact X→"        )
+    self.mB4  = Button(self, label = "Compact Y↑"        )
+    self.mB5  = Button(self, label = "Compact Y↓"        )
+    self.mB6  = Button(self, label = "Compact X← then Y↑")
+    self.mB7  = Button(self, label = "Compact X← then Y↓")
+    self.mB8  = Button(self, label = "Compact X→ then Y↑")
+    self.mB9  = Button(self, label = "Compact X→ then Y↓")
+    self.mB10 = Button(self, label = "Compact Y↑ then X←")
+    self.mB11 = Button(self, label = "Compact Y↑ then X→")
+    self.mB12 = Button(self, label = "Compact Y↓ then X←")
+    self.mB13 = Button(self, label = "Compact Y↓ then X→")
+    self.mB14 = Button(self, label = "Save"              )
+    self.mB15 = Button(self, label = "Load"              )
+
+    # Set up stuff
+    self.mRefRectTable = refRectTable
+    self.mBlockPanel = BlockPanel(self, refRectTable)
+    self.mSpnr.setRange(1, 10000)
+    RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
+
+    # Connect events
+    self.wEvent_Size          do (event: wEvent): self.OnResize()
+    self.mSpnr.wEvent_Spin      do (event: wEvent): self.OnSpinSpin(event)
+    self.mSpnr.wEvent_TextEnter do (event: wEvent): self.OnSpinTextEnter(event)
+    self.mB1.wEvent_button    do ():              self.OnButtonRandomize()
+
+
+
+
+
+
+
+
+
+
 
 wClass(wMainFrame of wFrame):
-  proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: ref RectTable) = 
+  proc init*(self: wMainFrame, newBlockSz: wSize, refRectTable: ref RectTable) = 
     wFrame(self).init(title="Blocks Frame")
     let
-      mainPanel = MainPanel(self)
+      mainPanel = MainPanel(self, refRectTable)
       menuBar   = MenuBar(self)
       menuFile  = Menu(menuBar, "&File")
       statusBar = StatusBar(self)
@@ -103,14 +173,10 @@ wClass(wMainFrame of wFrame):
       otherHeight = self.size.height - mainPanel.mBlockPanel.clientSize.height
       newWidth  = newBlockSz.width  + otherWidth
       newHeight = newBlockSz.height + otherHeight + 23
-    mainPanel.mRectTable = rectTable
-    mainPanel.mBlockPanel.mRectTable = rectTable
-    RandomizeRects(rectTable, newBlockSz)
+
     self.size = (newWidth, newHeight)
     menuFile.append(1, "Open")
     statusBar.setStatusWidths([-2, -1, 100])
-    self.center()
-    self.show()
 
     self.wEvent_Size do (e: wEvent):
       mainPanel.size = (e.size.width, e.size.height - statusBar.size.height)
@@ -119,10 +185,8 @@ wClass(wMainFrame of wFrame):
     self.USER_MOUSE_MOVE do (e: wEvent): 
       statusBar.setStatusText($e.mMousePos, 2)
 
+    self.center()
+    self.show()
 
-when isMainModule:
-  let app = App()
-  let mainFrame = MainFrame()
-  discard mainFrame
-  randomize()
-  app.mainLoop()
+
+

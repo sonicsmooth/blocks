@@ -13,3 +13,6 @@ proc `$`(rect: ref Rect, i: int): string =
   result = fmt"[{rect.x}, {rect.y}]"
 
 
+var xx = (ref Rect)(x:15, y:20)
+echo xx
+

@@ -1,5 +1,6 @@
-import wNim/[wApp]
-import std/[random, tables]
+import wNim/[wApp, wWindow]
+import winim
+import std/[random]
 import frames, rects
 
 
@@ -11,5 +12,5 @@ when isMainModule:
   var rectTable: ref RectTable
   new rectTable
   let app = App()
-  discard MainFrame(init_size, rectTable)
+  var mainFrame = MainFrame(init_size, rectTable)
   app.mainLoop()
