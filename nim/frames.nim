@@ -1,16 +1,21 @@
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
              wPaintDC, wMemoryDC, wBitmap, wFont]
-import std/[bitops]
+import std/[bitops, sets]
 import winim, rects
-
-
-
 
 
 const
   USER_MOUSE_MOVE = WM_APP + 1
   USER_SIZE       = WM_APP + 2
+
+var 
+  MOUSE_DATA: tuple[ids: seq[RectID],
+                    lastpos: wPoint,
+                    clickpos: wPoint,
+                    clear_pending: bool]
+  SELECTED: HashSet[RectID]
+
 
 proc EventParam(event: wEvent): tuple = 
   let lp = event.getlParam
@@ -18,18 +23,68 @@ proc EventParam(event: wEvent): tuple =
   let hi_word:int = lp.bitand(0xffff_0000).shr(16)
   result = (lo_word, hi_word)
 
+# Perhaps these belong in another module like db, selection, interaction, etc.
+proc hittest(pos: wPoint, table: ref RectTable): seq[RectID] = 
+  for id, rect in table:
+    let lrcorner: wPoint = (rect.pos.x + rect.size.width,
+                            rect.pos.y + rect.size.height)
+    if pos.x >= rect.pos.x and pos.x <= lrcorner.x and
+       pos.y >= rect.pos.y and pos.y <= lrcorner.y:
+        result.add(id)
+proc toggle_rect_selection(table: ref RectTable, id: RectID) = 
+  if table[id].selected:
+    table[id].selected = false
+    SELECTED.excl(id)
+  else:
+    table[id].selected = true
+    SELECTED.incl(id)
+proc clear_rect_selection(table: ref RectTable) = 
+  for id in SELECTED:
+    table[id].selected = false
+  SELECTED.clear()
+
 
 type wBlockPanel = ref object of wPanel
   mRefRectTable: ref RectTable
-
 wClass(wBlockPanel of wPanel):
   proc OnResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+
   proc OnMouseMove(self: wBlockPanel, event: wEvent) = 
+    # Update message on main frame
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+    
+    # Move rect
+    let hits = MOUSE_DATA.ids
+    if hits.len == 0: return
+    var rect = self.mRefRectTable[hits[^1]]
+    MoveRect(rect, MOUSE_DATA.lastpos, event.mousePos)
+    MOUSE_DATA.lastpos = event.mousePos
+    self.refresh(false)
+
+  proc OnMouseLeftDown(self: wBlockPanel, event: wEvent) =
+    MOUSE_DATA.clickpos = event.mousePos
+    let hits = hittest(event.mousePos, self.mRefRectTable)
+    if hits.len > 0:
+      MOUSE_DATA.ids = hits
+      MOUSE_DATA.lastpos = event.mousePos
+      MOUSE_DATA.clear_pending = false
+    else:
+      MOUSE_DATA.clear_pending = true
+
+  proc OnMouseLeftUp(self: wBlockPanel, event: wEvent) =
+    if event.mousePos == MOUSE_DATA.clickpos: # Click and release without moving
+      if MOUSE_DATA.ids.len > 0:
+        toggle_rect_selection(self.mRefRectTable, MOUSE_DATA.ids[^1])
+      elif MOUSE_DATA.clear_pending:
+        clear_rect_selection(self.mRefRectTable)
+        MOUSE_DATA.clear_pending = false
+    MOUSE_DATA.ids.setLen(0)
+    self.refresh(false)
+
   proc OnPaint(self: wBlockPanel, event: wEvent) = 
     var dc = PaintDC(event.window)
     var memDc = MemoryDC(dc)
@@ -44,19 +99,20 @@ wClass(wBlockPanel of wPanel):
       memDc.setBrush(Brush(rect.brushcolor))
       memDc.drawRectangle(rect.pos, rect.size)
       memDc.setTextBackground(rect.brushcolor)
-      memDc.drawLabel(rect.id, rect.ToRect, wCenter or wMiddle)
+      var idstr: RectID = $rect.id
+      if rect.selected: idstr &= "*"
+      memDc.drawLabel(idstr, rect.ToRect, wCenter or wMiddle)
     dc.blit(0, 0, sz.width, sz.height, memDc)
+
   proc init(self: wBlockPanel, parent: wWindow, refRectTable: ref RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.mRefRectTable = refRectTable
     self.backgroundColor = wLightBlue
-    self.wEvent_Size      do (event: wEvent): self.OnResize(event)
-    self.wEvent_MouseMove do (event: wEvent): self.OnMouseMove(event)
-    self.wEvent_Paint     do (event: wEvent): self.OnPaint(event) 
-
-
-
-
+    self.wEvent_Size       do (event: wEvent): self.OnResize(event)
+    self.wEvent_MouseMove  do (event: wEvent): self.OnMouseMove(event)
+    self.wEvent_LeftDown   do (event: wEvent): self.OnMouseLeftDown(event)
+    self.wEvent_LeftUp     do (event: wEvent): self.OnMouseLeftUp(event)
+    self.wEvent_Paint      do (event: wEvent): self.OnPaint(event) 
 
 
 
@@ -82,7 +138,6 @@ type wMainPanel = ref object of wPanel
   mB13:  wButton
   mB14:  wButton
   mB15:  wButton
-
 wClass(wMainPanel of wPanel):
   proc Layout(self: wMainPanel) =
     let 
@@ -108,41 +163,57 @@ wClass(wMainPanel of wPanel):
     for i, butt in butts:
       butt.position = (bmarg, bmarg + (i+1) * bh)
       butt.size     = (bw, bh)
+
   proc OnResize(self: wMainPanel) =
       self.Layout()
+
   proc OnSpinSpin(self: wMainPanel, event: wEvent) =
     let val = event.getSpinPos() + event.getSpinDelta()
     RandomizeRects(self.mRefRectTable, self.clientSize, val)
     self.refresh(false)
+
   proc OnSpinTextEnter(self: wMainPanel, event: wEvent) =
     if self.mSpnr.value > 0:
       RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
       self.refresh(false)
+
   proc OnButtonRandomize(self: wMainPanel) =
     RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
     self.refresh(false)
+
   proc OnButtonCompact←(self: wMainPanel) =
     echo "←"
+
   proc OnButtonCompact→(self: wMainPanel) =
     echo "→"
+
   proc OnButtonCompact↑(self: wMainPanel) =
     echo "↑"
+
   proc OnButtonCompact↓(self: wMainPanel) =
     echo "↓"
+
   proc OnButtonCompact←↑(self: wMainPanel) =
     echo "←↑"
+
   proc OnButtonCompact←↓(self: wMainPanel) =
     echo "←↓"
+
   proc OnButtonCompact→↑(self: wMainPanel) =
     echo "→↑"
+
   proc OnButtonCompact→↓(self: wMainPanel) =
     echo "→↓"
+
   proc OnButtonCompact↑←(self: wMainPanel) =
     echo "↑←"
+
   proc OnButtonCompact↑→(self: wMainPanel) =
     echo "↑→"
+
   proc OnButtonCompact↓←(self: wMainPanel) =
     echo "↓←"
+
   proc OnButtonCompact↓→(self: wMainPanel) =
     echo "↓→"
 
@@ -200,14 +271,16 @@ type wMainFrame = ref object of wFrame
   #mMenuBar:   wMenuBar
   mMenuFile:  wMenu
   #mStatusBar: wStatusBar
-
 wClass(wMainFrame of wFrame):
   proc OnResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
+
   proc OnUserSizeNotify(self: wMainFrame, event: wEvent) =
     self.mStatusBar.setStatusText($wSize(event.EventParam), 1)
+
   proc OnUserMouseNotify(self: wMainFrame, event: wEvent) =
     self.mStatusBar.setStatusText($event.mouseScreenPos, 2)
+
   proc init*(self: wMainFrame, newBlockSz: wSize, refRectTable: ref RectTable) = 
     wFrame(self).init(title="Blocks Frame")
     
