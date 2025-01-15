@@ -1,7 +1,7 @@
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
-             wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
+             wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wIconImage,
              wPaintDC, wMemoryDC, wBitmap, wFont]
-import std/[bitops, sets]
+import std/[bitops, sets, strformat]
 from winim import nil
 import tables, rects
 
@@ -85,60 +85,36 @@ wClass(wBlockPanel of wPanel):
 
   proc RectToBmp(rect: rects.Rect): wBitmap = 
     result = Bitmap(rect.size)
-    let font = Font(pointSize=16, wFontFamilyRoman)
     var memDC = MemoryDC()
     memDC.selectObject(result)
-    memDC.setFont(font)
+    memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     memDc.setBrush(Brush(rect.brushcolor))
     memDC.setTextBackground(rect.brushcolor)
-    memDC.drawRectangle(rect.pos, rect.size)
-    memDC.drawLabel($rect.id, rect.ToRect, wCenter or wMiddle)
+    memDC.drawRectangle((0, 0), rect.size)
+    let labelRect: wRect = (x:0, y:0, width: rect.size.width, height: rect.size.height)
+    memDC.drawLabel($rect.id, labelRect, wCenter or wMiddle)
 
   proc OnPaint(self: wBlockPanel, event: wEvent) = 
     var dc = PaintDC(event.window)
+    let bf = winim.BLENDFUNCTION(BlendOp: winim.AC_SRC_OVER,
+                                SourceConstantAlpha: 0x7f,
+                                AlphaFormat: 0)
+
     var memDc = MemoryDC(dc)
-    var bmpDC = MemoryDC()
-    let sz = dc.size
-    let bmp = Bitmap(sz)
-    let font = Font(pointSize=16, wFontFamilyRoman)
-    memDc.setFont(font)
-    memDc.selectObject(bmp)
+    memDc.selectObject(Bitmap(dc.size))
     memDc.setBackground(dc.getBackground())
     memDc.clear()
+
+    var bmpDC = MemoryDC(dc)
     for rect in self.mRefRectTable.values():
-      let rectbmp = RectToBmp(rect)
-      bmpDC.selectObject(rectbmp)
-      memDc.blit(rect.pos.x, rect.pos.y, rect.size.width, rect.size.height,
-                 bmpDC)
-      # var bf = winim.BLENDFUNCTION(BlendOp: winim.AC_SRC_OVER, 
-      #                              SourceConstantAlpha: 0x7f,
-      #                              AlphaFormat: 0)#winim.AC_SRC_ALPHA)
-      # winim.AlphaBlend(memDc.mHdc, 
-      #                  rect.pos.x,
-      #                  rect.pos.y, 
-      #                  rect.size.width,
-      #                  rect.size.height,
-      #                  bmpDC.mHdc,
-      #                  0, 0,
-      #                  rect.size.width,
-      #                  rect.size.height,
-      #                  bf )
-      # winim.BitBlt(memDc.mHdc, 
-      #                  rect.pos.x,
-      #                  rect.pos.y, 
-      #                  rect.size.width,
-      #                  rect.size.height,
-      #                  bmpDC.mHdc,
-      #                  0, 0, winim.SRCCOPY
-      #                  )
-      # memDc.setBrush(Brush(rect.brushcolor))
-      # memDc.drawRectangle(rect.pos, rect.size)
-      # memDc.setTextBackground(rect.brushcolor)
-      #var idstr = $rect.id
-      #if rect.selected: idstr &= "*"
-      #memDc.drawLabel(idstr, rect.ToRect, wCenter or wMiddle)
+      bmpDC.selectObject(RectToBmp(rect))
+      winim.AlphaBlend(memDc.mHdc, rect.pos.x, rect.pos.y, 
+                       rect.size.width, rect.size.height,
+                       bmpDC.mHdc, 0, 0,
+                       rect.size.width, rect.size.height,
+                       bf )
     #winim.DwmFlush()
-    dc.blit(0, 0, sz.width, sz.height, memDc)
+    dc.blit(0, 0, dc.size.width, dc.size.height, memDc)
 
 
 
@@ -301,14 +277,14 @@ wClass(wMainPanel of wPanel):
     self.mB3.wEvent_Button      do (): self.OnButtonCompact→()
     self.mB4.wEvent_Button      do (): self.OnButtonCompact↑()
     self.mB5.wEvent_Button      do (): self.OnButtonCompact↓()
-    self.mB6.wEvent_Button       do (): self.OnButtonCompact←↑()
-    self.mB7.wEvent_Button       do (): self.OnButtonCompact←↓()
-    self.mB8.wEvent_Button       do (): self.OnButtonCompact→↑()
-    self.mB9.wEvent_Button       do (): self.OnButtonCompact→↓()
-    self.mB10.wEvent_Button       do (): self.OnButtonCompact↑←()
-    self.mB11.wEvent_Button       do (): self.OnButtonCompact↑→()
-    self.mB12.wEvent_Button       do (): self.OnButtonCompact↓←()
-    self.mB13.wEvent_Button       do (): self.OnButtonCompact↓→()
+    self.mB6.wEvent_Button      do (): self.OnButtonCompact←↑()
+    self.mB7.wEvent_Button      do (): self.OnButtonCompact←↓()
+    self.mB8.wEvent_Button      do (): self.OnButtonCompact→↑()
+    self.mB9.wEvent_Button      do (): self.OnButtonCompact→↓()
+    self.mB10.wEvent_Button     do (): self.OnButtonCompact↑←()
+    self.mB11.wEvent_Button     do (): self.OnButtonCompact↑→()
+    self.mB12.wEvent_Button     do (): self.OnButtonCompact↓←()
+    self.mB13.wEvent_Button     do (): self.OnButtonCompact↓→()
 
 
 
