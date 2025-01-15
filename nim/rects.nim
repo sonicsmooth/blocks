@@ -4,9 +4,9 @@ import wNim/private/wHelper
 export tables
 
 const
-  WRANGE = (min:15, max:50)
-  HRANGE = (min:15, max:50)
-  #QTY = 10
+  WRANGE = (min:25, max:75)
+  HRANGE = (min:25, max:75)
+  QTY* = 10
 
 type 
   RectID* = string
@@ -38,12 +38,15 @@ proc `$`*(table: RectTable): string =
 proc ToRect*(rect: Rect): wRect =
   (rect.pos.x, rect.pos.y, rect.size.width, rect.size.height)
 
-proc RandColor*: wColor = 
+proc RandColor: wColor = 
+  # 00bbggrr
   let 
-    r: int = rand(255).shl(16)
-    g: int = rand(255).shl(8)
-    b: int = rand(255)
-  result = wColor(r or g or b)
+    a: int = 0x7f      shl 24
+    b: int = rand(255) shl 16
+    g: int = rand(255) shl 8
+    r: int = rand(255)
+  result = wColor(a or b or g or r)
+  #echo &"{result:08x}"
 
 proc RandRect*(id: RectID, size: wSize): Rect = 
   result = Rect(id: id, 

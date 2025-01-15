@@ -2,12 +2,13 @@ import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 import std/[bitops, sets]
-import winim, rects
+from winim import nil
+import tables, rects
 
 
 const
-  USER_MOUSE_MOVE = WM_APP + 1
-  USER_SIZE       = WM_APP + 2
+  USER_MOUSE_MOVE = winim.WM_APP + 1
+  USER_SIZE       = winim.WM_APP + 2
 
 var 
   MOUSE_DATA: tuple[ids: seq[RectID],
@@ -42,16 +43,17 @@ proc clear_rect_selection(table: ref RectTable) =
 
 type wBlockPanel = ref object of wPanel
   mRefRectTable: ref RectTable
+  #mCachedBmps: Table[RectID, ref wBitmap]
 wClass(wBlockPanel of wPanel):
   proc OnResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
-    let hWnd = GetAncestor(self.handle, GA_ROOT)
-    SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+    let hWnd = winim.GetAncestor(self.handle, winim.GA_ROOT)
+    winim.SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
 
   proc OnMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
-    let hWnd = GetAncestor(self.handle, GA_ROOT)
-    SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+    let hWnd = winim.GetAncestor(self.handle, winim.GA_ROOT)
+    winim.SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
     
     # Move rect
     let hits = MOUSE_DATA.ids
@@ -81,9 +83,21 @@ wClass(wBlockPanel of wPanel):
     MOUSE_DATA.ids.setLen(0)
     self.refresh(false)
 
+  proc RectToBmp(rect: rects.Rect): wBitmap = 
+    result = Bitmap(rect.size)
+    let font = Font(pointSize=16, wFontFamilyRoman)
+    var memDC = MemoryDC()
+    memDC.selectObject(result)
+    memDC.setFont(font)
+    memDc.setBrush(Brush(rect.brushcolor))
+    memDC.setTextBackground(rect.brushcolor)
+    memDC.drawRectangle(rect.pos, rect.size)
+    memDC.drawLabel($rect.id, rect.ToRect, wCenter or wMiddle)
+
   proc OnPaint(self: wBlockPanel, event: wEvent) = 
     var dc = PaintDC(event.window)
     var memDc = MemoryDC(dc)
+    var bmpDC = MemoryDC()
     let sz = dc.size
     let bmp = Bitmap(sz)
     let font = Font(pointSize=16, wFontFamilyRoman)
@@ -92,18 +106,55 @@ wClass(wBlockPanel of wPanel):
     memDc.setBackground(dc.getBackground())
     memDc.clear()
     for rect in self.mRefRectTable.values():
-      memDc.setBrush(Brush(rect.brushcolor))
-      memDc.drawRectangle(rect.pos, rect.size)
-      memDc.setTextBackground(rect.brushcolor)
-      var idstr = $rect.id
-      if rect.selected: idstr &= "*"
-      memDc.drawLabel(idstr, rect.ToRect, wCenter or wMiddle)
+      let rectbmp = RectToBmp(rect)
+      bmpDC.selectObject(rectbmp)
+      memDc.blit(rect.pos.x, rect.pos.y, rect.size.width, rect.size.height,
+                 bmpDC)
+      # var bf = winim.BLENDFUNCTION(BlendOp: winim.AC_SRC_OVER, 
+      #                              SourceConstantAlpha: 0x7f,
+      #                              AlphaFormat: 0)#winim.AC_SRC_ALPHA)
+      # winim.AlphaBlend(memDc.mHdc, 
+      #                  rect.pos.x,
+      #                  rect.pos.y, 
+      #                  rect.size.width,
+      #                  rect.size.height,
+      #                  bmpDC.mHdc,
+      #                  0, 0,
+      #                  rect.size.width,
+      #                  rect.size.height,
+      #                  bf )
+      # winim.BitBlt(memDc.mHdc, 
+      #                  rect.pos.x,
+      #                  rect.pos.y, 
+      #                  rect.size.width,
+      #                  rect.size.height,
+      #                  bmpDC.mHdc,
+      #                  0, 0, winim.SRCCOPY
+      #                  )
+      # memDc.setBrush(Brush(rect.brushcolor))
+      # memDc.drawRectangle(rect.pos, rect.size)
+      # memDc.setTextBackground(rect.brushcolor)
+      #var idstr = $rect.id
+      #if rect.selected: idstr &= "*"
+      #memDc.drawLabel(idstr, rect.ToRect, wCenter or wMiddle)
+    #winim.DwmFlush()
     dc.blit(0, 0, sz.width, sz.height, memDc)
+
+
+
+
+  
+  # proc InitBmpCache() =
+  #   for id, rect in self.mRefRectTable:
+  #     let bmp = Bitmap(rect.size)
+  #     var memDC = MemoryDC()
+  #     let font = 
 
   proc init(self: wBlockPanel, parent: wWindow, refRectTable: ref RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
-    self.mRefRectTable = refRectTable
     self.backgroundColor = wLightBlue
+    self.mRefRectTable = refRectTable
+    #self.InitBmpCache()
     self.wEvent_Size       do (event: wEvent): self.OnResize(event)
     self.wEvent_MouseMove  do (event: wEvent): self.OnMouseMove(event)
     self.wEvent_LeftDown   do (event: wEvent): self.OnMouseLeftDown(event)
@@ -217,7 +268,7 @@ wClass(wMainPanel of wPanel):
     wPanel(self).init(parent)
 
     # Create controls
-    self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=10, style=wAlignRight)
+    self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=QTY, style=wAlignRight)
     self.mTxt = StaticText(self, label="Qty", style=wSpRight)
     self.mB1  = Button(self, label = "Randomize"         )
     self.mB2  = Button(self, label = "Compact X←"        )
