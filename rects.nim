@@ -4,8 +4,8 @@ import wNim/private/wHelper
 export tables
 
 const
-  WRANGE = (min:25, max:75)
-  HRANGE = (min:25, max:75)
+  WRANGE = 25..75
+  HRANGE = 25..75
   QTY* = 10
 
 type 
@@ -17,7 +17,7 @@ type
     pencolor*: wColor
     brushcolor*: wColor
     selected*: bool
-  RectTable* = Table[RectID, Rect]
+  RectTable* = ref Table[RectID, Rect]
 
 proc `$`*(r: Rect): string =
   result =
@@ -44,33 +44,36 @@ proc wRect*(rect: Rect): wRect =
 proc RandColor: wColor = 
   # 00bbggrr
   let 
-    #a: int = 0x7f      shl 24
     b: int = rand(255) shl 16
     g: int = rand(255) shl 8
     r: int = rand(255)
-  #result = wColor(a or b or g or r)
   result = wColor(b or g or r)
-  #echo &"{result:08x}"
 
-proc RandRect*(id: RectID, size: wSize): Rect = 
+proc RandRect(id: RectID, screenSize: wSize): Rect = 
+  let rectSize: wSize = (rand(WRANGE), rand(HRANGE))
+  let rectPos: wPoint = (rand(screenSize.width  - rectSize.width  - 1),
+                         rand(screenSize.height - rectSize.height - 1))
   result = Rect(id: id, 
-                pos: (rand(size.width  - WRANGE.max - 1), 
-                      rand(size.height - HRANGE.max - 1)), 
-                size: (rand(WRANGE.min..WRANGE.max),
-                       rand(HRANGE.min..HRANGE.max)), 
+                size: rectSize,
+                pos: rectPos,
                 selected: false,
                 pencolor: RandColor(), 
                 brushcolor: RandColor())
 
-proc RandomizeRects*(refTable: ref RectTable, size: wSize, qty:int) = 
-  refTable.clear()
+proc RandomizeRectsAll*(table: var RectTable, size: wSize, qty:int) = 
+  table.clear()
   for i in 1..qty:
-    refTable[].add(RandRect($i, size))
+    table.add(RandRect($i, size))
 
-# This seems to work with rect: Rect also
-proc MoveRectDelta(rect: var Rect, delta: wPoint) =
+proc RandomizeRectsPos*(table: RectTable, screenSize: wSize) =
+  for id, rect in table:
+    rect.pos = (rand(screenSize.width  - rect.size.width  - 1),
+                rand(screenSize.height - rect.size.height - 1))
+
+# This works because Rect is a ref object
+proc MoveRectDelta(rect: Rect, delta: wPoint) =
   rect.pos = rect.pos + delta
 
-proc MoveRect*(rect: var Rect, oldpos, newpos: wPoint) = 
+proc MoveRect*(rect: Rect, oldpos, newpos: wPoint) = 
   let delta = newpos - oldpos
   MoveRectDelta(rect, delta)
