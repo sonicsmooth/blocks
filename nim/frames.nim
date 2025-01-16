@@ -2,13 +2,13 @@ import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wIconImage,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 import std/[bitops, sets, strformat]
-from winim import nil
+import winim
 import tables, rects
 
 
 const
-  USER_MOUSE_MOVE = winim.WM_APP + 1
-  USER_SIZE       = winim.WM_APP + 2
+  USER_MOUSE_MOVE = WM_APP + 1
+  USER_SIZE       = WM_APP + 2
 
 var 
   MOUSE_DATA: tuple[ids: seq[RectID],
@@ -19,7 +19,7 @@ var
 
 
 # Perhaps these belong in another module like db, selection, interaction, etc.
-proc hittest(pos: wPoint, table: ref RectTable): seq[RectID] = 
+proc hittest(pos: wPoint, table: RectTable): seq[RectID] = 
   for id, rect in table:
     let lrcorner: wPoint = (rect.pos.x + rect.size.width,
                             rect.pos.y + rect.size.height)
@@ -27,7 +27,7 @@ proc hittest(pos: wPoint, table: ref RectTable): seq[RectID] =
        pos.y >= rect.pos.y and pos.y <= lrcorner.y:
         result.add(id)
 
-proc toggle_rect_selection(table: ref RectTable, id: RectID) = 
+proc toggle_rect_selection(table: RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
     SELECTED.excl(id)
@@ -35,37 +35,37 @@ proc toggle_rect_selection(table: ref RectTable, id: RectID) =
     table[id].selected = true
     SELECTED.incl(id)
 
-proc clear_rect_selection(table: ref RectTable) = 
+proc clear_rect_selection(table: RectTable) = 
   for id in SELECTED:
     table[id].selected = false
   SELECTED.clear()
 
 
 type wBlockPanel = ref object of wPanel
-  mRefRectTable: ref RectTable
+  mRectTable: RectTable
   #mCachedBmps: Table[RectID, ref wBitmap]
 wClass(wBlockPanel of wPanel):
   proc OnResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
-    let hWnd = winim.GetAncestor(self.handle, winim.GA_ROOT)
-    winim.SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+    let hWnd = GetAncestor(self.handle, GA_ROOT)
+    SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
 
   proc OnMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
-    let hWnd = winim.GetAncestor(self.handle, winim.GA_ROOT)
-    winim.SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+    let hWnd = GetAncestor(self.handle, GA_ROOT)
+    SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
     
     # Move rect
     let hits = MOUSE_DATA.ids
     if hits.len == 0: return
-    var rect = self.mRefRectTable[hits[^1]]
+    var rect = self.mRectTable[hits[^1]]
     MoveRect(rect, MOUSE_DATA.lastpos, event.mousePos)
     MOUSE_DATA.lastpos = event.mousePos
     self.refresh(false)
 
   proc OnMouseLeftDown(self: wBlockPanel, event: wEvent) =
     MOUSE_DATA.clickpos = event.mousePos
-    let hits = hittest(event.mousePos, self.mRefRectTable)
+    let hits = hittest(event.mousePos, self.mRectTable)
     if hits.len > 0:
       MOUSE_DATA.ids = hits
       MOUSE_DATA.lastpos = event.mousePos
@@ -76,9 +76,9 @@ wClass(wBlockPanel of wPanel):
   proc OnMouseLeftUp(self: wBlockPanel, event: wEvent) =
     if event.mousePos == MOUSE_DATA.clickpos: # Click and release without moving
       if MOUSE_DATA.ids.len > 0:
-        toggle_rect_selection(self.mRefRectTable, MOUSE_DATA.ids[^1])
+        toggle_rect_selection(self.mRectTable, MOUSE_DATA.ids[^1])
       elif MOUSE_DATA.clear_pending:
-        clear_rect_selection(self.mRefRectTable)
+        clear_rect_selection(self.mRectTable)
         MOUSE_DATA.clear_pending = false
     MOUSE_DATA.ids.setLen(0)
     self.refresh(false)
@@ -96,7 +96,7 @@ wClass(wBlockPanel of wPanel):
 
   proc OnPaint(self: wBlockPanel, event: wEvent) = 
     var dc = PaintDC(event.window)
-    let bf = winim.BLENDFUNCTION(BlendOp: winim.AC_SRC_OVER,
+    let bf = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
                                 SourceConstantAlpha: 0x7f,
                                 AlphaFormat: 0)
 
@@ -106,30 +106,27 @@ wClass(wBlockPanel of wPanel):
     memDc.clear()
 
     var bmpDC = MemoryDC(dc)
-    for rect in self.mRefRectTable.values():
+    for rect in self.mRectTable.values():
       bmpDC.selectObject(RectToBmp(rect))
-      winim.AlphaBlend(memDc.mHdc, rect.pos.x, rect.pos.y, 
+      AlphaBlend(memDc.mHdc, rect.pos.x, rect.pos.y, 
                        rect.size.width, rect.size.height,
                        bmpDC.mHdc, 0, 0,
-                       rect.size.width, rect.size.height,
-                       bf )
-    #winim.DwmFlush()
+                       rect.size.width, rect.size.height, bf)
+    #DwmFlush()
     dc.blit(0, 0, dc.size.width, dc.size.height, memDc)
 
 
 
-
-  
   # proc InitBmpCache() =
   #   for id, rect in self.mRefRectTable:
   #     let bmp = Bitmap(rect.size)
   #     var memDC = MemoryDC()
   #     let font = 
 
-  proc init(self: wBlockPanel, parent: wWindow, refRectTable: ref RectTable) = 
+  proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.mRefRectTable = refRectTable
+    self.mRectTable = rectTable
     #self.InitBmpCache()
     self.wEvent_Size       do (event: wEvent): self.OnResize(event)
     self.wEvent_MouseMove  do (event: wEvent): self.OnMouseMove(event)
@@ -143,24 +140,11 @@ wClass(wBlockPanel of wPanel):
 
 type wMainPanel = ref object of wPanel
   mBlockPanel: wBlockPanel
-  mRefRectTable: ref RectTable
+  mRectTable: RectTable
   mSpnr: wSpinCtrl
   mTxt:  wStaticText
-  mB1:   wButton
-  mB2:   wButton
-  mB3:   wButton
-  mB4:   wButton
-  mB5:   wButton
-  mB6:   wButton
-  mB7:   wButton
-  mB8:   wButton
-  mB9:   wButton
-  mB10:  wButton
-  mB11:  wButton
-  mB12:  wButton
-  mB13:  wButton
-  mB14:  wButton
-  mB15:  wButton
+  mButtons: array[16, wButton]
+
 wClass(wMainPanel of wPanel):
   proc Layout(self: wMainPanel) =
     let 
@@ -181,27 +165,35 @@ wClass(wMainPanel of wPanel):
     self.mSpnr.size     = (smallw, self.mSpnr.size.height)
 
     # Buttons position, size
-    let  butts = [self.mB1, self.mB2, self.mB3, self.mB4, self.mB5, self.mB6, self.mB7, self.mB8,
-                  self.mB9, self.mB10, self.mB11, self.mB12, self.mB13, self.mB14, self.mB15]
-    for i, butt in butts:
+    for i, butt in self.mButtons:
       butt.position = (bmarg, bmarg + (i+1) * bh)
       butt.size     = (bw, bh)
 
   proc OnResize(self: wMainPanel) =
       self.Layout()
 
+  proc RandomizeRectsAll(self: wMainPanel, qty: int) = 
+    RandomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
+
+  proc RandomizeRectsPos(self: wMainPanel, qty: int) = 
+    RandomizeRectsPos(self.mRectTable, self.mBlockPanel.clientSize)
+
   proc OnSpinSpin(self: wMainPanel, event: wEvent) =
-    let val = event.getSpinPos() + event.getSpinDelta()
-    RandomizeRects(self.mRefRectTable, self.clientSize, val)
+    let qty = event.getSpinPos() + event.getSpinDelta()
+    self.RandomizeRectsAll(qty)
     self.refresh(false)
 
-  proc OnSpinTextEnter(self: wMainPanel, event: wEvent) =
+  proc OnSpinTextEnter(self: wMainPanel) =
     if self.mSpnr.value > 0:
-      RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
+      self.RandomizeRectsAll(self.mSpnr.value)
       self.refresh(false)
 
-  proc OnButtonRandomize(self: wMainPanel) =
-    RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
+  proc OnButtonRandomizeAll(self: wMainPanel) =
+    self.RandomizeRectsAll(self.mSpnr.value)
+    self.refresh(false)
+
+  proc OnButtonRandomizePos(self: wMainPanel) =
+    self.RandomizeRectsPos(self.mSpnr.value)
     self.refresh(false)
 
   proc OnButtonCompact←(self: wMainPanel) =
@@ -240,51 +232,54 @@ wClass(wMainPanel of wPanel):
   proc OnButtonCompact↓→(self: wMainPanel) =
     echo "↓→"
 
-  proc init(self: wMainPanel, parent: wWindow, refRectTable: ref RectTable) =
+  proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)
 
     # Create controls
-    self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=QTY, style=wAlignRight)
+    self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
     self.mTxt = StaticText(self, label="Qty", style=wSpRight)
-    self.mB1  = Button(self, label = "Randomize"         )
-    self.mB2  = Button(self, label = "Compact X←"        )
-    self.mB3  = Button(self, label = "Compact X→"        )
-    self.mB4  = Button(self, label = "Compact Y↑"        )
-    self.mB5  = Button(self, label = "Compact Y↓"        )
-    self.mB6  = Button(self, label = "Compact X← then Y↑")
-    self.mB7  = Button(self, label = "Compact X← then Y↓")
-    self.mB8  = Button(self, label = "Compact X→ then Y↑")
-    self.mB9  = Button(self, label = "Compact X→ then Y↓")
-    self.mB10 = Button(self, label = "Compact Y↑ then X←")
-    self.mB11 = Button(self, label = "Compact Y↑ then X→")
-    self.mB12 = Button(self, label = "Compact Y↓ then X←")
-    self.mB13 = Button(self, label = "Compact Y↓ then X→")
-    self.mB14 = Button(self, label = "Save"              )
-    self.mB15 = Button(self, label = "Load"              )
+    self.mButtons[ 0] = Button(self, label = "Randomize All"     )
+    self.mButtons[ 1] = Button(self, label = "Randomize Pos"     )
+    self.mButtons[ 2] = Button(self, label = "Compact X←"        )
+    self.mButtons[ 3] = Button(self, label = "Compact X→"        )
+    self.mButtons[ 4] = Button(self, label = "Compact Y↑"        )
+    self.mButtons[ 5] = Button(self, label = "Compact Y↓"        )
+    self.mButtons[ 6] = Button(self, label = "Compact X← then Y↑")
+    self.mButtons[ 7] = Button(self, label = "Compact X← then Y↓")
+    self.mButtons[ 8] = Button(self, label = "Compact X→ then Y↑")
+    self.mButtons[ 9] = Button(self, label = "Compact X→ then Y↓")
+    self.mButtons[10] = Button(self, label = "Compact Y↑ then X←")
+    self.mButtons[11] = Button(self, label = "Compact Y↑ then X→")
+    self.mButtons[12] = Button(self, label = "Compact Y↓ then X←")
+    self.mButtons[13] = Button(self, label = "Compact Y↓ then X→")
+    self.mButtons[14] = Button(self, label = "Save"              )
+    self.mButtons[15] = Button(self, label = "Load"              )
 
     # Set up stuff
-    self.mRefRectTable = refRectTable
-    self.mBlockPanel = BlockPanel(self, refRectTable)
+    self.mRectTable = rectTable
+    self.mBlockPanel = BlockPanel(self, rectTable)
     self.mSpnr.setRange(1, 10000)
-    RandomizeRects(self.mRefRectTable, self.clientSize, self.mSpnr.value)
+    #self.RandomizeRects(self.mSpnr.value)
+    #RandomizeRects(self.mRectTable, self.clientSize, self.mSpnr.value)
 
     # Connect events
     self.wEvent_Size            do (event: wEvent): self.OnResize()
     self.mSpnr.wEvent_Spin      do (event: wEvent): self.OnSpinSpin(event)
-    self.mSpnr.wEvent_TextEnter do (event: wEvent): self.OnSpinTextEnter(event)
-    self.mB1.wEvent_Button      do (): self.OnButtonRandomize()
-    self.mB2.wEvent_Button      do (): self.OnButtonCompact←()
-    self.mB3.wEvent_Button      do (): self.OnButtonCompact→()
-    self.mB4.wEvent_Button      do (): self.OnButtonCompact↑()
-    self.mB5.wEvent_Button      do (): self.OnButtonCompact↓()
-    self.mB6.wEvent_Button      do (): self.OnButtonCompact←↑()
-    self.mB7.wEvent_Button      do (): self.OnButtonCompact←↓()
-    self.mB8.wEvent_Button      do (): self.OnButtonCompact→↑()
-    self.mB9.wEvent_Button      do (): self.OnButtonCompact→↓()
-    self.mB10.wEvent_Button     do (): self.OnButtonCompact↑←()
-    self.mB11.wEvent_Button     do (): self.OnButtonCompact↑→()
-    self.mB12.wEvent_Button     do (): self.OnButtonCompact↓←()
-    self.mB13.wEvent_Button     do (): self.OnButtonCompact↓→()
+    self.mSpnr.wEvent_TextEnter do (): self.OnSpinTextEnter()
+    self.mButtons[0].wEvent_Button      do (): self.OnButtonRandomizeAll()
+    self.mButtons[1].wEvent_Button      do (): self.OnButtonRandomizePos()
+    self.mButtons[2].wEvent_Button      do (): self.OnButtonCompact←()
+    self.mButtons[3].wEvent_Button      do (): self.OnButtonCompact→()
+    self.mButtons[4].wEvent_Button      do (): self.OnButtonCompact↑()
+    self.mButtons[5].wEvent_Button      do (): self.OnButtonCompact↓()
+    self.mButtons[6].wEvent_Button      do (): self.OnButtonCompact←↑()
+    self.mButtons[7].wEvent_Button      do (): self.OnButtonCompact←↓()
+    self.mButtons[8].wEvent_Button      do (): self.OnButtonCompact→↑()
+    self.mButtons[9].wEvent_Button      do (): self.OnButtonCompact→↓()
+    self.mButtons[10].wEvent_Button     do (): self.OnButtonCompact↑←()
+    self.mButtons[11].wEvent_Button     do (): self.OnButtonCompact↑→()
+    self.mButtons[12].wEvent_Button     do (): self.OnButtonCompact↓←()
+    self.mButtons[13].wEvent_Button     do (): self.OnButtonCompact↓→()
 
 
 
@@ -307,11 +302,11 @@ wClass(wMainFrame of wFrame):
   proc OnUserMouseNotify(self: wMainFrame, event: wEvent) =
     self.mStatusBar.setStatusText($event.mouseScreenPos, 2)
 
-  proc init*(self: wMainFrame, newBlockSz: wSize, refRectTable: ref RectTable) = 
+  proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: var RectTable) = 
     wFrame(self).init(title="Blocks Frame")
     
     # Create controls
-    self.mMainPanel   = MainPanel(self, refRectTable)
+    self.mMainPanel   = MainPanel(self, rectTable, QTY)
     self.mMenuBar     = MenuBar(self)
     self.mMenuFile    = Menu(self.mMenuBar, "&File")
     self.mStatusBar   = StatusBar(self)
@@ -326,7 +321,14 @@ wClass(wMainFrame of wFrame):
     self.size = (newWidth, newHeight)
     self.mMenuFile.append(1, "Open")
     self.mStatusBar.setStatusWidths([-2, -1, 100])
-    self.mStatusBar.setStatusText($newBlockSz, index=1) # Cheat: set this directly on startup
+    
+    # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
+    # finally rendered at the proper size
+    self.mStatusBar.setStatusText($newBlockSz, index=1)
+    RandomizeRectsAll(rectTable, newBlockSz, self.mMainPanel.mSpnr.value)
+    #self.mMainPanel.mSpnr.setValue(QTY)
+    #self.mMainPanel.OnSpinTextEnter()
+
 
     # Connect Events
     self.wEvent_Size     do (event: wEvent): self.OnResize(event)
