@@ -1,10 +1,11 @@
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
              wPaintDC, wMemoryDC, wBitmap, wFont]
-import std/[bitops, sets, strformat]
+import std/[bitops, sets]
 #from std/os import sleep
-import winim
+import winim except RECT
 import tables, rects
+import std/sugar
 
 
 const
@@ -12,21 +13,63 @@ const
   USER_SIZE       = WM_APP + 2
 
 var 
-  MOUSE_DATA: tuple[ids: seq[RectID],
+  MOUSE_DATA: tuple[mousePtIds: seq[RectID],
+                    rectCornerIds: seq[RectID],
                     lastpos: wPoint,
                     clickpos: wPoint,
                     clear_pending: bool]
   SELECTED: HashSet[RectID]
 
 
-# Perhaps these belong in another module like db, selection, interaction, etc.
-proc hittest(pos: wPoint, table: RectTable): seq[RectID] = 
-  for id, rect in table:
+# These belong in Rects module
+proc IsPointInRect(pt: wpoint, rect: Rect): bool = 
     let lrcorner: wPoint = (rect.pos.x + rect.size.width,
                             rect.pos.y + rect.size.height)
-    if pos.x >= rect.pos.x and pos.x <= lrcorner.x and
-       pos.y >= rect.pos.y and pos.y <= lrcorner.y:
+    pt.x >= rect.pos.x and pt.x <= lrcorner.x and
+    pt.y >= rect.pos.y and pt.y <= lrcorner.y
+
+proc IsEdgeInRect(edge: VertEdge, rect: Rect): bool =
+  let edgeInside = (edge >= rect.Left and edge <= rect.Right)
+  let pt0Inside = IsPointInRect(edge.pt0, rect)
+  let pt1Inside = IsPointInRect(edge.pt1, rect)
+  let pt0Outside = edge.pt0.y < rect.Top.pt0.y
+  let pt1Outside = edge.pt1.y > rect.Bottom.pt0.y
+  (pt0Inside or pt1Inside) or 
+  (pt0Outside and pt1Outside and edgeInside)
+
+proc IsEdgeInRect(edge: HorizEdge, rect: Rect): bool =
+  let edgeInside = (edge >= rect.Top and edge <= rect.Bottom)
+  let pt0Inside = IsPointInRect(edge.pt0, rect)
+  let pt1Inside = IsPointInRect(edge.pt1, rect)
+  let pt0Outside = edge.pt0.x < rect.Left.pt0.x
+  let pt1Outside = edge.pt1.x > rect.Right.pt0.x
+  (pt0Inside or pt1Inside) or 
+  (pt0Outside and pt1Outside and edgeInside)
+
+proc IsRectInRect(rect1, rect2: Rect): bool = 
+  # Check if any corners or edges of rect2 are within rect1
+  # Generally rect1 is moving around and rect2 is part of the db
+  IsEdgeInRect(rect1.Top,    rect2) or
+  IsEdgeInRect(rect1.Left,   rect2) or
+  IsEdgeInRect(rect1.Bottom, rect2) or
+  IsEdgeInRect(rect1.Right,  rect2)
+
+proc RectsOnPt(pt: wPoint, table: RectTable): seq[RectID] = 
+  # Returns seq of Rect IDs whose rect surrounds or contacts pt
+  for id, rect in table:
+      if IsPointInRect(pt, rect):
         result.add(id)
+
+proc RectsOnRect(rect: Rect, table: RectTable): seq[RectID] = 
+  # Return seq of Rect IDs from table that intersect rect
+  # Typically rect is moving around
+  for id, tabRect in table:
+    if tabRect.id == rect.id: continue
+    if IsRectInRect(rect, tabRect):
+      result.add(id)
+
+
+
 
 proc toggle_rect_selection(table: RectTable, id: RectID) = 
   if table[id].selected:
@@ -46,6 +89,9 @@ type wBlockPanel = ref object of wPanel
   mRectTable: RectTable
   mCachedBmps: Table[RectID, ref wBitmap]
   mBigBmp: wBitmap
+  mBlendFunc: BLENDFUNCTION
+  mMemDc: wMemoryDC
+  mBmpDc: wMemoryDC
 
 wClass(wBlockPanel of wPanel):
   proc OnResize(self: wBlockPanel, event: wEvent) =
@@ -54,23 +100,31 @@ wClass(wBlockPanel of wPanel):
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
 
   proc OnMouseMove(self: wBlockPanel, event: wEvent) = 
+    # let ptht = RectsOnPt(event.mousePos, self.mRectTable)
+    # if ptht.len > 0:
+    #   echo ptht
+
     # Update message on main frame
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
     
     # Move rect
-    let hits = MOUSE_DATA.ids
-    if hits.len == 0: return
-    var rect = self.mRectTable[hits[^1]]
+    let mousePtHits = MOUSE_DATA.mousePtIds
+    if mousePtHits.len == 0: return
+    var rect = self.mRectTable[mousePtHits[^1]]
+    let rctht = RectsOnRect(rect, self.mRectTable)
+    if rctht.len > 0:
+      echo rctht
+
     MoveRect(rect, MOUSE_DATA.lastpos, event.mousePos)
     MOUSE_DATA.lastpos = event.mousePos
     self.refresh(false)
 
   proc OnMouseLeftDown(self: wBlockPanel, event: wEvent) =
     MOUSE_DATA.clickpos = event.mousePos
-    let hits = hittest(event.mousePos, self.mRectTable)
-    if hits.len > 0:
-      MOUSE_DATA.ids = hits
+    let mousePtHits = RectsOnPt(event.mousePos, self.mRectTable)
+    if mousePtHits.len > 0:
+      MOUSE_DATA.mousePtIds = mousePtHits
       MOUSE_DATA.lastpos = event.mousePos
       MOUSE_DATA.clear_pending = false
     else:
@@ -79,13 +133,13 @@ wClass(wBlockPanel of wPanel):
   proc UpdateBmpCache(self: wBlockPanel, id: RectID)
   proc OnMouseLeftUp(self: wBlockPanel, event: wEvent) =
     if event.mousePos == MOUSE_DATA.clickpos: # Click and release without moving
-      if MOUSE_DATA.ids.len > 0:
-        toggle_rect_selection(self.mRectTable, MOUSE_DATA.ids[^1])
-        self.UpdateBmpCache(MOUSE_DATA.ids[^1])
+      if MOUSE_DATA.mousePtIds.len > 0:
+        toggle_rect_selection(self.mRectTable, MOUSE_DATA.mousePtIds[^1])
+        self.UpdateBmpCache(MOUSE_DATA.mousePtIds[^1])
       elif MOUSE_DATA.clear_pending:
         clear_rect_selection(self.mRectTable)
         MOUSE_DATA.clear_pending = false
-    MOUSE_DATA.ids.setLen(0)
+    MOUSE_DATA.mousePtIds.setLen(0)
     self.refresh(false)
 
   proc RectToBmp(rect: rects.Rect): wBitmap = 
@@ -102,28 +156,24 @@ wClass(wBlockPanel of wPanel):
     memDC.drawLabel($rectstr, labelRect, wCenter or wMiddle)
 
   proc OnPaint(self: wBlockPanel, event: wEvent) = 
+    # Make sure in-mem bitmap is initialized to correct size
     let size = event.window.clientSize
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
-    var memDc = MemoryDC()
-    memDc.selectObject(self.mBigBmp)
-    memDc.setBackground(event.window.backgroundColor)
-    memDc.clear()
+      self.mMemDc.selectObject(self.mBigBmp)
 
-    let bf = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
-                           SourceConstantAlpha: 200,
-                           AlphaFormat: 0)
-    var bmpDC = MemoryDC()
+    # Clear mem, then blend cached bitmaps
+    self.mMemDc.clear()
     for id, rect in self.mRectTable:
-      let refbmp = self.mCachedBmps[id]
-      bmpDC.selectObject(refbmp[])
-      AlphaBlend(memDc.mHdc, rect.pos.x, rect.pos.y, 
+      self.mBmpDc.selectObject(self.mCachedBmps[id][])
+      AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
                  rect.size.width, rect.size.height,
-                 bmpDC.mHdc, 0, 0,
-                 rect.size.width, rect.size.height, bf)
+                 self.mBmpDC.mHdc, 0, 0,
+                 rect.size.width, rect.size.height, self.mBlendFunc)
+
+    # Finally grab DC and do last blit
     var dc = PaintDC(event.window)
-    DwmFlush()
-    dc.blit(0, 0, dc.size.width, dc.size.height, memDc)
+    dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
 
   proc InitBmpCache(self: wBlockPanel) =
     # Creates all new bitmaps
@@ -145,6 +195,13 @@ wClass(wBlockPanel of wPanel):
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
     self.InitBmpCache()
+    self.mBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
+                        SourceConstantAlpha: 200,
+                        AlphaFormat: 0)
+    self.mBmpDC  = MemoryDC()
+    self.mMemDc = MemoryDC()
+    self.mMemDc.setBackground(self.backgroundColor)
+
     self.wEvent_Size       do (event: wEvent): self.OnResize(event)
     self.wEvent_MouseMove  do (event: wEvent): self.OnMouseMove(event)
     self.wEvent_LeftDown   do (event: wEvent): self.OnMouseLeftDown(event)

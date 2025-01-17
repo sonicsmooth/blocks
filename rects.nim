@@ -18,6 +18,15 @@ type
     brushcolor*: wColor
     selected*: bool
   RectTable* = ref Table[RectID, Rect]
+  Edge* = object of RootObj
+    pt0*: wPoint
+    pt1*: wPoint
+  VertEdge* = object of Edge
+  HorizEdge* = object of Edge
+  TopEdge* = object of HorizEdge
+  LeftEdge* = object of VertEdge
+  BottomEdge* = object of HorizEdge
+  RightEdge* = object of VertEdge
 
 proc `$`*(r: Rect): string =
   result =
@@ -40,6 +49,64 @@ proc ToRect*(rect: Rect): wRect =
 
 proc wRect*(rect: Rect): wRect =
   (rect.pos.x, rect.pos.y, rect.size.width, rect.size.height)
+
+proc UpperLeft*(rect: Rect): wPoint =
+  rect.pos
+
+proc UpperRight*(rect: Rect): wPoint =
+  (rect.pos.x + rect.size.width, rect.pos.y)
+
+proc LowerLeft*(rect: Rect): wPoint =
+  (rect.pos.x, rect.pos.y + rect.size.height)
+
+proc LowerRight*(rect: Rect): wPoint =
+  (rect.pos.x + rect.size.width, rect.pos.y + rect.size.height)
+
+proc Top*(rect: Rect): TopEdge =
+  TopEdge(pt0: rect.UpperLeft, pt1: rect.UpperRight)
+
+proc Left*(rect: Rect): LeftEdge =
+  LeftEdge(pt0: rect.UpperLeft, pt1: rect.LowerLeft)
+
+proc Bottom*(rect: Rect): BottomEdge =
+  BottomEdge(pt0: rect.LowerLeft, pt1: rect.LowerRight)
+
+proc Right*(rect: Rect): RightEdge =
+  RightEdge(pt0: rect.UpperRight, pt1: rect.LowerRight)
+
+# Comparators assume edges are truly vertical or horizontal
+# So we only look at pt0
+proc `<`*(edge1, edge2: VertEdge): bool =
+  edge1.pt0.x < edge2.pt0.x
+
+proc `<=`*(edge1, edge2: VertEdge): bool =
+  edge1.pt0.x <= edge2.pt0.x
+
+proc `>`*(edge1, edge2: VertEdge): bool =
+  edge1.pt0.x > edge2.pt0.x
+
+proc `>=`*(edge1, edge2: VertEdge): bool =
+  edge1.pt0.x >= edge2.pt0.x
+
+proc `==`*(edge1, edge2: VertEdge): bool =
+  edge1.pt0.x == edge2.pt0.x
+
+
+proc `<`*(edge1, edge2: HorizEdge): bool =
+  edge1.pt0.y < edge2.pt0.y
+
+proc `<=`*(edge1, edge2: HorizEdge): bool =
+  edge1.pt0.y <= edge2.pt0.y
+
+proc `>`*(edge1, edge2: HorizEdge): bool =
+  edge1.pt0.y > edge2.pt0.y
+
+proc `>=`*(edge1, edge2: HorizEdge): bool =
+  edge1.pt0.y >= edge2.pt0.y
+
+proc `==`*(edge1, edge2: HorizEdge): bool =
+  edge1.pt0.y == edge2.pt0.y
+
 
 proc RandColor: wColor = 
   # 00bbggrr
