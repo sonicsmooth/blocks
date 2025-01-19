@@ -86,12 +86,13 @@ wClass(wBlockPanel of wPanel):
     
     # Move rect
     let rect = self.mRectTable[hits[^1]]
-    let invalidateRect = rect.wRect.expand(1)
+    let invalidRect1 = rect.wRect
     MOUSE_DATA.dirtyIds = rectInRects(rect, self.mRectTable)
     moveRect(rect, MOUSE_DATA.hitPos, event.mousePos)
-    # Do we want to add te rectsToRefresh based on the new mouse position?
     MOUSE_DATA.hitPos = event.mousePos
-    self.refresh(false, invalidateRect)
+    let invalidRect2 = rect.wRect
+    self.refresh(false, invalidRect1)
+    self.refresh(false, invalidRect2)
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID])
@@ -121,7 +122,6 @@ wClass(wBlockPanel of wPanel):
 
     else: # dragged then released
       MOUSE_DATA.clickHitIds.setLen(0)
-      MOUSE_DATA.dirtyIds.setLen(0)
 
   proc rectToBmp(rect: rects.Rect): wBitmap = 
     result = Bitmap(rect.size)
