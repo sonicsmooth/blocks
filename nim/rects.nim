@@ -8,6 +8,7 @@ const
   HRANGE = 25..75
   QTY* = 10
 
+# TODO: derive Rect from wRect, and add other fields
 type 
   RectID* = string
   Rect* = ref object
@@ -53,15 +54,17 @@ proc `$`*(table: RectTable): string =
   for k,v in table:
     result.add(&"{k}: {v}\n")
 
-# proc toWRect*(rect: Rect): wRect =
-#   (rect.pos.x, rect.pos.y, rect.size.width, rect.size.height)
-
 proc wRect*(rect: Rect): wRect =
   (rect.pos.x, rect.pos.y, rect.size.width, rect.size.height)
 
 proc wRects*(rects: seq[Rect]): seq[wRect] =
+  # Returns seq of wRects from seq of Rects
   for rect in rects:
     result.add(rect.wRect)
+
+proc ids*(rects: seq[Rect]): seq[RectID] =
+  for rect in rects:
+    result.add(rect.id)
 
 proc upperLeft*(rect: Rect): wPoint =
   rect.pos
@@ -151,6 +154,13 @@ proc isRectInRect*(rect1, rect2: Rect): bool =
   isEdgeInRect(rect1.Bottom, rect2) or
   isEdgeInRect(rect1.Right,  rect2)
 
+proc isRectOverRect*(rect1, rect2: Rect): bool =
+  # Check if rect1 completely covers rect2
+  rect1.Top    < rect2.Top    and
+  rect1.Left   < rect2.Left   and
+  rect1.Bottom > rect2.Bottom and
+  rect1.Right  > rect2.Right
+
 proc ptInRects*(pt: wPoint, table: RectTable): seq[RectID] = 
   # Returns seq of Rect IDs whose rect surrounds or contacts pt
   # Optimization? -- return after first one
@@ -163,7 +173,7 @@ proc rectInRects*(rect: Rect, table: RectTable): seq[RectID] =
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
   for id, tabRect in table:
-    if isRectInRect(rect, tabRect):
+    if isRectInRect(rect, tabRect) or isRectOverRect(rect, tabRect):
       result.add(id)
 
 proc rectInRects*(rectId: RectID, table: RectTable): seq[RectID] = 
@@ -225,10 +235,12 @@ proc boundingBox*(rects: seq[Rect]): wRect =
   boundingBox(wRects(rects))
 
 proc expand*(rect: wRect, amt: int): wRect =
+  # Returns expanded wRect from given wRect
   (x: rect.x - amt,
    y: rect.y - amt,
    width: rect.width + 2*amt,
    height: rect.height + 2*amt)
   
 proc expand*(rect: Rect, amt: int): wRect =
+  # Returns expanded wRect from giver Rect
   rect.wRect.expand(amt)
