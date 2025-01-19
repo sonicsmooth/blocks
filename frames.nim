@@ -3,7 +3,7 @@ import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 import std/[bitops, sets, tables]
 from std/sequtils import toSeq
-#from std/os import sleep
+from std/os import sleep
 import winim except RECT
 import rects
 import std/sugar
@@ -12,13 +12,16 @@ import std/sugar
 const
   USER_MOUSE_MOVE = WM_APP + 1
   USER_SIZE       = WM_APP + 2
+  USER_PAINT_DONE = WM_APP + 3
 
 var 
-  MOUSE_DATA: tuple[ptInRectIDs: seq[RectID],
-                    rectsToRefreshIDs: seq[RectID],
+  MOUSE_DATA: tuple[clickHitIds: seq[RectID],
+                    dirtyIds: seq[RectID],
                     hitPos: wPoint,
                     clickpos: wPoint,
-                    clear_started: bool]
+                    clearStarted: bool,
+                    #leftUpPending: bool
+                    ]
   SELECTED: HashSet[RectID]
 
 
@@ -61,12 +64,14 @@ wClass(wBlockPanel of wPanel):
     # a the front of the list?
     let hits = ptInRects(event.mousePos, self.mRectTable)
     if hits.len > 0:
-      MOUSE_DATA.ptInRectIDs = hits
-      MOUSE_DATA.rectsToRefreshIDs = rectInRects(hits[^1], self.mRectTable)
+      # Click down on rect
       MOUSE_DATA.hitPos = event.mousePos
-      MOUSE_DATA.clear_started = false
-    else:
-      MOUSE_DATA.clear_started = true
+      MOUSE_DATA.clickHitIds = hits
+      MOUSE_DATA.dirtyIds = rectInRects(hits[^1], self.mRectTable)
+      MOUSE_DATA.clearStarted = false
+    else: 
+      # Click down in clear area
+      MOUSE_DATA.clearStarted = true
 
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
@@ -75,43 +80,48 @@ wClass(wBlockPanel of wPanel):
     
     # Todo: hovering over
 
+    let hits = MOUSE_DATA.clickHitIds
+    if hits.len == 0: # Just moving around the screen
+      return
+    
     # Move rect
-    let hits = MOUSE_DATA.ptInRectIDs
-    if hits.len == 0: return
     let rect = self.mRectTable[hits[^1]]
-    echo rect.id
-    echo hits
-    echo MOUSE_DATA.ptInRectIDs
     let invalidateRect = rect.wRect.expand(1)
-    MOUSE_DATA.rectsToRefreshIDs = rectInRects(rect, self.mRectTable)
+    MOUSE_DATA.dirtyIds = rectInRects(rect, self.mRectTable)
     moveRect(rect, MOUSE_DATA.hitPos, event.mousePos)
+    # Do we want to add te rectsToRefresh based on the new mouse position?
     MOUSE_DATA.hitPos = event.mousePos
     self.refresh(false, invalidateRect)
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
+  proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID])
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
-    let dragged = event.mousePos != MOUSE_DATA.clickpos
-    let hits = MOUSE_DATA.ptInRectIDs
-    if not dragged: # released without dragging
-      if MOUSE_DATA.ptInRectIDs.len > 0: # non-drag release in a block
-        let rectId = hits[^1]
-        toggle_rect_selection(self.mRectTable, rectId)
-        self.updateBmpCache(rectId)
-        MOUSE_DATA.rectsToRefreshIDs = @[rectId]
-        self.refresh(false, self.mRectTable[rectId].expand(1))
-        return
-      elif MOUSE_DATA.clear_started: # non-drag release in blank space
-        MOUSE_DATA.rectsToRefreshIDs = SELECTED.toSeq
-        MOUSE_DATA.ptInRectIDs.setLen(0)
-        # can this return before paint is scheduled?
-        let rectsToRefresh = self.mRectTable[MOUSE_DATA.rectsToRefreshIDs]
-        self.refresh(false, rectsToRefresh)
-        MOUSE_DATA.clear_started = false
+    if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
+      if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
+        let lastHitId = MOUSE_DATA.clickHitIds[^1]
+        MOUSE_DATA.clickHitIds.setLen(0)
+        toggle_rect_selection(self.mRectTable, lastHitId)
+        self.updateBmpCache(lastHitId)
+        self.refresh(false, self.mRectTable[lastHitId].expand(0))
+      elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
+        # Remember selected rects, deselect, redraw
+        if SELECTED.len == 0: return
+        MOUSE_DATA.dirtyIds = SELECTED.toSeq
+        let dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
         clear_rect_selection(self.mRectTable)
-        MOUSE_DATA.rectsToRefreshIDs.setLen(0)
-    else: # dragged then released
+        self.updateBmpCaches(MOUSE_DATA.dirtyIds)
 
-      MOUSE_DATA.rectsToRefreshIDs.setLen(0)
+        if true:
+          # Let windows accumulate bounding boxes
+          for rect in dirtyRects:
+            self.refresh(false, rect.wRect)
+        else:
+          let bbox = boundingBox(dirtyRects)
+          self.refresh(false, bbox)
+
+    else: # dragged then released
+      MOUSE_DATA.clickHitIds.setLen(0)
+      MOUSE_DATA.dirtyIds.setLen(0)
 
   proc rectToBmp(rect: rects.Rect): wBitmap = 
     result = Bitmap(rect.size)
@@ -128,35 +138,33 @@ wClass(wBlockPanel of wPanel):
 
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Make sure in-mem bitmap is initialized to correct size
+    echo "OnPaint"
     var clipRect1: winim.RECT
     GetUpdateRect(self.mHwnd, clipRect1, false)
     var clipRect2: wRect = (x: clipRect1.left - 1, 
                             y: clipRect1.top - 1,
-                           width: clipRect1.right - clipRect1.left + 2,
-                           height: clipRect1.bottom - clipRect1.top + 2)
+                            width: clipRect1.right - clipRect1.left + 2,
+                            height: clipRect1.bottom - clipRect1.top + 2)
     let size = event.window.clientSize
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
       self.mMemDc.selectObject(self.mBigBmp)
 
     # Clear mem, erase old position
-    var rectsToDraw: seq[Rect]
-    if MOUSE_DATA.rectsToRefreshIDs.len == 0:
+    var dirtyRects: seq[Rect]
+    if MOUSE_DATA.dirtyIds.len == 0:
       # Draw everything when there is nothing selected
-      rectsToDraw = self.mRectTable.values.toSeq
+      dirtyRects = self.mRectTable.values.toSeq
       self.mMemDc.clear()
     else:
-      for id in MOUSE_DATA.rectsToRefreshIDs:
-        rectsToDraw.add(self.mRectTable[id])
-      #var bbox = boundingBox(rectsToDraw)
-
+      dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
       self.mMemDc.setPen(Pen(event.window.backgroundColor))
       self.mMemDc.setBrush(Brush(event.window.backgroundColor))
       self.mMemDc.drawRectangle(clipRect2)
 
     # Blend cached bitmaps
-    echo "Drawing ", rectsToDraw.len
-    for rect in rectsToDraw:
+    echo "Drawing ", MOUSE_DATA.dirtyIds
+    for rect in dirtyRects:
       self.mBmpDc.selectObject(self.mCachedBmps[rect.id][])
       AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
                  rect.size.width, rect.size.height,
@@ -166,6 +174,12 @@ wClass(wBlockPanel of wPanel):
     # Finally grab DC and do last blit
     var dc = PaintDC(event.window)
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
+    MOUSE_DATA.dirtyIds.setLen(0)
+    SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
+
+  proc onPaintDone(self: wBlockPanel) =
+    if MOUSE_DATA.clearStarted:
+      MOUSE_DATA.clearStarted = false
 
   proc initBmpCache(self: wBlockPanel) =
     # Creates all new bitmaps
@@ -181,6 +195,10 @@ wClass(wBlockPanel of wPanel):
     new bmp
     bmp[] = rectToBmp(self.mRectTable[id])
     self.mCachedBmps[id] = bmp
+
+  proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
+    for id in ids:
+      self.updateBmpCache(id)
 
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
@@ -198,7 +216,8 @@ wClass(wBlockPanel of wPanel):
     self.wEvent_MouseMove  do (event: wEvent): self.onMouseMove(event)
     self.wEvent_LeftDown   do (event: wEvent): self.onMouseLeftDown(event)
     self.wEvent_LeftUp     do (event: wEvent): self.onMouseLeftUp(event)
-    self.wEvent_Paint      do (event: wEvent): self.onPaint(event) 
+    self.wEvent_Paint      do (event: wEvent): self.onPaint(event)
+    self.USER_PAINT_DONE   do (): self.onPaintDone()
 
 
 
