@@ -1,10 +1,11 @@
-import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush,
+import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
              wPaintDC, wMemoryDC, wBitmap, wFont]
-import std/[bitops, sets]
+import std/[bitops, sets, tables]
+from std/sequtils import toSeq
 #from std/os import sleep
 import winim except RECT
-import tables, rects
+import rects
 import std/sugar
 
 
@@ -13,63 +14,15 @@ const
   USER_SIZE       = WM_APP + 2
 
 var 
-  MOUSE_DATA: tuple[mousePtIds: seq[RectID],
-                    rectCornerIds: seq[RectID],
-                    lastpos: wPoint,
+  MOUSE_DATA: tuple[ptInRectIDs: seq[RectID],
+                    rectsToRefreshIDs: seq[RectID],
+                    hitPos: wPoint,
                     clickpos: wPoint,
-                    clear_pending: bool]
+                    clear_started: bool]
   SELECTED: HashSet[RectID]
 
 
 # These belong in Rects module
-proc IsPointInRect(pt: wpoint, rect: Rect): bool = 
-    let lrcorner: wPoint = (rect.pos.x + rect.size.width,
-                            rect.pos.y + rect.size.height)
-    pt.x >= rect.pos.x and pt.x <= lrcorner.x and
-    pt.y >= rect.pos.y and pt.y <= lrcorner.y
-
-proc IsEdgeInRect(edge: VertEdge, rect: Rect): bool =
-  let edgeInside = (edge >= rect.Left and edge <= rect.Right)
-  let pt0Inside = IsPointInRect(edge.pt0, rect)
-  let pt1Inside = IsPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.y < rect.Top.pt0.y
-  let pt1Outside = edge.pt1.y > rect.Bottom.pt0.y
-  (pt0Inside or pt1Inside) or 
-  (pt0Outside and pt1Outside and edgeInside)
-
-proc IsEdgeInRect(edge: HorizEdge, rect: Rect): bool =
-  let edgeInside = (edge >= rect.Top and edge <= rect.Bottom)
-  let pt0Inside = IsPointInRect(edge.pt0, rect)
-  let pt1Inside = IsPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.x < rect.Left.pt0.x
-  let pt1Outside = edge.pt1.x > rect.Right.pt0.x
-  (pt0Inside or pt1Inside) or 
-  (pt0Outside and pt1Outside and edgeInside)
-
-proc IsRectInRect(rect1, rect2: Rect): bool = 
-  # Check if any corners or edges of rect2 are within rect1
-  # Generally rect1 is moving around and rect2 is part of the db
-  IsEdgeInRect(rect1.Top,    rect2) or
-  IsEdgeInRect(rect1.Left,   rect2) or
-  IsEdgeInRect(rect1.Bottom, rect2) or
-  IsEdgeInRect(rect1.Right,  rect2)
-
-proc RectsOnPt(pt: wPoint, table: RectTable): seq[RectID] = 
-  # Returns seq of Rect IDs whose rect surrounds or contacts pt
-  for id, rect in table:
-      if IsPointInRect(pt, rect):
-        result.add(id)
-
-proc RectsOnRect(rect: Rect, table: RectTable): seq[RectID] = 
-  # Return seq of Rect IDs from table that intersect rect
-  # Typically rect is moving around
-  for id, tabRect in table:
-    if tabRect.id == rect.id: continue
-    if IsRectInRect(rect, tabRect):
-      result.add(id)
-
-
-
 
 proc toggle_rect_selection(table: RectTable, id: RectID) = 
   if table[id].selected:
@@ -94,55 +47,73 @@ type wBlockPanel = ref object of wPanel
   mBmpDc: wMemoryDC
 
 wClass(wBlockPanel of wPanel):
-  proc OnResize(self: wBlockPanel, event: wEvent) =
+  proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
 
-  proc OnMouseMove(self: wBlockPanel, event: wEvent) = 
-    # let ptht = RectsOnPt(event.mousePos, self.mRectTable)
-    # if ptht.len > 0:
-    #   echo ptht
+  proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
+    MOUSE_DATA.clickpos = event.mousePos
+    # This captures all rects under mousept and keeps them
+    # even after mouse has moved away from original pos.  Is this
+    # what we want?  Or do we want the list to change as the
+    # mouse moves around, with the currently top-selected rect
+    # a the front of the list?
+    let hits = ptInRects(event.mousePos, self.mRectTable)
+    if hits.len > 0:
+      MOUSE_DATA.ptInRectIDs = hits
+      MOUSE_DATA.rectsToRefreshIDs = rectInRects(hits[^1], self.mRectTable)
+      MOUSE_DATA.hitPos = event.mousePos
+      MOUSE_DATA.clear_started = false
+    else:
+      MOUSE_DATA.clear_started = true
 
+  proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
     
+    # Todo: hovering over
+
     # Move rect
-    let mousePtHits = MOUSE_DATA.mousePtIds
-    if mousePtHits.len == 0: return
-    var rect = self.mRectTable[mousePtHits[^1]]
-    let rctht = RectsOnRect(rect, self.mRectTable)
-    if rctht.len > 0:
-      echo rctht
+    let hits = MOUSE_DATA.ptInRectIDs
+    if hits.len == 0: return
+    let rect = self.mRectTable[hits[^1]]
+    echo rect.id
+    echo hits
+    echo MOUSE_DATA.ptInRectIDs
+    let invalidateRect = rect.wRect.expand(1)
+    MOUSE_DATA.rectsToRefreshIDs = rectInRects(rect, self.mRectTable)
+    moveRect(rect, MOUSE_DATA.hitPos, event.mousePos)
+    MOUSE_DATA.hitPos = event.mousePos
+    self.refresh(false, invalidateRect)
 
-    MoveRect(rect, MOUSE_DATA.lastpos, event.mousePos)
-    MOUSE_DATA.lastpos = event.mousePos
-    self.refresh(false)
-
-  proc OnMouseLeftDown(self: wBlockPanel, event: wEvent) =
-    MOUSE_DATA.clickpos = event.mousePos
-    let mousePtHits = RectsOnPt(event.mousePos, self.mRectTable)
-    if mousePtHits.len > 0:
-      MOUSE_DATA.mousePtIds = mousePtHits
-      MOUSE_DATA.lastpos = event.mousePos
-      MOUSE_DATA.clear_pending = false
-    else:
-      MOUSE_DATA.clear_pending = true
-
-  proc UpdateBmpCache(self: wBlockPanel, id: RectID)
-  proc OnMouseLeftUp(self: wBlockPanel, event: wEvent) =
-    if event.mousePos == MOUSE_DATA.clickpos: # Click and release without moving
-      if MOUSE_DATA.mousePtIds.len > 0:
-        toggle_rect_selection(self.mRectTable, MOUSE_DATA.mousePtIds[^1])
-        self.UpdateBmpCache(MOUSE_DATA.mousePtIds[^1])
-      elif MOUSE_DATA.clear_pending:
+  proc updateBmpCache(self: wBlockPanel, id: RectID)
+  proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
+    let dragged = event.mousePos != MOUSE_DATA.clickpos
+    let hits = MOUSE_DATA.ptInRectIDs
+    if not dragged: # released without dragging
+      if MOUSE_DATA.ptInRectIDs.len > 0: # non-drag release in a block
+        let rectId = hits[^1]
+        toggle_rect_selection(self.mRectTable, rectId)
+        self.updateBmpCache(rectId)
+        MOUSE_DATA.rectsToRefreshIDs = @[rectId]
+        self.refresh(false, self.mRectTable[rectId].expand(1))
+        return
+      elif MOUSE_DATA.clear_started: # non-drag release in blank space
+        MOUSE_DATA.rectsToRefreshIDs = SELECTED.toSeq
+        MOUSE_DATA.ptInRectIDs.setLen(0)
+        # can this return before paint is scheduled?
+        let rectsToRefresh = self.mRectTable[MOUSE_DATA.rectsToRefreshIDs]
+        self.refresh(false, rectsToRefresh)
+        MOUSE_DATA.clear_started = false
         clear_rect_selection(self.mRectTable)
-        MOUSE_DATA.clear_pending = false
-    MOUSE_DATA.mousePtIds.setLen(0)
-    self.refresh(false)
+        MOUSE_DATA.rectsToRefreshIDs.setLen(0)
+    else: # dragged then released
 
-  proc RectToBmp(rect: rects.Rect): wBitmap = 
+      MOUSE_DATA.rectsToRefreshIDs.setLen(0)
+
+  proc rectToBmp(rect: rects.Rect): wBitmap = 
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
     memDC.selectObject(result)
@@ -155,17 +126,38 @@ wClass(wBlockPanel of wPanel):
     if rect.selected: rectstr &= "*"
     memDC.drawLabel($rectstr, labelRect, wCenter or wMiddle)
 
-  proc OnPaint(self: wBlockPanel, event: wEvent) = 
+  proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Make sure in-mem bitmap is initialized to correct size
+    var clipRect1: winim.RECT
+    GetUpdateRect(self.mHwnd, clipRect1, false)
+    var clipRect2: wRect = (x: clipRect1.left - 1, 
+                            y: clipRect1.top - 1,
+                           width: clipRect1.right - clipRect1.left + 2,
+                           height: clipRect1.bottom - clipRect1.top + 2)
     let size = event.window.clientSize
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
       self.mMemDc.selectObject(self.mBigBmp)
 
-    # Clear mem, then blend cached bitmaps
-    self.mMemDc.clear()
-    for id, rect in self.mRectTable:
-      self.mBmpDc.selectObject(self.mCachedBmps[id][])
+    # Clear mem, erase old position
+    var rectsToDraw: seq[Rect]
+    if MOUSE_DATA.rectsToRefreshIDs.len == 0:
+      # Draw everything when there is nothing selected
+      rectsToDraw = self.mRectTable.values.toSeq
+      self.mMemDc.clear()
+    else:
+      for id in MOUSE_DATA.rectsToRefreshIDs:
+        rectsToDraw.add(self.mRectTable[id])
+      #var bbox = boundingBox(rectsToDraw)
+
+      self.mMemDc.setPen(Pen(event.window.backgroundColor))
+      self.mMemDc.setBrush(Brush(event.window.backgroundColor))
+      self.mMemDc.drawRectangle(clipRect2)
+
+    # Blend cached bitmaps
+    echo "Drawing ", rectsToDraw.len
+    for rect in rectsToDraw:
+      self.mBmpDc.selectObject(self.mCachedBmps[rect.id][])
       AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
                  rect.size.width, rect.size.height,
                  self.mBmpDC.mHdc, 0, 0,
@@ -175,38 +167,38 @@ wClass(wBlockPanel of wPanel):
     var dc = PaintDC(event.window)
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
 
-  proc InitBmpCache(self: wBlockPanel) =
+  proc initBmpCache(self: wBlockPanel) =
     # Creates all new bitmaps
     for id, rect in self.mRectTable:
       var bmp: ref wBitmap
       new bmp
-      bmp[] = RectToBmp(rect)
+      bmp[] = rectToBmp(rect)
       self.mCachedBmps[id] = bmp
 
-  proc UpdateBmpCache(self: wBlockPanel, id: RectID) =
+  proc updateBmpCache(self: wBlockPanel, id: RectID) =
     # Creates one new bitmap; used for selection
     var bmp: ref wBitmap
     new bmp
-    bmp[] = RectToBmp(self.mRectTable[id])
+    bmp[] = rectToBmp(self.mRectTable[id])
     self.mCachedBmps[id] = bmp
 
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    self.InitBmpCache()
+    self.initBmpCache()
     self.mBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
-                        SourceConstantAlpha: 200,
+                        SourceConstantAlpha: 240,
                         AlphaFormat: 0)
     self.mBmpDC  = MemoryDC()
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
 
-    self.wEvent_Size       do (event: wEvent): self.OnResize(event)
-    self.wEvent_MouseMove  do (event: wEvent): self.OnMouseMove(event)
-    self.wEvent_LeftDown   do (event: wEvent): self.OnMouseLeftDown(event)
-    self.wEvent_LeftUp     do (event: wEvent): self.OnMouseLeftUp(event)
-    self.wEvent_Paint      do (event: wEvent): self.OnPaint(event) 
+    self.wEvent_Size       do (event: wEvent): self.onResize(event)
+    self.wEvent_MouseMove  do (event: wEvent): self.onMouseMove(event)
+    self.wEvent_LeftDown   do (event: wEvent): self.onMouseLeftDown(event)
+    self.wEvent_LeftUp     do (event: wEvent): self.onMouseLeftUp(event)
+    self.wEvent_Paint      do (event: wEvent): self.onPaint(event) 
 
 
 
@@ -243,68 +235,68 @@ wClass(wMainPanel of wPanel):
       butt.position = (bmarg, bmarg + (i+1) * bh)
       butt.size     = (bw, bh)
 
-  proc OnResize(self: wMainPanel) =
+  proc onResize(self: wMainPanel) =
       self.Layout()
 
-  proc RandomizeRectsAll(self: wMainPanel, qty: int) = 
-    RandomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
-    self.mBlockPanel.InitBmpCache()
+  proc randomizeRectsAll(self: wMainPanel, qty: int) = 
+    randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
+    self.mBlockPanel.initBmpCache()
 
-  proc RandomizeRectsPos(self: wMainPanel, qty: int) = 
-    RandomizeRectsPos(self.mRectTable, self.mBlockPanel.clientSize)
+  proc randomizeRectsPos(self: wMainPanel, qty: int) = 
+    randomizeRectsPos(self.mRectTable, self.mBlockPanel.clientSize)
 
-  proc OnSpinSpin(self: wMainPanel, event: wEvent) =
+  proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
-    self.RandomizeRectsAll(qty)
+    self.randomizeRectsAll(qty)
     self.refresh(false)
 
-  proc OnSpinTextEnter(self: wMainPanel) =
+  proc onSpinTextEnter(self: wMainPanel) =
     if self.mSpnr.value > 0:
-      self.RandomizeRectsAll(self.mSpnr.value)
+      self.randomizeRectsAll(self.mSpnr.value)
       self.refresh(false)
 
-  proc OnButtonRandomizeAll(self: wMainPanel) =
-    self.RandomizeRectsAll(self.mSpnr.value)
+  proc onButtonrandomizeAll(self: wMainPanel) =
+    self.randomizeRectsAll(self.mSpnr.value)
     self.refresh(false)
 
-  proc OnButtonRandomizePos(self: wMainPanel) =
-    self.RandomizeRectsPos(self.mSpnr.value)
+  proc onButtonrandomizePos(self: wMainPanel) =
+    self.randomizeRectsPos(self.mSpnr.value)
     self.refresh(false)
 
-  proc OnButtonCompact←(self: wMainPanel) =
+  proc onButtonCompact←(self: wMainPanel) =
     echo "←"
 
-  proc OnButtonCompact→(self: wMainPanel) =
+  proc onButtonCompact→(self: wMainPanel) =
     echo "→"
 
-  proc OnButtonCompact↑(self: wMainPanel) =
+  proc onButtonCompact↑(self: wMainPanel) =
     echo "↑"
 
-  proc OnButtonCompact↓(self: wMainPanel) =
+  proc onButtonCompact↓(self: wMainPanel) =
     echo "↓"
 
-  proc OnButtonCompact←↑(self: wMainPanel) =
+  proc onButtonCompact←↑(self: wMainPanel) =
     echo "←↑"
 
-  proc OnButtonCompact←↓(self: wMainPanel) =
+  proc onButtonCompact←↓(self: wMainPanel) =
     echo "←↓"
 
-  proc OnButtonCompact→↑(self: wMainPanel) =
+  proc onButtonCompact→↑(self: wMainPanel) =
     echo "→↑"
 
-  proc OnButtonCompact→↓(self: wMainPanel) =
+  proc onButtonCompact→↓(self: wMainPanel) =
     echo "→↓"
 
-  proc OnButtonCompact↑←(self: wMainPanel) =
+  proc onButtonCompact↑←(self: wMainPanel) =
     echo "↑←"
 
-  proc OnButtonCompact↑→(self: wMainPanel) =
+  proc onButtonCompact↑→(self: wMainPanel) =
     echo "↑→"
 
-  proc OnButtonCompact↓←(self: wMainPanel) =
+  proc onButtonCompact↓←(self: wMainPanel) =
     echo "↓←"
 
-  proc OnButtonCompact↓→(self: wMainPanel) =
+  proc onButtonCompact↓→(self: wMainPanel) =
     echo "↓→"
 
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
@@ -313,8 +305,8 @@ wClass(wMainPanel of wPanel):
     # Create controls
     self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
     self.mTxt = StaticText(self, label="Qty", style=wSpRight)
-    self.mButtons[ 0] = Button(self, label = "Randomize All"     )
-    self.mButtons[ 1] = Button(self, label = "Randomize Pos"     )
+    self.mButtons[ 0] = Button(self, label = "randomize All"     )
+    self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
     self.mButtons[ 2] = Button(self, label = "Compact X←"        )
     self.mButtons[ 3] = Button(self, label = "Compact X→"        )
     self.mButtons[ 4] = Button(self, label = "Compact Y↑"        )
@@ -336,23 +328,23 @@ wClass(wMainPanel of wPanel):
     self.mSpnr.setRange(1, 10000)
 
     # Connect events
-    self.wEvent_Size                    do (event: wEvent): self.OnResize()
-    self.mSpnr.wEvent_Spin              do (event: wEvent): self.OnSpinSpin(event)
-    self.mSpnr.wEvent_TextEnter         do (): self.OnSpinTextEnter()
-    self.mButtons[ 0].wEvent_Button     do (): self.OnButtonRandomizeAll()
-    self.mButtons[ 1].wEvent_Button     do (): self.OnButtonRandomizePos()
-    self.mButtons[ 2].wEvent_Button     do (): self.OnButtonCompact←()
-    self.mButtons[ 3].wEvent_Button     do (): self.OnButtonCompact→()
-    self.mButtons[ 4].wEvent_Button     do (): self.OnButtonCompact↑()
-    self.mButtons[ 5].wEvent_Button     do (): self.OnButtonCompact↓()
-    self.mButtons[ 6].wEvent_Button     do (): self.OnButtonCompact←↑()
-    self.mButtons[ 7].wEvent_Button     do (): self.OnButtonCompact←↓()
-    self.mButtons[ 8].wEvent_Button     do (): self.OnButtonCompact→↑()
-    self.mButtons[ 9].wEvent_Button     do (): self.OnButtonCompact→↓()
-    self.mButtons[10].wEvent_Button     do (): self.OnButtonCompact↑←()
-    self.mButtons[11].wEvent_Button     do (): self.OnButtonCompact↑→()
-    self.mButtons[12].wEvent_Button     do (): self.OnButtonCompact↓←()
-    self.mButtons[13].wEvent_Button     do (): self.OnButtonCompact↓→()
+    self.wEvent_Size                    do (event: wEvent): self.onResize()
+    self.mSpnr.wEvent_Spin              do (event: wEvent): self.onSpinSpin(event)
+    self.mSpnr.wEvent_TextEnter         do (): self.onSpinTextEnter()
+    self.mButtons[ 0].wEvent_Button     do (): self.onButtonrandomizeAll()
+    self.mButtons[ 1].wEvent_Button     do (): self.onButtonrandomizePos()
+    self.mButtons[ 2].wEvent_Button     do (): self.onButtonCompact←()
+    self.mButtons[ 3].wEvent_Button     do (): self.onButtonCompact→()
+    self.mButtons[ 4].wEvent_Button     do (): self.onButtonCompact↑()
+    self.mButtons[ 5].wEvent_Button     do (): self.onButtonCompact↓()
+    self.mButtons[ 6].wEvent_Button     do (): self.onButtonCompact←↑()
+    self.mButtons[ 7].wEvent_Button     do (): self.onButtonCompact←↓()
+    self.mButtons[ 8].wEvent_Button     do (): self.onButtonCompact→↑()
+    self.mButtons[ 9].wEvent_Button     do (): self.onButtonCompact→↓()
+    self.mButtons[10].wEvent_Button     do (): self.onButtonCompact↑←()
+    self.mButtons[11].wEvent_Button     do (): self.onButtonCompact↑→()
+    self.mButtons[12].wEvent_Button     do (): self.onButtonCompact↓←()
+    self.mButtons[13].wEvent_Button     do (): self.onButtonCompact↓→()
 
 
 
@@ -363,16 +355,16 @@ type wMainFrame = ref object of wFrame
   mMenuFile:  wMenu
   #mStatusBar: wStatusBar # already defined by wNim
 wClass(wMainFrame of wFrame):
-  proc OnResize(self: wMainFrame, event: wEvent) =
+  proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
 
-  proc OnUserSizeNotify(self: wMainFrame, event: wEvent) =
+  proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
     let lo_word:int = event.getlParam.bitand(0x0000_ffff)
     let hi_word:int = event.getlParam.bitand(0xffff_0000).shr(16)
     let sz:wSize = (lo_word, hi_word)
     self.mStatusBar.setStatusText($sz, index=1)
 
-  proc OnUserMouseNotify(self: wMainFrame, event: wEvent) =
+  proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
     self.mStatusBar.setStatusText($event.mouseScreenPos, 2)
 
   proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: var RectTable) = 
@@ -398,14 +390,14 @@ wClass(wMainFrame of wFrame):
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
     self.mStatusBar.setStatusText($newBlockSz, index=1)
-    RandomizeRectsAll(rectTable, newBlockSz, self.mMainPanel.mSpnr.value)
-    self.mMainPanel.mBlockPanel.InitBmpCache()
+    randomizeRectsAll(rectTable, newBlockSz, self.mMainPanel.mSpnr.value)
+    self.mMainPanel.mBlockPanel.initBmpCache()
 
 
     # Connect Events
-    self.wEvent_Size     do (event: wEvent): self.OnResize(event)
-    self.USER_SIZE       do (event: wEvent): self.OnUserSizeNotify(event)
-    self.USER_MOUSE_MOVE do (event: wEvent): self.OnUserMouseNotify(event)
+    self.wEvent_Size     do (event: wEvent): self.onResize(event)
+    self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
+    self.USER_MOUSE_MOVE do (event: wEvent): self.onUserMouseNotify(event)
 
     # Show!
     self.center()
