@@ -8,6 +8,11 @@ import winim except RECT
 import rects
 import std/sugar
 
+# TODO: copy background before move
+# TODO: Intersect bbox with other rects
+# TODO: Hover
+# TODO: Figure out invalidate region
+
 
 const
   USER_MOUSE_MOVE = WM_APP + 1
@@ -91,6 +96,7 @@ wClass(wBlockPanel of wPanel):
     moveRect(rect, MOUSE_DATA.hitPos, event.mousePos)
     MOUSE_DATA.hitPos = event.mousePos
     let invalidRect2 = rect.wRect
+    # Two refreshes to fix error when move event is more than one pixel
     self.refresh(false, invalidRect1)
     self.refresh(false, invalidRect2)
 

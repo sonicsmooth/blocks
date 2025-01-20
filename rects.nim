@@ -8,7 +8,6 @@ const
   HRANGE = 25..75
   QTY* = 10
 
-# TODO: derive Rect from wRect, and add other fields
 type 
   RectID* = string
   Rect* = ref object
