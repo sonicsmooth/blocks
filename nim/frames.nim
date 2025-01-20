@@ -63,6 +63,7 @@ wClass(wBlockPanel of wPanel):
     # mouse moves around, with the currently top-selected rect
     # a the front of the list?
     let hits = ptInRects(event.mousePos, self.mRectTable)
+    echo hits
     if hits.len > 0:
       # Click down on rect
       MOUSE_DATA.hitPos = event.mousePos
@@ -87,7 +88,7 @@ wClass(wBlockPanel of wPanel):
     # Move rect
     let rect = self.mRectTable[hits[^1]]
     let invalidRect1 = rect.wRect
-    MOUSE_DATA.dirtyIds = rectInRects(rect, self.mRectTable)
+    MOUSE_DATA.dirtyIds = rectInRects(rect.wRect, self.mRectTable)
     moveRect(rect, MOUSE_DATA.hitPos, event.mousePos)
     MOUSE_DATA.hitPos = event.mousePos
     let invalidRect2 = rect.wRect
@@ -103,7 +104,7 @@ wClass(wBlockPanel of wPanel):
         MOUSE_DATA.clickHitIds.setLen(0)
         toggle_rect_selection(self.mRectTable, lastHitId)
         self.updateBmpCache(lastHitId)
-        self.refresh(false, self.mRectTable[lastHitId].expand(0))
+        self.refresh(false, self.mRectTable[lastHitId].wRect
       elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
         # Remember selected rects, deselect, redraw
         if SELECTED.len == 0: return
@@ -117,7 +118,7 @@ wClass(wBlockPanel of wPanel):
           for rect in dirtyRects:
             self.refresh(false, rect.wRect)
         else:
-          let bbox = boundingBox(dirtyRects)
+          let bbox = boundingBox(dirtyRects.wRects)
           self.refresh(false, bbox)
 
     else: # dragged then released
@@ -131,14 +132,13 @@ wClass(wBlockPanel of wPanel):
     memDc.setBrush(Brush(rect.brushcolor))
     memDC.setTextBackground(rect.brushcolor)
     memDC.drawRectangle((0, 0), rect.size)
-    let labelRect: wRect = (x:0, y:0, width: rect.size.width, height: rect.size.height)
+    let labelRect: wRect = (x:0, y:0, width: rect.width, height: rect.size.height)
     var rectstr = $rect.id
     if rect.selected: rectstr &= "*"
     memDC.drawLabel($rectstr, labelRect, wCenter or wMiddle)
 
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Make sure in-mem bitmap is initialized to correct size
-    echo "OnPaint"
     var clipRect1: winim.RECT
     GetUpdateRect(self.mHwnd, clipRect1, false)
     var clipRect2: wRect = (x: clipRect1.left - 1, 
