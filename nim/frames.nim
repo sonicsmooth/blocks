@@ -24,9 +24,7 @@ var
                     dirtyIds: seq[RectID],
                     hitPos: wPoint,
                     clickpos: wPoint,
-                    clearStarted: bool,
-                    #leftUpPending: bool
-                    ]
+                    clearStarted: bool]
   SELECTED: HashSet[RectID]
 
 
@@ -110,7 +108,7 @@ wClass(wBlockPanel of wPanel):
         MOUSE_DATA.clickHitIds.setLen(0)
         toggle_rect_selection(self.mRectTable, lastHitId)
         self.updateBmpCache(lastHitId)
-        self.refresh(false, self.mRectTable[lastHitId].wRect
+        self.refresh(false, self.mRectTable[lastHitId].wRect)
       elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
         # Remember selected rects, deselect, redraw
         if SELECTED.len == 0: return
