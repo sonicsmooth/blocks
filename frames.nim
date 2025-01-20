@@ -167,7 +167,7 @@ wClass(wBlockPanel of wPanel):
       self.mMemDc.drawRectangle(clipRect2)
 
     # Blend cached bitmaps
-    echo "Drawing ", MOUSE_DATA.dirtyIds
+    #echo "Drawing ", MOUSE_DATA.dirtyIds
     for rect in dirtyRects:
       self.mBmpDc.selectObject(self.mCachedBmps[rect.id][])
       AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
