@@ -224,7 +224,6 @@ proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
     rect.x = rand(screenSize.width  - rect.width  - 1)
     rect.y = rand(screenSize.height - rect.height - 1)
 
-# This works because Rect is a ref object
 proc moveRectDelta(rect: Rect, delta: wPoint) =
   rect.x += delta.x
   rect.y += delta.y
@@ -247,9 +246,8 @@ proc boundingBox*(rects: seq[wRect]): wRect =
     bottom = max(bottom, rect.y+rect.height)
   (x:left, y: top, width: right - left, height: bottom - top)
 
-# proc boundingBox*(rects: seq[Rect]): wRect =
-#   # Bbox from a bunch of Rects
-#   boundingBox(wRects(rects))
+proc boundingBox*(rects: seq[Rect]): wRect =
+  boundingBox(rects.wRects)
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect
@@ -258,6 +256,3 @@ proc expand*(rect: wRect, amt: int): wRect =
    width: rect.width + 2*amt,
    height: rect.height + 2*amt)
   
-# proc expand*(rect: Rect, amt: int): wRect =
-#   # Returns expanded wRect from giver Rect
-#   rect.wRect.expand(amt)

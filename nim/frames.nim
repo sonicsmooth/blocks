@@ -13,7 +13,6 @@ import std/sugar
 # TODO: Hover
 # TODO: Figure out invalidate region
 
-
 const
   USER_MOUSE_MOVE = WM_APP + 1
   USER_SIZE       = WM_APP + 2
@@ -117,13 +116,29 @@ wClass(wBlockPanel of wPanel):
         clear_rect_selection(self.mRectTable)
         self.updateBmpCaches(MOUSE_DATA.dirtyIds)
 
-        if true:
+        # Two ways to redraw deselected boxes without
+        # redrawing evenything
+        if false:
           # Let windows accumulate bounding boxes
+          # TODO: figure out how to accumulate regions
+          # Pro: it only redraws the deselected boxes
+          # Con: there may be some chance that onpaint is
+          # called before the refreshed have finished
+          # accumulating the regions
           for rect in dirtyRects:
             self.refresh(false, rect.wRect)
-        else:
-          let bbox = boundingBox(dirtyRects.wRects)
-          self.refresh(false, bbox)
+        elif true:
+          # Add rects that intersect bbox
+          # If you don't do this, then stuff inside
+          # the bbox of the deselected blocks gets ovedrawn
+          # with background.
+          # Pro: This has only one refresh call, so only one paint
+          # Con: This may draw more blocks than have been deselected.
+          let bbox1: wRect = boundingBox(dirtyRects.wRects)
+          let allRects: seq[RectId]  = rectInRects(bbox1, self.mRectTable)
+          let bbox2: wRect = boundingBox(self.mRectTable[allRects])
+          MOUSE_DATA.dirtyIds = allRects
+          self.refresh(false, bbox2)
 
     else: # dragged then released
       MOUSE_DATA.clickHitIds.setLen(0)
