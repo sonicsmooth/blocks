@@ -224,7 +224,7 @@ proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
     rect.x = rand(screenSize.width  - rect.width  - 1)
     rect.y = rand(screenSize.height - rect.height - 1)
 
-proc moveRectDelta(rect: Rect, delta: wPoint) =
+proc moveRectDelta*(rect: Rect, delta: wPoint) =
   rect.x += delta.x
   rect.y += delta.y
   #rect.pos = rect.pos + delta
