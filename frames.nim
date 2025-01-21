@@ -65,7 +65,6 @@ wClass(wBlockPanel of wPanel):
     # mouse moves around, with the currently top-selected rect
     # a the front of the list?
     let hits = ptInRects(event.mousePos, self.mRectTable)
-    echo hits
     if hits.len > 0:
       # Click down on rect
       MOUSE_DATA.hitPos = event.mousePos
@@ -101,6 +100,7 @@ wClass(wBlockPanel of wPanel):
   proc updateBmpCache(self: wBlockPanel, id: RectID)
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID])
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
+    SetFocus(self.mHwnd)
     if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
       if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
@@ -142,10 +142,28 @@ wClass(wBlockPanel of wPanel):
 
     else: # dragged then released
       MOUSE_DATA.clickHitIds.setLen(0)
+  proc onKeyDown(self: wBlockPanel, event: wEvent) = 
+    var delta: wPoint
+    case event.keyCode
+      of wKey_Left:  delta = (-1, 0)
+      of wKey_Up:    delta = (0, -1)
+      of wKey_Right: delta = (1, 0)
+      of wKey_Down:  delta = (0, 1)
+      else: discard
+    for rect in self.mRectTable[SELECTED.toSeq]:
+      let invalid = rect.wRect
+      moveRectDelta(rect, delta)
+    # let bbox1: wRect = boundingBox(dirtyRects.wRects)
+    # let allRects: seq[RectId]  = rectInRects(bbox1, self.mRectTable)
+    # let bbox2: wRect = boundingBox(self.mRectTable[allRects])
+    # MOUSE_DATA.dirtyIds = allRects
+    # self.refresh(false, bbox2)
+
 
   proc rectToBmp(rect: rects.Rect): wBitmap = 
-    # Draw rect and label.  Label gets a shrunk down
-    # rectangle so it doesn't overwrite the border
+    # Draw rect and label onto bitmap; return bitmap.
+    # Label gets a shrunk down rectangle so it 
+    # doesn't overwrite the border
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
     let zeroRect: wRect = (0, 0, rect.width, rect.height)
@@ -238,6 +256,7 @@ wClass(wBlockPanel of wPanel):
     self.wEvent_LeftDown   do (event: wEvent): self.onMouseLeftDown(event)
     self.wEvent_LeftUp     do (event: wEvent): self.onMouseLeftUp(event)
     self.wEvent_Paint      do (event: wEvent): self.onPaint(event)
+    self.wEvent_KeyDown    do (event: wEvent): self.onKeyDown(event)
     self.USER_PAINT_DONE   do (): self.onPaintDone()
 
 
