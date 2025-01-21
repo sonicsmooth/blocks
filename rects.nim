@@ -28,7 +28,7 @@ type
   BottomEdge* = object of HorizEdge
   RightEdge*  = object of VertEdge
 
-proc `[]`*(table: RectTable, idxs: seq[RectID]): seq[Rect] =
+proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[Rect] =
   for idx in idxs:
     result.add(table[idx])
 
@@ -59,7 +59,7 @@ proc `$`*(table: RectTable): string =
 proc wRect*(rect: Rect): wRect =
   (rect.pos.x, rect.pos.y, rect.size.width, rect.size.height)
 
-proc wRects*(rects: seq[Rect]): seq[wRect] =
+proc wRects*(rects: openArray[Rect]): seq[wRect] =
   for rect in rects:
     result.add(rect.wRect)
 
@@ -207,7 +207,7 @@ proc moveRect*(rect: Rect, oldpos, newpos: wPoint) =
   let delta = newpos - oldpos
   moveRectDelta(rect, delta)
 
-proc boundingBox*(rects: seq[wRect]): wRect =
+proc boundingBox*(rects: openArray[wRect]): wRect =
   # Bbox from a bunch of wRects
   var left = rects[0].x
   var top = rects[0].y
@@ -220,7 +220,7 @@ proc boundingBox*(rects: seq[wRect]): wRect =
     bottom = max(bottom, rect.y+rect.height)
   (x:left, y: top, width: right - left, height: bottom - top)
 
-proc boundingBox*(rects: seq[Rect]): wRect =
+proc boundingBox*(rects: openArray[Rect]): wRect =
   # Bbox from a bunch of Rects
   boundingBox(wRects(rects))
 
