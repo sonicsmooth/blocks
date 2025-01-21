@@ -129,17 +129,19 @@ wClass(wBlockPanel of wPanel):
       MOUSE_DATA.clickHitIds.setLen(0)
 
   proc rectToBmp(rect: rects.Rect): wBitmap = 
+    # Draw rect and label.  Label gets a shrunk down
+    # rectangle so it doesn't overwrite the border
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
-    memDC.selectObject(result)
-    memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
-    memDc.setBrush(Brush(rect.brushcolor))
-    memDC.setTextBackground(rect.brushcolor)
-    memDC.drawRectangle((0, 0), rect.size)
-    let labelRect: wRect = (x:0, y:0, width: rect.width, height: rect.size.height)
+    let zeroRect: wRect = (0, 0, rect.width, rect.height)
     var rectstr = $rect.id
     if rect.selected: rectstr &= "*"
-    memDC.drawLabel($rectstr, labelRect, wCenter or wMiddle)
+    memDC.selectObject(result)
+    memDc.setBrush(Brush(rect.brushcolor))
+    memDC.drawRectangle(zeroRect)
+    memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
+    memDC.setTextBackground(rect.brushcolor)
+    memDC.drawLabel($rectstr, zeroRect.expand(-1), wCenter or wMiddle)
 
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Make sure in-mem bitmap is initialized to correct size
