@@ -16,8 +16,6 @@ type
     width*: int
     height*: int
     id*: RectID
-    #pos*: wPoint
-    #size*: wSize
     pencolor*: wColor
     brushcolor*: wColor
     selected*: bool
