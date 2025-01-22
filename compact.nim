@@ -1,9 +1,20 @@
 
 import rects
 
-type Axis* = enum X, Y
+type 
+  Axis* = enum X, Y
+  Node = RectID
+  Weight = int
+  Graph* = HashSet[tuple[frm, to: Node], Weight]
+
+proc makeGraph(rectTable: RectTable, axis: Axis, reverse: bool): Graph =
+  false
+
+proc longestPathBellmanFord(Graph: HashSet[RectID, int]) =
+  discard
 
 proc compact*(rectTable: RectTable, axis: Axis, reverse: bool) = 
-  echo rectTable
-  echo axis
-  echo reverse
+  let graph = makeGraph(rectTable, axis, reverse)
+  let lp = longestPathBellmanFord(graph)
+
+

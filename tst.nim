@@ -1,52 +1,52 @@
 import std/strformat
 import std/tables
 
-type Rect = object
-  x: int
-  y: int
+type 
+  Rect = ref object
+    x: int
+    y: int
+  RectTableStringKey = Table[string, Rect]
+  RefRectTableStringKey = ref Table[string, Rect]
 
-proc `$`(rect: ref Rect): string =
-  inc(rect.x)
-  result = fmt"[{rect.x}, {rect.y}]"
+  MyKeyType = float
+  MyValueType = string
 
-proc `$`(rect: ref Rect, i: int): string =
-  inc(rect.x, i)
-  result = fmt"[{rect.x}, {rect.y}]"
+  XTableYKey = Table[MyKeyType, MyValueType]
+  RefXTableYKey = ref Table[MyKeyType, MyValueType]
 
 
 
-var xx = (ref Rect)(x:15, y:20)
+#var xx = (ref Rect)(x:15, y:20)
 
-type RectTable = Table[string, string]
+# proc `$`(rect: Rect): string =
+#   result = fmt"Rect(x: {rect.x}, y: {rect.y})"
 
-proc `[]`[T](table: T, idxs: seq[string]): seq[string] = 
-  echo table.type
-  for idx in idxs:
-    result.add(table[idx])
+proc `$`[K,V](table: Table[K,V]): string = 
+  result = fmt"hello from $Table[{$K}, {$V}]"
 
-proc `[]`[S](table: Table, idxs: array[S, string]): array[S, string] = 
-  for i,idx in idxs:
-    result[i] = table[idx]
+proc `$`[K,V](table: ref Table[K,V]): string = 
+  result = fmt"hello from $refTable[{$K}, {$V}]"
 
-var tab:RectTable = {"hi":"cat", "bye":"horse"}.toTable()
+var myTable1: RectTableStringKey
+myTable1["one"] = Rect(x:10, y:20)
+myTable1["two"] = Rect(x:15, y:25)
 
-echo tab[@["hi","bye"]]
-echo tab[["hi","bye"]]
+var myTable2: RefRectTableStringKey
+new myTable2
+myTable2["three"] = Rect(x:99, y:100)
+myTable2["four"]  = Rect(x:909, y:109)
 
-# var mRefRectTable: ref RectTable
-# new mRefRectTable
-# mRefRectTable[] = tab
-# # echo mRefRectTable[]
-# # echo type(mRefRectTable)
-# # echo type(mRefRectTable["hi"])
+var myTable3: XTableYKey
+myTable3[3.14159]  = "hello"
+myTable3[2.78183] = "bye"
 
-# var rf = mRefRectTable
-# echo rf
-# rf["hi"] = "monitor"
+var myTable4: RefXTableYKey
+new myTable4
+myTable4[1.2345] = "dog"
+myTable4[9.9998]  = "horse"
 
-# echo mRefRectTable[]
-# echo rf[]
 
-# var bla: array[0,int]
-# if bla.len == 0:
-#   echo "ya"
+echo myTable1
+echo myTable2[]
+echo myTable3
+echo myTable4[]
