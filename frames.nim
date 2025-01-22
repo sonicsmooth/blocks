@@ -1,6 +1,7 @@
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
              wPaintDC, wMemoryDC, wBitmap, wFont]
+from wNim/private/wHelper import `-`
 import std/[bitops, sets, tables]
 from std/sequtils import toSeq
 from std/os import sleep
@@ -9,9 +10,9 @@ import rects
 import std/sugar
 
 # TODO: copy background before move
-# TODO: Intersect bbox with other rects
 # TODO: Hover
 # TODO: Figure out invalidate region
+# Todo: Figure out why z ordering looks weird when moving mouse
 
 const
   USER_MOUSE_MOVE = WM_APP + 1
@@ -63,21 +64,23 @@ wClass(wBlockPanel of wPanel):
     # Redraw what needs to be redrawn
     # This can be done by one of:
     # 1. Do one refresh for each bbox.
-    # 2. Do union of bbox and dirty eveyrthing inside, then one refresh
+    # 2. Do union of bbox and dirty everything inside, then one refresh
     # 3. Redraw everything
     # 4. Render all non-affected blocks as "background" then redraw
     #    just the affected blocks at the new position
 
-    # Here we're doing option 2
+    # Here we're doing option 3.  Too many artifacts otherwise
+    # FIXME: some artifacts when using kb
     let rects = self.mRectTable[rectIDs]
-    let beforeBbox = bounding_box(rects)
+    # let beforeBbox = bounding_box(rects)
     for rect in rects:
       moveRectBy(rect, delta)
-    let afterBbox = bounding_box(rects)
-    let unionBbox = bounding_box(@[beforeBbox, afterBbox])
-    let dirtyIds = rectInRects(unionBbox, self.mRectTable)
-    MOUSE_DATA.dirtyIds = dirtyIds
-    self.refresh(false, unionBbox)
+    # let afterBbox = bounding_box(rects)
+    # let unionBbox = bounding_box(@[beforeBbox, afterBbox])
+    # let dirtyIds = rectInRects(unionBbox, self.mRectTable)
+    # MOUSE_DATA.dirtyIds = dirtyIds
+    # self.refresh(false, unionBbox)
+    self.refresh(false)
 
 
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
@@ -112,18 +115,8 @@ wClass(wBlockPanel of wPanel):
     # Move rect
     # TODO: create new lastPos
     let delta = event.mousePos - MOUSE_DATA.hitPos
-    self.moveRectBy()
-
-    # Move rect
-    let rect = self.mRectTable[hits[^1]]
-    let invalidRect1 = rect.wRect
-    MOUSE_DATA.dirtyIds = rectInRects(rect.wRect, self.mRectTable)
-    moveRect(rect, MOUSE_DATA.hitPos, event.mousePos)
+    self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
-    let invalidRect2 = rect.wRect
-    # Two refreshes to fix error when move event is more than one pixel
-    self.refresh(false, invalidRect1)
-    self.refresh(false, invalidRect2)
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID])
@@ -177,15 +170,8 @@ wClass(wBlockPanel of wPanel):
       of wKey_Up:    delta = (0, -1)
       of wKey_Right: delta = (1, 0)
       of wKey_Down:  delta = (0, 1)
-      else: discard
-    for rect in self.mRectTable[SELECTED.toSeq]:
-      let invalid = rect.wRect
-      moveRectDelta(rect, delta)
-    # let bbox1: wRect = boundingBox(dirtyRects.wRects)
-    # let allRects: seq[RectId]  = rectInRects(bbox1, self.mRectTable)
-    # let bbox2: wRect = boundingBox(self.mRectTable[allRects])
-    # MOUSE_DATA.dirtyIds = allRects
-    # self.refresh(false, bbox2)
+      else: return
+    self.moveRectsBy(SELECTED.toSeq, delta)
 
 
   proc rectToBmp(rect: rects.Rect): wBitmap = 

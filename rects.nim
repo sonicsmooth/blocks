@@ -225,7 +225,6 @@ proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
 proc moveRectBy*(rect: Rect, delta: wPoint) =
   rect.x += delta.x
   rect.y += delta.y
-  #rect.pos = rect.pos + delta
 
 proc moveRect*(rect: Rect, oldpos, newpos: wPoint) = 
   let delta = newpos - oldpos
