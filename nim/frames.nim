@@ -1,13 +1,12 @@
+import std/[bitops, sets, tables, sugar]
+from std/os import sleep
+from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 from wNim/private/wHelper import `-`
-import std/[bitops, sets, tables]
-from std/sequtils import toSeq
-from std/os import sleep
 import winim except RECT
-import rects
-import std/sugar
+import rects, compact
 
 # TODO: copy background before move
 # TODO: Hover
@@ -338,39 +337,59 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonCompact←(self: wMainPanel) =
     echo "←"
+    compact(self.mRectTable, X, false)
 
   proc onButtonCompact→(self: wMainPanel) =
     echo "→"
+    compact(self.mRectTable, X, true)
 
   proc onButtonCompact↑(self: wMainPanel) =
     echo "↑"
+    compact(self.mRectTable, Y, false)
 
   proc onButtonCompact↓(self: wMainPanel) =
     echo "↓"
+    compact(self.mRectTable, Y, true)
 
   proc onButtonCompact←↑(self: wMainPanel) =
     echo "←↑"
+    compact(self.mRectTable, X, false)
+    compact(self.mRectTable, Y, false)
 
   proc onButtonCompact←↓(self: wMainPanel) =
     echo "←↓"
+    compact(self.mRectTable, X, false)
+    compact(self.mRectTable, Y, true)
 
   proc onButtonCompact→↑(self: wMainPanel) =
     echo "→↑"
+    compact(self.mRectTable, X, true)
+    compact(self.mRectTable, Y, false)
 
   proc onButtonCompact→↓(self: wMainPanel) =
     echo "→↓"
+    compact(self.mRectTable, X, true)
+    compact(self.mRectTable, Y, true)
 
   proc onButtonCompact↑←(self: wMainPanel) =
     echo "↑←"
+    compact(self.mRectTable, Y, false)
+    compact(self.mRectTable, X, false)
 
   proc onButtonCompact↑→(self: wMainPanel) =
     echo "↑→"
+    compact(self.mRectTable, Y, false)
+    compact(self.mRectTable, X, true)
 
   proc onButtonCompact↓←(self: wMainPanel) =
     echo "↓←"
+    compact(self.mRectTable, Y, true)
+    compact(self.mRectTable, X, false)
 
   proc onButtonCompact↓→(self: wMainPanel) =
     echo "↓→"
+    compact(self.mRectTable, Y, true)
+    compact(self.mRectTable, X, true)
 
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)
