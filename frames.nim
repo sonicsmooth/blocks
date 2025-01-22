@@ -57,6 +57,29 @@ wClass(wBlockPanel of wPanel):
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
 
+  proc moveRectsBy(self: wBlockPanel, rectIds: openArray[RectID], delta: wPoint) =
+    # Common proc to move one or more Rects; used by mouse and keyboard
+    # Determine bounding boxes before and after the move.
+    # Redraw what needs to be redrawn
+    # This can be done by one of:
+    # 1. Do one refresh for each bbox.
+    # 2. Do union of bbox and dirty eveyrthing inside, then one refresh
+    # 3. Redraw everything
+    # 4. Render all non-affected blocks as "background" then redraw
+    #    just the affected blocks at the new position
+
+    # Here we're doing option 2
+    let rects = self.mRectTable[rectIDs]
+    let beforeBbox = bounding_box(rects)
+    for rect in rects:
+      moveRectBy(rect, delta)
+    let afterBbox = bounding_box(rects)
+    let unionBbox = bounding_box(@[beforeBbox, afterBbox])
+    let dirtyIds = rectInRects(unionBbox, self.mRectTable)
+    MOUSE_DATA.dirtyIds = dirtyIds
+    self.refresh(false, unionBbox)
+
+
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
     MOUSE_DATA.clickpos = event.mousePos
     # This captures all rects under mousept and keeps them
@@ -85,7 +108,12 @@ wClass(wBlockPanel of wPanel):
     let hits = MOUSE_DATA.clickHitIds
     if hits.len == 0: # Just moving around the screen
       return
-    
+
+    # Move rect
+    # TODO: create new lastPos
+    let delta = event.mousePos - MOUSE_DATA.hitPos
+    self.moveRectBy()
+
     # Move rect
     let rect = self.mRectTable[hits[^1]]
     let invalidRect1 = rect.wRect
@@ -100,7 +128,7 @@ wClass(wBlockPanel of wPanel):
   proc updateBmpCache(self: wBlockPanel, id: RectID)
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID])
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
-    SetFocus(self.mHwnd)
+    SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
       if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
         let lastHitId = MOUSE_DATA.clickHitIds[^1]

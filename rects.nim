@@ -177,6 +177,8 @@ proc rectInRects*(rect: wRect, table: RectTable): seq[RectID] =
   # Return seq of Rect IDs from table that intersect rect
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
+  # Or rect is a bounding box and we're looking for where 
+  # it touches other blocks
   for id, tabRect in table:
     if isRectInRect(rect, tabRect.wRect) or 
        isRectOverRect(rect, tabRect.wRect):
@@ -220,14 +222,14 @@ proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
     rect.x = rand(screenSize.width  - rect.width  - 1)
     rect.y = rand(screenSize.height - rect.height - 1)
 
-proc moveRectDelta*(rect: Rect, delta: wPoint) =
+proc moveRectBy*(rect: Rect, delta: wPoint) =
   rect.x += delta.x
   rect.y += delta.y
   #rect.pos = rect.pos + delta
 
 proc moveRect*(rect: Rect, oldpos, newpos: wPoint) = 
   let delta = newpos - oldpos
-  moveRectDelta(rect, delta)
+  moveRectBy(rect, delta)
 
 proc boundingBox*(rects: openArray[wRect]): wRect =
   # Bbox from a bunch of wRects
@@ -247,6 +249,8 @@ proc boundingBox*(rects: openArray[Rect]): wRect =
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect
+  # if amt > 0 then returned wRect is bigger than rect
+  # if amt < 0 then return wRect is smaller than rect
   (x: rect.x - amt,
    y: rect.y - amt,
    width: rect.width + 2*amt,
