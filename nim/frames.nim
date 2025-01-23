@@ -19,10 +19,10 @@ const
   USER_PAINT_DONE = WM_APP + 3
 
 var 
-  MOUSE_DATA: tuple[clickHitIds: seq[RectID],
-                    dirtyIds: seq[RectID],
-                    hitPos: wPoint,
-                    clickpos: wPoint,
+  MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
+                    dirtyIds:     seq[RectID],
+                    hitPos:       wPoint,
+                    clickpos:     wPoint,
                     clearStarted: bool]
   SELECTED: HashSet[RectID]
 
@@ -130,7 +130,9 @@ wClass(wBlockPanel of wPanel):
         self.refresh(false, self.mRectTable[lastHitId].wRect)
       elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
         # Remember selected rects, deselect, redraw
-        if SELECTED.len == 0: return
+        if SELECTED.len == 0:
+          MOUSE_DATA.clearStarted = false
+          return
         MOUSE_DATA.dirtyIds = SELECTED.toSeq
         let dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
         clear_rect_selection(self.mRectTable)
@@ -162,6 +164,7 @@ wClass(wBlockPanel of wPanel):
 
     else: # dragged then released
       MOUSE_DATA.clickHitIds.setLen(0)
+      MOUSE_DATA.clearStarted = false
   proc onKeyDown(self: wBlockPanel, event: wEvent) = 
     var delta: wPoint
     case event.keyCode
@@ -215,7 +218,6 @@ wClass(wBlockPanel of wPanel):
       self.mMemDc.drawRectangle(clipRect2)
 
     # Blend cached bitmaps
-    #echo "Drawing ", MOUSE_DATA.dirtyIds
     for rect in dirtyRects:
       self.mBmpDc.selectObject(self.mCachedBmps[rect.id][])
       AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
@@ -337,59 +339,71 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonCompact←(self: wMainPanel) =
     echo "←"
-    compact(self.mRectTable, X, false)
+    compact(self.mRectTable, X, false, self.size)
+    self.refresh(false)
 
   proc onButtonCompact→(self: wMainPanel) =
     echo "→"
-    compact(self.mRectTable, X, true)
+    compact(self.mRectTable, X, true, self.size)
+    self.refresh(false)
 
   proc onButtonCompact↑(self: wMainPanel) =
     echo "↑"
-    compact(self.mRectTable, Y, false)
+    compact(self.mRectTable, Y, false, self.size)
+    self.refresh(false)
 
   proc onButtonCompact↓(self: wMainPanel) =
     echo "↓"
-    compact(self.mRectTable, Y, true)
+    compact(self.mRectTable, Y, true, self.size)
+    self.refresh(false)
 
   proc onButtonCompact←↑(self: wMainPanel) =
     echo "←↑"
-    compact(self.mRectTable, X, false)
-    compact(self.mRectTable, Y, false)
+    compact(self.mRectTable, X, false, self.size)
+    compact(self.mRectTable, Y, false, self.size)
+    self.refresh(false)
 
   proc onButtonCompact←↓(self: wMainPanel) =
     echo "←↓"
-    compact(self.mRectTable, X, false)
-    compact(self.mRectTable, Y, true)
+    compact(self.mRectTable, X, false, self.size)
+    compact(self.mRectTable, Y, true, self.size)
+    self.refresh(false)
 
   proc onButtonCompact→↑(self: wMainPanel) =
     echo "→↑"
-    compact(self.mRectTable, X, true)
-    compact(self.mRectTable, Y, false)
+    compact(self.mRectTable, X, true, self.size)
+    compact(self.mRectTable, Y, false, self.size)
+    self.refresh(false)
 
   proc onButtonCompact→↓(self: wMainPanel) =
     echo "→↓"
-    compact(self.mRectTable, X, true)
-    compact(self.mRectTable, Y, true)
+    compact(self.mRectTable, X, true, self.size)
+    compact(self.mRectTable, Y, true, self.size)
+    self.refresh(false)
 
   proc onButtonCompact↑←(self: wMainPanel) =
     echo "↑←"
-    compact(self.mRectTable, Y, false)
-    compact(self.mRectTable, X, false)
+    compact(self.mRectTable, Y, false, self.size)
+    compact(self.mRectTable, X, false, self.size)
+    self.refresh(false)
 
   proc onButtonCompact↑→(self: wMainPanel) =
     echo "↑→"
-    compact(self.mRectTable, Y, false)
-    compact(self.mRectTable, X, true)
+    compact(self.mRectTable, Y, false, self.size)
+    compact(self.mRectTable, X, true, self.size)
+    self.refresh(false)
 
   proc onButtonCompact↓←(self: wMainPanel) =
     echo "↓←"
-    compact(self.mRectTable, Y, true)
-    compact(self.mRectTable, X, false)
+    compact(self.mRectTable, Y, true, self.size)
+    compact(self.mRectTable, X, false, self.size)
+    self.refresh(false)
 
   proc onButtonCompact↓→(self: wMainPanel) =
     echo "↓→"
-    compact(self.mRectTable, Y, true)
-    compact(self.mRectTable, X, true)
+    compact(self.mRectTable, Y, true, self.size)
+    compact(self.mRectTable, X, true, self.size)
+    self.refresh(false)
 
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)

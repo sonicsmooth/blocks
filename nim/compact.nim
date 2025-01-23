@@ -1,20 +1,61 @@
-
+import std/[tables, algorithm, sugar]
+import wnim/wTypes
 import rects
 
 type 
   Axis* = enum X, Y
   Node = RectID
   Weight = int
-  Graph* = HashSet[tuple[frm, to: Node], Weight]
+  Graph* = Table[tuple[frm, to: Node], Weight]
+  Line = Tuple[edge: Edge, top: seq[RectID], mid: seq[RectID], ]
+
+type RectCmpType = proc(r1, r2: Rect): int
+proc RectCmpX(r1, r2: Rect): int = cmp(r1.x, r2.x)
+proc RectCmpY(r1, r2: Rect): int = cmp(r1.y, r2.y)
+proc RectCmpW(r1, r2: Rect): int = cmp(r1.width, r2.width)
+proc RectCmpH(r1, r2: Rect): int = cmp(r1.height, r2.height)
+
+proc sortRects(rects: openArray[Rect],
+               ids: seq[RectID],
+               rectCmp: RectCmpType): seq[RectID] =
+  var chosenRects: seq[Rect]
+  for rect in rects: 
+    if rect.id in ids: 
+      chosenRects.add(rect)
+  chosenRects.sort(rectCmp)
+  for rect in chosenRects:
+    result.add(rect.id)
+
+proc composeGraph()
+
+
 
 proc makeGraph(rectTable: RectTable, axis: Axis, reverse: bool): Graph =
-  false
+  result = { ("1", "2"): 100,
+             ("3", "4"): 200 }.toTable
+  
 
-proc longestPathBellmanFord(Graph: HashSet[RectID, int]) =
-  discard
+proc longestPathBellmanFord(graph: Graph): Table[RectID, Weight] =
+  result = { "1":  0, "2": 10, "3": 20, "4": 30,  "5": 40,
+             "6": 50, "7": 60, "8": 70, "9": 80, "10": 90 }.toTable
 
-proc compact*(rectTable: RectTable, axis: Axis, reverse: bool) = 
+proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize) = 
   let graph = makeGraph(rectTable, axis, reverse)
   let lp = longestPathBellmanFord(graph)
+  if axis == X and not reverse:
+    for id, rect in rectTable:
+      echo id
+      rect.x = lp[id]
+  elif axis == X and reverse:
+    for id, rect in rectTable:
+      rect.x = clientSize.width - lp[id]
+  elif axis == Y and not reverse:
+    for id, rect in rectTable:
+      rect.y = lp[id]
+  elif axis == Y and reverse:
+    for id, rect in rectTable:
+      rect.y = clientSize.height - lp[id]
+
+
 
 
