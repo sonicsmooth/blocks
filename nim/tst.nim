@@ -45,8 +45,16 @@ new myTable4
 myTable4[1.2345] = "dog"
 myTable4[9.9998]  = "horse"
 
+type 
+  Field = enum NAME, AGE, HEIGHT
+  MyPerson = tuple[name: string, age: int, height: int]
 
-echo myTable1
-echo myTable2[]
-echo myTable3
-echo myTable4[]
+proc getField(x: MyPerson, field: Field): int =
+  case field
+    of AGE: x.age
+    of HEIGHT: x.height
+    else: 0
+
+let myvar: MyPerson = ("what", 10, 45)
+let myf1 = (field: AGE)
+echo myvar.getField(myf1.field)
