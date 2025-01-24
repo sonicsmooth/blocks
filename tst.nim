@@ -49,11 +49,17 @@ type
   Field = enum NAME, AGE, HEIGHT
   MyPerson = tuple[name: string, age: int, height: int]
 
-proc getField(x: MyPerson, field: Field): int =
+import std/typetraits
+proc getField(x: tuple, field: Field): int =
+  echo typedesc(x)
+  echo type(x)
+  echo distinctBase(x)
+  echo genericParams(x)
+  var junk = 0
   case field
     of AGE: x.age
     of HEIGHT: x.height
-    else: 0
+    else: junk
 
 let myvar: MyPerson = ("what", 10, 45)
 let myf1 = (field: AGE)

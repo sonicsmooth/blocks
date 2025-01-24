@@ -10,12 +10,11 @@ type
   Weight = int
   GraphEdge = tuple[frm, to: Node]
   Graph* = Table[GraphEdge, Weight]
-  ScanEdgeType = enum Top, Bot
-  ScanFieldType = enum Top, Mid, Bot
-  ScanEdge = tuple[id: RectID, pos: int, etype: ScanEdgeType]
-  ScanLine = tuple[pos: int, 
-                   top: seq[RectID], 
-                   mid: seq[RectID], 
+  ScanType = enum Top, Mid, Bot
+  ScanEdge = tuple[id: RectID, pos: int, etype: ScanType]
+  ScanLine = tuple[pos: int,        
+                   top: seq[RectID],
+                   mid: seq[RectID],
                    bot: seq[RectID],
                    sorted: seq[RectID]]
 
@@ -38,17 +37,17 @@ proc sortRects(rects: openArray[Rect],
   for rect in chosenRects:
     result.add(rect.id)
 
-proc getField(line: ScanLine, field: ScanFieldType): seq[RectId] =
+proc getField(line: ScanLine, field: ScanType): seq[RectId] =
   case field
     of Top: line.top
     of Mid: line.mid
     of Bot: line.bot
 
-proc setField(var line: ScanLine, field: ScanFieldType, val: seq[RectId]) =
+proc setField(var line: ScanLine, field: ScanType, val) =
   case field
-    of Top: line.top
-    of Mid: line.mid
-    of Bot: line.bot
+    of Top: line.top = val
+    of Mid: line.mid = val
+    of Bot: line.bot = val
 
 type DimGetter = proc(node: Node): int
 proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
@@ -110,9 +109,9 @@ proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
 
   # Prime everything with first edge
   var edge: ScanEdge  = edges[0]
-  var line: ScanLine = (pos: edge.pos, 
-                        top: @[], mid: @[], bot: @[], 
-                        sorted: @[edge.id])
+  #var line: ScanLine # = {pos: edge.pos, 
+                     #   top: @[], mid: @[], bot: @[], 
+                     #   sorted: @[edge.id]}.toTable
 
 
 
