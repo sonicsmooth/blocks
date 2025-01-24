@@ -1,14 +1,17 @@
 import std/[tables, algorithm, sugar]
+from sequtils import concat
 import wnim/wTypes
 import rects
 
 type 
   Axis* = enum X=true, Y=false
+  MajMin = enum Major=true, Minor=false
   Node = RectID
   Weight = int
   GraphEdge = tuple[frm, to: Node]
   Graph* = Table[GraphEdge, Weight]
   ScanEdgeType = enum Top, Bot
+  ScanFieldType = enum Top, Mid, Bot
   ScanEdge = tuple[id: RectID, pos: int, etype: ScanEdgeType]
   ScanLine = tuple[pos: int, 
                    top: seq[RectID], 
@@ -35,6 +38,17 @@ proc sortRects(rects: openArray[Rect],
   for rect in chosenRects:
     result.add(rect.id)
 
+proc getField(line: ScanLine, field: ScanFieldType): seq[RectId] =
+  case field
+    of Top: line.top
+    of Mid: line.mid
+    of Bot: line.bot
+
+proc setField(var line: ScanLine, field: ScanFieldType, val: seq[RectId]) =
+  case field
+    of Top: line.top
+    of Mid: line.mid
+    of Bot: line.bot
 
 type DimGetter = proc(node: Node): int
 proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
@@ -53,35 +67,53 @@ proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
   let getDim = MakeDimGetter(rectTable, axis)
   var src: Node
   for line in lines:
-    src = "0"
+    src = ROOTNODE
     for dst in line.sorted:
-      if dst in line.bot:
-        continue
+      if dst in line.bot: continue
       if (src, dst) notin result:
         result[(src, dst)] = if reverse: dst.getDim else: src.getDim
       src = dst
 
-    src = "0"
+    src = ROOTNODE
     for dst in line.sorted:
-      if dst in line.top:
-        continue
+      if dst in line.top: continue
       if (src, dst) notin result:
         result[(src, dst)] = if reverse: dst.getDim else: src.getDim
       src = dst
+
+proc PosChooser(ax: MajMin): proc(rect: Rect): int =
+  if ax == Major:
+    proc(rect: Rect): int =  rect.x
+  else:
+    proc(rect: Rect): int =  rect.y
+
+proc SizeChooser(ax: MajMin): proc(rect: Rect): int =
+  if ax == Major:
+    proc(rect: Rect): int = rect.width
+  else:
+    proc(rect: Rect): int = rect.height
+
 
 proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
-  if axis == X:
-    let primPos = proc(rect: Rect): int = rect.x
-    let primSz  = proc(rect: Rect): int = rect.width
-    let SecPos  = proc(rect: Rect): int = rect.y
-    let SecSz   = proc(rect: Rect): int = rect.height
-  elif axis == Y:
-    let primPos = proc(rect: Rect): int = rect.y
-    let primSz  = proc(rect: Rect): int = rect.height
-    let SecPos  = proc(rect: Rect): int = rect.y
-    let SecSz   = proc(rect: Rect): int = rect.width
-  let topEdges: seq[ScanEdge] = collect(for rect in rectTable.values:
-    [rect.id, rect.secPos+rect.secSz, Top])
+  let 
+    PrimPos = PosChooser(Major)
+    PrimSz  = SizeChooser(Major)
+    SecPos  = PosChooser(Minor)
+    SecSz   = PosChooser(Minor)
+    topEdges: seq[ScanEdge] = 
+      collect(for rect in rectTable.values:
+        (id: rect.id, pos: rect.SecPos, etype: Top))
+    botEdges: seq[ScanEdge] = 
+      collect(for rect in rectTable.values:
+        (id: rect.id, pos: rect.SecPos + rect.SecSz, etype: Bot))
+    edges: seq[ScanEdge] = concat(topEdges, botEdges)
+
+  # Prime everything with first edge
+  var edge: ScanEdge  = edges[0]
+  var line: ScanLine = (pos: edge.pos, 
+                        top: @[], mid: @[], bot: @[], 
+                        sorted: @[edge.id])
+
 
 
 
