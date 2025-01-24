@@ -35,60 +35,54 @@ proc sortRects(rects: openArray[Rect],
   for rect in chosenRects:
     result.add(rect.id)
 
-# type RectGetter = proc(rect: Rect): int
-# proc MakeDimGetter(axis: Axis): RectGetter =
-#   if axis == X:
-#     result = proc(rect: Rect): int = rect.width
-#   elif axis == Y:
-#     result = proc(rect: Rect): int = rect.height
 
-type DimGetter2 = proc(node: Node): int
-proc MakeDimGetter2(rectTable: RectTable, axis: Axis): DimGetter2 =
+type DimGetter = proc(node: Node): int
+proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
   if axis == X:
     proc(node: Node): int =
-      #if node in rectTable:
       if node != ROOTNODE:
         result = rectTable[node].width
   else: # axis == Y:
     proc(node: Node): int =
-      #if node in rectTable:
       if node != ROOTNODE:
         result = rectTable[node].height
 
 
-# TODO: fix MakeDimGetter so it checks if src in rectTable else 0, etc.
-proc ComposeGraph(lines: seq[ScanLine], 
-                  rectTable: RectTable,
-                  axis: Axis, 
-                  reverse: bool): Graph = 
-  #let wh = MakeDimGetter(axis)
-  let getDim = MakeDimGetter2(rectTable, axis)
+proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
+                  axis: Axis, reverse: bool): Graph = 
+  let getDim = MakeDimGetter(rectTable, axis)
+  var src: Node
   for line in lines:
-    var src: Node = "0"
+    src = "0"
     for dst in line.sorted:
       if dst in line.bot:
         continue
-      let ge: GraphEdge = (src, dst)
-      if ge notin result:
-        if not reverse:
-          result[ge] = src.getDim #if src in rectTable: rectTable[src].wh else: 0
-        else:
-          result[ge] = dst.getDim #if dst in rectTable: rectTable[dst].wh else: 0
+      if (src, dst) notin result:
+        result[(src, dst)] = if reverse: dst.getDim else: src.getDim
       src = dst
+
     src = "0"
     for dst in line.sorted:
       if dst in line.top:
         continue
-      let ge: GraphEdge = (src, dst)
-      if ge notin result:
-        if not reverse:
-          result[ge] = src.getDim #if src in rectTable: rectTable[src].wh else: 0
-        else:
-          result[ge] = dst.getDim #if dst in rectTable: rectTable[dst].wh else: 0
+      if (src, dst) notin result:
+        result[(src, dst)] = if reverse: dst.getDim else: src.getDim
       src = dst
 
-proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[Lines] =
-  discarde
+proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
+  if axis == X:
+    let primPos = proc(rect: Rect): int = rect.x
+    let primSz  = proc(rect: Rect): int = rect.width
+    let SecPos  = proc(rect: Rect): int = rect.y
+    let SecSz   = proc(rect: Rect): int = rect.height
+  elif axis == Y:
+    let primPos = proc(rect: Rect): int = rect.y
+    let primSz  = proc(rect: Rect): int = rect.height
+    let SecPos  = proc(rect: Rect): int = rect.y
+    let SecSz   = proc(rect: Rect): int = rect.width
+  let topEdges: seq[ScanEdge] = collect(for rect in rectTable.values:
+    [rect.id, rect.secPos+rect.secSz, Top])
+
 
 
 proc MakeGraph(rectTable: RectTable, axis: Axis, reverse: bool): Graph =
@@ -103,7 +97,7 @@ proc longestPathBellmanFord(graph: Graph): Table[RectID, Weight] =
              "6": 50, "7": 60, "8": 70, "9": 80, "10": 90 }.toTable
 
 proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize) = 
-  let graph = makeGraph(rectTable, axis, reverse)
+  let graph = MakeGraph(rectTable, axis, reverse)
   let lp = longestPathBellmanFord(graph)
   if axis == X and not reverse:
     for id, rect in rectTable:
