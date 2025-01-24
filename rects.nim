@@ -30,6 +30,7 @@ type
   BottomEdge* = object of HorizEdge
   RightEdge*  = object of VertEdge
 
+
 proc `$`*(r: Rect): string =
   result =
     "{id: \"" & r.id & "\", " &
