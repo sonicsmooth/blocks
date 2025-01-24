@@ -8,7 +8,7 @@ from pprint import pprint
 def sort_rects(rects, ids, keyfn, reverse=False):
     # from list of rects, select ids and sort 
     # using keyfn ascending or descending
-    # return sorted ids
+    # return list of sorted ids
     chosen_rects = [r for r in rects if r['id'] in ids]
     sorted_rects = sorted(chosen_rects, key=keyfn, reverse=reverse)
     sorted_ids = [r['id'] for r in sorted_rects]
@@ -129,7 +129,7 @@ def scanlines(rects, axis, reverse=False):
 
 def make_graph(rects, axis, reverse=False):
     # Returns DAG = {(from_node, to_node): weight, ...}
-    # rects is db of rectangles
+    # rects is list of rectangles
     # axis is either 'x' or 'y'
     # reverse puts blocks to the right (if 'x') or bottom (if 'y')
     lines = scanlines(rects, axis, reverse)
