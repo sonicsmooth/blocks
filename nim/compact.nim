@@ -1,5 +1,6 @@
-import std/[tables, algorithm, sugar]
-from sequtils import concat, delete
+import std/[tables, sets, algorithm]
+from std/sugar import collect
+from sequtils import concat, delete, toSeq
 import wnim/wTypes
 import rects
 
@@ -28,18 +29,12 @@ proc RectCmpY(r1, r2: Rect): int = cmp(r1.y, r2.y)
 proc SortedRectsIds(rects: seq[Rect], axis: Axis, reverse: bool): seq[RectID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
-  let order = if reverse: Ascending else: Descending
+  let order = if reverse: Descending else: Ascending
   if axis == X:
     tmpRects.sort(RectCmpX, order)
   else:
     tmpRects.sort(RectCmpY, order)
-  result = rects.ids
-
-# proc getField[T](line: ScanLine, field: ScanType): T =
-#   case field
-#     of Top: line.top
-#     of Mid: line.mid
-#     of Bot: line.bot
+  result = tmpRects.ids
 
 proc setField[T](line: var ScanLine, field: ScanType, val: T) =
   case field
@@ -97,10 +92,7 @@ proc SizeChooser(ax: MajMin): proc(rect: Rect): int =
 
 proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
   let 
-    #major = if axis==X: Major else: Minor
     minor = if axis==X: Minor else: Major
-    #PrimPos = PosChooser(Major)
-    #PrimSz  = SizeChooser(Major)
     SecPos  = PosChooser(minor)
     SecSz   = SizeChooser(minor)
     topEdges: seq[ScanEdge] = 
@@ -110,7 +102,7 @@ proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
       collect(for rect in rectTable.values:
         (id: rect.id, pos: rect.SecPos + rect.SecSz, etype: Bot))
     edges: seq[ScanEdge] = concat(topEdges, botEdges).sortedByIt(it.pos)
-
+  
   # Prime everything with first edge
   var edge: ScanEdge  = edges[0]
   var line: ScanLine  = (pos: edge.pos, 
@@ -121,8 +113,7 @@ proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
 
   # Go through each edge
   # Push accumulated line when next line detected
-  #var lines: newSeq[ScanLine]
-  for edge in edges[1..high(edges)]:
+  for i, edge in edges[1..high(edges)]:
     if edge.pos > lastpos: # down one edge
       result.add(line)
       line.pos = edge.pos
@@ -142,30 +133,41 @@ proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
     if line.bot.len > 1:
       line.bot = SortedRectsIds(rectTable[line.bot], axis, reverse)
     lastpos = edge.pos
-    result.add(line)
-    
-
-
-
-
+  result.add(line)
 
 proc MakeGraph*(rectTable: RectTable, axis: Axis, reverse: bool): Graph =
+  # Returns DAG = table((frm,to): weight)
+  # rectTable is table of rects
+  # axis is X or Y
+  # reverse is left/up or down/right
   let lines = ScanLines(rectTable, axis, reverse)
-  echo ""
-  for line in lines:
-    echo line
   result = ComposeGraph(lines, rectTable, axis, reverse)
-  # result = { ("1", "2"): 100,
-  #            ("3", "4"): 200 }.toTable
   
+# proc NodeSet(graph: Graph): HashSet[Node] =
+#   for edge in graph.keys:
+#     result.incl(edge.frm)
+#     result.incl(edge.to)
 
-proc longestPathBellmanFord(graph: Graph): Table[RectID, Weight] =
-  result = { "1":  0, "2": 10, "3": 20, "4": 30,  "5": 40,
-             "6": 50, "7": 60, "8": 70, "9": 80, "10": 90 }.toTable
+proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node]): Table[RectID, Weight] =
+  for node in nodes:
+    result[node] = Weight.low
+  result[ROOTNODE] = 0
+
+  for iter in 1..nodes.len:
+    for edge, weight in graph:
+      let frm = edge[0]
+      let to = edge[1]
+      if result[frm] == Weight.low:
+        continue
+      result[to] = max(result[to], result[frm] + weight)
+  result.del(ROOTNODE)
+  echo result
 
 proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize) = 
+  echo clientSize
   let graph = MakeGraph(rectTable, axis, reverse)
-  let lp = longestPathBellmanFord(graph)
+  let nodes = rectTable.values.toSeq.ids
+  let lp = longestPathBellmanFord(graph, nodes)
   if axis == X and not reverse:
     for id, rect in rectTable:
       rect.x = lp[id]

@@ -342,70 +342,70 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonCompact←(self: wMainPanel) =
     echo "←"
-    compact(self.mRectTable, X, false, self.size)
+    compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact→(self: wMainPanel) =
     echo "→"
-    compact(self.mRectTable, X, true, self.size)
+    compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact↑(self: wMainPanel) =
     echo "↑"
-    compact(self.mRectTable, Y, false, self.size)
+    compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact↓(self: wMainPanel) =
     echo "↓"
-    compact(self.mRectTable, Y, true, self.size)
+    compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact←↑(self: wMainPanel) =
     echo "←↑"
-    compact(self.mRectTable, X, false, self.size)
-    compact(self.mRectTable, Y, false, self.size)
+    compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact←↓(self: wMainPanel) =
     echo "←↓"
-    compact(self.mRectTable, X, false, self.size)
-    compact(self.mRectTable, Y, true, self.size)
+    compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact→↑(self: wMainPanel) =
     echo "→↑"
-    compact(self.mRectTable, X, true, self.size)
-    compact(self.mRectTable, Y, false, self.size)
+    compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact→↓(self: wMainPanel) =
     echo "→↓"
-    compact(self.mRectTable, X, true, self.size)
-    compact(self.mRectTable, Y, true, self.size)
+    compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact↑←(self: wMainPanel) =
     echo "↑←"
-    compact(self.mRectTable, Y, false, self.size)
-    compact(self.mRectTable, X, false, self.size)
+    compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact↑→(self: wMainPanel) =
     echo "↑→"
-    compact(self.mRectTable, Y, false, self.size)
-    compact(self.mRectTable, X, true, self.size)
+    compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact↓←(self: wMainPanel) =
     echo "↓←"
-    compact(self.mRectTable, Y, true, self.size)
-    compact(self.mRectTable, X, false, self.size)
+    compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc onButtonCompact↓→(self: wMainPanel) =
     echo "↓→"
-    compact(self.mRectTable, Y, true, self.size)
-    compact(self.mRectTable, X, true, self.size)
+    compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
+    compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
     self.refresh(false)
 
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
