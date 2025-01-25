@@ -1,5 +1,5 @@
 import std/[bitops, sets, tables, sugar]
-from std/os import sleep
+#from std/os import sleep
 from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
@@ -116,6 +116,9 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
+    let graph = MakeGraph(self.mRectTable, X, false)
+    #echo graph
+
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID])
@@ -471,7 +474,10 @@ wClass(wMainFrame of wFrame):
     self.mStatusBar.setStatusText($sz, index=1)
 
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
-    self.mStatusBar.setStatusText($event.mouseScreenPos, 2)
+    let lo_word:int = event.getlParam.bitand(0x0000_ffff)
+    let hi_word:int = event.getlParam.bitand(0xffff_0000).shr(16)
+    let mousePos: wPoint = (lo_word, hi_word)
+    self.mStatusBar.setStatusText($mousePos, 2)
 
   proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: var RectTable) = 
     wFrame(self).init(title="Blocks Frame")
