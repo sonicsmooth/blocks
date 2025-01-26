@@ -16,7 +16,7 @@ MOUSE_DATA = {} # 'ids', 'lastpos'
 SELECTED = set()
 WRANGE = [25, 50]
 HRANGE = [25, 50]
-QTY = 50
+QTY = 1000
 
 Point = namedtuple('Point', ['x', 'y'])
 Size = namedtuple('Size', ['w', 'h'])

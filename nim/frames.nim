@@ -117,7 +117,6 @@ wClass(wBlockPanel of wPanel):
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
     let graph = MakeGraph(self.mRectTable, X, false)
-    #echo graph
 
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
