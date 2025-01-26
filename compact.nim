@@ -161,10 +161,8 @@ proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node]): Table[RectID,
         continue
       result[to] = max(result[to], result[frm] + weight)
   result.del(ROOTNODE)
-  echo result
 
 proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize) = 
-  echo clientSize
   let graph = MakeGraph(rectTable, axis, reverse)
   let nodes = rectTable.values.toSeq.ids
   let lp = longestPathBellmanFord(graph, nodes)
