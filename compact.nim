@@ -19,7 +19,7 @@ type
                    bot: seq[RectID],
                    sorted: seq[RectID]]
 
-const ROOTNODE: Node = "0"
+const ROOTNODE = when RectID is string: "0" else: 0
 
 proc RectCmpX(r1, r2: Rect): int = cmp(r1.x, r2.x)
 proc RectCmpY(r1, r2: Rect): int = cmp(r1.y, r2.y)
