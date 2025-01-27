@@ -1,4 +1,5 @@
 import std/[random, tables, strformat]
+import strutils
 import wNim/[wTypes]
 import wNim/private/wHelper
 export tables
@@ -9,7 +10,7 @@ const
   QTY* = 500
 
 type 
-  RectID* = string
+  RectID* = uint
   Rect* = ref object
     x*: int
     y*: int
@@ -33,7 +34,7 @@ type
 
 proc `$`*(r: Rect): string =
   result =
-    "{id: \"" & r.id & "\", " &
+    "{id: \"" & $r.id & "\", " &
     "x: " & $r.x & ", " &
     "y: " & $r.y & ", " &
     "width: " & $r.width & ", " &
@@ -187,6 +188,28 @@ proc rectInRects*(rectId: RectID, table: RectTable): seq[RectID] =
   rectInRects(table[rectId].wRect, table)
 
 
+proc toRectId(id: int): RectId =
+  when RectId is int:    result = id.int
+  elif RectId is int16:  result = id.int16 
+  elif RectId is int32:  result = id.int32 
+  elif RectId is int64:  result = id.int64
+  elif RectId is uint:   result = id.uint 
+  elif RectId is uint16: result = id.uint16 
+  elif RectId is uint32: result = id.uint32 
+  elif RectId is uint64: result = id.uint64
+  elif RectId is string: result = $id
+ 
+proc toRectId(id: string): RectId =
+  when RectId is int:    result = id.parseInt.int
+  elif RectId is int16:  result = id.parseInt.int16 
+  elif RectId is int32:  result = id.parseInt.int32
+  elif RectId is int64:  result = id.parseInt.int64
+  elif RectId is uint:   result = id.parseInt.uint
+  elif RectId is uint16: result = id.parseInt.uint16 
+  elif RectId is uint32: result = id.parseInt.uint32
+  elif RectId is uint64: result = id.parseInt.uint64
+  elif RectId is string: result = id
+
 
 proc RandRect(id: RectID, screenSize: wSize): Rect = 
   let rectSizeW: int = rand(WRANGE)
@@ -212,7 +235,7 @@ proc RandRect(id: RectID, screenSize: wSize): Rect =
 proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
   table.clear()
   for i in 1..qty:
-    let rect = RandRect($i, size)
+    let rect = RandRect(toRectId(i), size)
     table[rect.id] = rect
     #table.add(RandRect($i, size))
 

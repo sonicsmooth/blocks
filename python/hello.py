@@ -108,32 +108,33 @@ def init_rects(maxx, maxy):
     rects = Rects()
     #r3(rects)
     for id in range(1, QTY+1):
-        strid = str(id)
-        rects[strid] = randrect(strid, maxx, maxy)
+        #strid = str(id)
+        #rects[strid] = randrect(strid, maxx, maxy)
+        rects[id] = randrect(id, maxx, maxy)
     return rects
 
 def r1(rects):
     # Set up rects like in scanline comments
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':'4', 'pos':Point(80,10), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'3', 'pos':Point(80,20), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'2', 'pos':Point(50,10), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'1', 'pos':Point( 0, 5), 'size':Size(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'5', 'pos':Point(50,50), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':4, 'pos':Point(80,10), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':3, 'pos':Point(80,20), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':Point(50,10), 'size':Size(15,20), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':1, 'pos':Point( 0, 5), 'size':Size(10,40), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':5, 'pos':Point(50,50), 'size':Size(15,10), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 def r2(rects):
     # Sets up another edge condition
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':'1', 'pos':Point(30,15),    'size':Size(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'2', 'pos':Point(205,65),   'size':Size(80,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'3', 'pos':Point(200, 115), 'size':Size(60,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'4', 'pos':Point(0,0),      'size':Size(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':1, 'pos':Point(30,15),    'size':Size(100,50), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':Point(205,65),   'size':Size(80,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':3, 'pos':Point(200, 115), 'size':Size(60,50),  'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':4, 'pos':Point(0,0),      'size':Size(25,150), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 def r3(rects):
     # Sets up another edge condition
     r255  = lambda: random.randint(0,255)
-    rects.add({'id':'1', 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
-    rects.add({'id':'2', 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':1, 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
+    rects.add({'id':2, 'pos':Point(0, 0), 'size':Size(100, 100), 'pencolor':randcolor(), 'brushcolor':randcolor(), 'selected': False})
 
 
 class BlockCanvas(QWidget):
@@ -348,13 +349,13 @@ class MainWindow(QMainWindow):
         bellman_ford = [t['bellman-ford'] for t in times_coll]
         update_rect  = [t['update-rect']   for t in times_coll]
         time_stats['make-graph']['min']   = f"{min(make_graph):.4g}"
-        time_stats['make-graph']['max']   = f"{min(make_graph):.4g}"
+        time_stats['make-graph']['max']   = f"{max(make_graph):.4g}"
         time_stats['make-graph']['avg']   = f"{sum(make_graph) / len(make_graph):.4g}"
         time_stats['bellman-ford']['min'] = f"{min(bellman_ford):.4g}"
-        time_stats['bellman-ford']['max'] = f"{min(bellman_ford):.4g}"
+        time_stats['bellman-ford']['max'] = f"{max(bellman_ford):.4g}"
         time_stats['bellman-ford']['avg'] = f"{sum(bellman_ford) / len(bellman_ford):.4g}"
         time_stats['update-rect']['min']  = f"{min(update_rect):.4g}"
-        time_stats['update-rect']['max']  = f"{min(update_rect):.4g}"
+        time_stats['update-rect']['max']  = f"{max(update_rect):.4g}"
         time_stats['update-rect']['avg']  = f"{sum(update_rect) / len(update_rect):.4g}"
 
         print(f'Making graph (s): {time_stats["make-graph"]}')
