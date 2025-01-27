@@ -14,11 +14,6 @@ def sort_rects(rects, ids, keyfn, reverse=False):
     sorted_ids = [r['id'] for r in sorted_rects]
     return sorted_ids
 
-# def edge_aligned(src, dst, line):
-#     return \
-#         src in line['top'] and dst in line['bot'] or \
-#         src in line['bot'] and dst in line['top']
-
 def compose_graph(lines, rects, dim, reverse=False):
     # lines comes from scanlines_[xy][leftright](...)
     # The graph represents distances from the reference

@@ -8,15 +8,16 @@ import random
 import compact
 from rectdb import Rects
 from collections import namedtuple
+import time
 
 
 
 RECTS = None
 MOUSE_DATA = {} # 'ids', 'lastpos'
 SELECTED = set()
-WRANGE = [25, 50]
-HRANGE = [25, 50]
-QTY = 50
+WRANGE = [25, 25]
+HRANGE = [25, 25]
+QTY = 500
 
 Point = namedtuple('Point', ['x', 'y'])
 Size = namedtuple('Size', ['w', 'h'])
@@ -227,6 +228,7 @@ class MainWindow(QMainWindow):
         leftbar.setMinimumWidth(150)
         vbl = QVBoxLayout()
         butt_random = QPushButton('Randomize')
+        butt_test   = QPushButton('Test')
         butt_xleft  = QPushButton('Compact X←')
         butt_xright = QPushButton('Compact X→')
         butt_yup    = QPushButton('Compact Y↑')
@@ -243,6 +245,7 @@ class MainWindow(QMainWindow):
         butt_load   = QPushButton('Load')
         
         butt_random.setFixedHeight(40)
+        butt_test.setFixedHeight(40)
         butt_xleft.setFixedHeight(40)
         butt_xright.setFixedHeight(40)
         butt_yup.setFixedHeight(40)
@@ -259,6 +262,7 @@ class MainWindow(QMainWindow):
         butt_load.setFixedHeight(40)
 
         vbl.addWidget(butt_random)
+        vbl.addWidget(butt_test)
         vbl.addWidget(butt_xleft)
         vbl.addWidget(butt_xright)
         vbl.addWidget(butt_yup)
@@ -285,6 +289,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(200,200)
 
         butt_random.clicked.connect(self.butt_random_click)
+        butt_test.clicked.connect(self.butt_test_click)
         butt_xleft.clicked.connect(self.butt_xleft_click)
         butt_xright.clicked.connect(self.butt_xright_click)
         butt_yup.clicked.connect(self.butt_yup_click)
@@ -302,8 +307,12 @@ class MainWindow(QMainWindow):
 
     def compact_xy(self, axis, reverse):
         global RECTS
+        print ("Compact")
+        time1 = time.time()
         graph = compact.make_graph(RECTS, axis, reverse)
+        time2 = time.time()
         lp = compact.longest_path_bellman_ford(graph)
+        time3 = time.time()
         if axis == 'x':
             def setter(rect, pos): rect['pos'] = Point(pos, rect['pos'].y)
             if reverse: offset = self.canvas.width()
@@ -314,43 +323,90 @@ class MainWindow(QMainWindow):
         else:       posfn = lambda i,p: setter(RECTS[i], pos)
         for i, pos in lp.items():
             posfn(i, pos)
-        self.canvas.update()
+        time4 = time.time()
+        times = {'make-graph':   time2 - time1,
+                 'bellman-ford': time3 - time2,
+                 'update-rect':  time4 - time3}
+        return times
     def butt_random_click(self):
         global RECTS
         RECTS = init_rects(self.canvas.width(), self.canvas.height())
         self.canvas.update()
+    def butt_test_click(self):
+        global RECTS
+        times_coll = []
+        time_stats = {}
+        time_stats['make-graph'] = {}
+        time_stats['bellman-ford'] = {}
+        time_stats['update-rect'] = {}
+        for _ in range(10):
+            RECTS = init_rects(self.canvas.width(), self.canvas.height())
+            times = self.compact_xy(axis='x', reverse=False)
+            times_coll.append(times)
+        
+        make_graph   = [t['make-graph']   for t in times_coll]
+        bellman_ford = [t['bellman-ford'] for t in times_coll]
+        update_rect  = [t['update-rect']   for t in times_coll]
+        time_stats['make-graph']['min']   = f"{min(make_graph):.4g}"
+        time_stats['make-graph']['max']   = f"{min(make_graph):.4g}"
+        time_stats['make-graph']['avg']   = f"{sum(make_graph) / len(make_graph):.4g}"
+        time_stats['bellman-ford']['min'] = f"{min(bellman_ford):.4g}"
+        time_stats['bellman-ford']['max'] = f"{min(bellman_ford):.4g}"
+        time_stats['bellman-ford']['avg'] = f"{sum(bellman_ford) / len(bellman_ford):.4g}"
+        time_stats['update-rect']['min']  = f"{min(update_rect):.4g}"
+        time_stats['update-rect']['max']  = f"{min(update_rect):.4g}"
+        time_stats['update-rect']['avg']  = f"{sum(update_rect) / len(update_rect):.4g}"
+
+        print(f'Making graph (s): {time_stats["make-graph"]}')
+        print(f'longestpath (s): {time_stats["bellman-ford"]}')
+        print(f'updating rect (s): {time_stats["update-rect"]}')
+
+        self.canvas.update()
+
     def butt_xleft_click(self):
         self.compact_xy(axis='x', reverse=False)
+        self.canvas.update()
     def butt_xright_click(self):
         self.compact_xy(axis='x', reverse=True)
+        self.canvas.update()
     def butt_yup_click(self):
         self.compact_xy(axis='y', reverse=False)
+        self.canvas.update()
     def butt_ydn_click(self):
         self.compact_xy(axis='y', reverse=True)
+        self.canvas.update()
     def butt_xlyu_click(self):
         self.compact_xy(axis='x', reverse=False)
         self.compact_xy(axis='y', reverse=False)
+        self.canvas.update()
     def butt_xlyd_click(self):
         self.compact_xy(axis='x', reverse=False)
         self.compact_xy(axis='y', reverse=True)
+        self.canvas.update()
     def butt_xryu_click(self):
         self.compact_xy(axis='x', reverse=True)
         self.compact_xy(axis='y', reverse=False)
+        self.canvas.update()
     def butt_xryd_click(self):
         self.compact_xy(axis='x', reverse=True)
         self.compact_xy(axis='y', reverse=True)
+        self.canvas.update()
     def butt_yuxl_click(self):
         self.compact_xy(axis='y', reverse=False)
         self.compact_xy(axis='x', reverse=False)
+        self.canvas.update()
     def butt_yuxr_click(self):
         self.compact_xy(axis='y', reverse=False)
         self.compact_xy(axis='x', reverse=True)
+        self.canvas.update()
     def butt_ydxl_click(self):
         self.compact_xy(axis='y', reverse=True)
         self.compact_xy(axis='x', reverse=False)
+        self.canvas.update()
     def butt_ydxr_click(self):
         self.compact_xy(axis='y', reverse=True)
         self.compact_xy(axis='x', reverse=True)
+        self.canvas.update()
     def save(self):
         import json
         with open('rects.json', 'w') as f:

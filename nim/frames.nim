@@ -1,4 +1,4 @@
-import std/[bitops, sets, tables, sugar]
+import std/[bitops, sets, tables, sugar, stats, strformat]
 #from std/os import sleep
 from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
@@ -116,7 +116,7 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
-    let graph = MakeGraph(self.mRectTable, X, false)
+    #let graph = MakeGraph(self.mRectTable, X, false)
     #echo graph
 
 
@@ -286,7 +286,7 @@ type wMainPanel = ref object of wPanel
   mRectTable: RectTable
   mSpnr: wSpinCtrl
   mTxt:  wStaticText
-  mButtons: array[16, wButton]
+  mButtons: array[17, wButton]
 
 wClass(wMainPanel of wPanel):
   proc Layout(self: wMainPanel) =
@@ -339,6 +339,28 @@ wClass(wMainPanel of wPanel):
   proc onButtonrandomizePos(self: wMainPanel) =
     self.randomizeRectsPos(self.mSpnr.value)
     self.refresh(false)
+
+  proc onButtonTest(self: wMainPanel) =
+    type TimeData = tuple[mg:float, bf:float, ur:float]
+    var timesColl: seq[TimeData]
+    var td: TimeData
+    for _ in 1..10:
+      self.randomizeRectsAll(self.mSpnr.value)
+      compact(self.mRectTable, X, false, self.mBlockPanel.clientSize, td)
+      timesColl.add(td)
+    let 
+      mg = collect(for t in timesColl: t.mg)
+      bf = collect(for t in timesColl: t.bf)
+      ur = collect(for t in timesColl: t.ur)
+      mgStats = (min: &"{mg.min:.4g}", max: &"{mg.max:.4g}", mean: &"{mg.mean:.4g}")
+      bfStats = (min: &"{bf.min:.4g}", max: &"{bf.max:.4g}", mean: &"{bf.mean:.4g}")
+      urStats = (min: &"{ur.min:.4g}", max: &"{ur.max:.4g}", mean: &"{ur.mean:.4g}")
+    echo "Making graph (s):  ", mgStats
+    echo "Longest Path (s):  ", bfStats
+    echo "Updating rect (s): ", urStats
+    self.refresh(false)
+
+
 
   proc onButtonCompact←(self: wMainPanel) =
     echo "←"
@@ -416,20 +438,21 @@ wClass(wMainPanel of wPanel):
     self.mTxt = StaticText(self, label="Qty", style=wSpRight)
     self.mButtons[ 0] = Button(self, label = "randomize All"     )
     self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
-    self.mButtons[ 2] = Button(self, label = "Compact X←"        )
-    self.mButtons[ 3] = Button(self, label = "Compact X→"        )
-    self.mButtons[ 4] = Button(self, label = "Compact Y↑"        )
-    self.mButtons[ 5] = Button(self, label = "Compact Y↓"        )
-    self.mButtons[ 6] = Button(self, label = "Compact X← then Y↑")
-    self.mButtons[ 7] = Button(self, label = "Compact X← then Y↓")
-    self.mButtons[ 8] = Button(self, label = "Compact X→ then Y↑")
-    self.mButtons[ 9] = Button(self, label = "Compact X→ then Y↓")
-    self.mButtons[10] = Button(self, label = "Compact Y↑ then X←")
-    self.mButtons[11] = Button(self, label = "Compact Y↑ then X→")
-    self.mButtons[12] = Button(self, label = "Compact Y↓ then X←")
-    self.mButtons[13] = Button(self, label = "Compact Y↓ then X→")
-    self.mButtons[14] = Button(self, label = "Save"              )
-    self.mButtons[15] = Button(self, label = "Load"              )
+    self.mButtons[ 2] = Button(self, label = "Test"              )
+    self.mButtons[ 3] = Button(self, label = "Compact X←"        )
+    self.mButtons[ 4] = Button(self, label = "Compact X→"        )
+    self.mButtons[ 5] = Button(self, label = "Compact Y↑"        )
+    self.mButtons[ 6] = Button(self, label = "Compact Y↓"        )
+    self.mButtons[ 7] = Button(self, label = "Compact X← then Y↑")
+    self.mButtons[ 8] = Button(self, label = "Compact X← then Y↓")
+    self.mButtons[ 9] = Button(self, label = "Compact X→ then Y↑")
+    self.mButtons[10] = Button(self, label = "Compact X→ then Y↓")
+    self.mButtons[11] = Button(self, label = "Compact Y↑ then X←")
+    self.mButtons[12] = Button(self, label = "Compact Y↑ then X→")
+    self.mButtons[13] = Button(self, label = "Compact Y↓ then X←")
+    self.mButtons[14] = Button(self, label = "Compact Y↓ then X→")
+    self.mButtons[15] = Button(self, label = "Save"              )
+    self.mButtons[16] = Button(self, label = "Load"              )
 
     # Set up stuff
     self.mRectTable = rectTable
@@ -442,18 +465,19 @@ wClass(wMainPanel of wPanel):
     self.mSpnr.wEvent_TextEnter         do (): self.onSpinTextEnter()
     self.mButtons[ 0].wEvent_Button     do (): self.onButtonrandomizeAll()
     self.mButtons[ 1].wEvent_Button     do (): self.onButtonrandomizePos()
-    self.mButtons[ 2].wEvent_Button     do (): self.onButtonCompact←()
-    self.mButtons[ 3].wEvent_Button     do (): self.onButtonCompact→()
-    self.mButtons[ 4].wEvent_Button     do (): self.onButtonCompact↑()
-    self.mButtons[ 5].wEvent_Button     do (): self.onButtonCompact↓()
-    self.mButtons[ 6].wEvent_Button     do (): self.onButtonCompact←↑()
-    self.mButtons[ 7].wEvent_Button     do (): self.onButtonCompact←↓()
-    self.mButtons[ 8].wEvent_Button     do (): self.onButtonCompact→↑()
-    self.mButtons[ 9].wEvent_Button     do (): self.onButtonCompact→↓()
-    self.mButtons[10].wEvent_Button     do (): self.onButtonCompact↑←()
-    self.mButtons[11].wEvent_Button     do (): self.onButtonCompact↑→()
-    self.mButtons[12].wEvent_Button     do (): self.onButtonCompact↓←()
-    self.mButtons[13].wEvent_Button     do (): self.onButtonCompact↓→()
+    self.mButtons[ 2].wEvent_Button     do (): self.onButtonTest()
+    self.mButtons[ 3].wEvent_Button     do (): self.onButtonCompact←()
+    self.mButtons[ 4].wEvent_Button     do (): self.onButtonCompact→()
+    self.mButtons[ 5].wEvent_Button     do (): self.onButtonCompact↑()
+    self.mButtons[ 6].wEvent_Button     do (): self.onButtonCompact↓()
+    self.mButtons[ 7].wEvent_Button     do (): self.onButtonCompact←↑()
+    self.mButtons[ 8].wEvent_Button     do (): self.onButtonCompact←↓()
+    self.mButtons[ 9].wEvent_Button     do (): self.onButtonCompact→↑()
+    self.mButtons[10].wEvent_Button     do (): self.onButtonCompact→↓()
+    self.mButtons[11].wEvent_Button     do (): self.onButtonCompact↑←()
+    self.mButtons[12].wEvent_Button     do (): self.onButtonCompact↑→()
+    self.mButtons[13].wEvent_Button     do (): self.onButtonCompact↓←()
+    self.mButtons[14].wEvent_Button     do (): self.onButtonCompact↓→()
 
 
 
