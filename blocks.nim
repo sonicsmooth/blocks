@@ -1,5 +1,6 @@
 import wNim/[wApp]
 import std/[random]
+#import nimprof
 import frames, rects
 
 

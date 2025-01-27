@@ -1,4 +1,4 @@
-import std/[tables, sets, algorithm]
+import std/[tables, sets, algorithm, times]
 from std/sugar import collect
 from sequtils import concat, delete, toSeq
 import wnim/wTypes
@@ -9,7 +9,7 @@ type
   MajMin = enum Major=true, Minor=false
   Node = RectID
   Weight = int
-  GraphEdge = tuple[frm, to: Node]
+  GraphEdge  = tuple[frm, to: Node]
   Graph* = Table[GraphEdge, Weight]
   ScanType = enum Top, Mid, Bot
   ScanEdge = tuple[id: RectID, pos: int, etype: ScanType]
@@ -21,11 +21,8 @@ type
 
 const ROOTNODE: Node = "0"
 
-#type RectCmp = proc(r1, r2: Rect): int
 proc RectCmpX(r1, r2: Rect): int = cmp(r1.x, r2.x)
 proc RectCmpY(r1, r2: Rect): int = cmp(r1.y, r2.y)
-# proc RectCmpW(r1, r2: Rect): int = cmp(r1.width, r2.width)
-# proc RectCmpH(r1, r2: Rect): int = cmp(r1.height, r2.height)
 proc SortedRectsIds(rects: seq[Rect], axis: Axis, reverse: bool): seq[RectID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
@@ -143,31 +140,31 @@ proc MakeGraph*(rectTable: RectTable, axis: Axis, reverse: bool): Graph =
   let lines = ScanLines(rectTable, axis, reverse)
   result = ComposeGraph(lines, rectTable, axis, reverse)
   
-# proc NodeSet(graph: Graph): HashSet[Node] =
-#   for edge in graph.keys:
-#     result.incl(edge.frm)
-#     result.incl(edge.to)
 
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node]): Table[RectID, Weight] =
   for node in nodes:
     result[node] = Weight.low
   result[ROOTNODE] = 0
 
-  for iter in 1..nodes.len:
-    for edge, weight in graph:
-      let frm = edge[0]
-      let to = edge[1]
-      if result[frm] == Weight.low:
+  for iter in 0..nodes.len:
+    for ge, weight in graph:
+      if result[ge.frm] == Weight.low:              
         continue
-      result[to] = max(result[to], result[frm] + weight)
+      result[ge.to] = max(result[ge.to], result[ge.frm] + weight)
   result.del(ROOTNODE)
-  echo result
 
-proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize) = 
-  echo clientSize
+type TimeData = tuple[mg:float, bf:float, ur:float]
+var td: TimeData = (mg: 0.0, bf: 0.0, ur: 0.0)
+proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize,
+              result: var TimeData=td) =
+  echo "Compact"
+  let time1 = cpuTime()
   let graph = MakeGraph(rectTable, axis, reverse)
+  let time2 = cpuTime()
   let nodes = rectTable.values.toSeq.ids
+  let time3 = cpuTime()
   let lp = longestPathBellmanFord(graph, nodes)
+  let time4 = cpuTime()
   if axis == X and not reverse:
     for id, rect in rectTable:
       rect.x = lp[id]
@@ -180,6 +177,10 @@ proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize
   elif axis == Y and reverse:
     for id, rect in rectTable:
       rect.y = clientSize.height - lp[id]
+  let time5 = cpuTime()
+  result.mg = time2 - time1
+  result.bf = time4 - time3
+  result.ur = time5 - time4
 
 
 

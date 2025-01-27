@@ -4,9 +4,9 @@ import wNim/private/wHelper
 export tables
 
 const
-  WRANGE = 25..75
-  HRANGE = 25..75
-  QTY* = 10
+  WRANGE = 25..25
+  HRANGE = 25..25
+  QTY* = 500
 
 type 
   RectID* = string
