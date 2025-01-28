@@ -5,8 +5,8 @@ import wNim/private/wHelper
 export tables
 
 const
-  WRANGE = 25..25
-  HRANGE = 25..25
+  WRANGE = 25..75
+  HRANGE = 25..75
   QTY* = 500
 
 type 
@@ -67,6 +67,10 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
 
+proc positions*(rectTable: RectTable): Table[RectID, wPoint] =
+  for id,rect in rectTable:
+    result[id] = (rect.x, rect.y)
+
 proc size*(rect: Rect): wSize =
   (rect.width, rect.height)
 
@@ -82,16 +86,16 @@ proc lowerLeft*(rect: wRect): wPoint =
 proc lowerRight*(rect: wRect): wPoint =
   (rect.x + rect.width, rect.y + rect.height)
 
-proc Top*(rect: wRect): TopEdge =
+proc top*(rect: wRect): TopEdge =
   TopEdge(pt0: rect.upperLeft, pt1: rect.upperRight)
 
-proc Left*(rect: wRect): LeftEdge =
+proc left*(rect: wRect): LeftEdge =
   LeftEdge(pt0: rect.upperLeft, pt1: rect.lowerLeft)
 
-proc Bottom*(rect: wRect): BottomEdge =
+proc bottom*(rect: wRect): BottomEdge =
   BottomEdge(pt0: rect.lowerLeft, pt1: rect.lowerRight)
 
-proc Right*(rect: wRect): RightEdge =
+proc right*(rect: wRect): RightEdge =
   RightEdge(pt0: rect.upperRight, pt1: rect.lowerRight)
 
 # Comparators assume edges are truly vertical or horizontal
@@ -133,37 +137,37 @@ proc isPointInRect(pt: wpoint, rect: wRect): bool =
     pt.y >= rect.y and pt.y <= lrcorner.y
 
 proc isEdgeInRect(edge: VertEdge, rect: wRect): bool =
-  let edgeInside = (edge >= rect.Left and edge <= rect.Right)
+  let edgeInside = (edge >= rect.left and edge <= rect.right)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.y < rect.Top.pt0.y
-  let pt1Outside = edge.pt1.y > rect.Bottom.pt0.y
+  let pt0Outside = edge.pt0.y < rect.top.pt0.y
+  let pt1Outside = edge.pt1.y > rect.bottom.pt0.y
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
 
 proc isEdgeInRect(edge: HorizEdge, rect: wRect): bool =
-  let edgeInside = (edge >= rect.Top and edge <= rect.Bottom)
+  let edgeInside = (edge >= rect.top and edge <= rect.bottom)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.x < rect.Left.pt0.x
-  let pt1Outside = edge.pt1.x > rect.Right.pt0.x
+  let pt0Outside = edge.pt0.x < rect.left.pt0.x
+  let pt1Outside = edge.pt1.x > rect.right.pt0.x
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
 
 proc isRectInRect*(rect1, rect2: wRect): bool = 
   # Check if any corners or edges of rect2 are within rect1
   # Generally rect1 is moving around and rect2 is part of the db
-  isEdgeInRect(rect1.Top,    rect2) or
-  isEdgeInRect(rect1.Left,   rect2) or
-  isEdgeInRect(rect1.Bottom, rect2) or
-  isEdgeInRect(rect1.Right,  rect2)
+  isEdgeInRect(rect1.top,    rect2) or
+  isEdgeInRect(rect1.left,   rect2) or
+  isEdgeInRect(rect1.bottom, rect2) or
+  isEdgeInRect(rect1.right,  rect2)
 
 proc isRectOverRect*(rect1, rect2: wRect): bool =
   # Check if rect1 completely covers rect2
-  rect1.Top    < rect2.Top    and
-  rect1.Left   < rect2.Left   and
-  rect1.Bottom > rect2.Bottom and
-  rect1.Right  > rect2.Right
+  rect1.top    < rect2.top    and
+  rect1.left   < rect2.left   and
+  rect1.bottom > rect2.bottom and
+  rect1.right  > rect2.right
 
 proc ptInRects*(pt: wPoint, table: RectTable): seq[RectID] = 
   # Returns seq of Rect IDs from table whose rect 
