@@ -384,8 +384,11 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonCompact←↑(self: wMainPanel) =
     echo "←↑"
-    compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
-    compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
+    var pos: Table[RectID, wPoint]
+    while true:
+      compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
+      if pos == self.mRectTable.positions:
+        break
     self.refresh(false)
 
   proc onButtonCompact←↓(self: wMainPanel) =
