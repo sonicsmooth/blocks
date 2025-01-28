@@ -7,7 +7,7 @@ export tables
 const
   WRANGE = 25..75
   HRANGE = 25..75
-  QTY* = 500
+  QTY* = 5
 
 type 
   RectID* = uint
@@ -174,8 +174,8 @@ proc ptInRects*(pt: wPoint, table: RectTable): seq[RectID] =
   # surrounds or contacts pt
   # Optimization? -- return after first one
   for id, rect in table:
-      if isPointInRect(pt, rect.wRect):
-        result.add(id)
+    if isPointInRect(pt, rect.wRect):
+      result.add(id)
 
 proc rectInRects*(rect: wRect, table: RectTable): seq[RectID] = 
   # Return seq of Rect IDs from table that intersect rect
@@ -239,9 +239,8 @@ proc RandRect(id: RectID, screenSize: wSize): Rect =
 proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
   table.clear()
   for i in 1..qty:
-    let rect = RandRect(toRectId(i), size)
-    table[rect.id] = rect
-    #table.add(RandRect($i, size))
+    let rid = toRectId(i)
+    table[rid] = RandRect(rid, size)
 
 proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
   for id, rect in table:
@@ -256,7 +255,7 @@ proc moveRect*(rect: Rect, oldpos, newpos: wPoint) =
   let delta = newpos - oldpos
   moveRectBy(rect, delta)
 
-proc boundingBox*(rects: openArray[wRect]): wRect =
+proc boundingBox*(rects: openArray[Rect|wRect]): wRect =
   # Bbox from a bunch of wRects
   var left = rects[0].x
   var top = rects[0].y
@@ -269,8 +268,19 @@ proc boundingBox*(rects: openArray[wRect]): wRect =
     bottom = max(bottom, rect.y+rect.height)
   (x:left, y: top, width: right - left, height: bottom - top)
 
-proc boundingBox*(rects: openArray[Rect]): wRect =
-  boundingBox(rects.wRects)
+# proc boundingBox*(rects: openArray[Rect]): wRect =
+#   boundingBox(rects.wRects)
+
+proc area*(rect: Rect|wRect): int =
+  rect.width * rect.height
+
+proc ratio*(rects: openArray[Rect|wRect]): float =
+  # Find fill ratio
+  var usedArea: int
+  for r in rects: 
+    usedArea += r.area
+  let totalArea = boundingBox(rects).area
+  usedArea / totalArea
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect

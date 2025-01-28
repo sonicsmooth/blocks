@@ -157,7 +157,6 @@ type TimeData = tuple[mg:float, bf:float, ur:float]
 var td: TimeData = (mg: 0.0, bf: 0.0, ur: 0.0)
 proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize,
               result: var TimeData=td) =
-  echo "Compact"
   let time1 = cpuTime()
   let graph = MakeGraph(rectTable, axis, reverse)
   let time2 = cpuTime()
