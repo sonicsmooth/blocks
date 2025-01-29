@@ -335,7 +335,8 @@ wClass(wMainPanel of wPanel):
   proc randomizeRectsPos(self: wMainPanel, qty: int) = 
     let sz = self.mBlockPanel.clientSize
     if self.mChk.value:
-      anneal.randomizeRectsPos(self.mRectTable, 100.0, sz)
+      anneal.nextStates(self.mRectTable, 100.0, sz)
+      self.onButtonCompact←↑()
     else:
       rects.randomizeRectsPos(self.mRectTable, sz)
 

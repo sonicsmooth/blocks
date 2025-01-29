@@ -1,4 +1,4 @@
-import std/[tables, sets, algorithm, times]
+import std/[tables, algorithm, times]
 from std/sugar import collect
 from sequtils import concat, delete, toSeq
 import wnim/wTypes
