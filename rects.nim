@@ -11,12 +11,14 @@ const
 
 type 
   RectID* = uint
+  Rotation* = enum R0, R90, R180, R270
   Rect* = ref object
+    id*: RectID
     x*: int
     y*: int
     width*: int
     height*: int
-    id*: RectID
+    rot*: Rotation
     pencolor*: wColor
     brushcolor*: wColor
     selected*: bool
@@ -39,6 +41,7 @@ proc `$`*(r: Rect): string =
     "y: " & $r.y & ", " &
     "width: " & $r.width & ", " &
     "height: " & $r.height & ", " &
+    "rot: " & $r.rot & ", " &
     "pencolor: " & &"0x{r.pencolor:0x}" & ", " &
     "brushcolor: " & &"0x{r.brushcolor:0x}" & ", " &
     "selected: " & $r.selected & "}"
