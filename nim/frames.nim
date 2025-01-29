@@ -2,7 +2,7 @@ import std/[bitops, sets, tables, sugar, stats, strformat]
 from std/os import sleep
 from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
-             wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wCheckBox,
+             wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wCheckBox, wSlider,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 from wNim/private/wHelper import `-`
 import winim except RECT
@@ -17,6 +17,7 @@ const
   USER_MOUSE_MOVE = WM_APP + 1
   USER_SIZE       = WM_APP + 2
   USER_PAINT_DONE = WM_APP + 3
+  USER_SLIDER     = WM_APP + 4
 
 var 
   MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
@@ -25,6 +26,10 @@ var
                     clickpos:     wPoint,
                     clearStarted: bool]
   SELECTED: HashSet[RectID]
+
+proc lParamTuple[T](event: wEvent): tuple {.inline.} =
+  (LOWORD(event.getlParam).T,
+   HIWORD(event.getlParam).T)
 
 
 # These belong in Rects module
@@ -233,7 +238,7 @@ wClass(wBlockPanel of wPanel):
     self.mMemDC.setPen(Pen(wBlack))
     self.mMemDc.setBrush(wTransparentBrush)
     self.mMemDc.drawRectangle(self.mAllBbox)
-    echo &"{100*self.mRectTable.values.toSeq.ratio:.4f}"
+    echo &"Fill ratio: {100*self.mRectTable.values.toSeq.ratio:.4f}"
     
 
     # Finally grab DC and do last blit
@@ -295,6 +300,7 @@ type wMainPanel = ref object of wPanel
   mSpnr: wSpinCtrl
   mTxt:  wStaticText
   mChk:  wCheckBox
+  mSldr: wSlider
   mButtons: array[17, wButton]
 
 wClass(wMainPanel of wPanel):
@@ -307,6 +313,7 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
     self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
                              cszh - tbpmarg - bbpmarg)
+    var yPosAcc = 0
     # Static text position, size
     let smallw = bw div 2
     self.mTxt.position = (bmarg, bmarg)
@@ -315,30 +322,31 @@ wClass(wMainPanel of wPanel):
     # Spin Ctrl position, size
     self.mSpnr.position = (bmarg + (bw div 2), bmarg)
     self.mSpnr.size     = (smallw, self.mSpnr.size.height)
+    yPosAcc += bmarg + self.mTxt.size.height
 
     # Checkbox position, size
-    self.mChk.position = (bmarg, self.mSpnr.size.height + bmarg)
+    self.mChk.position = (bmarg, yPosAcc + bmarg)
     self.mChk.size     = (bw, bh)
+    yPosAcc += bmarg + bh
+
+    # Slider position, size
+    self.mSldr.position = (bmarg, yPosAcc + bmarg)
+    self.mSldr.size    = (bw, bh)
+    yPosAcc += bmarg + bh
 
     # Buttons position, size
     for i, butt in self.mButtons:
-      butt.position = (bmarg, bmarg + (i+2) * bh)
+      #butt.position = (bmarg, bmarg + (i+2) * bh)
+      butt.position = (bmarg, yPosAcc)
       butt.size     = (bw, bh)
+      yPosAcc += bh
 
   proc onResize(self: wMainPanel) =
       self.Layout()
 
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
-    randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
+    rects.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
     self.mBlockPanel.initBmpCache()
-
-  proc randomizeRectsPos(self: wMainPanel, qty: int) = 
-    let sz = self.mBlockPanel.clientSize
-    if self.mChk.value:
-      anneal.nextStates(self.mRectTable, 100.0, sz)
-      self.onButtonCompact←↑()
-    else:
-      rects.randomizeRectsPos(self.mRectTable, sz)
 
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
@@ -352,15 +360,30 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
       self.refresh(false)
 
+  proc onSlider(self: wMainPanel, event: wEvent) =
+    let pos = event.scrollPos
+    let hWnd = GetAncestor(self.handle, GA_ROOT)
+    SendMessage(hwnd, USER_SLIDER, pos, pos)
+
   proc onButtonrandomizeAll(self: wMainPanel) =
     self.randomizeRectsAll(self.mSpnr.value)
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
 
   proc onButtonrandomizePos(self: wMainPanel) =
-    self.randomizeRectsPos(self.mSpnr.value)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    let sz = self.mBlockPanel.clientSize
+    if not self.mChk.value:
+      rects.randomizeRectsPos(self.mRectTable, sz)
+      self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+      self.refresh(false)
+    else:
+      for i in 1..100:
+        anneal.nextStates(self.mRectTable, self.mSldr.value.float, sz)
+        self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+        self.refresh(false)
+        UpdateWindow(self.mBlockPanel.mHwnd)
+        sleep(10)
+      
 
   proc onButtonTest(self: wMainPanel) =
     type TimeData = tuple[mg:float, bf:float, ur:float]
@@ -503,8 +526,9 @@ wClass(wMainPanel of wPanel):
 
     # Create controls
     self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
-    self.mTxt = StaticText(self, label="Qty", style=wSpRight)
-    self.mChk = CheckBox(self, label="Anneal", style=wChkAlignRight)
+    self.mTxt   = StaticText(self, label="Qty", style=wSpRight)
+    self.mChk   = CheckBox(self, label="Anneal", style=wChkAlignRight)
+    self.mSldr  = Slider(self)
     self.mButtons[ 0] = Button(self, label = "randomize All"     )
     self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
     self.mButtons[ 2] = Button(self, label = "Test"              )
@@ -527,11 +551,13 @@ wClass(wMainPanel of wPanel):
     self.mRectTable = rectTable
     self.mBlockPanel = BlockPanel(self, rectTable)
     self.mSpnr.setRange(1, 10000)
+    self.mSldr.setValue(20)
 
     # Connect events
     self.wEvent_Size                    do (event: wEvent): self.onResize()
     self.mSpnr.wEvent_Spin              do (event: wEvent): self.onSpinSpin(event)
     self.mSpnr.wEvent_TextEnter         do (): self.onSpinTextEnter()
+    self.mSldr.wEvent_Slider            do (event: wEvent): self.onSlider(event)
     self.mButtons[ 0].wEvent_Button     do (): self.onButtonrandomizeAll()
     self.mButtons[ 1].wEvent_Button     do (): self.onButtonrandomizePos()
     self.mButtons[ 2].wEvent_Button     do (): self.onButtonTest()
@@ -561,16 +587,16 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
 
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
-    let lo_word:int = event.getlParam.bitand(0x0000_ffff)
-    let hi_word:int = event.getlParam.bitand(0xffff_0000).shr(16)
-    let sz:wSize = (lo_word, hi_word)
+    let sz: wSize = lParamTuple[int](event)
     self.mStatusBar.setStatusText($sz, index=1)
 
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
-    let lo_word:int = event.getlParam.bitand(0x0000_ffff)
-    let hi_word:int = event.getlParam.bitand(0xffff_0000).shr(16)
-    let mousePos: wPoint = (lo_word, hi_word)
-    self.mStatusBar.setStatusText($mousePos, 2)
+    let mousePos: wPoint = lParamTuple[int](event)
+    self.mStatusBar.setStatusText($mousePos, index=2)
+
+  proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
+    let tmpStr = &"temperature: {event.mLparam}"
+    self.mStatusBar.setStatusText(tmpStr, index=0)
 
   proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: var RectTable) = 
     wFrame(self).init(title="Blocks Frame")
@@ -595,7 +621,10 @@ wClass(wMainFrame of wFrame):
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
     self.mStatusBar.setStatusText($newBlockSz, index=1)
-    randomizeRectsAll(rectTable, newBlockSz, self.mMainPanel.mSpnr.value)
+    let sldrVal = self.mMainPanel.mSldr.value
+    let tmpStr = &"temperature: {sldrVal}"
+    self.mStatusBar.setStatusText(tmpStr, index=0)
+    rects.randomizeRectsAll(rectTable, newBlockSz, self.mMainPanel.mSpnr.value)
     self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
     self.mMainPanel.mBlockPanel.initBmpCache()
 
@@ -604,6 +633,7 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Size     do (event: wEvent): self.onResize(event)
     self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
     self.USER_MOUSE_MOVE do (event: wEvent): self.onUserMouseNotify(event)
+    self.USER_SLIDER     do (event: wEvent): self.onUserSliderNotify(event)
 
     # Show!
     self.center()
