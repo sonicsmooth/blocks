@@ -1,4 +1,4 @@
-import std/[bitops, sets, tables, sugar, stats, strformat]
+import std/[sets, tables, sugar, stats, strformat]
 from std/os import sleep
 from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
@@ -238,7 +238,7 @@ wClass(wBlockPanel of wPanel):
     self.mMemDC.setPen(Pen(wBlack))
     self.mMemDc.setBrush(wTransparentBrush)
     self.mMemDc.drawRectangle(self.mAllBbox)
-    echo &"Fill ratio: {100*self.mRectTable.values.toSeq.ratio:.4f}"
+    
     
 
     # Finally grab DC and do last blit
@@ -336,7 +336,6 @@ wClass(wMainPanel of wPanel):
 
     # Buttons position, size
     for i, butt in self.mButtons:
-      #butt.position = (bmarg, bmarg + (i+2) * bh)
       butt.position = (bmarg, yPosAcc)
       butt.size     = (bw, bh)
       yPosAcc += bh
@@ -372,17 +371,9 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonrandomizePos(self: wMainPanel) =
     let sz = self.mBlockPanel.clientSize
-    if not self.mChk.value:
-      rects.randomizeRectsPos(self.mRectTable, sz)
-      self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-      self.refresh(false)
-    else:
-      for i in 1..100:
-        anneal.nextStates(self.mRectTable, self.mSldr.value.float, sz)
-        self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-        self.refresh(false)
-        UpdateWindow(self.mBlockPanel.mHwnd)
-        sleep(10)
+    rects.randomizeRectsPos(self.mRectTable, sz)
+    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.refresh(false)
       
 
   proc onButtonTest(self: wMainPanel) =
@@ -406,8 +397,6 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
 
-
-
   proc onButtonCompact←(self: wMainPanel) =
     compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
@@ -428,98 +417,65 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
 
-  proc onButtonCompact←↑(self: wMainPanel) =
+  proc doOnButtonCompact(self: wMainPanel, primax, secax: Axis,
+                         primrev, secrev: bool ) =
+    # Keep compacting until it doesn't change
     var pos, lastPos: Table[RectID, wPoint]
     pos = self.mRectTable.positions
     while pos != lastPos:
-      compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
+      compact(self.mRectTable, primax, primrev, self.mBlockPanel.clientSize)
+      compact(self.mRectTable, secax, secrev, self.mBlockPanel.clientSize)
       lastPos = pos
       pos = self.mRectTable.positions
-      #self.refresh(true)
-      # var prect: ptr winim.RECT
-      # var hrgn: HRGN
-      # RedrawWindow(self.mHwnd, prect, hrgn, RDW_UPDATENOW)
-      # sleep(100)
+      #self.refresh(false)
+      #UpdateWindow(self.mBlockPanel.mHwnd)
+      #sleep(10)
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
+
+  proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
+                               primrev, secrev: bool ) =
+    let currentState = self.mRectTable.positions
+    var junk: typeof(currentState)
+    let sz = self.mBlockPanel.clientSize
+    for newPositions in nextStates(currentState, self.mSldr.value.float, sz):
+      for id, pos in newPositions:
+        self.mRectTable[id].x = pos.x
+        self.mRectTable[id].y = pos.y
+      echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
+      self.doOnButtonCompact(primax, secax, primrev, secrev)
+      self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+      self.refresh(false)
+      UpdateWindow(self.mBlockPanel.mHwnd)
+      sleep(10)
+
+
+  proc onButtonCompact←↑(self: wMainPanel) =
+    if not self.mChk.value:
+      self.doOnButtonCompact(X, Y, false, false)
+    else:
+      self.doOnButtonAnnealCompact(X, Y, false, false)
 
   proc onButtonCompact←↓(self: wMainPanel) =
-    var pos, lastPos: Table[RectID, wPoint]
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    self.doOnButtonCompact(X, Y, false, true)
 
   proc onButtonCompact→↑(self: wMainPanel) =
-    var pos, lastPos: Table[RectID, wPoint]
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    self.doOnButtonCompact(X, Y, true, false)
 
   proc onButtonCompact→↓(self: wMainPanel) =
-    var pos, lastPos: Table[RectID, wPoint]
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    self.doOnButtonCompact(X, Y, true, true)
 
   proc onButtonCompact↑←(self: wMainPanel) =
-    var pos, lastPos: Table[RectID, wPoint]
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    self.doOnButtonCompact(Y, X, false, false)
 
   proc onButtonCompact↑→(self: wMainPanel) =
-    var pos, lastPos: Table[RectID, wPoint]
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    self.doOnButtonCompact(Y, X, false, true)
 
   proc onButtonCompact↓←(self: wMainPanel) =
-    var pos, lastPos: Table[RectID, wPoint]
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    self.doOnButtonCompact(Y, X, true, false)
 
   proc onButtonCompact↓→(self: wMainPanel) =
-    var pos, lastPos: Table[RectID, wPoint]
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.refresh(false)
+    self.doOnButtonCompact(Y, X, true, true)
 
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)

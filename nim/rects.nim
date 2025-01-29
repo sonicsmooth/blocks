@@ -1,4 +1,5 @@
 import std/[random, tables, strformat]
+from std/sequtils import toSeq
 import strutils
 import wNim/[wTypes]
 import wNim/private/wHelper
@@ -285,6 +286,9 @@ proc ratio*(rects: openArray[Rect|wRect]): float =
   let totalArea = boundingBox(rects).area
   usedArea / totalArea
 
+proc ratio*(rectTable: RectTable): float =
+  rectTable.values.toSeq.ratio
+
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect
   # if amt > 0 then returned wRect is bigger than rect
@@ -293,4 +297,3 @@ proc expand*(rect: wRect, amt: int): wRect =
    y: rect.y - amt,
    width: rect.width + 2*amt,
    height: rect.height + 2*amt)
-  
