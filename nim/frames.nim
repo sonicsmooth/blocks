@@ -2,15 +2,16 @@ import std/[bitops, sets, tables, sugar, stats, strformat]
 from std/os import sleep
 from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
-             wStatusBar, wMenuBar, wSpinCtrl, wStaticText,
+             wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wCheckBox,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 from wNim/private/wHelper import `-`
 import winim except RECT
-import rects, compact
+import rects, compact, anneal
 
 # TODO: copy background before move
 # TODO: Hover
 # TODO: Figure out invalidate region
+# TODO: Implement rotation
 
 const
   USER_MOUSE_MOVE = WM_APP + 1
@@ -293,6 +294,7 @@ type wMainPanel = ref object of wPanel
   mRectTable: RectTable
   mSpnr: wSpinCtrl
   mTxt:  wStaticText
+  mChk:  wCheckBox
   mButtons: array[17, wButton]
 
 wClass(wMainPanel of wPanel):
@@ -304,7 +306,7 @@ wClass(wMainPanel of wPanel):
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
     self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
     self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
-                              cszh - tbpmarg - bbpmarg)
+                             cszh - tbpmarg - bbpmarg)
     # Static text position, size
     let smallw = bw div 2
     self.mTxt.position = (bmarg, bmarg)
@@ -314,9 +316,13 @@ wClass(wMainPanel of wPanel):
     self.mSpnr.position = (bmarg + (bw div 2), bmarg)
     self.mSpnr.size     = (smallw, self.mSpnr.size.height)
 
+    # Checkbox position, size
+    self.mChk.position = (bmarg, self.mSpnr.size.height + bmarg)
+    self.mChk.size     = (bw, bh)
+
     # Buttons position, size
     for i, butt in self.mButtons:
-      butt.position = (bmarg, bmarg + (i+1) * bh)
+      butt.position = (bmarg, bmarg + (i+2) * bh)
       butt.size     = (bw, bh)
 
   proc onResize(self: wMainPanel) =
@@ -327,7 +333,11 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.initBmpCache()
 
   proc randomizeRectsPos(self: wMainPanel, qty: int) = 
-    randomizeRectsPos(self.mRectTable, self.mBlockPanel.clientSize)
+    let sz = self.mBlockPanel.clientSize
+    if self.mChk.value:
+      anneal.randomizeRectsPos(self.mRectTable, 100.0, sz)
+    else:
+      rects.randomizeRectsPos(self.mRectTable, sz)
 
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
@@ -493,6 +503,7 @@ wClass(wMainPanel of wPanel):
     # Create controls
     self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
     self.mTxt = StaticText(self, label="Qty", style=wSpRight)
+    self.mChk = CheckBox(self, label="Anneal", style=wChkAlignRight)
     self.mButtons[ 0] = Button(self, label = "randomize All"     )
     self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
     self.mButtons[ 2] = Button(self, label = "Test"              )
