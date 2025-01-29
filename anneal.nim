@@ -5,7 +5,7 @@ from wnim/private/wHelper import `+`
 import rects
 
 const NUM_NEXT_STATES = 10
-const MAX_TEMP = 100.0
+const MAX_TEMP* = 100.0
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
 # After gathering 100 next states, randomly choose the next
@@ -25,16 +25,17 @@ proc moveAmt(temp: float, screenSize: wSize): wPoint =
 
 proc nextStates*(table: RectTable, temp: float, screenSize: wSize) =
   # Take existing state and generate next states
-  let currentStateTable = positions(table)
+  echo temp
+  let currentState = positions(table)
   type StateType = Table[RectID, wPoint]
   var nextStates: seq[StateType]
   for i in 1..NUM_NEXT_STATES:
-    var nextStateTable: StateType
-    for id, pos in currentStateTable:
-      nextStateTable[id] = pos + moveAmt(temp, screenSize)
-    nextStates.add(nextStateTable)
+    var nextState: StateType
+    for id, pos in currentState:
+      nextState[id] = pos + moveAmt(temp, screenSize)
+    nextStates.add(nextState)
 
-  # quick test -- use the first one
+  # quick test -- use the first new state to update the rect pos
   for id, pos in nextStates[0]:
     table[id].x = pos.x
     table[id].y = pos.y
