@@ -22,20 +22,15 @@ proc moveAmt(temp: float, screenSize: wSize): wPoint =
   let xmy: int          = (rand(maxY) - maxY/2.0).int
   result = (xmv, xmy)
 
+proc calcNextState[T:Table](startingState: T, temp: float, screenSize: wSize, i: int): T =
+  # This one does random move
+  # Perhaps another can do position swaps based on temperature
+  # The next state need only return the items that were actually moved
+  for id, pos in startingState:
+    result[id] = pos + moveAmt(temp, screenSize)
 
-proc nextStates*(table: RectTable, temp: float, screenSize: wSize) =
-  # Take existing state and generate next states
-  echo temp
-  let currentState = positions(table)
-  type StateType = Table[RectID, wPoint]
-  var nextStates: seq[StateType]
+iterator nextStates*[T:Table](startingState: T, temp: float, screenSize: wSize): T =
+  # Yield next states from existing state
   for i in 1..NUM_NEXT_STATES:
-    var nextState: StateType
-    for id, pos in currentState:
-      nextState[id] = pos + moveAmt(temp, screenSize)
-    nextStates.add(nextState)
+    yield calcNextState(startingState, temp, screenSize, i)
 
-  # quick test -- use the first new state to update the rect pos
-  for id, pos in nextStates[0]:
-    table[id].x = pos.x
-    table[id].y = pos.y
