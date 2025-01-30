@@ -12,6 +12,7 @@ import rects, compact, anneal
 # TODO: Hover
 # TODO: Figure out invalidate region
 # TODO: Implement rotation
+# TODO: update qty when spinner text loses focus
 
 const
   USER_MOUSE_MOVE = WM_APP + 1
@@ -438,17 +439,19 @@ wClass(wMainPanel of wPanel):
     let currentState = self.mRectTable.positions
     let sz = self.mBlockPanel.clientSize
     let temp = self.mSldr.value.float
-    for newPositions in nextStatesWiggle(currentState, temp.float, sz):
-    #for newPositions in nextStates(currentState, self.mSldr.value.float, sz):
+    #for newPositions in nextStatesWiggle(currentState, temp, sz):
+    #for newPositions in nextStatesSwap(currentState, temp):
+    #for newPositions in strategy1(currentState, sz):
+    for newPositions in strategy2(currentState):
       for id, pos in newPositions:
         self.mRectTable[id].x = pos.x
         self.mRectTable[id].y = pos.y
-      echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
-      self.doOnButtonCompact(primax, secax, primrev, secrev)
+      #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
+      #self.doOnButtonCompact(primax, secax, primrev, secrev)
       self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
       self.refresh(false)
       UpdateWindow(self.mBlockPanel.mHwnd)
-      sleep(10)
+      sleep(1)
 
 
   proc onButtonCompact←↑(self: wMainPanel) =
