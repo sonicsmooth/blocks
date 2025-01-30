@@ -12,7 +12,7 @@ import rects
 
 #[ 
   Strategy 1 -- Randomize from startingState
-  nextStates(t) can either move blocks around or swap pairs
+  nextStates can either move blocks around or swap pairs
   availableStates = @[startingState]: SortedList[<25]
   store first fitness value
   for t in MAX_TEMP..0:
@@ -33,7 +33,7 @@ import rects
 
     ]#
 
-const NUM_NEXT_STATES = 100
+const NUM_NEXT_STATES = 50
 const MAX_TEMP* = 100.0
 var RND = initRand()
 type NextStateFunc* = enum Wiggle, Swap
@@ -90,8 +90,7 @@ proc calcNextStateSwap[K,V](startingState: Table[K,V], temp: float): Table[K,V] 
     else:
       result[a] = A
 
-iterator nextStatesWiggle*[T:Table](startingState: T, temp: float,
-                              screenSize: wSize=(0,0)): T =
+iterator nextStatesWiggle*[T:Table](startingState: T, screenSize: wSize, temp: float,): T =
   # Yield next states from existing state
   let moveScale = 0.25
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
@@ -105,5 +104,15 @@ iterator nextStatesSwap*[T:Table](startingState: T, temp: float): T =
     yield startingState.calcNextStateSwap(temp)
 
     
-    
+iterator strategy1*[T:Table](startingState: T, screenSize: wSize): T =
+  for temp in countdown(MAX_TEMP.int, 0, 5):
+    echo temp
+    for ns in nextStatesWiggle(startingState, screenSize, temp.float):
+      yield ns
+
+iterator strategy2*[T:Table](startingState: T): T =
+  for temp in countdown(MAX_TEMP.int, 0, 5):
+    echo temp
+    for ns in nextStatesSwap(startingState, temp.float):
+      yield ns
 
