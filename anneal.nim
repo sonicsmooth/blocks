@@ -4,8 +4,6 @@ import wnim
 from wnim/private/wHelper import `+`
 import rects
 
-const NUM_NEXT_STATES = 100
-const MAX_TEMP* = 100.0
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
 # After gathering 100 next states, randomly choose the next
@@ -35,7 +33,12 @@ const MAX_TEMP* = 100.0
 
     ]#
 
+const NUM_NEXT_STATES = 100
+const MAX_TEMP* = 100.0
 var RND = initRand()
+type NextStateFunc* = enum Wiggle, Swap
+
+
 
 proc select[T](a: openArray[T], n: int): seq[T] =
   # Choose n samples from a
@@ -87,15 +90,20 @@ proc calcNextStateSwap[K,V](startingState: Table[K,V], temp: float): Table[K,V] 
     else:
       result[a] = A
 
-proc junk[K,V](t: Table[K,V], k: K): V =
-  discard
-
-iterator nextStates*[T:Table](startingState: T, temp: float, screenSize: wSize): T =
+iterator nextStatesWiggle*[T:Table](startingState: T, temp: float,
+                              screenSize: wSize=(0,0)): T =
   # Yield next states from existing state
   let moveScale = 0.25
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
-                       (screenSize.height.float * moveScale).int)
+                        (screenSize.height.float * moveScale).int)
+  for i in 1..NUM_NEXT_STATES:
+    yield startingState.calcNextStateWiggle(temp, maxAmt)
+
+iterator nextStatesSwap*[T:Table](startingState: T, temp: float): T =
+  # Yield next states from existing state
   for i in 1..NUM_NEXT_STATES:
     yield startingState.calcNextStateSwap(temp)
-    #yield startingState.calcNextStateWiggle(temp, maxAmt)
+
+    
+    
 
