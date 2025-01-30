@@ -436,9 +436,10 @@ wClass(wMainPanel of wPanel):
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState = self.mRectTable.positions
-    var junk: typeof(currentState)
     let sz = self.mBlockPanel.clientSize
-    for newPositions in nextStates(currentState, self.mSldr.value.float, sz):
+    let temp = self.mSldr.value.float
+    for newPositions in nextStatesWiggle(currentState, temp.float, sz):
+    #for newPositions in nextStates(currentState, self.mSldr.value.float, sz):
       for id, pos in newPositions:
         self.mRectTable[id].x = pos.x
         self.mRectTable[id].y = pos.y
