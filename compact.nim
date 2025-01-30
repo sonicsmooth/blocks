@@ -160,7 +160,8 @@ proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize
   let time1 = cpuTime()
   let graph = MakeGraph(rectTable, axis, reverse)
   let time2 = cpuTime()
-  let nodes = rectTable.values.toSeq.ids
+  #let nodes = rectTable.values.toSeq.ids
+  let nodes = rectTable.keys.toSeq
   let time3 = cpuTime()
   let lp = longestPathBellmanFord(graph, nodes)
   let time4 = cpuTime()
