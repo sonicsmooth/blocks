@@ -68,8 +68,6 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
   for rect in rects:
     result.add(rect.id)
 
-# proc ids*(rectTable: RectTable): seq[RectID] =
-#   rectTable.keys.toSeq
 
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
@@ -77,6 +75,12 @@ proc pos*(rect: Rect): wPoint =
 proc positions*(rectTable: RectTable): Table[RectID, wPoint] =
   for id,rect in rectTable:
     result[id] = (rect.x, rect.y)
+
+proc setPositions*[T:Table](rectTable: var RectTable, pos: T) =
+  # Set rects in rectTable to positions
+  for id, rect in rectTable:
+    rect.x = pos[id].x
+    rect.y = pos[id].y
 
 proc size*(rect: Rect): wSize =
   (rect.width, rect.height)
