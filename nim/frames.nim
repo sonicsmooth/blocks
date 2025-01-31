@@ -434,18 +434,27 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
 
+  proc setAndCompact[T:Table](rectTable: var RectTable, 
+                    state: T,
+                    compactfn: proc()): float =
+    # apply positions state to rectTable and compact. Return heuristic
+    setPositions(rectTable, state)
+    compactfn()
+
+    
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState = self.mRectTable.positions
     let sz = self.mBlockPanel.clientSize
     let temp = self.mSldr.value.float
+    let compacter = proc() =
+      self.doOnButtonCompact(primax, secax, primrev, secrev)
     #for newPositions in nextStatesWiggle(currentState, temp, sz):
     #for newPositions in nextStatesSwap(currentState, temp):
     #for newPositions in strategy1(currentState, sz):
     for newPositions in strategy2(currentState):
-      for id, pos in newPositions:
-        self.mRectTable[id].x = pos.x
-        self.mRectTable[id].y = pos.y
+      discard setAndCompact(self.mRectTable, newPositions, compacter)
+      #setPositions(self.mRectTable, newPositions)
       #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
       #self.doOnButtonCompact(primax, secax, primrev, secrev)
       self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
