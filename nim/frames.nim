@@ -441,7 +441,17 @@ wClass(wMainPanel of wPanel):
     setPositions(rectTable, state)
     compactfn()
 
-    
+  # type StrategyIterator[A,B] = iterator(startingState: Table[A,B]): Table[A,B] {.closure.}
+  # proc makeStrategy1[A,B](screenSize: wSize): StrategyIterator =
+  #   result = iterator(startingState): Table = 
+  #     for state in strategy1(startingState, screenSize):
+  #       yield state
+
+  # proc makeStrategy2[T](screenSize: wSize): StrategyIterator[T] =
+  #   result = iterator(startingState: T): T = 
+  #     for state in strategy2(startingState):
+  #       yield state
+
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState = self.mRectTable.positions
@@ -449,10 +459,11 @@ wClass(wMainPanel of wPanel):
     let temp = self.mSldr.value.float
     let compacter = proc() =
       self.doOnButtonCompact(primax, secax, primrev, secrev)
-    #for newPositions in nextStatesWiggle(currentState, temp, sz):
-    #for newPositions in nextStatesSwap(currentState, temp):
-    #for newPositions in strategy1(currentState, sz):
-    for newPositions in strategy2(currentState):
+    
+    var strat1 = strategy1[PositionTable]
+    #var strat1 = makeStrategy1(sz)
+    #var strat2 = makeStrategy2(sz)
+    for newPositions in strat1(currentState):
       discard setAndCompact(self.mRectTable, newPositions, compacter)
       #setPositions(self.mRectTable, newPositions)
       #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  

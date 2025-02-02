@@ -24,6 +24,7 @@ type
     brushcolor*: wColor
     selected*: bool
   RectTable* = ref Table[RectID, Rect]
+  PositionTable* = ref Table[RectID, wPoint]
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -214,16 +215,16 @@ proc toRectId(id: int): RectId =
   elif RectId is uint64: result = id.uint64
   elif RectId is string: result = $id
  
-proc toRectId(id: string): RectId =
-  when RectId is int:    result = id.parseInt.int
-  elif RectId is int16:  result = id.parseInt.int16 
-  elif RectId is int32:  result = id.parseInt.int32
-  elif RectId is int64:  result = id.parseInt.int64
-  elif RectId is uint:   result = id.parseInt.uint
-  elif RectId is uint16: result = id.parseInt.uint16 
-  elif RectId is uint32: result = id.parseInt.uint32
-  elif RectId is uint64: result = id.parseInt.uint64
-  elif RectId is string: result = id
+# proc toRectId(id: string): RectId =
+#   when RectId is int:    result = id.parseInt.int
+#   elif RectId is int16:  result = id.parseInt.int16 
+#   elif RectId is int32:  result = id.parseInt.int32
+#   elif RectId is int64:  result = id.parseInt.int64
+#   elif RectId is uint:   result = id.parseInt.uint
+#   elif RectId is uint16: result = id.parseInt.uint16 
+#   elif RectId is uint32: result = id.parseInt.uint32
+#   elif RectId is uint64: result = id.parseInt.uint64
+#   elif RectId is string: result = id
 
 
 proc RandRect(id: RectID, screenSize: wSize): Rect = 
