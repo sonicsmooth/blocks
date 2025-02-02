@@ -96,21 +96,21 @@ iterator nextStatesWiggle*[T:Table](startingState: T, screenSize: wSize, temp: f
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                         (screenSize.height.float * moveScale).int)
   for i in 1..NUM_NEXT_STATES:
-    yield startingState.calcNextStateWiggle(temp, maxAmt)
+    yield calcNextStateWiggle(startingState, temp, maxAmt)
 
 iterator nextStatesSwap*[T:Table](startingState: T, temp: float): T =
   # Yield next states from existing state
   for i in 1..NUM_NEXT_STATES:
-    yield startingState.calcNextStateSwap(temp)
+    yield calcNextStateSwap(startingState, temp)
 
     
-iterator strategy1*[T:Table](startingState: T, screenSize: wSize): T =
+iterator strategy1*[T:Table](startingState: T, screenSize: wSize): T {.closure.} =
   for temp in countdown(MAX_TEMP.int, 0, 5):
     echo temp
     for ns in nextStatesWiggle(startingState, screenSize, temp.float):
       yield ns
 
-iterator strategy2*[T:Table](startingState: T): T =
+iterator strategy2*[T:Table](startingState: T): T {.closure.} =
   for temp in countdown(MAX_TEMP.int, 0, 5):
     echo temp
     for ns in nextStatesSwap(startingState, temp.float):
