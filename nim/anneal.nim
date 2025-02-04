@@ -80,7 +80,6 @@ iterator nextStatesWiggle*(startingState: PositionTable, screenSize: wSize, temp
 
 iterator strategy1*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
   for temp in countdown(MAX_TEMP.int, 0, 5):
-    echo temp
     for ns in nextStatesWiggle(startingState, screenSize, temp.float):
       yield ns
 
@@ -113,7 +112,6 @@ iterator nextStatesSwap*(startingState: PositionTable, temp: float): PositionTab
 
 iterator strategy2*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
   for temp in countdown(MAX_TEMP.int, 0, 5):
-    echo temp
     for ns in nextStatesSwap(startingState, temp.float):
       yield ns
 
