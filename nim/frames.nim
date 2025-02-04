@@ -13,6 +13,9 @@ import rects, compact, anneal
 # TODO: Figure out invalidate region
 # TODO: Implement rotation
 # TODO: update qty when spinner text loses focus
+# TODO: checkbox for show intermediate steps
+# TODO: change temperature slider during run if checkbox
+# TODO: gray out slider or use it as max starting temp
 
 const
   USER_MOUSE_MOVE = WM_APP + 1
@@ -430,13 +433,12 @@ wClass(wMainPanel of wPanel):
       pos = self.mRectTable.positions
       #self.refresh(false)
       #UpdateWindow(self.mBlockPanel.mHwnd)
-      #sleep(10)
+      #sleep(100)
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
 
   proc setAndCompact[T:Table](rectTable: var RectTable, 
-                    state: T,
-                    compactfn: proc()): float =
+                    state: T, compactfn: proc()): float =
     # apply positions state to rectTable and compact. Return heuristic
     setPositions(rectTable, state)
     compactfn()
@@ -460,22 +462,19 @@ wClass(wMainPanel of wPanel):
     let compacter = proc() =
       self.doOnButtonCompact(primax, secax, primrev, secrev)
     
-    # var strat:Strategy = 
-    #   when true: 
-    #     strategy1
-    #   else:
-    #     strategy2
-    # #for newPositions in strat[PositionTable](currentState, sz):
-
-    # for newPositions in strategy1(currentState, sz):
-    #   discard setAndCompact(self.mRectTable, newPositions, compacter)
-    #   #setPositions(self.mRectTable, newPositions)
-    #   #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
-    #   #self.doOnButtonCompact(primax, secax, primrev, secrev)
-    #   self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    #   self.refresh(false)
-    #   UpdateWindow(self.mBlockPanel.mHwnd)
-    #   sleep(1)
+    var strat =
+      when false: strategy1
+      else:      strategy2
+    for newPositions in strat(currentState, sz):
+      discard setAndCompact(self.mRectTable, newPositions, compacter)
+      #setPositions(self.mRectTable, newPositions)
+      #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
+      #self.doOnButtonCompact(primax, secax, primrev, secrev)
+      self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+      self.refresh(false)
+      UpdateWindow(self.mBlockPanel.mHwnd)
+      #sleep(1)
+    self.refresh(false)
 
 
   proc onButtonCompact←↑(self: wMainPanel) =

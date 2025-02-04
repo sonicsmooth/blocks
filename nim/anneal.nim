@@ -1,5 +1,6 @@
 # Simulated annealing
 import std/[random, math, sets]
+from sequtils import toSeq
 import wnim
 from wnim/private/wHelper import `+`
 import rects
@@ -64,57 +65,55 @@ proc moveAmt(temp: float, maxAmt: wSize): wPoint =
   let xmy  = (rand(maxY) - maxY/2.0).int
   result = (xmv, xmy)
 
-proc calcNextStateWiggle[T](startingState: T, temp: float, maxAmt: wSize): T =
+proc calcNextStateWiggle[T](startingState: T, temp: float, maxAmt: wSize): T {.inline.} =
   # Move each block by some random amount depending on temperature
   for id, pos in startingState:
     result[id] = pos + moveAmt(temp, maxAmt)
 
-#proc calcNextStateSwap(startingState: PositionTable, temp: float): PositionTable =
-  # # Swap some pairs of blocks.  How many depends on temperature.
-  # let maxSwap = 1.0  # Proportion of blocks that will move at MAX_TEMP
-  # let tempPct = temp / MAX_TEMP
-  # let numRects = 2 * (floor(startingState.len.float * maxSwap * tempPct / 2.0)).int
-  # let idk = startingState.keys
-  # let ids = idk.toSeq
-  # let rpairs = select(ids, numRects).pairs
-  # let pairTable: Table[typeof(ids), typeof(ids)] = rpairs.toTable
-  # var idSet = ids.toHashSet
-  # while idSet.len > 0:
-  #   let a = idSet.pop
-  #   let A = startingState[a]
-  #   if a in pairTable:
-  #     let b = pairTable[a]
-  #     let B = startingState[b]
-  #     result[a] = B
-  #     result[b] = A
-  #     idSet.excl(b)
-  #   else:
-  #     result[a] = A
+iterator nextStatesWiggle*(startingState: PositionTable, screenSize: wSize, temp: float,): PositionTable =
+  # Yield next states from existing state
+  let moveScale = 0.25
+  let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
+                       (screenSize.height.float * moveScale).int)
+  for i in 1..NUM_NEXT_STATES:
+    yield calcNextStateWiggle(startingState, temp, maxAmt)
 
-# iterator nextStatesWiggle*(startingState: PositionTable, screenSize: wSize, temp: float,): PositionTable =
-#   # Yield next states from existing state
-#   let moveScale = 0.25
-#   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
-#                        (screenSize.height.float * moveScale).int)
-#   for i in 1..NUM_NEXT_STATES:
-#     yield calcNextStateWiggle(startingState, temp, maxAmt)
+iterator strategy1*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
+  for temp in countdown(MAX_TEMP.int, 0, 5):
+    echo temp
+    for ns in nextStatesWiggle(startingState, screenSize, temp.float):
+      yield ns
 
-# iterator nextStatesSwap*(startingState: PositionTable, temp: float): PositionTable =
-#   # Yield next states from existing state
-#   for i in 1..NUM_NEXT_STATES:
-#     yield calcNextStateSwap(startingState, temp)
 
-    
-# iterator strategy1*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
-#   for temp in countdown(MAX_TEMP.int, 0, 5):
-#     echo temp
-#     for ns in nextStatesWiggle(startingState, screenSize, temp.float):
-#       yield ns
+proc calcNextStateSwap(startingState: PositionTable, temp: float): PositionTable =
+  # Swap some pairs of blocks.  How many depends on temperature.
+  let maxSwap = 1.0  # Proportion of blocks that will move at MAX_TEMP
+  let tempPct = temp / MAX_TEMP
+  let numRects = 2 * (floor(startingState.len.float * maxSwap * tempPct / 2.0)).int
+  let ids = startingState.keys.toSeq
+  let rpairs = select(ids, numRects).pairs
+  let pairTable: Table[typeof(ids[0]), typeof(ids[0])] = rpairs.toTable
+  var idSet = ids.toHashSet
+  while idSet.len > 0:
+    let a = idSet.pop
+    let A = startingState[a]
+    if a in pairTable:
+      let b = pairTable[a]
+      let B = startingState[b]
+      result[a] = B
+      result[b] = A
+      idSet.excl(b)
+    else:
+      result[a] = A
 
-# iterator strategy2*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
-#   discard wSize
-#   for temp in countdown(MAX_TEMP.int, 0, 5):
-#     echo temp
-#     for ns in nextStatesSwap(startingState, temp.float):
-#       yield ns
+iterator nextStatesSwap*(startingState: PositionTable, temp: float): PositionTable =
+  # Yield next states from existing state
+  for i in 1..NUM_NEXT_STATES:
+    yield calcNextStateSwap(startingState, temp)
+
+iterator strategy2*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
+  for temp in countdown(MAX_TEMP.int, 0, 5):
+    echo temp
+    for ns in nextStatesSwap(startingState, temp.float):
+      yield ns
 

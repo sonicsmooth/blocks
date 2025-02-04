@@ -24,7 +24,7 @@ type
     brushcolor*: wColor
     selected*: bool
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
-  PositionTable* = ref Table[RectID, wPoint] # meant to have value semantics
+  PositionTable* = Table[RectID, wPoint] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -36,10 +36,13 @@ type
   RightEdge*  = object of VertEdge
 
 
-var pt = PositionTable()
-echo typeof(pt)
-echo pt.len
-let iseq = pt.keys.toSeq
+# var pt: Table[int, wPoint]
+# pt[0] = (0,0)
+# pt[1] = (1,2)
+# echo typeof(pt)
+# echo pt.len
+# let idk = keys(pt)
+# echo idk
 
 proc `$`*(r: Rect): string =
   result =
@@ -96,12 +99,16 @@ proc upperLeft*(rect: wRect): wPoint =
   (rect.x, rect.y)
 
 proc upperRight*(rect: wRect): wPoint =
+  # Should have -1 offset
+  # TODO: introduce upperRight< proc with offset
   (rect.x + rect.width, rect.y)
 
 proc lowerLeft*(rect: wRect): wPoint =
+  # Should have -1 offset
   (rect.x, rect.y + rect.height)
 
 proc lowerRight*(rect: wRect): wPoint =
+  # Should have -1 offset
   (rect.x + rect.width, rect.y + rect.height)
 
 proc top*(rect: wRect): TopEdge =
@@ -209,6 +216,7 @@ proc rectInRects*(rect: wRect, table: RectTable): seq[RectID] =
 proc rectInRects*(rectId: RectID, table: RectTable): seq[RectID] = 
   rectInRects(table[rectId].wRect, table)
 
+#TODO: make converter here
 
 proc toRectId(id: int): RectId =
   when RectId is int:    result = id.int
@@ -221,18 +229,6 @@ proc toRectId(id: int): RectId =
   elif RectId is uint64: result = id.uint64
   elif RectId is string: result = $id
  
-# proc toRectId(id: string): RectId =
-#   when RectId is int:    result = id.parseInt.int
-#   elif RectId is int16:  result = id.parseInt.int16 
-#   elif RectId is int32:  result = id.parseInt.int32
-#   elif RectId is int64:  result = id.parseInt.int64
-#   elif RectId is uint:   result = id.parseInt.uint
-#   elif RectId is uint16: result = id.parseInt.uint16 
-#   elif RectId is uint32: result = id.parseInt.uint32
-#   elif RectId is uint64: result = id.parseInt.uint64
-#   elif RectId is string: result = id
-
-
 proc RandRect(id: RectID, screenSize: wSize): Rect = 
   let rectSizeW: int = rand(WRANGE)
   let rectSizeH: int = rand(HRANGE)
