@@ -421,7 +421,7 @@ wClass(wMainPanel of wPanel):
   proc doOnButtonCompact(self: wMainPanel, primax, secax: Axis,
                          primrev, secrev: bool ) =
     # Keep compacting until it doesn't change
-    var pos, lastPos: Table[RectID, wPoint]
+    var pos, lastPos: PositionTable
     pos = self.mRectTable.positions
     while pos != lastPos:
       compact(self.mRectTable, primax, primrev, self.mBlockPanel.clientSize)
@@ -454,24 +454,28 @@ wClass(wMainPanel of wPanel):
 
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
-    let currentState = self.mRectTable.positions
+    let currentState: PositionTable = self.mRectTable.positions
     let sz = self.mBlockPanel.clientSize
     let temp = self.mSldr.value.float
     let compacter = proc() =
       self.doOnButtonCompact(primax, secax, primrev, secrev)
     
-    var strat1 = strategy1[PositionTable]
-    #var strat1 = makeStrategy1(sz)
-    #var strat2 = makeStrategy2(sz)
-    for newPositions in strat1(currentState):
-      discard setAndCompact(self.mRectTable, newPositions, compacter)
-      #setPositions(self.mRectTable, newPositions)
-      #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
-      #self.doOnButtonCompact(primax, secax, primrev, secrev)
-      self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-      self.refresh(false)
-      UpdateWindow(self.mBlockPanel.mHwnd)
-      sleep(1)
+    # var strat:Strategy = 
+    #   when true: 
+    #     strategy1
+    #   else:
+    #     strategy2
+    # #for newPositions in strat[PositionTable](currentState, sz):
+
+    # for newPositions in strategy1(currentState, sz):
+    #   discard setAndCompact(self.mRectTable, newPositions, compacter)
+    #   #setPositions(self.mRectTable, newPositions)
+    #   #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
+    #   #self.doOnButtonCompact(primax, secax, primrev, secrev)
+    #   self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    #   self.refresh(false)
+    #   UpdateWindow(self.mBlockPanel.mHwnd)
+    #   sleep(1)
 
 
   proc onButtonCompact←↑(self: wMainPanel) =
