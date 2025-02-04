@@ -443,33 +443,20 @@ wClass(wMainPanel of wPanel):
     setPositions(rectTable, state)
     compactfn()
 
-  # type StrategyIterator[A,B] = iterator(startingState: Table[A,B]): Table[A,B] {.closure.}
-  # proc makeStrategy1[A,B](screenSize: wSize): StrategyIterator =
-  #   result = iterator(startingState): Table = 
-  #     for state in strategy1(startingState, screenSize):
-  #       yield state
-
-  # proc makeStrategy2[T](screenSize: wSize): StrategyIterator[T] =
-  #   result = iterator(startingState: T): T = 
-  #     for state in strategy2(startingState):
-  #       yield state
-
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState: PositionTable = self.mRectTable.positions
+    let initHeuristic = self.mRectTable.ratio
     let sz = self.mBlockPanel.clientSize
     let temp = self.mSldr.value.float
     let compacter = proc() =
       self.doOnButtonCompact(primax, secax, primrev, secrev)
-    
-    var strat =
+    let strat =
       when false: strategy1
       else:      strategy2
+    echo initHeuristic
     for newPositions in strat(currentState, sz):
       discard setAndCompact(self.mRectTable, newPositions, compacter)
-      #setPositions(self.mRectTable, newPositions)
-      #echo &"Fill ratio: {100*self.mRectTable.ratio:.4f}"  
-      #self.doOnButtonCompact(primax, secax, primrev, secrev)
       self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
       self.refresh(false)
       UpdateWindow(self.mBlockPanel.mHwnd)
