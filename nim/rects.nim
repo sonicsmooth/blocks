@@ -23,8 +23,8 @@ type
     pencolor*: wColor
     brushcolor*: wColor
     selected*: bool
-  RectTable* = ref Table[RectID, Rect]
-  PositionTable* = ref Table[RectID, wPoint]
+  RectTable* = ref Table[RectID, Rect]   # meant to be shared
+  PositionTable* = ref Table[RectID, wPoint] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -35,6 +35,11 @@ type
   BottomEdge* = object of HorizEdge
   RightEdge*  = object of VertEdge
 
+
+var pt = PositionTable()
+echo typeof(pt)
+echo pt.len
+let iseq = pt.keys.toSeq
 
 proc `$`*(r: Rect): string =
   result =
@@ -47,6 +52,7 @@ proc `$`*(r: Rect): string =
     "pencolor: " & &"0x{r.pencolor:0x}" & ", " &
     "brushcolor: " & &"0x{r.brushcolor:0x}" & ", " &
     "selected: " & $r.selected & "}"
+
 
 proc `$`*(table: RectTable): string =
   for k,v in table:
@@ -73,7 +79,7 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
 
-proc positions*(rectTable: RectTable): Table[RectID, wPoint] =
+proc positions*(rectTable: RectTable): PositionTable =
   for id,rect in rectTable:
     result[id] = (rect.x, rect.y)
 

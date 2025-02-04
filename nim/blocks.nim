@@ -13,3 +13,4 @@ when isMainModule:
   let app = App()
   discard MainFrame(init_size, rectTable)
   app.mainLoop()
+  
