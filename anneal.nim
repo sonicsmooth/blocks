@@ -38,7 +38,6 @@ const NUM_NEXT_STATES = 50
 const MAX_TEMP* = 100.0
 var RND = initRand()
 type NextStateFunc* = enum Wiggle, Swap
-type Strategy* = iterator(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.}
 
 
 proc select[T](a: openArray[T], n: int): seq[T] =
@@ -67,8 +66,11 @@ proc moveAmt(temp: float, maxAmt: wSize): wPoint =
 
 proc calcNextStateWiggle[T](startingState: T, temp: float, maxAmt: wSize): T {.inline.} =
   # Move each block by some random amount depending on temperature
-  for id, pos in startingState:
-    result[id] = pos + moveAmt(temp, maxAmt)
+  for id, poswidth in startingState:
+    let amt = moveAmt(temp, maxAmt)
+    result[id] = (poswidth.x + amt.x, 
+                  poswidth.y + amt.y, 
+                  poswidth.width, poswidth.height)
 
 iterator nextStatesWiggle*(startingState: PositionTable, screenSize: wSize, temp: float,): PositionTable =
   # Yield next states from existing state
@@ -107,8 +109,12 @@ proc calcNextStateSwap(startingState: PositionTable, temp: float): PositionTable
 
 iterator nextStatesSwap*(startingState: PositionTable, temp: float): PositionTable =
   # Yield next states from existing state
+  var heur = startingState.ratio
   for i in 1..NUM_NEXT_STATES:
-    yield calcNextStateSwap(startingState, temp)
+    echo heur
+    let nextState = calcNextStateSwap(startingState, temp)
+    heur = nextState.ratio 
+    yield nextState
 
 iterator strategy2*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
   for temp in countdown(MAX_TEMP.int, 0, 5):

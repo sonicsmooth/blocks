@@ -23,8 +23,9 @@ type
     pencolor*: wColor
     brushcolor*: wColor
     selected*: bool
+  PosWidth = tuple[x,y,width,height:int]
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
-  PositionTable* = Table[RectID, wPoint] # meant to have value semantics
+  PositionTable* = Table[RectID, PosWidth] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -34,15 +35,6 @@ type
   LeftEdge*   = object of VertEdge
   BottomEdge* = object of HorizEdge
   RightEdge*  = object of VertEdge
-
-
-# var pt: Table[int, wPoint]
-# pt[0] = (0,0)
-# pt[1] = (1,2)
-# echo typeof(pt)
-# echo pt.len
-# let idk = keys(pt)
-# echo idk
 
 proc `$`*(r: Rect): string =
   result =
@@ -55,7 +47,6 @@ proc `$`*(r: Rect): string =
     "pencolor: " & &"0x{r.pencolor:0x}" & ", " &
     "brushcolor: " & &"0x{r.brushcolor:0x}" & ", " &
     "selected: " & $r.selected & "}"
-
 
 proc `$`*(table: RectTable): string =
   for k,v in table:
@@ -84,13 +75,15 @@ proc pos*(rect: Rect): wPoint =
 
 proc positions*(rectTable: RectTable): PositionTable =
   for id,rect in rectTable:
-    result[id] = (rect.x, rect.y)
+    result[id] = (rect.x, rect.y, rect.width, rect.height)
 
 proc setPositions*[T:Table](rectTable: var RectTable, pos: T) =
   # Set rects in rectTable to positions
   for id, rect in rectTable:
     rect.x = pos[id].x
     rect.y = pos[id].y
+    rect.width = pos[id].width
+    rect.height = pos[id].height
 
 proc size*(rect: Rect): wSize =
   (rect.width, rect.height)
@@ -282,13 +275,11 @@ proc boundingBox*(rects: openArray[Rect|wRect]): wRect =
     bottom = max(bottom, rect.y+rect.height)
   (x:left, y: top, width: right - left, height: bottom - top)
 
-# proc boundingBox*(rects: openArray[Rect]): wRect =
-#   boundingBox(rects.wRects)
 
-proc area*(rect: Rect|wRect): int =
+proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
 
-proc ratio*(rects: openArray[Rect|wRect]): float =
+proc ratio*(rects: openArray[wRect|Rect|PosWidth]): float =
   # Find fill ratio
   var usedArea: int
   for r in rects: 
@@ -296,8 +287,8 @@ proc ratio*(rects: openArray[Rect|wRect]): float =
   let totalArea = boundingBox(rects).area
   usedArea / totalArea
 
-proc ratio*(rectTable: RectTable): float =
-  rectTable.values.toSeq.ratio
+proc ratio*[T:RectTable|PositionTable](table: T): float =
+  table.values.toSeq.ratio
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect

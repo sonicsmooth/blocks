@@ -127,6 +127,7 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
+    echo self.mRectTable.ratio
 
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
@@ -446,15 +447,13 @@ wClass(wMainPanel of wPanel):
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState: PositionTable = self.mRectTable.positions
-    let initHeuristic = self.mRectTable.ratio
     let sz = self.mBlockPanel.clientSize
-    let temp = self.mSldr.value.float
+    #let temp = self.mSldr.value.float
     let compacter = proc() =
       self.doOnButtonCompact(primax, secax, primrev, secrev)
     let strat =
       when false: strategy1
-      else:      strategy2
-    echo initHeuristic
+      else:       strategy2
     for newPositions in strat(currentState, sz):
       discard setAndCompact(self.mRectTable, newPositions, compacter)
       self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
