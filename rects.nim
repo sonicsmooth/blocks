@@ -8,7 +8,7 @@ export tables
 const
   WRANGE = 25..75
   HRANGE = 25..75
-  QTY* = 100
+  QTY* = 50
 
 type 
   RectID* = uint

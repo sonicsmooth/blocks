@@ -38,7 +38,7 @@ proc lParamTuple[T](event: wEvent): tuple {.inline.} =
 
 # These belong in Rects module
 
-proc toggle_rect_selection(table: RectTable, id: RectID) = 
+proc toggleRectSelection(table: RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
     SELECTED.excl(id)
@@ -46,7 +46,7 @@ proc toggle_rect_selection(table: RectTable, id: RectID) =
     table[id].selected = true
     SELECTED.incl(id)
 
-proc clear_rect_selection(table: RectTable) = 
+proc clearRectSelection(table: RectTable) = 
   for id in SELECTED:
     table[id].selected = false
   SELECTED.clear()
@@ -115,7 +115,13 @@ wClass(wBlockPanel of wPanel):
     # Update message on main frame
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
-    
+
+    # DEBUG
+    let pir = ptInRects(event.mousePos, self.mRectTable)
+    if pir.len > 0:
+      echo pir
+      echo self.mRectTable
+
     # Todo: hovering over
 
     let hits = MOUSE_DATA.clickHitIds
@@ -138,7 +144,7 @@ wClass(wBlockPanel of wPanel):
       if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
-        toggle_rect_selection(self.mRectTable, lastHitId)
+        toggleRectSelection(self.mRectTable, lastHitId)
         self.updateBmpCache(lastHitId)
         self.refresh(false, self.mRectTable[lastHitId].wRect)
       elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
@@ -148,7 +154,7 @@ wClass(wBlockPanel of wPanel):
           return
         MOUSE_DATA.dirtyIds = SELECTED.toSeq
         let dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
-        clear_rect_selection(self.mRectTable)
+        clearRectSelection(self.mRectTable)
         self.updateBmpCaches(MOUSE_DATA.dirtyIds)
 
         # Two ways to redraw deselected boxes without
@@ -443,18 +449,44 @@ wClass(wMainPanel of wPanel):
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState: PositionTable = self.mRectTable.positions
-    let sz = self.mBlockPanel.clientSize
-    let strat =
-      when true: strategy1
-      else:       strategy2
-    echo &"Starting state method 1: {self.mRectTable.ratio}"
-    echo &"Starting state method 2: {currentState.ratio}"
-    for nextState in strat(currentState, sz):
-      setPositions(self.mRectTable, nextState)
-      self.doOnButtonCompact(primax, secax, primrev, secrev)
-      #echo &"in strat after set and compact: {self.mRectTable.ratio}"
-      self.forceRedraw(0)
-    self.refresh(false)
+    let nextState = calcSwap(currentState, 100)
+    setPositions(self.mRectTable, nextState)
+    var idupdate = nextState.keys.toSeq
+    echo typeof(idupdate)
+    #self.updateBmpCaches(nextState.keys.toSeq)
+    self.forceRedraw(5)
+
+    # let sz = self.mBlockPanel.clientSize
+    # let strat =
+    #   when false: strategy1
+    #   else:       strategy2
+    # echo "Starting state:"
+    # echo self.mRectTable
+    # echo currentState
+    # echo &"Starting state method 1: {self.mRectTable.ratio}"
+    # echo &"Starting state method 2: {currentState.ratio}"
+    # var i:int
+    # var lastTemp:int = -1
+    # for nextState, temp in strat(currentState, sz):
+    #   if lastTemp != temp: echo "___"
+    #   echo "currentState:"
+    #   echo currentState
+    #   echo "nextState:"
+    #   echo nextState
+    #   lastTemp = temp
+    #   echo &"{i:3}|{temp}: currentState: {currentState.ratio}"
+    #   echo &"{i:3}|{temp}: nextState   : {nextState.ratio}"
+    #   setPositions(self.mRectTable, nextState)
+    #   echo &"{i:3}|{temp}: rectTable bc: {self.mRectTable.ratio}"
+    #   echo "newTable bc:"
+    #   echo self.mRectTable
+    #   self.doOnButtonCompact(primax, secax, primrev, secrev)
+    #   echo &"{i:3}|{temp}: rectTable ac: {self.mRectTable.ratio}"
+      
+    #   #discard stdin.readLine()
+    #   self.forceRedraw(5000)
+    #   inc i
+    # self.refresh(false)
 
 
   proc onButtonCompact←↑(self: wMainPanel) =
