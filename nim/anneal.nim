@@ -64,7 +64,7 @@ proc moveAmt(temp: float, maxAmt: wSize): wPoint =
   let xmy  = (rand(maxY) - maxY/2.0).int
   result = (xmv, xmy)
 
-proc calcNextStateWiggle[T](startingState: T, temp: float, maxAmt: wSize): T {.inline.} =
+proc calcWiggle[T](startingState: T, temp: float, maxAmt: wSize): T {.inline.} =
   # Move each block by some random amount depending on temperature
   for id, poswidth in startingState:
     let amt = moveAmt(temp, maxAmt)
@@ -79,25 +79,18 @@ iterator nextStatesWiggle*(startingState: PositionTable, screenSize: wSize, temp
                        (screenSize.height.float * moveScale).int)
   var heur = startingState.ratio
   for i in 1..NUM_NEXT_STATES:
-    #echo &"{temp}.{i} heur: {heur}"
-    let nextState = calcNextStateWiggle(startingState, temp, maxAmt)
-    heur = nextState.ratio
+    let nextState = calcWiggle(startingState, temp, maxAmt)
     yield nextState    
 
-iterator strategy1*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
-  #for temp in countdown(MAX_TEMP.int, 0, 5):
-  for temp in countdown(50, 0, 10):
-    for ns in nextStatesWiggle(startingState, screenSize, temp.float):
-      yield ns
 
-
-proc calcNextStateSwap(startingState: PositionTable, temp: float): PositionTable =
+proc calcSwap*(startingState: PositionTable, temp: float): PositionTable =
   # Swap some pairs of blocks.  How many depends on temperature.
   let maxSwap = 1.0  # Proportion of blocks that will move at MAX_TEMP
   let tempPct = temp / MAX_TEMP
   let numRects = 2 * (floor(startingState.len.float * maxSwap * tempPct / 2.0)).int
   let ids = startingState.keys.toSeq
   let rpairs = select(ids, numRects).pairs
+  echo rpairs
   let pairTable: Table[typeof(ids[0]), typeof(ids[0])] = rpairs.toTable
   var idSet = ids.toHashSet
   while idSet.len > 0:
@@ -116,14 +109,18 @@ iterator nextStatesSwap*(startingState: PositionTable, temp: float): PositionTab
   # Yield next states from existing state
   var heur = startingState.ratio
   for i in 1..NUM_NEXT_STATES:
-    #echo &"{temp}.{i} heur: {heur}"
-    let nextState = calcNextStateSwap(startingState, temp)
-    heur = nextState.ratio 
+    let nextState = calcSwap(startingState, temp)
     yield nextState
 
-iterator strategy2*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
-  #for temp in countdown(MAX_TEMP.int, 0, 1):
-  for temp in countdown(50, 0, 10):
+iterator strategy1*(startingState: PositionTable, screenSize: wSize): auto {.closure.} =
+  for temp in countdown(MAX_TEMP.int, 0, 10):
+  #for temp in countdown(50, 0, 10):
+    for ns in nextStatesWiggle(startingState, screenSize, temp.float):
+      yield (ns, temp)
+
+iterator strategy2*(startingState: PositionTable, screenSize: wSize): auto {.closure.} =
+  for temp in countdown(MAX_TEMP.int, 0, 10):
+  #for temp in countdown(50, 0, 10):
     for ns in nextStatesSwap(startingState, temp.float):
-      yield ns
+      yield (ns, temp)
 
