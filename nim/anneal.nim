@@ -1,5 +1,5 @@
 # Simulated annealing
-import std/[random, math, sets]
+import std/[random, math, sets, strformat]
 from sequtils import toSeq
 import wnim
 from wnim/private/wHelper import `+`
@@ -34,7 +34,7 @@ import rects
 
     ]#
 
-const NUM_NEXT_STATES = 50
+const NUM_NEXT_STATES = 10
 const MAX_TEMP* = 100.0
 var RND = initRand()
 type NextStateFunc* = enum Wiggle, Swap
@@ -77,11 +77,16 @@ iterator nextStatesWiggle*(startingState: PositionTable, screenSize: wSize, temp
   let moveScale = 0.25
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                        (screenSize.height.float * moveScale).int)
+  var heur = startingState.ratio
   for i in 1..NUM_NEXT_STATES:
-    yield calcNextStateWiggle(startingState, temp, maxAmt)
+    #echo &"{temp}.{i} heur: {heur}"
+    let nextState = calcNextStateWiggle(startingState, temp, maxAmt)
+    heur = nextState.ratio
+    yield nextState    
 
 iterator strategy1*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
-  for temp in countdown(MAX_TEMP.int, 0, 5):
+  #for temp in countdown(MAX_TEMP.int, 0, 5):
+  for temp in countdown(50, 0, 10):
     for ns in nextStatesWiggle(startingState, screenSize, temp.float):
       yield ns
 
@@ -111,13 +116,14 @@ iterator nextStatesSwap*(startingState: PositionTable, temp: float): PositionTab
   # Yield next states from existing state
   var heur = startingState.ratio
   for i in 1..NUM_NEXT_STATES:
-    echo heur
+    #echo &"{temp}.{i} heur: {heur}"
     let nextState = calcNextStateSwap(startingState, temp)
     heur = nextState.ratio 
     yield nextState
 
 iterator strategy2*(startingState: PositionTable, screenSize: wSize): PositionTable {.closure.} =
-  for temp in countdown(MAX_TEMP.int, 0, 5):
+  #for temp in countdown(MAX_TEMP.int, 0, 1):
+  for temp in countdown(50, 0, 10):
     for ns in nextStatesSwap(startingState, temp.float):
       yield ns
 

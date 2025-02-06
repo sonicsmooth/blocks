@@ -345,6 +345,11 @@ wClass(wMainPanel of wPanel):
       butt.size     = (bw, bh)
       yPosAcc += bh
 
+  proc forceRedraw(self: wMainPanel, wait: int) = 
+    self.refresh(false)
+    UpdateWindow(self.mBlockPanel.mHwnd)
+    sleep(wait)
+
   proc onResize(self: wMainPanel) =
       self.Layout()
 
@@ -432,34 +437,23 @@ wClass(wMainPanel of wPanel):
       compact(self.mRectTable, secax, secrev, self.mBlockPanel.clientSize)
       lastPos = pos
       pos = self.mRectTable.positions
-      #self.refresh(false)
-      #UpdateWindow(self.mBlockPanel.mHwnd)
-      #sleep(100)
     self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
-
-  proc setAndCompact[T:Table](rectTable: var RectTable, 
-                    state: T, compactfn: proc()): float =
-    # apply positions state to rectTable and compact. Return heuristic
-    setPositions(rectTable, state)
-    compactfn()
 
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState: PositionTable = self.mRectTable.positions
     let sz = self.mBlockPanel.clientSize
-    #let temp = self.mSldr.value.float
-    let compacter = proc() =
-      self.doOnButtonCompact(primax, secax, primrev, secrev)
     let strat =
-      when false: strategy1
+      when true: strategy1
       else:       strategy2
-    for newPositions in strat(currentState, sz):
-      discard setAndCompact(self.mRectTable, newPositions, compacter)
-      self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-      self.refresh(false)
-      UpdateWindow(self.mBlockPanel.mHwnd)
-      #sleep(1)
+    echo &"Starting state method 1: {self.mRectTable.ratio}"
+    echo &"Starting state method 2: {currentState.ratio}"
+    for nextState in strat(currentState, sz):
+      setPositions(self.mRectTable, nextState)
+      self.doOnButtonCompact(primax, secax, primrev, secrev)
+      #echo &"in strat after set and compact: {self.mRectTable.ratio}"
+      self.forceRedraw(0)
     self.refresh(false)
 
 
@@ -521,6 +515,7 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel = BlockPanel(self, rectTable)
     self.mSpnr.setRange(1, 10000)
     self.mSldr.setValue(20)
+    self.mChk.setValue(true)
 
     # Connect events
     self.wEvent_Size                    do (event: wEvent): self.onResize()
