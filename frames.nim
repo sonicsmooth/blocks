@@ -450,10 +450,18 @@ wClass(wMainPanel of wPanel):
                                primrev, secrev: bool ) =
     let currentState: PositionTable = self.mRectTable.positions
     let nextState = calcSwap(currentState, 100)
+    echo "Before swap"
+    echo "RectTable:\n", self.mRectTable
+    echo "Child RectTable:\n", self.mBlockPanel.mRectTable
+    echo "currentState:\n", currentState
+    echo "nextState:\n", nextState
     setPositions(self.mRectTable, nextState)
-    var idupdate = nextState.keys.toSeq
-    echo typeof(idupdate)
-    #self.updateBmpCaches(nextState.keys.toSeq)
+    echo "After swap\n"
+    echo "RectTable:\n", self.mRectTable
+    echo "Child RectTable:\n", self.mBlockPanel.mRectTable
+    echo "currentState:\n", currentState
+    echo "nextState:\n", nextState
+    self.mBlockPanel.updateBmpCaches(nextState.keys.toSeq)
     self.forceRedraw(5)
 
     # let sz = self.mBlockPanel.clientSize
