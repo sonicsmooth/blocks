@@ -483,7 +483,7 @@ wClass(wMainPanel of wPanel):
     #   self.doOnButtonCompact(primax, secax, primrev, secrev)
     #   echo &"{i:3}|{temp}: rectTable ac: {self.mRectTable.ratio}"
       
-    #   #discard stdin.readLine()
+       discard stdin.readLine()
     #   self.forceRedraw(5000)
     #   inc i
     # self.refresh(false)
