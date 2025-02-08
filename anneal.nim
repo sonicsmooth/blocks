@@ -72,7 +72,7 @@ proc calcWiggle[T](startingState: T, temp: float, maxAmt: wSize): T {.inline.} =
                   poswidth.y + amt.y, 
                   poswidth.width, poswidth.height)
 
-iterator nextStatesWiggle*(startingState: PositionTable, screenSize: wSize, temp: float,): PositionTable =
+iterator nextStatesWiggle[T](startingState: T, screenSize: wSize, temp: float,): T =
   # Yield next states from existing state
   let moveScale = 0.25
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
@@ -90,7 +90,6 @@ proc calcSwap*(startingState: PositionTable, temp: float): PositionTable =
   let numRects = 2 * (floor(startingState.len.float * maxSwap * tempPct / 2.0)).int
   let ids = startingState.keys.toSeq
   let rpairs = select(ids, numRects).pairs
-  echo rpairs
   let pairTable: Table[typeof(ids[0]), typeof(ids[0])] = rpairs.toTable
   var idSet = ids.toHashSet
   while idSet.len > 0:
@@ -105,20 +104,20 @@ proc calcSwap*(startingState: PositionTable, temp: float): PositionTable =
     else:
       result[a] = A
 
-iterator nextStatesSwap*(startingState: PositionTable, temp: float): PositionTable =
+iterator nextStatesSwap*[T](startingState: T, temp: float): T =
   # Yield next states from existing state
   var heur = startingState.ratio
   for i in 1..NUM_NEXT_STATES:
     let nextState = calcSwap(startingState, temp)
     yield nextState
 
-iterator strategy1*(startingState: PositionTable, screenSize: wSize): auto {.closure.} =
+iterator strategy1*[T](startingState: T, screenSize: wSize): auto {.closure.} =
   for temp in countdown(MAX_TEMP.int, 0, 10):
   #for temp in countdown(50, 0, 10):
     for ns in nextStatesWiggle(startingState, screenSize, temp.float):
       yield (ns, temp)
 
-iterator strategy2*(startingState: PositionTable, screenSize: wSize): auto {.closure.} =
+iterator strategy2*[T](startingState: T, screenSize: wSize): auto {.closure.} =
   for temp in countdown(MAX_TEMP.int, 0, 10):
   #for temp in countdown(50, 0, 10):
     for ns in nextStatesSwap(startingState, temp.float):

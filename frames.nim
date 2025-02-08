@@ -95,7 +95,7 @@ wClass(wBlockPanel of wPanel):
 
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
     MOUSE_DATA.clickpos = event.mousePos
-    # This captures all rects under mousept and keeps them
+    # This captures all rects under mousept and keeps the
     # even after mouse has moved away from original pos.  Is this
     # what we want?  Or do we want the list to change as the
     # mouse moves around, with the currently top-selected rect
@@ -199,9 +199,13 @@ wClass(wBlockPanel of wPanel):
     # Draw rect and label onto bitmap; return bitmap.
     # Label gets a shrunk down rectangle so it 
     # doesn't overwrite the border
+    echo "RectToBmp"
+    echo rect
+    dump rect.size
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
     let zeroRect: wRect = (0, 0, rect.width, rect.height)
+    dump zeroRect
     var rectstr = $rect.id
     if rect.selected: rectstr &= "*"
     memDC.selectObject(result)
@@ -443,25 +447,21 @@ wClass(wMainPanel of wPanel):
       compact(self.mRectTable, secax, secrev, self.mBlockPanel.clientSize)
       lastPos = pos
       pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable)
     self.refresh(false)
 
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let currentState: PositionTable = self.mRectTable.positions
     let nextState = calcSwap(currentState, 100)
-    echo "Before swap"
-    echo "RectTable:\n", self.mRectTable
+    echo "\nBefore swap"
     echo "Child RectTable:\n", self.mBlockPanel.mRectTable
-    echo "currentState:\n", currentState
-    echo "nextState:\n", nextState
     setPositions(self.mRectTable, nextState)
-    echo "After swap\n"
-    echo "RectTable:\n", self.mRectTable
+    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable)
+    echo "\nAfter swap\n"
     echo "Child RectTable:\n", self.mBlockPanel.mRectTable
-    echo "currentState:\n", currentState
-    echo "nextState:\n", nextState
-    self.mBlockPanel.updateBmpCaches(nextState.keys.toSeq)
+    #self.mBlockPanel.updateBmpCaches(nextState.keys.toSeq)
+    self.mBlockPanel.initBmpCache()
     self.forceRedraw(5)
 
     # let sz = self.mBlockPanel.clientSize
@@ -491,7 +491,7 @@ wClass(wMainPanel of wPanel):
     #   self.doOnButtonCompact(primax, secax, primrev, secrev)
     #   echo &"{i:3}|{temp}: rectTable ac: {self.mRectTable.ratio}"
       
-       discard stdin.readLine()
+    #   discard stdin.readLine()
     #   self.forceRedraw(5000)
     #   inc i
     # self.refresh(false)
