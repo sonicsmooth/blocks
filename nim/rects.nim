@@ -8,7 +8,7 @@ export tables
 const
   WRANGE = 25..75
   HRANGE = 25..75
-  QTY* = 50
+  QTY* = 2
 
 type 
   RectID* = uint
@@ -25,7 +25,8 @@ type
     selected*: bool
   PosWidth = tuple[x,y,width,height:int]
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
-  PositionTable* = Table[RectID, PosWidth] # meant to have value semantics
+  PositionTable* = Table[RectID, wPoint] # meant to have value semantics
+  SizeTable* = Table[RectID, wSize] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -73,17 +74,25 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
 
+proc posWidths(posTable: PositionTable, sizeTable: SizeTable): seq[PosWidth] =
+  # Combines PositionTable and SizeTable 
+  # Returns seq of tuples
+  for id, pos in posTable:
+    let sz = sizeTable[id]
+    result.add((pos.x, pos.y, sz.width, sz.height))
+
 proc positions*(rectTable: RectTable): PositionTable =
   for id,rect in rectTable:
-    result[id] = (rect.x, rect.y, rect.width, rect.height)
+    #result[id] = (rect.x, rect.y, rect.width, rect.height)
+    result[id] = (rect.x, rect.y)
 
 proc setPositions*[T:Table](rectTable: var RectTable, pos: T) =
   # Set rects in rectTable to positions
   for id, rect in rectTable:
     rect.x = pos[id].x
     rect.y = pos[id].y
-    rect.width = pos[id].width
-    rect.height = pos[id].height
+    #rect.width = pos[id].width
+    #rect.height = pos[id].height
 
 proc size*(rect: Rect): wSize =
   (rect.width, rect.height)
@@ -262,7 +271,7 @@ proc moveRect*(rect: Rect, oldpos, newpos: wPoint) =
   let delta = newpos - oldpos
   moveRectBy(rect, delta)
 
-proc boundingBox*(rects: openArray[Rect|wRect]): wRect =
+proc boundingBox*(rects: openArray[wRect|Rect|PosWidth]): wRect =
   # Bbox from a bunch of wRects
   var left = rects[0].x
   var top = rects[0].y
@@ -275,20 +284,30 @@ proc boundingBox*(rects: openArray[Rect|wRect]): wRect =
     bottom = max(bottom, rect.y+rect.height)
   (x:left, y: top, width: right - left, height: bottom - top)
 
+proc boundingBox*(rectTable: RectTable): wRect =
+  boundingBox(rectTable.values.toSeq)
 
 proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
 
+# Ratio finds the ratio of fill area to bounding box
+# Of a bunch of rectangles.  This can be given by 
+# a seq/array of rectangles, a RectTable, or two tables --
+# position and size
+
 proc ratio*(rects: openArray[wRect|Rect|PosWidth]): float =
-  # Find fill ratio
+  # Find fill ratio of a seq of rects
   var usedArea: int
   for r in rects: 
     usedArea += r.area
   let totalArea = boundingBox(rects).area
   usedArea / totalArea
 
-proc ratio*[T:RectTable|PositionTable](table: T): float =
-  table.values.toSeq.ratio
+proc ratio*(rtable: RectTable): float =
+  rtable.values.toSeq.ratio
+
+proc ratio*(postable: PositionTable, stable: SizeTable): float =
+  posWidths(postable, stable).ratio
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect
