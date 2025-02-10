@@ -1,5 +1,5 @@
 # Simulated annealing
-import std/[random, math, sets, strformat]
+import std/[algorithm, math, random, sets, strformat]
 from sequtils import toSeq
 import wnim
 from wnim/private/wHelper import `+`
@@ -35,7 +35,7 @@ import rects
     ]#
 
 const NUM_NEXT_STATES = 10
-const MAX_TEMP* = 100.0
+const MAX_TEMP* = 25.0
 var RND = initRand()
 type NextStateFunc* = enum Wiggle, Swap
 
@@ -64,62 +64,91 @@ proc moveAmt(temp: float, maxAmt: wSize): wPoint =
   let xmy  = (rand(maxY) - maxY/2.0).int
   result = (xmv, xmy)
 
-proc calcWiggle[T](startingState: T, temp: float, maxAmt: wSize): T {.inline.} =
-  # Move each block by some random amount depending on temperature
-  for id, poswidth in startingState:
-    let amt = moveAmt(temp, maxAmt)
-    result[id] = (poswidth.x + amt.x, 
-                  poswidth.y + amt.y, 
-                  poswidth.width, poswidth.height)
 
-iterator nextStatesWiggle[T](startingState: T, screenSize: wSize, temp: float,): T =
-  # Yield next states from existing state
+proc calcSwap*[T](table: var T, temp: float) =
+  # Swap some pairs of blocks' positions.  Temperature 
+  # determines how many blocks are moved.
+  # Mutates table in place
+  let maxSwap = 1.0  # Proportion of blocks that will move at MAX_TEMP
+  let tempPct = temp / MAX_TEMP
+  let numRects = 2 * (floor(table.len.float * maxSwap * tempPct / 2.0)).int
+  let ids = table.keys.toSeq
+  let rpairs = select(ids, numRects).pairs
+  #let pairTable: Table[typeof(ids[0]), typeof(ids[0])] = rpairs.toTable
+  let pairTable = rpairs.toTable # to -> id mapping
+  # Go through each table entry matching selected IDs
+  var idSet = ids.toHashSet # {all ids}
+  while idSet.len > 0:
+    let a = idSet.pop
+    if a in pairTable:
+      let aPos = (table[a].x, table[a].y)
+      let b = pairTable[a]
+      let bPos = (table[b].x, table[b].y)
+      result[a].x = bPos.x
+      result[a].y = bPos.y
+      result[b].x = aPos.x
+      result[b].y = aPos.y
+      idSet.excl(b)
+    #else:
+    #  result[a] = A
+
+proc calcWiggle*[S,T](initState: S, varTable: var T, temp: float, maxAmt: wSize) =
+  # Copies x,y values from initState to varTable with some amount
+  # changed based on temperature
+  # initState must have at least the same keys as varTable.
+  # Both table must have x,y properties
+  # Mutates varTable in place
+  for id, item in varTable:
+    let amt = moveAmt(temp, maxAmt)
+    item.x = initState[id].x + amt.x
+    item.y = initState[id].y + amt.y
+
+proc capturePos[T](capTable: var Table[float, PosTable], 
+                   varTable: T, 
+                   heur: float) =
+  if capTable.len < 25:
+    capTable[heur] = varTable
+  else:
+    # Table is full, so make some choices
+    let heurs = capTable.keys.toSeq
+    let hmin = heurs.min
+    let hmax = heurs.max
+    if heur > hmin and heur < hmax:
+      capTable.del(hmin)
+      capTable[heur] = varTable
+      if capTable.len != 25:
+        echo("Table not 25 long")
+  
+proc selectBestCapture(capTable: Table[float, PosTable]): PosTable = 
+  # Chooses random postable with bias towards better ones
+  let sortedHeurs: seq[float] = capTable.keys.toSeq.sort[float]()
+  echo sortedHeurs
+  result = {0:(0,0)}.toTable()
+
+iterator annealWiggle*[T](initState: PosTable, 
+                          varTable: var T, 
+                          screenSize: wSize, 
+                          compactfn: proc()): auto =
+  # Copy initState back to table after each NUM_NEXT_STATES iteration
+  let startTemp = MAX_TEMP
+  let endTemp = 0.0
+  let stepTemp = 5.0
   let moveScale = 0.25
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                        (screenSize.height.float * moveScale).int)
-  var heur = startingState.ratio
-  for i in 1..NUM_NEXT_STATES:
-    let nextState = calcWiggle(startingState, temp, maxAmt)
-    yield nextState    
-
-
-proc calcSwap*(startingState: PositionTable, temp: float): PositionTable =
-  # Swap some pairs of blocks.  How many depends on temperature.
-  let maxSwap = 1.0  # Proportion of blocks that will move at MAX_TEMP
-  let tempPct = temp / MAX_TEMP
-  let numRects = 2 * (floor(startingState.len.float * maxSwap * tempPct / 2.0)).int
-  let ids = startingState.keys.toSeq
-  let rpairs = select(ids, numRects).pairs
-  let pairTable: Table[typeof(ids[0]), typeof(ids[0])] = rpairs.toTable
-  var idSet = ids.toHashSet
-  while idSet.len > 0:
-    let a = idSet.pop
-    let A = startingState[a]
-    if a in pairTable:
-      let b = pairTable[a]
-      let B = startingState[b]
-      result[a] = B
-      result[b] = A
-      idSet.excl(b)
-    else:
-      result[a] = A
-
-iterator nextStatesSwap*[T](startingState: T, temp: float): T =
-  # Yield next states from existing state
-  var heur = startingState.ratio
-  for i in 1..NUM_NEXT_STATES:
-    let nextState = calcSwap(startingState, temp)
-    yield nextState
-
-iterator strategy1*[T](startingState: T, screenSize: wSize): auto {.closure.} =
-  for temp in countdown(MAX_TEMP.int, 0, 10):
-  #for temp in countdown(50, 0, 10):
-    for ns in nextStatesWiggle(startingState, screenSize, temp.float):
-      yield (ns, temp)
-
-iterator strategy2*[T](startingState: T, screenSize: wSize): auto {.closure.} =
-  for temp in countdown(MAX_TEMP.int, 0, 10):
-  #for temp in countdown(50, 0, 10):
-    for ns in nextStatesSwap(startingState, temp.float):
-      yield (ns, temp)
+  
+  var interState = initState
+  var best25: Table[float, PosTable]
+  var temp = startTemp
+  while temp > endTemp:
+    for i in 1..NUM_NEXT_STATES:
+      calcWiggle(interState, varTable, temp, maxAmt)
+      compactfn()
+      capturePos(best25, varTable.positions, varTable.ratio)
+      let bestPos = selectBestCapture(best25)
+      # choose random with heuristic bias
+      # set interState to new "best"
+      let bks = best25.keys.toSeq
+      yield (bks.len, bks.min, bks.max)
+    temp -= stepTemp
 

@@ -25,7 +25,7 @@ type
     selected*: bool
   PosWidth = tuple[x,y,width,height:int]
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
-  PositionTable* = Table[RectID, wPoint] # meant to have value semantics
+  PosTable* = Table[RectID, wPoint] # meant to have value semantics
   SizeTable* = Table[RectID, wSize] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
@@ -74,14 +74,14 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
 
-proc posWidths(posTable: PositionTable, sizeTable: SizeTable): seq[PosWidth] =
-  # Combines PositionTable and SizeTable 
+proc posWidths(posTable: PosTable, sizeTable: SizeTable): seq[PosWidth] =
+  # Combines PosTable and SizeTable 
   # Returns seq of tuples
   for id, pos in posTable:
     let sz = sizeTable[id]
     result.add((pos.x, pos.y, sz.width, sz.height))
 
-proc positions*(rectTable: RectTable): PositionTable =
+proc positions*(rectTable: RectTable): PosTable =
   for id,rect in rectTable:
     #result[id] = (rect.x, rect.y, rect.width, rect.height)
     result[id] = (rect.x, rect.y)
@@ -306,7 +306,7 @@ proc ratio*(rects: openArray[wRect|Rect|PosWidth]): float =
 proc ratio*(rtable: RectTable): float =
   rtable.values.toSeq.ratio
 
-proc ratio*(postable: PositionTable, stable: SizeTable): float =
+proc ratio*(postable: PosTable, stable: SizeTable): float =
   posWidths(postable, stable).ratio
 
 proc expand*(rect: wRect, amt: int): wRect =

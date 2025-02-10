@@ -117,10 +117,10 @@ wClass(wBlockPanel of wPanel):
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
 
     # DEBUG
-    let pir = ptInRects(event.mousePos, self.mRectTable)
-    if pir.len > 0:
-      echo pir
-      echo self.mRectTable
+    # let pir = ptInRects(event.mousePos, self.mRectTable)
+    # if pir.len > 0:
+    #   echo pir
+    #   echo self.mRectTable
 
     # Todo: hovering over
 
@@ -133,7 +133,7 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
-    echo self.mRectTable.ratio
+    #echo self.mRectTable.ratio
 
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
@@ -199,13 +199,9 @@ wClass(wBlockPanel of wPanel):
     # Draw rect and label onto bitmap; return bitmap.
     # Label gets a shrunk down rectangle so it 
     # doesn't overwrite the border
-    echo "RectToBmp"
-    echo rect
-    dump rect.size
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
     let zeroRect: wRect = (0, 0, rect.width, rect.height)
-    dump zeroRect
     var rectstr = $rect.id
     if rect.selected: rectstr &= "*"
     memDC.selectObject(result)
@@ -284,6 +280,9 @@ wClass(wBlockPanel of wPanel):
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
     for id in ids:
       self.updateBmpCache(id)
+
+  proc boundingBox(self: wBlockPanel) = 
+    self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
 
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
@@ -370,13 +369,13 @@ wClass(wMainPanel of wPanel):
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
     self.randomizeRectsAll(qty)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc onSpinTextEnter(self: wMainPanel) =
     if self.mSpnr.value > 0:
       self.randomizeRectsAll(self.mSpnr.value)
-      self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+      self.mBlockPanel.boundingBox()
       self.refresh(false)
 
   proc onSlider(self: wMainPanel, event: wEvent) =
@@ -386,13 +385,13 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonrandomizeAll(self: wMainPanel) =
     self.randomizeRectsAll(self.mSpnr.value)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc onButtonrandomizePos(self: wMainPanel) =
     let sz = self.mBlockPanel.clientSize
     rects.randomizeRectsPos(self.mRectTable, sz)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
       
 
@@ -414,87 +413,63 @@ wClass(wMainPanel of wPanel):
     echo "Making graph (s):  ", mgStats
     echo "Longest Path (s):  ", bfStats
     echo "Updating rect (s): ", urStats
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc onButtonCompact←(self: wMainPanel) =
     compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc onButtonCompact→(self: wMainPanel) =
     compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc onButtonCompact↑(self: wMainPanel) =
     compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc onButtonCompact↓(self: wMainPanel) =
     compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc doOnButtonCompact(self: wMainPanel, primax, secax: Axis,
                          primrev, secrev: bool ) =
     # Keep compacting until it doesn't change
-    var pos, lastPos: PositionTable
+    var pos, lastPos: PosTable
     pos = self.mRectTable.positions
     while pos != lastPos:
       compact(self.mRectTable, primax, primrev, self.mBlockPanel.clientSize)
       compact(self.mRectTable, secax, secrev, self.mBlockPanel.clientSize)
       lastPos = pos
       pos = self.mRectTable.positions
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable)
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
-    let currentState: PositionTable = self.mRectTable.positions
-    let nextState = calcSwap(currentState, 100)
-    echo "\nBefore swap"
-    echo "Child RectTable:\n", self.mBlockPanel.mRectTable
-    setPositions(self.mRectTable, nextState)
-    self.mBlockPanel.mAllBbox = boundingBox(self.mRectTable)
-    echo "\nAfter swap\n"
-    echo "Child RectTable:\n", self.mBlockPanel.mRectTable
-    #self.mBlockPanel.updateBmpCaches(nextState.keys.toSeq)
-    self.mBlockPanel.initBmpCache()
-    self.forceRedraw(5)
-
-    # let sz = self.mBlockPanel.clientSize
-    # let strat =
-    #   when false: strategy1
-    #   else:       strategy2
-    # echo "Starting state:"
-    # echo self.mRectTable
-    # echo currentState
-    # echo &"Starting state method 1: {self.mRectTable.ratio}"
-    # echo &"Starting state method 2: {currentState.ratio}"
-    # var i:int
-    # var lastTemp:int = -1
-    # for nextState, temp in strat(currentState, sz):
-    #   if lastTemp != temp: echo "___"
-    #   echo "currentState:"
-    #   echo currentState
-    #   echo "nextState:"
-    #   echo nextState
-    #   lastTemp = temp
-    #   echo &"{i:3}|{temp}: currentState: {currentState.ratio}"
-    #   echo &"{i:3}|{temp}: nextState   : {nextState.ratio}"
-    #   setPositions(self.mRectTable, nextState)
-    #   echo &"{i:3}|{temp}: rectTable bc: {self.mRectTable.ratio}"
-    #   echo "newTable bc:"
-    #   echo self.mRectTable
-    #   self.doOnButtonCompact(primax, secax, primrev, secrev)
+    let initState: PosTable = self.mRectTable.positions
+    let sz = self.mBlockPanel.clientSize
+    let temp = self.mSldr.value.float
+    let compactfn = proc() = 
+      self.doOnButtonCompact(primax, secax, primrev, secrev)
+    # # var i:int
+    for iterResult in annealWiggle(initState, self.mRectTable, sz, compactfn):
+      self.mBlockPanel.boundingBox()
+      #setPositions(self.mRectTable, nextState)
+      #self.doOnButtonCompact(primax, secax, primrev, secrev)
     #   echo &"{i:3}|{temp}: rectTable ac: {self.mRectTable.ratio}"
       
-    #   discard stdin.readLine()
-    #   self.forceRedraw(5000)
+    #   # discard stdin.readLine()
+      echo iterResult
+      self.forceRedraw(0)
     #   inc i
-    # self.refresh(false)
+
+    self.refresh(false)
 
 
   proc onButtonCompact←↑(self: wMainPanel) =
