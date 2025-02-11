@@ -6,8 +6,8 @@ import wNim/private/wHelper
 export tables
 
 const
-  WRANGE = 25..25
-  HRANGE = 75..75
+  WRANGE = 25..75
+  HRANGE = 25..75
   QTY* = 2
 
 type 
@@ -26,7 +26,7 @@ type
   PosWidth = tuple[x,y,width,height:int]
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
   PosTable* = Table[RectID, wPoint] # meant to have value semantics
-  SizeTable* = Table[RectID, wSize] # meant to have value semantics
+  # SizeTable* = Table[RectID, wSize] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -74,12 +74,12 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
 
-proc posWidths(posTable: PosTable, sizeTable: SizeTable): seq[PosWidth] =
-  # Combines PosTable and SizeTable 
-  # Returns seq of tuples
-  for id, pos in posTable:
-    let sz = sizeTable[id]
-    result.add((pos.x, pos.y, sz.width, sz.height))
+# proc posWidths(posTable: PosTable, sizeTable: SizeTable): seq[PosWidth] =
+#   # Combines PosTable and SizeTable 
+#   # Returns seq of tuples
+#   for id, pos in posTable:
+#     let sz = sizeTable[id]
+#     result.add((pos.x, pos.y, sz.width, sz.height))
 
 proc positions*(rectTable: RectTable): PosTable =
   for id,rect in rectTable:
@@ -290,24 +290,34 @@ proc boundingBox*(rectTable: RectTable): wRect =
 proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
 
-# Ratio finds the ratio of fill area to bounding box
+
+proc aspectRatio*(rect: wRect|Rect): float =
+  rect.x.float / rect.y.float
+
+proc aspectRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
+  boundingBox(rects).aspectRatio
+
+proc aspectRatio*(rtable: RectTable): float =
+  rtable.values.toSeq.aspectRatio
+
+# fillRatio finds the ratio of fill area to bounding box
 # Of a bunch of rectangles.  This can be given by 
 # a seq/array of rectangles, a RectTable, or two tables --
 # position and size
 
-proc ratio*(rects: openArray[wRect|Rect|PosWidth]): float =
-  # Find fill ratio of a seq of rects
+proc fillRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
+  # Find fill fillRatio of a seq of rects
   var usedArea: int
   for r in rects: 
     usedArea += r.area
   let totalArea = boundingBox(rects).area
   usedArea / totalArea
 
-proc ratio*(rtable: RectTable): float =
-  rtable.values.toSeq.ratio
+proc fillRatio*(rtable: RectTable): float =
+  rtable.values.toSeq.fillRatio
 
-proc ratio*(postable: PosTable, stable: SizeTable): float =
-  posWidths(postable, stable).ratio
+# proc fillRatio*(postable: PosTable, stable: SizeTable): float =
+#   posWidths(postable, stable).fillRatio
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect

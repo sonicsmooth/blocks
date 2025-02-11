@@ -153,11 +153,13 @@ proc selectHeuristic(heuristics: openArray[float]): float =
     sample(RND, heurs, cdf)
 
 
-iterator annealWiggle*[T](initState: PosTable, 
+
+proc annealWiggle*[T](initState: PosTable, 
                           varTable: var T, 
                           screenSize: wSize, 
-                          compactfn: proc()): auto =
-  # Copy initState back to table after each NUM_NEXT_STATES iteration
+                          compactfn: proc(),
+                          showfn: proc()): auto =
+  # Copy initState back to table after each NUM_NEXT_STATES itefillRation
   let startTemp = MAX_TEMP
   let endTemp = 0.0
   let moveScale = 0.25
@@ -182,12 +184,14 @@ iterator annealWiggle*[T](initState: PosTable,
     for i in 1..NUM_NEXT_STATES:
       calcWiggle(interState, varTable, temp, maxAmt)
       compactfn()
-      heur = varTable.ratio
+      #heur = varTable.fillRatio
+      heur = varTable.aspectRatio
       let poses = varTable.positions
       if heur > bestEver.heur:
         bestEver = (heur, poses)
       capturePos(best25, poses, heur)
-    yield (temp, heur)
+    #yield (temp, heur)
+    showfn()
     temp -= TEMP_STEP
   # Set positions
   for id,pos in bestEver.table:
