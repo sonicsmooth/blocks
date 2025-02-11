@@ -460,15 +460,10 @@ wClass(wMainPanel of wPanel):
     # # var i:int
     for iterResult in annealWiggle(initState, self.mRectTable, sz, compactfn):
       self.mBlockPanel.boundingBox()
-      #setPositions(self.mRectTable, nextState)
-      #self.doOnButtonCompact(primax, secax, primrev, secrev)
-    #   echo &"{i:3}|{temp}: rectTable ac: {self.mRectTable.ratio}"
-      
-    #   # discard stdin.readLine()
       echo iterResult
       self.forceRedraw(0)
-    #   inc i
 
+    self.mBlockPanel.boundingBox()
     self.refresh(false)
 
 

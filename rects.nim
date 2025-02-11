@@ -6,8 +6,8 @@ import wNim/private/wHelper
 export tables
 
 const
-  WRANGE = 25..75
-  HRANGE = 25..75
+  WRANGE = 25..25
+  HRANGE = 75..75
   QTY* = 2
 
 type 

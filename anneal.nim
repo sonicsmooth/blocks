@@ -1,5 +1,5 @@
 # Simulated annealing
-import std/[algorithm, math, random, sets, strformat]
+import std/[algorithm, math, random, sets, strformat, sugar]
 from sequtils import toSeq
 import wnim
 from wnim/private/wHelper import `+`
@@ -34,8 +34,11 @@ import rects
 
     ]#
 
-const NUM_NEXT_STATES = 10
-const MAX_TEMP* = 25.0
+const NUM_NEXT_STATES = 20
+const MAX_TEMP* = 50.0
+const TEMP_STEP = 1.0
+const MINPROB = 0.1    # low end of probability distribution function
+const MAXPROB = 10.0  # high end of probability distribution function
 var RND = initRand()
 type NextStateFunc* = enum Wiggle, Swap
 
@@ -116,14 +119,39 @@ proc capturePos[T](capTable: var Table[float, PosTable],
     if heur > hmin and heur < hmax:
       capTable.del(hmin)
       capTable[heur] = varTable
-      if capTable.len != 25:
-        echo("Table not 25 long")
-  
-proc selectBestCapture(capTable: Table[float, PosTable]): PosTable = 
-  # Chooses random postable with bias towards better ones
-  let sortedHeurs: seq[float] = capTable.keys.toSeq.sort[float]()
-  echo sortedHeurs
-  result = {0:(0,0)}.toTable()
+
+proc makeCdf(length: uint): seq[float] =
+  let expScale = ln(MAXPROB / MINPROB) / (length.float - 1.0)
+  let pdf = collect(
+    for x in 0..<length: 
+      MINPROB * exp(x.float * expScale))
+  pdf.cumsummed
+
+# Totally premature optimization
+proc makeCdf25(): seq[float] {.compileTime.} =
+  let expScale = ln(MAXPROB / MINPROB) / 24.0
+  let pdf = collect(
+    for x in 0..<25: 
+      MINPROB * exp(x.float * expScale))
+  pdf.cumsummed
+
+
+#proc selectBestCapture(capTable: Table[float, PosTable]): auto = 
+proc selectHeuristic(heuristics: openArray[float]): float = 
+  # Chooses random heuristic with bias towards better ones
+  # The highest scoring heuristic is maybe 5-10x more likely to be 
+  # chosen than the lowest, with an exponential curve in between
+  if heuristics.len == 1:
+    heuristics[0]
+  else:
+    let heurs = heuristics.sorted
+    let cdf = 
+      if heurs.len == 25: 
+        makeCdf25()
+      else:
+        makeCdf(heurs.len.uint)
+    sample(RND, heurs, cdf)
+
 
 iterator annealWiggle*[T](initState: PosTable, 
                           varTable: var T, 
@@ -132,23 +160,36 @@ iterator annealWiggle*[T](initState: PosTable,
   # Copy initState back to table after each NUM_NEXT_STATES iteration
   let startTemp = MAX_TEMP
   let endTemp = 0.0
-  let stepTemp = 5.0
   let moveScale = 0.25
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                        (screenSize.height.float * moveScale).int)
   
   var interState = initState
   var best25: Table[float, PosTable]
+  var bestEver: tuple[heur: float, table: PosTable]
   var temp = startTemp
+  var firstTime = true
+  var heur:float
   while temp > endTemp:
+    if not firstTime:
+      let chosenHeur = selectHeuristic(best25.keys.toSeq) # Choose random with heuristic bias
+      echo "Choosing: ", chosenHeur
+      interState = best25[chosenHeur]
+      best25.clear()
+    else:
+      firstTime = false
+
     for i in 1..NUM_NEXT_STATES:
       calcWiggle(interState, varTable, temp, maxAmt)
       compactfn()
-      capturePos(best25, varTable.positions, varTable.ratio)
-      let bestPos = selectBestCapture(best25)
-      # choose random with heuristic bias
-      # set interState to new "best"
-      let bks = best25.keys.toSeq
-      yield (bks.len, bks.min, bks.max)
-    temp -= stepTemp
-
+      heur = varTable.ratio
+      let poses = varTable.positions
+      if heur > bestEver.heur:
+        bestEver = (heur, poses)
+      capturePos(best25, poses, heur)
+    yield (temp, heur)
+    temp -= TEMP_STEP
+  # Set positions
+  for id,pos in bestEver.table:
+    varTable[id].x = pos.x
+    varTable[id].y = pos.y
