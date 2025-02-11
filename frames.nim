@@ -133,7 +133,7 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
-    #echo self.mRectTable.ratio
+    #echo self.mRectTable.fillRatio
 
 
   proc updateBmpCache(self: wBlockPanel, id: RectID)
@@ -457,12 +457,10 @@ wClass(wMainPanel of wPanel):
     let temp = self.mSldr.value.float
     let compactfn = proc() = 
       self.doOnButtonCompact(primax, secax, primrev, secrev)
-    # # var i:int
-    for iterResult in annealWiggle(initState, self.mRectTable, sz, compactfn):
+    let showfn = proc() = 
       self.mBlockPanel.boundingBox()
-      echo iterResult
       self.forceRedraw(0)
-
+    annealWiggle(initState, self.mRectTable, sz, compactfn, showfn)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
 
