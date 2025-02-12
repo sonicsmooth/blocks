@@ -460,6 +460,7 @@ wClass(wMainPanel of wPanel):
     let showfn = proc() = 
       self.mBlockPanel.boundingBox()
       self.forceRedraw(0)
+      PostMessage(self.mHwnd, )
     annealWiggle(initState, self.mRectTable, sz, compactfn, showfn)
     self.mBlockPanel.boundingBox()
     self.refresh(false)

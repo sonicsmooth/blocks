@@ -231,12 +231,12 @@ proc toRectId(id: int): RectId =
   elif RectId is uint64: result = id.uint64
   elif RectId is string: result = $id
  
-proc RandRect(id: RectID, screenSize: wSize): Rect = 
+proc randRect(id: RectID, screenSize: wSize): Rect = 
   let rectSizeW: int = rand(WRANGE)
   let rectSizeH: int = rand(HRANGE)
   let rectPosX:  int = rand(screenSize.width  - rectSizeW  - 1)
   let rectPosY:  int = rand(screenSize.height - rectSizeH - 1)
-  proc RandColor: wColor = 
+  proc randColor: wColor = 
     let 
       b: int = rand(255) shl 16
       g: int = rand(255) shl 8
@@ -249,14 +249,14 @@ proc RandRect(id: RectID, screenSize: wSize): Rect =
                 width: rectSizeW,
                 height: rectSizeH,
                 selected: false,
-                pencolor: RandColor(), 
-                brushcolor: RandColor())
+                pencolor: randColor(), 
+                brushcolor: randColor())
 
 proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
   table.clear()
   for i in 1..qty:
     let rid = toRectId(i)
-    table[rid] = RandRect(rid, size)
+    table[rid] = randRect(rid, size)
 
 proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
   for id, rect in table:
