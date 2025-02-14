@@ -7,7 +7,6 @@ var myint: int = 19
 var pint: ptr = addr myint
 var myseq: seq[int] = @[0,4,6]
 var pseq: ptr = myseq.addr
-#var rseq: ref seq[int] = cast[ref](ptr)
 
 initLock(glock)
 
