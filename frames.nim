@@ -1,3 +1,4 @@
+# TEST!!
 import std/[sets, tables, sugar, stats, strformat]
 from std/os import sleep
 from std/sequtils import toSeq
@@ -23,6 +24,31 @@ const
   USER_PAINT_DONE = WM_APP + 3
   USER_SLIDER     = WM_APP + 4
 
+type 
+  wBlockPanel = ref object of wPanel
+    mRectTable: RectTable
+    mCachedBmps: Table[RectID, ref wBitmap]
+    mBigBmp: wBitmap
+    mBlendFunc: BLENDFUNCTION
+    mMemDc: wMemoryDC
+    mBmpDc: wMemoryDC
+    mAllBbox: wRect
+
+  wMainPanel = ref object of wPanel
+    mBlockPanel: wBlockPanel
+    mRectTable: RectTable
+    mSpnr: wSpinCtrl
+    mTxt:  wStaticText
+    mChk:  wCheckBox
+    mSldr: wSlider
+    mButtons: array[17, wButton]
+
+  wMainFrame = ref object of wFrame
+    mMainPanel: wMainPanel
+    #mMenuBar:   wMenuBar # already defined by wNim
+    mMenuFile:  wMenu
+    #mStatusBar: wStatusBar # already defined by wNim
+
 var 
   MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
                     dirtyIds:     seq[RectID],
@@ -31,13 +57,9 @@ var
                     clearStarted: bool]
   SELECTED: HashSet[RectID]
 
-proc lParamTuple[T](event: wEvent): tuple {.inline.} =
+proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
-
-
-# These belong in Rects module
-
 proc toggleRectSelection(table: RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
@@ -45,28 +67,50 @@ proc toggleRectSelection(table: RectTable, id: RectID) =
   else:
     table[id].selected = true
     SELECTED.incl(id)
-
 proc clearRectSelection(table: RectTable) = 
   for id in SELECTED:
     table[id].selected = false
   SELECTED.clear()
 
 
-type wBlockPanel = ref object of wPanel
-  mRectTable: RectTable
-  mCachedBmps: Table[RectID, ref wBitmap]
-  mBigBmp: wBitmap
-  mBlendFunc: BLENDFUNCTION
-  mMemDc: wMemoryDC
-  mBmpDc: wMemoryDC
-  mAllBbox: wRect
-
 wClass(wBlockPanel of wPanel):
+  proc rectToBmp(rect: rects.Rect): wBitmap = 
+    # Draw rect and label onto bitmap; return bitmap.
+    # Label gets a shrunk down rectangle so it 
+    # doesn't overwrite the border
+    result = Bitmap(rect.size)
+    var memDC = MemoryDC()
+    let zeroRect: wRect = (0, 0, rect.width, rect.height)
+    var rectstr = $rect.id
+    if rect.selected: rectstr &= "*"
+    memDC.selectObject(result)
+    memDc.setBrush(Brush(rect.brushcolor))
+    memDC.drawRectangle(zeroRect)
+    memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
+    memDC.setTextBackground(rect.brushcolor)
+    memDC.drawLabel($rectstr, zeroRect.expand(-1), wCenter or wMiddle)
+  proc initBmpCache(self: wBlockPanel) =
+    # Creates all new bitmaps
+    for id, rect in self.mRectTable:
+      var bmp: ref wBitmap
+      new bmp
+      bmp[] = rectToBmp(rect)
+      self.mCachedBmps[id] = bmp
+  proc updateBmpCache(self: wBlockPanel, id: RectID) =
+    # Creates one new bitmap; used for selection
+    var bmp: ref wBitmap
+    new bmp
+    bmp[] = rectToBmp(self.mRectTable[id])
+    self.mCachedBmps[id] = bmp
+  proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
+    for id in ids:
+      self.updateBmpCache(id)
+  proc boundingBox(self: wBlockPanel) = 
+    self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
-
   proc moveRectsBy(self: wBlockPanel, rectIds: openArray[RectID], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Determine bounding boxes before and after the move.
@@ -91,8 +135,6 @@ wClass(wBlockPanel of wPanel):
     # self.refresh(false, unionBbox)
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
-
-
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
     MOUSE_DATA.clickpos = event.mousePos
     # This captures all rects under mousept and keeps the
@@ -110,7 +152,6 @@ wClass(wBlockPanel of wPanel):
     else: 
       # Click down in clear area
       MOUSE_DATA.clearStarted = true
-
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
     let hWnd = GetAncestor(self.handle, GA_ROOT)
@@ -134,10 +175,6 @@ wClass(wBlockPanel of wPanel):
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
     #echo self.mRectTable.fillRatio
-
-
-  proc updateBmpCache(self: wBlockPanel, id: RectID)
-  proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID])
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
@@ -193,24 +230,6 @@ wClass(wBlockPanel of wPanel):
       of wKey_Down:  delta = (0, 1)
       else: return
     self.moveRectsBy(SELECTED.toSeq, delta)
-
-
-  proc rectToBmp(rect: rects.Rect): wBitmap = 
-    # Draw rect and label onto bitmap; return bitmap.
-    # Label gets a shrunk down rectangle so it 
-    # doesn't overwrite the border
-    result = Bitmap(rect.size)
-    var memDC = MemoryDC()
-    let zeroRect: wRect = (0, 0, rect.width, rect.height)
-    var rectstr = $rect.id
-    if rect.selected: rectstr &= "*"
-    memDC.selectObject(result)
-    memDc.setBrush(Brush(rect.brushcolor))
-    memDC.drawRectangle(zeroRect)
-    memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
-    memDC.setTextBackground(rect.brushcolor)
-    memDC.drawLabel($rectstr, zeroRect.expand(-1), wCenter or wMiddle)
-
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Make sure in-mem bitmap is initialized to correct size
     var clipRect1: winim.RECT
@@ -257,33 +276,9 @@ wClass(wBlockPanel of wPanel):
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
     MOUSE_DATA.dirtyIds.setLen(0)
     SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
-
   proc onPaintDone(self: wBlockPanel) =
     if MOUSE_DATA.clearStarted:
       MOUSE_DATA.clearStarted = false
-
-  proc initBmpCache(self: wBlockPanel) =
-    # Creates all new bitmaps
-    for id, rect in self.mRectTable:
-      var bmp: ref wBitmap
-      new bmp
-      bmp[] = rectToBmp(rect)
-      self.mCachedBmps[id] = bmp
-
-  proc updateBmpCache(self: wBlockPanel, id: RectID) =
-    # Creates one new bitmap; used for selection
-    var bmp: ref wBitmap
-    new bmp
-    bmp[] = rectToBmp(self.mRectTable[id])
-    self.mCachedBmps[id] = bmp
-
-  proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
-    for id in ids:
-      self.updateBmpCache(id)
-
-  proc boundingBox(self: wBlockPanel) = 
-    self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
@@ -304,21 +299,13 @@ wClass(wBlockPanel of wPanel):
     self.wEvent_KeyDown    do (event: wEvent): self.onKeyDown(event)
     self.USER_PAINT_DONE   do (): self.onPaintDone()
 
-
-
-
-
-type wMainPanel = ref object of wPanel
-  mBlockPanel: wBlockPanel
-  mRectTable: RectTable
-  mSpnr: wSpinCtrl
-  mTxt:  wStaticText
-  mChk:  wCheckBox
-  mSldr: wSlider
-  mButtons: array[17, wButton]
-
 wClass(wMainPanel of wPanel):
-  proc Layout(self: wMainPanel) =
+  proc forceRedraw(self: wMainPanel, wait: int) = 
+    self.refresh(false)
+    UpdateWindow(self.mBlockPanel.mHwnd)
+    if wait > 0:
+      sleep(wait)
+  proc layout(self: wMainPanel) =
     let 
       (cszw, cszh) = self.clientSize
       bmarg = 8
@@ -353,48 +340,59 @@ wClass(wMainPanel of wPanel):
       butt.position = (bmarg, yPosAcc)
       butt.size     = (bw, bh)
       yPosAcc += bh
-
-  proc forceRedraw(self: wMainPanel, wait: int) = 
-    self.refresh(false)
-    UpdateWindow(self.mBlockPanel.mHwnd)
-    sleep(wait)
-
-  proc onResize(self: wMainPanel) =
-      self.Layout()
-
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
     rects.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
     self.mBlockPanel.initBmpCache()
-
+  proc doOnButtonCompact(self: wMainPanel, primax, secax: Axis,
+                         primrev, secrev: bool ) =
+    # Keep compacting until it doesn't change
+    var pos, lastPos: PosTable
+    pos = self.mRectTable.positions
+    while pos != lastPos:
+      compact(self.mRectTable, primax, primrev, self.mBlockPanel.clientSize)
+      compact(self.mRectTable, secax, secrev, self.mBlockPanel.clientSize)
+      lastPos = pos
+      pos = self.mRectTable.positions
+    self.mBlockPanel.boundingBox()
+    self.refresh(false)
+  proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
+                               primrev, secrev: bool ) =
+    let initState: PosTable = self.mRectTable.positions
+    let sz = self.mBlockPanel.clientSize
+    let temp = self.mSldr.value.float
+    let compactfn = proc() = 
+      self.doOnButtonCompact(primax, secax, primrev, secrev)
+    let showfn = proc() = 
+      self.mBlockPanel.boundingBox()
+      self.forceRedraw(0)
+    annealWiggle(initState, self.mRectTable, sz, compactfn, showfn)
+    self.mBlockPanel.boundingBox()
+    self.refresh(false)
+  proc onResize(self: wMainPanel) =
+      self.layout()
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
     self.randomizeRectsAll(qty)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-
   proc onSpinTextEnter(self: wMainPanel) =
     if self.mSpnr.value > 0:
       self.randomizeRectsAll(self.mSpnr.value)
       self.mBlockPanel.boundingBox()
       self.refresh(false)
-
   proc onSlider(self: wMainPanel, event: wEvent) =
     let pos = event.scrollPos
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hwnd, USER_SLIDER, pos, pos)
-
   proc onButtonrandomizeAll(self: wMainPanel) =
     self.randomizeRectsAll(self.mSpnr.value)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-
   proc onButtonrandomizePos(self: wMainPanel) =
     let sz = self.mBlockPanel.clientSize
     rects.randomizeRectsPos(self.mRectTable, sz)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-      
-
   proc onButtonTest(self: wMainPanel) =
     type TimeData = tuple[mg:float, bf:float, ur:float]
     var timesColl: seq[TimeData]
@@ -416,83 +414,41 @@ wClass(wMainPanel of wPanel):
 
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-
   proc onButtonCompact←(self: wMainPanel) =
     compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-
   proc onButtonCompact→(self: wMainPanel) =
     compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-
   proc onButtonCompact↑(self: wMainPanel) =
     compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-
   proc onButtonCompact↓(self: wMainPanel) =
     compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
-
-  proc doOnButtonCompact(self: wMainPanel, primax, secax: Axis,
-                         primrev, secrev: bool ) =
-    # Keep compacting until it doesn't change
-    var pos, lastPos: PosTable
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, primax, primrev, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, secax, secrev, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
-
-  proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
-                               primrev, secrev: bool ) =
-    let initState: PosTable = self.mRectTable.positions
-    let sz = self.mBlockPanel.clientSize
-    let temp = self.mSldr.value.float
-    let compactfn = proc() = 
-      self.doOnButtonCompact(primax, secax, primrev, secrev)
-    let showfn = proc() = 
-      self.mBlockPanel.boundingBox()
-      self.forceRedraw(0)
-      PostMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
-    annealWiggle(initState, self.mRectTable, sz, compactfn, showfn)
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
-
-
   proc onButtonCompact←↑(self: wMainPanel) =
     if not self.mChk.value:
       self.doOnButtonCompact(X, Y, false, false)
     else:
       self.doOnButtonAnnealCompact(X, Y, false, false)
-
   proc onButtonCompact←↓(self: wMainPanel) =
     self.doOnButtonCompact(X, Y, false, true)
-
   proc onButtonCompact→↑(self: wMainPanel) =
     self.doOnButtonCompact(X, Y, true, false)
-
   proc onButtonCompact→↓(self: wMainPanel) =
     self.doOnButtonCompact(X, Y, true, true)
-
   proc onButtonCompact↑←(self: wMainPanel) =
     self.doOnButtonCompact(Y, X, false, false)
-
   proc onButtonCompact↑→(self: wMainPanel) =
     self.doOnButtonCompact(Y, X, false, true)
-
   proc onButtonCompact↓←(self: wMainPanel) =
     self.doOnButtonCompact(Y, X, true, false)
-
   proc onButtonCompact↓→(self: wMainPanel) =
     self.doOnButtonCompact(Y, X, true, true)
-
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)
 
@@ -547,30 +503,18 @@ wClass(wMainPanel of wPanel):
     self.mButtons[13].wEvent_Button     do (): self.onButtonCompact↓←()
     self.mButtons[14].wEvent_Button     do (): self.onButtonCompact↓→()
 
-
-
-
-type wMainFrame = ref object of wFrame
-  mMainPanel: wMainPanel
-  #mMenuBar:   wMenuBar # already defined by wNim
-  mMenuFile:  wMenu
-  #mStatusBar: wStatusBar # already defined by wNim
 wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
-
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
     let sz: wSize = lParamTuple[int](event)
     self.mStatusBar.setStatusText($sz, index=1)
-
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
     let mousePos: wPoint = lParamTuple[int](event)
     self.mStatusBar.setStatusText($mousePos, index=2)
-
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-
   proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: var RectTable) = 
     wFrame(self).init(title="Blocks Frame")
     
