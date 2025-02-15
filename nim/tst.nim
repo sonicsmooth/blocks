@@ -1,38 +1,18 @@
+
+# var myseq = @[1,2,3]
+# var refseq = cast[ref seq[int]](myseq.addr)
+# var ptrseq = myseq.addr
+# myseq.add(4)
+# echo myseq
+# echo refseq[]
+# echo ptrseq[]
+# echo cast[int](myseq.addr)
+# echo cast[int](refseq)
+# echo cast[int](ptrseq)
+
 import std/[random, locks, sequtils]
 from std/os import sleep
 import wnim, winim
-
-# var glock: Lock
-# var gdata {.guard: glock.}: int = 5
-# var myint: int = 19
-# var pint: ptr = addr myint
-# var myseq: seq[int] = @[0,4,6]
-# var pseq: ptr = myseq.addr
-
-# initLock(glock)
-
-# echo GC_getStatistics()
-
-# #{.locks: [glock].}:
-# proc worker1(s: ptr) {.thread.} =
-#   for i in 1..1000000:
-#     withLock(glock):
-#       s[0] += 1
-
-# proc worker2(s: ptr) {.thread.} =
-#   for i in 1..1000000:
-#     withLock(glock):
-#       pseq[0] -= 1
-
-# var mythr1: Thread[ptr seq[int]]
-# var mythr2: Thread[ptr seq[int]]
-
-# echo myseq
-# mythr1.createThread(worker1, pseq)
-# mythr2.createThread(worker2, pseq)
-# mythr1.joinThread()
-# mythr2.joinThread()
-# echo myseq
 
 type 
   wBlockPanel = ref object of wPanel
@@ -65,7 +45,6 @@ proc randColor: wColor =
 
 proc randomizeRectsAll(pRects: ptr RSeq, sz: wSize, qty: int) {.gcsafe.} = 
   # Clear then fill the rect sequence
-  #let rsref: ref RSeq = cast[ref](pRects)
   pRects[].setLen(0)
   for i in 1..qty:
     let newRect: wRect = (rand(sz.width), rand(sz.height), rand(20..100), rand(20..100))
@@ -103,8 +82,6 @@ wClass(wBlockPanel of wPanel):
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
-
-
 
 wClass(wMainPanel of wPanel):
   proc Layout(self: wMainPanel) =
