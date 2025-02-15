@@ -1,5 +1,5 @@
 # Simulated annealing
-import std/[algorithm, math, random, sets, strformat, sugar]
+import std/[algorithm, math, random, sets, sugar]
 from sequtils import toSeq
 import wnim
 from wnim/private/wHelper import `+`
@@ -155,10 +155,10 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 
 proc annealWiggle*[T](initState: PosTable, 
-                          varTable: var T, 
-                          screenSize: wSize, 
-                          compactfn: proc(),
-                          showfn: proc()): auto =
+                      varTable: var T, 
+                      screenSize: wSize, 
+                      compactfn: proc(),
+                      showfn: proc()): auto =
   # Copy initState back to table after each NUM_NEXT_STATES itefillRation
   let startTemp = MAX_TEMP
   let endTemp = 0.0
@@ -184,13 +184,12 @@ proc annealWiggle*[T](initState: PosTable,
     for i in 1..NUM_NEXT_STATES:
       calcWiggle(interState, varTable, temp, maxAmt)
       compactfn()
-      #heur = varTable.fillRatio
-      heur = varTable.aspectRatio
+      heur = varTable.fillRatio
+      #heur = varTable.aspectRatio
       let poses = varTable.positions
       if heur > bestEver.heur:
         bestEver = (heur, poses)
       capturePos(best25, poses, heur)
-    #yield (temp, heur)
     showfn()
     temp -= TEMP_STEP
   # Set positions

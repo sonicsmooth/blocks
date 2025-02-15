@@ -26,7 +26,6 @@ type
   PosWidth = tuple[x,y,width,height:int]
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
   PosTable* = Table[RectID, wPoint] # meant to have value semantics
-  # SizeTable* = Table[RectID, wSize] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -73,13 +72,6 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
-
-# proc posWidths(posTable: PosTable, sizeTable: SizeTable): seq[PosWidth] =
-#   # Combines PosTable and SizeTable 
-#   # Returns seq of tuples
-#   for id, pos in posTable:
-#     let sz = sizeTable[id]
-#     result.add((pos.x, pos.y, sz.width, sz.height))
 
 proc positions*(rectTable: RectTable): PosTable =
   for id,rect in rectTable:
