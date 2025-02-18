@@ -156,7 +156,7 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 
 
-proc annealWiggle*(arg: ThreadArg) {.thread.} =
+proc annealWiggle*(arg: AnnealThreadArg) {.thread.} =
   # Copy initState back to table after each NUM_NEXT_STATES itefillRation
   acquire(gLock)
   let startTemp = MAX_TEMP
@@ -205,15 +205,16 @@ proc doNothing*() {.thread.} =
     sleep(1000)
   echo "thread done"
 
-proc randomWorker*(arg: tuple[prt: ptr RectTable, showfn: proc()]) {.thread.} =
+proc randomWorker*(arg: RandomThreadArg) {.thread.} =
   let size = (600,400)
   let qty  = 100
   for i in 1..1000:
-    acquire(gLock)
-    arg.prt[].clear()
-    for j in 1..qty:
-      let rid = toRectId(j)
-      arg.prt[][rid] = randRect(rid, size)
-    # Update/init cache should go here
-    release(gLock)
-    {.gcsafe.}: arg.showfn()
+    withLock(gLock):
+      randomizeRectsAll(arg.prt[], size, qty)
+      {.gcsafe.}: arg.prep()
+    {.gcsafe.}: arg.refresh()
+    gSendChan.send(true)
+    discard gAckChan.recv()
+
+  echo "Worker: done"
+    

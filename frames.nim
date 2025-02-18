@@ -28,6 +28,7 @@ type
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
     mCachedBmps: Table[RectID, ref wBitmap]
+    mCacheNeeded: bool
     mBigBmp: wBitmap
     mBlendFunc: BLENDFUNCTION
     mMemDc: wMemoryDC
@@ -92,20 +93,24 @@ wClass(wBlockPanel of wPanel):
     memDC.drawLabel($rectstr, zeroRect.expand(-1), wCenter or wMiddle)
   proc initBmpCaches(self: wBlockPanel) =
     # Creates all new bitmaps
+    self.mCachedBmps.clear()
     for id, rect in self.mRectTable:
       var bmp: ref wBitmap
       new bmp
       bmp[] = rectToBmp(rect)
       self.mCachedBmps[id] = bmp
+    self.mCacheNeeded = false
   proc updateBmpCache(self: wBlockPanel, id: RectID) =
     # Creates one new bitmap; used for selection
     var bmp: ref wBitmap
     new bmp
     bmp[] = rectToBmp(self.mRectTable[id])
     self.mCachedBmps[id] = bmp
+    self.mCacheNeeded = false
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
     for id in ids:
       self.updateBmpCache(id)
+    self.mCacheNeeded = false
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
@@ -232,12 +237,17 @@ wClass(wBlockPanel of wPanel):
       else: return
     self.moveRectsBy(SELECTED.toSeq, delta)
   proc onPaint(self: wBlockPanel, event: wEvent) = 
+    # Move this to another message recipient
+    if self.mCacheNeeded:
+      self.initBmpCaches()
+
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
 
     # Make sure in-mem bitmap is initialized to correct size
     if not tryAcquire(gLock):
       return
+
     var clipRect1: winim.RECT
     GetUpdateRect(self.mHwnd, clipRect1, false)
     var clipRect2: wRect = (x: clipRect1.left - 1, 
@@ -248,6 +258,7 @@ wClass(wBlockPanel of wPanel):
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
       self.mMemDc.selectObject(self.mBigBmp)
+
 
     # Clear mem, erase old position
     var dirtyRects: seq[Rect]
@@ -277,8 +288,12 @@ wClass(wBlockPanel of wPanel):
     # Finally grab DC and do last blit
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
     MOUSE_DATA.dirtyIds.setLen(0)
-    SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
+    #SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
     release(gLock)
+    let (avail, msg) = gSendChan.tryRecv()
+    if avail > 0:
+      gAckChan.send(true)
+
   
   proc onPaintDone(self: wBlockPanel) =
     if MOUSE_DATA.clearStarted:
@@ -360,22 +375,23 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.boundingBox()
     self.refresh(false)
 
+
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
+    let prep = proc() {.closure.} = 
+      self.mBlockPanel.mCacheNeeded = true
+      self.mBlockPanel.boundingBox()
+    let refresh = proc() {.closure.} =
+      self.mBlockPanel.refresh()
     let initState: PosTable = self.mRectTable.positions
     let sz = self.mBlockPanel.clientSize
     let temp = self.mSldr.value.float
-    let compactfn = proc() = 
-      self.doOnButtonCompact(primax, secax, primrev, secrev)
-    let showfn = proc() {.closure.} = 
-      self.mBlockPanel.initBmpCaches()
-      self.mBlockPanel.boundingBox()
-      self.refresh()
+    # let compactfn = proc() = 
+    #   self.doOnButtonCompact(primax, secax, primrev, secrev)
     #let args = (initState, self.mRectTable.addr, sz, compactfn, showfn)
     #gAnnealThread.createThread(annealWiggle, args)
     gRandomThread.createThread(randomWorker, 
-      (self.mRectTable.addr, showfn))
-    #showfn()
+      (self.mRectTable.addr, prep, refresh))
   
   proc onResize(self: wMainPanel) =
       self.layout()

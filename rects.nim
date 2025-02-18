@@ -245,10 +245,8 @@ proc randRect*(id: RectID, screenSize: wSize): Rect =
                 brushcolor: randColor())
 
 proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
-  echo "randomize clearing table"
   table.clear()
   for i in 1..qty:
-    echo "randomize adding: ", i
     let rid = toRectId(i)
     table[rid] = randRect(rid, size)
 
