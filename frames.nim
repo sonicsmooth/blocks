@@ -1,5 +1,5 @@
 # TEST!!
-import std/[sets, tables, sugar, stats, strformat]
+import std/[locks, sets, sugar, stats, strformat, tables ]
 from std/os import sleep
 from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
@@ -7,7 +7,7 @@ import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 from wNim/private/wHelper import `-`
 import winim except RECT
-import rects, compact, anneal
+import anneal, compact, concurrent, rects
 
 # TODO: copy background before move
 # TODO: Hover
@@ -49,6 +49,7 @@ type
     mMenuFile:  wMenu
     #mStatusBar: wStatusBar # already defined by wNim
 
+
 var 
   MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
                     dirtyIds:     seq[RectID],
@@ -89,7 +90,7 @@ wClass(wBlockPanel of wPanel):
     memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     memDC.setTextBackground(rect.brushcolor)
     memDC.drawLabel($rectstr, zeroRect.expand(-1), wCenter or wMiddle)
-  proc initBmpCache(self: wBlockPanel) =
+  proc initBmpCaches(self: wBlockPanel) =
     # Creates all new bitmaps
     for id, rect in self.mRectTable:
       var bmp: ref wBitmap
@@ -174,7 +175,7 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
-    #echo self.mRectTable.fillRatio
+    echo self.mRectTable.fillRatio
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
@@ -231,7 +232,12 @@ wClass(wBlockPanel of wPanel):
       else: return
     self.moveRectsBy(SELECTED.toSeq, delta)
   proc onPaint(self: wBlockPanel, event: wEvent) = 
+    # Do this to make sure we only get called once per event
+    var dc = PaintDC(event.window)
+
     # Make sure in-mem bitmap is initialized to correct size
+    if not tryAcquire(gLock):
+      return
     var clipRect1: winim.RECT
     GetUpdateRect(self.mHwnd, clipRect1, false)
     var clipRect2: wRect = (x: clipRect1.left - 1, 
@@ -255,7 +261,6 @@ wClass(wBlockPanel of wPanel):
       self.mMemDc.setBrush(Brush(event.window.backgroundColor))
       self.mMemDc.drawRectangle(clipRect2)
 
-
     # Blend cached bitmaps
     for rect in dirtyRects:
       self.mBmpDc.selectObject(self.mCachedBmps[rect.id][])
@@ -269,13 +274,12 @@ wClass(wBlockPanel of wPanel):
     self.mMemDc.setBrush(wTransparentBrush)
     self.mMemDc.drawRectangle(self.mAllBbox)
     
-    
-
     # Finally grab DC and do last blit
-    var dc = PaintDC(event.window)
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
     MOUSE_DATA.dirtyIds.setLen(0)
     SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
+    release(gLock)
+  
   proc onPaintDone(self: wBlockPanel) =
     if MOUSE_DATA.clearStarted:
       MOUSE_DATA.clearStarted = false
@@ -283,7 +287,7 @@ wClass(wBlockPanel of wPanel):
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    self.initBmpCache()
+    self.initBmpCaches()
     self.mBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
                         SourceConstantAlpha: 240,
                         AlphaFormat: 0)
@@ -342,9 +346,9 @@ wClass(wMainPanel of wPanel):
       yPosAcc += bh
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
     rects.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
-    self.mBlockPanel.initBmpCache()
+    self.mBlockPanel.initBmpCaches()
   proc doOnButtonCompact(self: wMainPanel, primax, secax: Axis,
-                         primrev, secrev: bool ) =
+                         primrev, secrev: bool) =
     # Keep compacting until it doesn't change
     var pos, lastPos: PosTable
     pos = self.mRectTable.positions
@@ -355,6 +359,7 @@ wClass(wMainPanel of wPanel):
       pos = self.mRectTable.positions
     self.mBlockPanel.boundingBox()
     self.refresh(false)
+
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
     let initState: PosTable = self.mRectTable.positions
@@ -362,12 +367,16 @@ wClass(wMainPanel of wPanel):
     let temp = self.mSldr.value.float
     let compactfn = proc() = 
       self.doOnButtonCompact(primax, secax, primrev, secrev)
-    let showfn = proc() = 
+    let showfn = proc() {.closure.} = 
+      self.mBlockPanel.initBmpCaches()
       self.mBlockPanel.boundingBox()
-      self.forceRedraw(0)
-    annealWiggle(initState, self.mRectTable, sz, compactfn, showfn)
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
+      self.refresh()
+    #let args = (initState, self.mRectTable.addr, sz, compactfn, showfn)
+    #gAnnealThread.createThread(annealWiggle, args)
+    gRandomThread.createThread(randomWorker, 
+      (self.mRectTable.addr, showfn))
+    #showfn()
+  
   proc onResize(self: wMainPanel) =
       self.layout()
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
@@ -543,7 +552,7 @@ wClass(wMainFrame of wFrame):
     self.mStatusBar.setStatusText(tmpStr, index=0)
     rects.randomizeRectsAll(rectTable, newBlockSz, self.mMainPanel.mSpnr.value)
     self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
-    self.mMainPanel.mBlockPanel.initBmpCache()
+    self.mMainPanel.mBlockPanel.initBmpCaches()
 
 
     # Connect Events
