@@ -212,7 +212,7 @@ proc rectInRects*(rectId: RectID, table: RectTable): seq[RectID] =
 
 #TODO: make converter here
 
-proc toRectId(id: int): RectId =
+proc toRectId*(id: int): RectId =
   when RectId is int:    result = id.int
   elif RectId is int16:  result = id.int16 
   elif RectId is int32:  result = id.int32 
@@ -223,7 +223,7 @@ proc toRectId(id: int): RectId =
   elif RectId is uint64: result = id.uint64
   elif RectId is string: result = $id
  
-proc randRect(id: RectID, screenSize: wSize): Rect = 
+proc randRect*(id: RectID, screenSize: wSize): Rect = 
   let rectSizeW: int = rand(WRANGE)
   let rectSizeH: int = rand(HRANGE)
   let rectPosX:  int = rand(screenSize.width  - rectSizeW  - 1)
@@ -245,8 +245,10 @@ proc randRect(id: RectID, screenSize: wSize): Rect =
                 brushcolor: randColor())
 
 proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
+  echo "randomize clearing table"
   table.clear()
   for i in 1..qty:
+    echo "randomize adding: ", i
     let rid = toRectId(i)
     table[rid] = randRect(rid, size)
 
@@ -284,7 +286,7 @@ proc area*(rect: wRect|Rect): int =
 
 
 proc aspectRatio*(rect: wRect|Rect): float =
-  rect.x.float / rect.y.float
+  rect.width.float / rect.height.float
 
 proc aspectRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
   boundingBox(rects).aspectRatio
