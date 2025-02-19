@@ -158,13 +158,11 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 proc annealWiggle*(arg: AnnealArg) {.thread.} =
   # Copy initState back to table after each NUM_NEXT_STATES itefillRation
-  acquire(gLock)
   let startTemp = MAX_TEMP
   let endTemp = 0.0
   let moveScale = 0.25
   let maxAmt: wSize = ((arg.screenSize.width.float  * moveScale).int,
                        (arg.screenSize.height.float * moveScale).int)
-  
   var interState = arg.initState
   var best25: Table[float, PosTable]
   var bestEver: tuple[heur: float, table: PosTable]
@@ -180,24 +178,27 @@ proc annealWiggle*(arg: AnnealArg) {.thread.} =
       best25.clear()
 
     for i in 1..NUM_NEXT_STATES:
-      calcWiggle(interState, arg.pRectTable, temp, maxAmt)
-      {.gcsafe.}: arg.compactfn()
-      heur = arg.pRectTable[].fillRatio
-      #heur = varTable.fillRatio / abs(1-varTable.aspectRatio)
-      let poses = arg.pRectTable[].positions
-      if heur > bestEver.heur:
-        echo &"{temp}: {heur}"
-        bestEver = (heur, poses)
-      capturePos(best25, poses, heur)
-    echo "showing"
-    {.gcsafe.}: arg.showfn()
-    sleep(1)
+      withLock(gLock):
+        echo "captured"
+        calcWiggle(interState, arg.pRectTable, temp, maxAmt)
+        {.gcsafe.}: arg.compactfn()
+        heur = arg.pRectTable[].fillRatio
+        #heur = varTable.fillRatio / abs(1-varTable.aspectRatio)
+        let poses = arg.pRectTable[].positions
+        if heur > bestEver.heur:
+          echo &"{temp}: {heur}"
+          bestEver = (heur, poses)
+        capturePos(best25, poses, heur)
+    #SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)
+    #discard gAckChan.recv()
     temp -= TEMP_STEP
   # Set positions
-  for id,pos in bestEver.table:
-    arg.pRectTable[][id].x = pos.x
-    arg.pRectTable[][id].y = pos.y
-  release(gLock)
+  withLock(gLock):
+    for id,pos in bestEver.table:
+      arg.pRectTable[][id].x = pos.x
+      arg.pRectTable[][id].y = pos.y
+  SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)
+  discard gAckChan.recv()
 
 proc doNothing*() {.thread.} =
   for i in 1..10:
