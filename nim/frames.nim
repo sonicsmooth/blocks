@@ -92,6 +92,10 @@ wClass(wBlockPanel of wPanel):
     memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     memDC.setTextBackground(rect.brushcolor)
     memDC.drawLabel($rectstr, zeroRect.expand(-1), wCenter or wMiddle)
+  proc forceRedraw(self: wBlockPanel, wait: int) = 
+    self.refresh(false)
+    UpdateWindow(self.mHwnd)
+    if wait > 0: sleep(wait)
   proc initBmpCaches(self: wBlockPanel) =
     # Creates all new bitmaps
     self.mCachedBmps.clear()
@@ -238,10 +242,6 @@ wClass(wBlockPanel of wPanel):
       else: return
     self.moveRectsBy(SELECTED.toSeq, delta)
   proc onPaint(self: wBlockPanel, event: wEvent) = 
-    # Move this to another message recipient
-    if self.mCacheNeeded:
-      self.initBmpCaches()
-
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
 
@@ -259,7 +259,6 @@ wClass(wBlockPanel of wPanel):
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
       self.mMemDc.selectObject(self.mBigBmp)
-
 
     # Clear mem, erase old position
     var dirtyRects: seq[Rect]
@@ -281,7 +280,7 @@ wClass(wBlockPanel of wPanel):
                  self.mBmpDC.mHdc, 0, 0,
                  rect.size.width, rect.size.height, self.mBlendFunc)
 
-    # bounding box for everything
+    # draw bounding box for everything
     self.mMemDC.setPen(Pen(wBlack))
     self.mMemDc.setBrush(wTransparentBrush)
     self.mMemDc.drawRectangle(self.mAllBbox)
@@ -291,9 +290,6 @@ wClass(wBlockPanel of wPanel):
     MOUSE_DATA.dirtyIds.setLen(0)
     #SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
     release(gLock)
-    let (avail, msg) = gSendChan.tryRecv()
-    if avail > 0:
-      gAckChan.send(true)
 
   
   proc onPaintDone(self: wBlockPanel) =
@@ -320,11 +316,6 @@ wClass(wBlockPanel of wPanel):
     self.USER_PAINT_DONE   do (): self.onPaintDone()
 
 wClass(wMainPanel of wPanel):
-  proc forceRedraw(self: wMainPanel, wait: int) = 
-    self.refresh(false)
-    UpdateWindow(self.mBlockPanel.mHwnd)
-    if wait > 0:
-      sleep(wait)
   proc layout(self: wMainPanel) =
     let 
       (cszw, cszh) = self.clientSize
@@ -379,11 +370,11 @@ wClass(wMainPanel of wPanel):
 
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
-    let prep = proc() {.closure.} = 
-      self.mBlockPanel.mCacheNeeded = true
-      self.mBlockPanel.boundingBox()
-    let refresh = proc() {.closure.} =
-      self.mBlockPanel.refresh()
+    let prep = proc() {.closure.} = discard
+      # self.mBlockPanel.mCacheNeeded = true
+      # self.mBlockPanel.boundingBox()
+    let refresh = proc() {.closure.} = discard
+      #self.mBlockPanel.refresh()
     let initState: PosTable = self.mRectTable.positions
     let sz = self.mBlockPanel.clientSize
     let temp = self.mSldr.value.float
@@ -391,8 +382,8 @@ wClass(wMainPanel of wPanel):
     #   self.doOnButtonCompact(primax, secax, primrev, secrev)
     #let args = (initState, self.mRectTable.addr, sz, compactfn, showfn)
     #gAnnealThread.createThread(annealWiggle, args)
-    gRandomThread.createThread(randomWorker, 
-      (self.mRectTable.addr, prep, refresh))
+    let arg: RandomArg = (self.mRectTable.addr, prep, refresh, self)
+    gRandomThread.createThread(randomWorker, arg)
   
   proc onResize(self: wMainPanel) =
       self.layout()
@@ -475,7 +466,13 @@ wClass(wMainPanel of wPanel):
     self.doOnButtonCompact(Y, X, true, false)
   proc onButtonCompact↓→(self: wMainPanel) =
     self.doOnButtonCompact(Y, X, true, true)
-  proc onAlgUpdate(self: wMainPainel) =
+  proc onAlgUpdate(self: wMainPanel) =
+    withLock(gLock):
+      self.mBlockPanel.initBmpCaches()
+      self.mBlockPanel.boundingBox()
+    self.mBlockPanel.forceRedraw(0)
+    #self.mBlockPanel.refresh()
+    gAckChan.send(true)
     
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)
