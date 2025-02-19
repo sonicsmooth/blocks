@@ -23,6 +23,7 @@ const
   USER_SIZE       = WM_APP + 2
   USER_PAINT_DONE = WM_APP + 3
   USER_SLIDER     = WM_APP + 4
+  USER_ALG_UPDATE = WM_APP + 5
 
 type 
   wBlockPanel = ref object of wPanel
@@ -449,6 +450,8 @@ wClass(wMainPanel of wPanel):
     self.doOnButtonCompact(Y, X, true, false)
   proc onButtonCompact↓→(self: wMainPanel) =
     self.doOnButtonCompact(Y, X, true, true)
+  proc onAlgUpdate(self: wMainPainel) =
+    
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)
 
@@ -502,6 +505,7 @@ wClass(wMainPanel of wPanel):
     self.mButtons[12].wEvent_Button     do (): self.onButtonCompact↑→()
     self.mButtons[13].wEvent_Button     do (): self.onButtonCompact↓←()
     self.mButtons[14].wEvent_Button     do (): self.onButtonCompact↓→()
+    self.USER_ALG_UPDATE                do (): self.onAlgUpdate()
 
 wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
