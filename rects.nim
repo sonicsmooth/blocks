@@ -26,7 +26,6 @@ type
   PosWidth = tuple[x,y,width,height:int]
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
   PosTable* = Table[RectID, wPoint] # meant to have value semantics
-  # SizeTable* = Table[RectID, wSize] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -73,13 +72,6 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
-
-# proc posWidths(posTable: PosTable, sizeTable: SizeTable): seq[PosWidth] =
-#   # Combines PosTable and SizeTable 
-#   # Returns seq of tuples
-#   for id, pos in posTable:
-#     let sz = sizeTable[id]
-#     result.add((pos.x, pos.y, sz.width, sz.height))
 
 proc positions*(rectTable: RectTable): PosTable =
   for id,rect in rectTable:
@@ -220,7 +212,7 @@ proc rectInRects*(rectId: RectID, table: RectTable): seq[RectID] =
 
 #TODO: make converter here
 
-proc toRectId(id: int): RectId =
+proc toRectId*(id: int): RectId =
   when RectId is int:    result = id.int
   elif RectId is int16:  result = id.int16 
   elif RectId is int32:  result = id.int32 
@@ -231,7 +223,7 @@ proc toRectId(id: int): RectId =
   elif RectId is uint64: result = id.uint64
   elif RectId is string: result = $id
  
-proc randRect(id: RectID, screenSize: wSize): Rect = 
+proc randRect*(id: RectID, screenSize: wSize): Rect = 
   let rectSizeW: int = rand(WRANGE)
   let rectSizeH: int = rand(HRANGE)
   let rectPosX:  int = rand(screenSize.width  - rectSizeW  - 1)
@@ -292,7 +284,7 @@ proc area*(rect: wRect|Rect): int =
 
 
 proc aspectRatio*(rect: wRect|Rect): float =
-  rect.x.float / rect.y.float
+  rect.width.float / rect.height.float
 
 proc aspectRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
   boundingBox(rects).aspectRatio

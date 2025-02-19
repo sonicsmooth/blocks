@@ -1,9 +1,10 @@
 # Simulated annealing
-import std/[algorithm, math, random, sets, strformat, sugar]
+import std/[algorithm, locks, math, os, random, sets, sugar, strformat]
 from sequtils import toSeq
+#from std/os import sleep
 import wnim
 from wnim/private/wHelper import `+`
-import rects
+import concurrent, rects
 
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
@@ -34,13 +35,15 @@ import rects
 
     ]#
 
-const NUM_NEXT_STATES = 20
-const MAX_TEMP* = 50.0
-const TEMP_STEP = 1.0
+const NUM_NEXT_STATES = 500
+const MAX_TEMP* = 100.0
+const TEMP_STEP = 1
 const MINPROB = 0.1    # low end of probability distribution function
 const MAXPROB = 10.0  # high end of probability distribution function
-var RND = initRand()
-type NextStateFunc* = enum Wiggle, Swap
+type 
+  NextStateFunc* = enum Wiggle, Swap
+var 
+  RND = initRand()
 
 
 proc select[T](a: openArray[T], n: int): seq[T] =
@@ -66,7 +69,6 @@ proc moveAmt(temp: float, maxAmt: wSize): wPoint =
   let xmv  = (rand(maxX) - maxX/2.0).int
   let xmy  = (rand(maxY) - maxY/2.0).int
   result = (xmv, xmy)
-
 
 proc calcSwap*[T](table: var T, temp: float) =
   # Swap some pairs of blocks' positions.  Temperature 
@@ -95,13 +97,13 @@ proc calcSwap*[T](table: var T, temp: float) =
     #else:
     #  result[a] = A
 
-proc calcWiggle*[S,T](initState: S, varTable: var T, temp: float, maxAmt: wSize) =
-  # Copies x,y values from initState to varTable with some amount
+proc calcWiggle*[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
+  # Copies x,y values from initState to pTable with some amount
   # changed based on temperature
   # initState must have at least the same keys as varTable.
-  # Both table must have x,y properties
+  # Both tables must have x,y properties
   # Mutates varTable in place
-  for id, item in varTable:
+  for id, item in pTable[]:
     let amt = moveAmt(temp, maxAmt)
     item.x = initState[id].x + amt.x
     item.y = initState[id].y + amt.y
@@ -154,46 +156,65 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 
 
-proc annealWiggle*[T](initState: PosTable, 
-                          varTable: var T, 
-                          screenSize: wSize, 
-                          compactfn: proc(),
-                          showfn: proc()): auto =
+proc annealWiggle*(arg: AnnealThreadArg) {.thread.} =
   # Copy initState back to table after each NUM_NEXT_STATES itefillRation
+  acquire(gLock)
   let startTemp = MAX_TEMP
   let endTemp = 0.0
   let moveScale = 0.25
-  let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
-                       (screenSize.height.float * moveScale).int)
+  let maxAmt: wSize = ((arg.screenSize.width.float  * moveScale).int,
+                       (arg.screenSize.height.float * moveScale).int)
   
-  var interState = initState
+  var interState = arg.initState
   var best25: Table[float, PosTable]
   var bestEver: tuple[heur: float, table: PosTable]
   var temp = startTemp
   var firstTime = true
   var heur:float
   while temp > endTemp:
-    if not firstTime:
+    if firstTime:
+      firstTime = false
+    else: # second time, etc.
       let chosenHeur = selectHeuristic(best25.keys.toSeq) # Choose random with heuristic bias
-      echo "Choosing: ", chosenHeur
       interState = best25[chosenHeur]
       best25.clear()
-    else:
-      firstTime = false
 
     for i in 1..NUM_NEXT_STATES:
-      calcWiggle(interState, varTable, temp, maxAmt)
-      compactfn()
-      #heur = varTable.fillRatio
-      heur = varTable.aspectRatio
-      let poses = varTable.positions
+      calcWiggle(interState, arg.pRectTable, temp, maxAmt)
+      {.gcsafe.}: arg.compactfn()
+      heur = arg.pRectTable[].fillRatio
+      #heur = varTable.fillRatio / abs(1-varTable.aspectRatio)
+      let poses = arg.pRectTable[].positions
       if heur > bestEver.heur:
+        echo &"{temp}: {heur}"
         bestEver = (heur, poses)
       capturePos(best25, poses, heur)
-    #yield (temp, heur)
-    showfn()
+    echo "showing"
+    {.gcsafe.}: arg.showfn()
+    sleep(1)
     temp -= TEMP_STEP
   # Set positions
   for id,pos in bestEver.table:
-    varTable[id].x = pos.x
-    varTable[id].y = pos.y
+    arg.pRectTable[][id].x = pos.x
+    arg.pRectTable[][id].y = pos.y
+  release(gLock)
+
+proc doNothing*() {.thread.} =
+  for i in 1..10:
+    echo "DoNothing"
+    sleep(1000)
+  echo "thread done"
+
+proc randomWorker*(arg: RandomThreadArg) {.thread.} =
+  let size = (600,400)
+  let qty  = 100
+  for i in 1..1000:
+    withLock(gLock):
+      randomizeRectsAll(arg.prt[], size, qty)
+      {.gcsafe.}: arg.prep()
+    {.gcsafe.}: arg.refresh()
+    gSendChan.send(true)
+    discard gAckChan.recv()
+
+  echo "Worker: done"
+    
