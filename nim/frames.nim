@@ -29,7 +29,7 @@ type
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
     mCachedBmps: Table[RectID, ref wBitmap]
-    mCacheNeeded: bool
+    #mCacheNeeded: bool
     mBigBmp: wBitmap
     mBlendFunc: BLENDFUNCTION
     mMemDc: wMemoryDC
@@ -104,18 +104,18 @@ wClass(wBlockPanel of wPanel):
       new bmp
       bmp[] = rectToBmp(rect)
       self.mCachedBmps[id] = bmp
-    self.mCacheNeeded = false
+    #self.mCacheNeeded = false
   proc updateBmpCache(self: wBlockPanel, id: RectID) =
     # Creates one new bitmap; used for selection
     var bmp: ref wBitmap
     new bmp
     bmp[] = rectToBmp(self.mRectTable[id])
     self.mCachedBmps[id] = bmp
-    self.mCacheNeeded = false
+    #self.mCacheNeeded = false
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
     for id in ids:
       self.updateBmpCache(id)
-    self.mCacheNeeded = false
+    #self.mCacheNeeded = false
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
@@ -244,9 +244,12 @@ wClass(wBlockPanel of wPanel):
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
+    #ValidateRect(self.mHwnd, nil)
+    echo "onpaint"
 
     # Make sure in-mem bitmap is initialized to correct size
     if not tryAcquire(gLock):
+      echo "returning"
       return
 
     var clipRect1: winim.RECT
@@ -290,6 +293,7 @@ wClass(wBlockPanel of wPanel):
     MOUSE_DATA.dirtyIds.setLen(0)
     #SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
     release(gLock)
+    echo "released"
 
   
   proc onPaintDone(self: wBlockPanel) =
@@ -370,20 +374,15 @@ wClass(wMainPanel of wPanel):
 
   proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
                                primrev, secrev: bool ) =
-    let prep = proc() {.closure.} = discard
-      # self.mBlockPanel.mCacheNeeded = true
-      # self.mBlockPanel.boundingBox()
-    let refresh = proc() {.closure.} = discard
-      #self.mBlockPanel.refresh()
     let initState: PosTable = self.mRectTable.positions
     let sz = self.mBlockPanel.clientSize
     let temp = self.mSldr.value.float
-    # let compactfn = proc() = 
-    #   self.doOnButtonCompact(primax, secax, primrev, secrev)
-    #let args = (initState, self.mRectTable.addr, sz, compactfn, showfn)
-    #gAnnealThread.createThread(annealWiggle, args)
-    let arg: RandomArg = (self.mRectTable.addr, self)
-    gRandomThread.createThread(randomWorker, arg)
+    let compactfn = proc() = 
+      self.doOnButtonCompact(primax, secax, primrev, secrev)
+    let arg: AnnealArg = (initState, self.mRectTable.addr, compactfn, sz, self)
+    gAnnealThread.createThread(annealWiggle, arg)
+    # let arg: RandomArg = (self.mRectTable.addr, self)
+    # gRandomThread.createThread(randomWorker, arg)
   
   proc onResize(self: wMainPanel) =
       self.layout()
