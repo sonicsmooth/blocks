@@ -208,7 +208,7 @@ proc doNothing*() {.thread.} =
 proc randomWorker*(arg: RandomArg) {.thread.} =
   let size = (600,400)
   let qty  = 100
-  for i in 1..1000:
+  for i in 1..100:
     withLock(gLock):
       randomizeRectsAll(arg.pRectTable[], size, qty)
     SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)

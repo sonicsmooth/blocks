@@ -382,7 +382,7 @@ wClass(wMainPanel of wPanel):
     #   self.doOnButtonCompact(primax, secax, primrev, secrev)
     #let args = (initState, self.mRectTable.addr, sz, compactfn, showfn)
     #gAnnealThread.createThread(annealWiggle, args)
-    let arg: RandomArg = (self.mRectTable.addr, prep, refresh, self)
+    let arg: RandomArg = (self.mRectTable.addr, self)
     gRandomThread.createThread(randomWorker, arg)
   
   proc onResize(self: wMainPanel) =
