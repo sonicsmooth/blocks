@@ -6,11 +6,11 @@ import concurrent, frames, rects
 
 when isMainModule:
   randomize()
-  init()
+  concurrent.init()
   let init_size = (800, 600)
   var rectTable = RectTable()
   let app = App()
   discard MainFrame(init_size, rectTable)
   app.mainLoop()
-  deinit()
+  concurrent.deinit()
   

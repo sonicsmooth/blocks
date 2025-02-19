@@ -2,7 +2,7 @@
 import std/[algorithm, locks, math, os, random, sets, sugar, strformat]
 from sequtils import toSeq
 #from std/os import sleep
-import wnim
+import wnim, winim/inc/winuser
 from wnim/private/wHelper import `+`
 import concurrent, rects
 
@@ -156,7 +156,7 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 
 
-proc annealWiggle*(arg: AnnealThreadArg) {.thread.} =
+proc annealWiggle*(arg: AnnealArg) {.thread.} =
   # Copy initState back to table after each NUM_NEXT_STATES itefillRation
   acquire(gLock)
   let startTemp = MAX_TEMP
@@ -205,16 +205,12 @@ proc doNothing*() {.thread.} =
     sleep(1000)
   echo "thread done"
 
-proc randomWorker*(arg: RandomThreadArg) {.thread.} =
+proc randomWorker*(arg: RandomArg) {.thread.} =
   let size = (600,400)
   let qty  = 100
   for i in 1..1000:
     withLock(gLock):
-      randomizeRectsAll(arg.prt[], size, qty)
-      {.gcsafe.}: arg.prep()
-    {.gcsafe.}: arg.refresh()
-    gSendChan.send(true)
+      randomizeRectsAll(arg.pRectTable[], size, qty)
+    SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)
     discard gAckChan.recv()
-
-  echo "Worker: done"
     
