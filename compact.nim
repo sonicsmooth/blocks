@@ -6,11 +6,6 @@ import rects
 
 type 
   Axis* = enum X=true, Y=false
-  # CompactSpec* = tuple[primax: Axis, 
-  #                      secax: Axis, 
-  #                      primrev: bool, 
-  #                      secrev: bool,
-  #                      clientSize: wSize]
   MajMin = enum Major=true, Minor=false
   Node = RectID
   Weight = int
