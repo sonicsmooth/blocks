@@ -6,6 +6,11 @@ import rects
 
 type 
   Axis* = enum X=true, Y=false
+  # CompactSpec* = tuple[primax: Axis, 
+  #                      secax: Axis, 
+  #                      primrev: bool, 
+  #                      secrev: bool,
+  #                      clientSize: wSize]
   MajMin = enum Major=true, Minor=false
   Node = RectID
   Weight = int
@@ -21,16 +26,16 @@ type
 
 const ROOTNODE = when RectID is string: "0" else: 0
 
-proc RectCmpX(r1, r2: Rect): int = cmp(r1.x, r2.x)
-proc RectCmpY(r1, r2: Rect): int = cmp(r1.y, r2.y)
-proc SortedRectsIds(rects: seq[Rect], axis: Axis, reverse: bool): seq[RectID] =
+proc rectCmpX(r1, r2: Rect): int = cmp(r1.x, r2.x)
+proc rectCmpY(r1, r2: Rect): int = cmp(r1.y, r2.y)
+proc sortedRectsIds(rects: seq[Rect], axis: Axis, reverse: bool): seq[RectID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
   let order = if reverse: Descending else: Ascending
   if axis == X:
-    tmpRects.sort(RectCmpX, order)
+    tmpRects.sort(rectCmpX, order)
   else:
-    tmpRects.sort(RectCmpY, order)
+    tmpRects.sort(rectCmpY, order)
   result = tmpRects.ids
 
 proc setField[T](line: var ScanLine, field: ScanType, val: T) =
@@ -55,7 +60,6 @@ proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
     proc(node: Node): int =
       if node != ROOTNODE:
         result = rectTable[node].height
-
 
 proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
                   axis: Axis, reverse: bool): Graph = 
@@ -124,11 +128,11 @@ proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
 
     line.sorted = concat(line.top, line.mid, line.bot)
     if line.sorted.len > 1:
-      line.sorted = SortedRectsIds(rectTable[line.sorted], axis, reverse)
+      line.sorted = sortedRectsIds(rectTable[line.sorted], axis, reverse)
     if line.top.len > 1:
-      line.top = SortedRectsIds(rectTable[line.top], axis, reverse)
+      line.top = sortedRectsIds(rectTable[line.top], axis, reverse)
     if line.bot.len > 1:
-      line.bot = SortedRectsIds(rectTable[line.bot], axis, reverse)
+      line.bot = sortedRectsIds(rectTable[line.bot], axis, reverse)
     lastpos = edge.pos
   result.add(line)
 
@@ -153,18 +157,15 @@ proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node]): Table[RectID,
       result[ge.to] = max(result[ge.to], result[ge.frm] + weight)
   result.del(ROOTNODE)
 
-type TimeData = tuple[mg:float, bf:float, ur:float]
-var td: TimeData = (mg: 0.0, bf: 0.0, ur: 0.0)
-proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize,
-              result: var TimeData=td) =
-  let time1 = cpuTime()
+proc compact*(rectTable: RectTable, 
+              axis: Axis,
+              reverse: bool,
+              clientSize: wSize) =
+  # Top level compact function
+  # TODO changes clientSize to some other way of specifying min/max x/y
   let graph = MakeGraph(rectTable, axis, reverse)
-  let time2 = cpuTime()
-  #let nodes = rectTable.values.toSeq.ids
   let nodes = rectTable.keys.toSeq
-  let time3 = cpuTime()
   let lp = longestPathBellmanFord(graph, nodes)
-  let time4 = cpuTime()
   if axis == X and not reverse:
     for id, rect in rectTable:
       rect.x = lp[id]
@@ -177,11 +178,18 @@ proc compact*(rectTable: RectTable, axis: Axis, reverse: bool, clientSize: wSize
   elif axis == Y and reverse:
     for id, rect in rectTable:
       rect.y = clientSize.height - lp[id]
-  let time5 = cpuTime()
-  result.mg = time2 - time1
-  result.bf = time4 - time3
-  result.ur = time5 - time4
 
-
+proc iterCompact*(rectTable: RectTable, 
+                  primax, secax: Axis,
+                  primrev, secrev: bool,
+                  clientSize: wSize) =
+  # Run compact function until rectTable doesn't change
+  var pos, lastPos: PosTable
+  pos = rectTable.positions
+  while pos != lastPos:
+    compact(rectTable, primax, primrev, clientSize)
+    compact(rectTable, secax, secrev, clientSize)
+    lastPos = pos
+    pos = rectTable.positions
 
 

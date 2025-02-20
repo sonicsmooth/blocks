@@ -4,7 +4,7 @@ from sequtils import toSeq
 #from std/os import sleep
 import wnim, winim/inc/winuser
 from wnim/private/wHelper import `+`
-import concurrent, rects
+import concurrent, rects, user_messages
 
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
@@ -35,7 +35,7 @@ import concurrent, rects
 
     ]#
 
-const NUM_NEXT_STATES = 500
+const NUM_NEXT_STATES = 100
 const MAX_TEMP* = 100.0
 const TEMP_STEP = 1
 const MINPROB = 0.1    # low end of probability distribution function
@@ -177,9 +177,8 @@ proc annealWiggle*(arg: AnnealArg) {.thread.} =
       interState = best25[chosenHeur]
       best25.clear()
 
-    for i in 1..NUM_NEXT_STATES:
-      withLock(gLock):
-        echo "captured"
+    withLock(gLock):
+      for i in 1..NUM_NEXT_STATES:
         calcWiggle(interState, arg.pRectTable, temp, maxAmt)
         {.gcsafe.}: arg.compactfn()
         heur = arg.pRectTable[].fillRatio
@@ -189,8 +188,8 @@ proc annealWiggle*(arg: AnnealArg) {.thread.} =
           echo &"{temp}: {heur}"
           bestEver = (heur, poses)
         capturePos(best25, poses, heur)
-    #SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)
-    #discard gAckChan.recv()
+    SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)
+    discard gAckChan.recv()
     temp -= TEMP_STEP
   # Set positions
   withLock(gLock):
