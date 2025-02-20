@@ -3,12 +3,15 @@ from std/sequtils import toSeq
 import strutils
 import wNim/[wTypes]
 import wNim/private/wHelper
+import wNim/private/consts/wColors
+import blockRand
 export tables
 
 const
   WRANGE = 25..75
   HRANGE = 25..75
-  QTY* = 2
+  QTY* = 20
+
 
 type 
   RectID* = uint
@@ -35,6 +38,25 @@ type
   LeftEdge*   = object of VertEdge
   BottomEdge* = object of HorizEdge
   RightEdge*  = object of VertEdge
+
+var
+  RND = initRand()
+
+proc newRect*(id:RectID=0, x:int=0, y:int=0, 
+              width:int=0, height:int=0, rot:Rotation=R0,
+              pencolor:wColor=wBlack, brushcolor:wColor=wBlack,
+              selected:bool=false): Rect = 
+  Rect(id:id,
+       x:x,
+       y:y,
+       width:width,
+       height:height,
+       rot:rot,
+       pencolor:pencolor,
+       brushcolor:brushcolor,
+       selected:selected)
+
+
 
 proc `$`*(r: Rect): string =
   result =
@@ -249,6 +271,15 @@ proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) =
   for i in 1..qty:
     let rid = toRectId(i)
     table[rid] = randRect(rid, size)
+
+proc randomizeRectsAllLog*(table: var RectTable, size: wSize, qty: int) = 
+  # Randomize in a way that has fewer large blocks and more small blocks
+  table.clear()
+  for i in 1..qty:
+    let rid = toRectId(i)
+    table[rid] = randRect(rid, size)
+
+
 
 proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
   for id, rect in table:
