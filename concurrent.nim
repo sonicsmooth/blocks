@@ -11,10 +11,9 @@ type
                      window: wWindow]
   AnnealArg* = tuple[initState: PosTable,
                      pRectTable: ptr RectTable,
-                     compactfn: CompactFn,
+                     compactFn: CompactFn,
                      screenSize: wSize,
                      window: wWindow
-                     #showfn: RefreshFn
                      ]
 
 var

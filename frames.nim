@@ -7,7 +7,7 @@ import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 from wNim/private/wHelper import `-`
 import winim except RECT
-import anneal, compact, concurrent, rects
+import anneal, compact, concurrent, rects, user_messages
 
 # TODO: copy background before move
 # TODO: Hover
@@ -18,12 +18,6 @@ import anneal, compact, concurrent, rects
 # TODO: change temperature slider during run if checkbox
 # TODO: gray out slider or use it as max starting temp
 
-const
-  USER_MOUSE_MOVE = WM_APP + 1
-  USER_SIZE       = WM_APP + 2
-  USER_PAINT_DONE = WM_APP + 3
-  USER_SLIDER     = WM_APP + 4
-  USER_ALG_UPDATE = WM_APP + 5
 
 type 
   wBlockPanel = ref object of wPanel
@@ -245,11 +239,9 @@ wClass(wBlockPanel of wPanel):
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
     #ValidateRect(self.mHwnd, nil)
-    echo "onpaint"
 
     # Make sure in-mem bitmap is initialized to correct size
     if not tryAcquire(gLock):
-      echo "returning"
       return
 
     var clipRect1: winim.RECT
@@ -293,7 +285,6 @@ wClass(wBlockPanel of wPanel):
     MOUSE_DATA.dirtyIds.setLen(0)
     #SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
     release(gLock)
-    echo "released"
 
   
   proc onPaintDone(self: wBlockPanel) =
@@ -358,31 +349,32 @@ wClass(wMainPanel of wPanel):
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
     rects.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
     self.mBlockPanel.initBmpCaches()
-  proc doOnButtonCompact(self: wMainPanel, primax, secax: Axis,
+  proc doOnButtonCompact(self: wMainPanel,
+                         primax, secax: Axis,
                          primrev, secrev: bool) =
     # Keep compacting until it doesn't change
-    var pos, lastPos: PosTable
-    pos = self.mRectTable.positions
-    while pos != lastPos:
-      compact(self.mRectTable, primax, primrev, self.mBlockPanel.clientSize)
-      compact(self.mRectTable, secax, secrev, self.mBlockPanel.clientSize)
-      lastPos = pos
-      pos = self.mRectTable.positions
+    iterCompact(self.mRectTable,
+                primax, secax, 
+                primrev, secrev,
+                self.mBlockPanel.clientSize)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
 
-
-  proc doOnButtonAnnealCompact(self: wMainPanel, primax, secax: Axis, 
-                               primrev, secrev: bool ) =
-    let initState: PosTable = self.mRectTable.positions
-    let sz = self.mBlockPanel.clientSize
-    let temp = self.mSldr.value.float
+  proc doOnButtonAnnealCompact(self: wMainPanel, 
+                               primax, secax: Axis, 
+                               primrev, secrev: bool) =
+    #let initState: PosTable = self.mRectTable.positions
     let compactfn = proc() = 
-      self.doOnButtonCompact(primax, secax, primrev, secrev)
-    let arg: AnnealArg = (initState, self.mRectTable.addr, compactfn, sz, self)
+      iterCompact(self.mRectTable, 
+                  primax, secax, 
+                  primrev, secrev,
+                  self.mBlockPanel.clientSize)
+    let arg: AnnealArg = (initState: self.mRectTable.positions,
+                          pRectTable: self.mRectTable.addr,
+                          compactFn: compactfn,
+                          screenSize: self.mBlockPanel.clientSize,
+                          window: self)
     gAnnealThread.createThread(annealWiggle, arg)
-    # let arg: RandomArg = (self.mRectTable.addr, self)
-    # gRandomThread.createThread(randomWorker, arg)
   
   proc onResize(self: wMainPanel) =
       self.layout()
@@ -407,27 +399,6 @@ wClass(wMainPanel of wPanel):
   proc onButtonrandomizePos(self: wMainPanel) =
     let sz = self.mBlockPanel.clientSize
     rects.randomizeRectsPos(self.mRectTable, sz)
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
-  proc onButtonTest(self: wMainPanel) =
-    type TimeData = tuple[mg:float, bf:float, ur:float]
-    var timesColl: seq[TimeData]
-    var td: TimeData
-    for _ in 1..10:
-      self.randomizeRectsAll(self.mSpnr.value)
-      compact(self.mRectTable, X, false, self.mBlockPanel.clientSize, td)
-      timesColl.add(td)
-    let 
-      mg = collect(for t in timesColl: t.mg)
-      bf = collect(for t in timesColl: t.bf)
-      ur = collect(for t in timesColl: t.ur)
-      mgStats = (min: &"{mg.min:.4g}", max: &"{mg.max:.4g}", mean: &"{mg.mean:.4g}")
-      bfStats = (min: &"{bf.min:.4g}", max: &"{bf.max:.4g}", mean: &"{bf.mean:.4g}")
-      urStats = (min: &"{ur.min:.4g}", max: &"{ur.max:.4g}", mean: &"{ur.mean:.4g}")
-    echo "Making graph (s):  ", mgStats
-    echo "Longest Path (s):  ", bfStats
-    echo "Updating rect (s): ", urStats
-
     self.mBlockPanel.boundingBox()
     self.refresh(false)
   proc onButtonCompact←(self: wMainPanel) =
@@ -470,7 +441,6 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.initBmpCaches()
       self.mBlockPanel.boundingBox()
     self.mBlockPanel.forceRedraw(0)
-    #self.mBlockPanel.refresh()
     gAckChan.send(true)
     
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
@@ -513,7 +483,7 @@ wClass(wMainPanel of wPanel):
     self.mSldr.wEvent_Slider            do (event: wEvent): self.onSlider(event)
     self.mButtons[ 0].wEvent_Button     do (): self.onButtonrandomizeAll()
     self.mButtons[ 1].wEvent_Button     do (): self.onButtonrandomizePos()
-    self.mButtons[ 2].wEvent_Button     do (): self.onButtonTest()
+    #self.mButtons[ 2].wEvent_Button     do (): self.onButtonTest()
     self.mButtons[ 3].wEvent_Button     do (): self.onButtonCompact←()
     self.mButtons[ 4].wEvent_Button     do (): self.onButtonCompact→()
     self.mButtons[ 5].wEvent_Button     do (): self.onButtonCompact↑()
