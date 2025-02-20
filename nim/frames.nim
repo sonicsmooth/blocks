@@ -349,33 +349,32 @@ wClass(wMainPanel of wPanel):
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
     rects.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
     self.mBlockPanel.initBmpCaches()
-  proc doOnButtonCompact(self: wMainPanel,
-                         primax, secax: Axis,
-                         primrev, secrev: bool) =
-    # Keep compacting until it doesn't change
-    iterCompact(self.mRectTable,
-                primax, secax, 
-                primrev, secrev,
-                self.mBlockPanel.clientSize)
+
+  proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
+    compact(self.mRectTable, axis, reverse, self.mBlockPanel.clientSize)
     self.mBlockPanel.boundingBox()
     self.refresh(false)
 
-  proc doOnButtonAnnealCompact(self: wMainPanel, 
-                               primax, secax: Axis, 
+  proc delegate2DButtonCompact(self: wMainPanel,
+                               primax, secax: Axis,
                                primrev, secrev: bool) =
-    #let initState: PosTable = self.mRectTable.positions
     let compactfn = proc() = 
       iterCompact(self.mRectTable, 
                   primax, secax, 
                   primrev, secrev,
                   self.mBlockPanel.clientSize)
-    let arg: AnnealArg = (initState: self.mRectTable.positions,
-                          pRectTable: self.mRectTable.addr,
-                          compactFn: compactfn,
-                          screenSize: self.mBlockPanel.clientSize,
-                          window: self)
-    gAnnealThread.createThread(annealWiggle, arg)
-  
+    if not self.mChk.value:
+      compactfn()
+      self.mBlockPanel.boundingBox()
+      self.refresh(false)
+    else:
+      let arg: AnnealArg = (initState: self.mRectTable.positions,
+                            pRectTable: self.mRectTable.addr,
+                            compactFn: compactfn,
+                            screenSize: self.mBlockPanel.clientSize,
+                            window: self)
+      gAnnealThread.createThread(annealWiggle, arg)
+
   proc onResize(self: wMainPanel) =
       self.layout()
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
@@ -402,40 +401,29 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.boundingBox()
     self.refresh(false)
   proc onButtonCompact←(self: wMainPanel) =
-    compact(self.mRectTable, X, false, self.mBlockPanel.clientSize)
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
+    self.delegate1DButtonCompact(X, false)
   proc onButtonCompact→(self: wMainPanel) =
-    compact(self.mRectTable, X, true, self.mBlockPanel.clientSize)
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
+    self.delegate1DButtonCompact(X, true)
   proc onButtonCompact↑(self: wMainPanel) =
-    compact(self.mRectTable, Y, false, self.mBlockPanel.clientSize)
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
+    self.delegate1DButtonCompact(Y, false)
   proc onButtonCompact↓(self: wMainPanel) =
-    compact(self.mRectTable, Y, true, self.mBlockPanel.clientSize)
-    self.mBlockPanel.boundingBox()
-    self.refresh(false)
+    self.delegate1DButtonCompact(Y, true)
   proc onButtonCompact←↑(self: wMainPanel) =
-    if not self.mChk.value:
-      self.doOnButtonCompact(X, Y, false, false)
-    else:
-      self.doOnButtonAnnealCompact(X, Y, false, false)
+    self.delegate2DButtonCompact(X, Y, false, false)
   proc onButtonCompact←↓(self: wMainPanel) =
-    self.doOnButtonCompact(X, Y, false, true)
+    self.delegate2DButtonCompact(X, Y, false, true)
   proc onButtonCompact→↑(self: wMainPanel) =
-    self.doOnButtonCompact(X, Y, true, false)
+    self.delegate2DButtonCompact(X, Y, true, false)
   proc onButtonCompact→↓(self: wMainPanel) =
-    self.doOnButtonCompact(X, Y, true, true)
+    self.delegate2DButtonCompact(X, Y, true, true)
   proc onButtonCompact↑←(self: wMainPanel) =
-    self.doOnButtonCompact(Y, X, false, false)
+    self.delegate2DButtonCompact(Y, X, false, false)
   proc onButtonCompact↑→(self: wMainPanel) =
-    self.doOnButtonCompact(Y, X, false, true)
+    self.delegate2DButtonCompact(Y, X, false, true)
   proc onButtonCompact↓←(self: wMainPanel) =
-    self.doOnButtonCompact(Y, X, true, false)
+    self.delegate2DButtonCompact(Y, X, true, false)
   proc onButtonCompact↓→(self: wMainPanel) =
-    self.doOnButtonCompact(Y, X, true, true)
+    self.delegate2DButtonCompact(Y, X, true, true)
   proc onAlgUpdate(self: wMainPanel) =
     withLock(gLock):
       self.mBlockPanel.initBmpCaches()
