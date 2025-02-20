@@ -2,34 +2,38 @@ import std/locks
 import wnim/private/wtypes
 import rects
 
+
 type
-  AnnealThreadArg* = tuple[initState: PosTable, 
-                           pRectTable: ptr RectTable, 
-                           screenSize: wSize, 
-                           compactfn: proc(),
-                           showfn: proc()]
-  RandomThreadArg* = tuple[prt: ptr RectTable, 
-                           prep: proc(), 
-                           refresh: proc()]
+  CompactFn* = proc()
+  PrepFn* = proc()
+  RefreshFn* = proc()
+  RandomArg* = tuple[pRectTable: ptr RectTable,
+                     window: wWindow]
+  AnnealArg* = tuple[initState: PosTable,
+                     pRectTable: ptr RectTable,
+                     compactfn: CompactFn,
+                     screenSize: wSize,
+                     window: wWindow
+                     #showfn: RefreshFn
+                     ]
 
 var
   gLock*: Lock
-  gCond*: Cond
   gSendChan*: Channel[bool]
   gAckChan*: Channel[bool]
-  # gJunkThread*: Thread[void]
-  gRandomThread*: Thread[RandomThreadArg]
-  # gAnnealThread*: Thread[ThreadArg]
+  gRandomThread*: Thread[RandomArg]
+  gAnnealThread*: Thread[AnnealArg]
 
 
-proc init*() =
-  initLock(gLock)
-  initCond(gCond)
-  open(gSendChan)
-  open(gAckChan)
+proc init*() = 
+  gLock.initLock()
+  gSendChan.open()
+  gAckChan.open()
 
-proc deinit*() = 
-  deinitLock(gLock)
-  deinitCond(gCond)
-  close(gSendChan)
-  close(gAckChan)
+proc deinit*() =
+  gLock.deinitLock()
+  gSendChan.close()
+  gAckChan.close()
+
+
+
