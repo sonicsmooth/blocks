@@ -7,7 +7,7 @@ import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
              wPaintDC, wMemoryDC, wBitmap, wFont]
 from wNim/private/wHelper import `-`
 import winim except RECT
-import anneal, compact, concurrent, rects, user_messages
+import anneal, compact, concurrent, rects, userMessages
 
 # TODO: copy background before move
 # TODO: Hover

@@ -2,9 +2,9 @@
 import std/[algorithm, locks, math, os, random, sets, sugar, strformat]
 from sequtils import toSeq
 #from std/os import sleep
-import wnim, winim/inc/winuser
+import wnim, winim/inc/[windef,winuser]
 from wnim/private/wHelper import `+`
-import concurrent, rects, user_messages
+import concurrent, rects, userMessages
 
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
@@ -188,7 +188,7 @@ proc annealWiggle*(arg: AnnealArg) {.thread.} =
           echo &"{temp}: {heur}"
           bestEver = (heur, poses)
         capturePos(best25, poses, heur)
-    SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)
+    SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
     discard gAckChan.recv()
     temp -= TEMP_STEP
   # Set positions
@@ -196,7 +196,7 @@ proc annealWiggle*(arg: AnnealArg) {.thread.} =
     for id,pos in bestEver.table:
       arg.pRectTable[][id].x = pos.x
       arg.pRectTable[][id].y = pos.y
-  SendMessage(arg.window.mHwnd, WM_APP+5, 0, 0)
+  SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
   discard gAckChan.recv()
 
 proc doNothing*() {.thread.} =
