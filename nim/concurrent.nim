@@ -4,16 +4,15 @@ import rects
 
 
 type
-  CompactFn* = proc()
-  PrepFn* = proc()
-  RefreshFn* = proc()
+  CompactFn* = proc() {.closure.}
+  AnnealFn*[S,pT] = proc(initState: S, pTable: pT, temp: float) {.closure.}
   RandomArg* = tuple[pRectTable: ptr RectTable,
                      window: wWindow]
-  AnnealArg* = tuple[initState: PosTable,
+  AnnealArg* = tuple[initState:  PosTable,
                      pRectTable: ptr RectTable,
-                     compactFn: CompactFn,
-                     screenSize: wSize,
-                     window: wWindow
+                     annealFn:   AnnealFn[PosTable, ptr RectTable],
+                     compactFn:  CompactFn,
+                     window:     wWindow
                      ]
 
 var

@@ -23,7 +23,6 @@ type
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
     mCachedBmps: Table[RectID, ref wBitmap]
-    #mCacheNeeded: bool
     mBigBmp: wBitmap
     mBlendFunc: BLENDFUNCTION
     mMemDc: wMemoryDC
@@ -98,18 +97,15 @@ wClass(wBlockPanel of wPanel):
       new bmp
       bmp[] = rectToBmp(rect)
       self.mCachedBmps[id] = bmp
-    #self.mCacheNeeded = false
   proc updateBmpCache(self: wBlockPanel, id: RectID) =
     # Creates one new bitmap; used for selection
     var bmp: ref wBitmap
     new bmp
     bmp[] = rectToBmp(self.mRectTable[id])
     self.mCachedBmps[id] = bmp
-    #self.mCacheNeeded = false
   proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
     for id in ids:
       self.updateBmpCache(id)
-    #self.mCacheNeeded = false
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
@@ -364,16 +360,21 @@ wClass(wMainPanel of wPanel):
                   primrev, secrev,
                   self.mBlockPanel.clientSize)
     if not self.mChk.value:
+      # TODO: make this into background thread
       compactfn()
       self.mBlockPanel.boundingBox()
       self.refresh(false)
     else:
-      let arg: AnnealArg = (initState: self.mRectTable.positions,
+      let wfn = makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
+      let swfn = makeSwapper[PosTable, ptr RectTable]()
+      let arg: AnnealArg = (initState:  self.mRectTable.positions,
                             pRectTable: self.mRectTable.addr,
-                            compactFn: compactfn,
-                            screenSize: self.mBlockPanel.clientSize,
-                            window: self)
-      gAnnealThread.createThread(annealWiggle, arg)
+                            annealFn:   wfn,
+                            compactFn:  compactfn,
+                            window:     self)
+      wfn(self.mRectTable.positions, self.mRectTable.addr, 100)
+      
+      # gAnnealThread.createThread(annealWiggle, arg)
 
   proc onResize(self: wMainPanel) =
       self.layout()
