@@ -91,6 +91,7 @@ wClass(wBlockPanel of wPanel):
     if wait > 0: sleep(wait)
   proc initBmpCaches(self: wBlockPanel) =
     # Creates all new bitmaps
+    # TODO: check if ref is needed;  wBitmap is already a ref object
     self.mCachedBmps.clear()
     for id, rect in self.mRectTable:
       var bmp: ref wBitmap
@@ -234,18 +235,19 @@ wClass(wBlockPanel of wPanel):
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
-    #ValidateRect(self.mHwnd, nil)
 
-    # Make sure in-mem bitmap is initialized to correct size
     if not tryAcquire(gLock):
       return
 
+    # TODO: Move this to where it is used
     var clipRect1: winim.RECT
     GetUpdateRect(self.mHwnd, clipRect1, false)
     var clipRect2: wRect = (x: clipRect1.left - 1, 
                             y: clipRect1.top - 1,
                             width: clipRect1.right - clipRect1.left + 2,
                             height: clipRect1.bottom - clipRect1.top + 2)
+
+    # Make sure in-mem bitmap is initialized to correct size
     let size = event.window.clientSize
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
@@ -281,7 +283,6 @@ wClass(wBlockPanel of wPanel):
     MOUSE_DATA.dirtyIds.setLen(0)
     #SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
     release(gLock)
-
   
   proc onPaintDone(self: wBlockPanel) =
     if MOUSE_DATA.clearStarted:
@@ -355,9 +356,7 @@ wClass(wMainPanel of wPanel):
                                primax, secax: Axis,
                                primrev, secrev: bool) =
     let compactfn = proc() = 
-      iterCompact(self.mRectTable, 
-                  primax, secax, 
-                  primrev, secrev,
+      iterCompact(self.mRectTable, primax, secax, primrev, secrev,
                   self.mBlockPanel.clientSize)
     if not self.mChk.value:
       # TODO: make this into background thread
@@ -365,11 +364,15 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.boundingBox()
       self.refresh(false)
     else:
-      let wfn = makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
-      let swfn = makeSwapper[PosTable, ptr RectTable]()
+      let afn = 
+        when true: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
+        else:      makeSwapper[PosTable, ptr RectTable]()
+      let strat =
+        when true: Strat1
+        else:      Strat2
       let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
-                            strategy:   Strat1,
-                            annealFn:   wfn,
+                            strategy:   strat,
+                            annealFn:   afn,
                             compactFn:  compactfn,
                             window:     self)
       gAnnealThread.createThread(annealMain, arg)
@@ -485,6 +488,8 @@ wClass(wMainPanel of wPanel):
     self.mButtons[13].wEvent_Button     do (): self.onButtonCompact↓←()
     self.mButtons[14].wEvent_Button     do (): self.onButtonCompact↓→()
     self.USER_ALG_UPDATE                do (): self.onAlgUpdate()
+
+
 
 wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
