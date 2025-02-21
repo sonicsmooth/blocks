@@ -1,7 +1,5 @@
 
 
-
-
 var
     s1: seq[int]
 

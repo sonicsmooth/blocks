@@ -35,9 +35,9 @@ import concurrent, rects, userMessages, blockRand
     ]#
 
 const
-  NumNextStates = 25
+  NumNextStates = 100
   MaxTemp = 100.0
-  TempStep = 1
+  TempStep = 1.0
   MinProb = 0.1   # low end of probability distribution function
   MaxProb = 10.0  # high end of probability distribution function
 
@@ -162,7 +162,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   
   var interState = arg.pRectTable[].positions
 
-  while temp > endTemp and not done:
+  while temp > endTemp: # and not done:
     if best25.len > 0:
       let chosenHeur = selectHeuristic(best25.keys.toSeq) # Choose random with heuristic bias
       interState = best25[chosenHeur]
@@ -172,15 +172,15 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     for i in 1..NumNextStates:
       withLock(gLock):
         arg.annealFn(interState, arg.pRectTable, temp)
-        let poses = arg.pRectTable[].positions
-        done = poses == interState
+        let perturbedPositions = arg.pRectTable[].positions
+        done = perturbedPositions == interState
         if done: break
         {.gcsafe.}: arg.compactFn()
         heur = arg.pRectTable[].fillRatio
         if heur > bestEver.heur:
-          echo &"{temp}: {heur}"
-          bestEver = (heur, poses)
-        capturePos(best25, poses, heur)
+          echo &"new best at {temp}: {heur}"
+          bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
+        capturePos(best25, perturbedPositions, heur)
       SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
       discard gAckChan.recv()
     SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
@@ -192,9 +192,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     for id, pos in bestEver.table:
       arg.pRectTable[][id].x = pos.x
       arg.pRectTable[][id].y = pos.y
-    echo "xx!!"
     echo arg.pRectTable[].fillRatio
-    echo "xx!!"
   SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
   discard gAckChan.recv()
   echo "Annealing done"
