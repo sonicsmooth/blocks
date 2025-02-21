@@ -3,8 +3,6 @@ from std/sequtils import toSeq
 import strutils
 import wNim/[wTypes]
 import wNim/private/wHelper
-import wNim/private/consts/wColors
-import blockRand
 export tables
 
 const
@@ -38,9 +36,6 @@ type
   LeftEdge*   = object of VertEdge
   BottomEdge* = object of HorizEdge
   RightEdge*  = object of VertEdge
-
-var
-  RND = initRand()
 
 proc newPosTable*(): ref PosTable = 
   newTable[RectID, wPoint]()
