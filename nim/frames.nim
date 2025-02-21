@@ -369,12 +369,11 @@ wClass(wMainPanel of wPanel):
       let swfn = makeSwapper[PosTable, ptr RectTable]()
       let arg: AnnealArg = (initState:  self.mRectTable.positions,
                             pRectTable: self.mRectTable.addr,
-                            annealFn:   wfn,
+                            annealFn:   swfn,
                             compactFn:  compactfn,
                             window:     self)
-      wfn(self.mRectTable.positions, self.mRectTable.addr, 100)
+      gAnnealThread.createThread(annealMain, arg)
       
-      # gAnnealThread.createThread(annealWiggle, arg)
 
   proc onResize(self: wMainPanel) =
       self.layout()
