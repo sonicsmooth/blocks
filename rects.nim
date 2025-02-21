@@ -42,21 +42,11 @@ type
 var
   RND = initRand()
 
-proc newRect*(id:RectID=0, x:int=0, y:int=0, 
-              width:int=0, height:int=0, rot:Rotation=R0,
-              pencolor:wColor=wBlack, brushcolor:wColor=wBlack,
-              selected:bool=false): Rect = 
-  Rect(id:id,
-       x:x,
-       y:y,
-       width:width,
-       height:height,
-       rot:rot,
-       pencolor:pencolor,
-       brushcolor:brushcolor,
-       selected:selected)
+proc newPosTable*(): ref PosTable = 
+  newTable[RectID, wPoint]()
 
-
+proc newRectTable*(): RectTable =
+  newTable[RectID, Rect]()
 
 proc `$`*(r: Rect): string =
   result =
