@@ -1,5 +1,5 @@
 # TEST!!
-import std/[locks, sets, sugar, stats, strformat, tables ]
+import std/[locks, sets, strformat, tables ]
 from std/os import sleep
 from std/sequtils import toSeq
 import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
@@ -367,9 +367,9 @@ wClass(wMainPanel of wPanel):
     else:
       let wfn = makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
       let swfn = makeSwapper[PosTable, ptr RectTable]()
-      let arg: AnnealArg = (initState:  self.mRectTable.positions,
-                            pRectTable: self.mRectTable.addr,
-                            annealFn:   swfn,
+      let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
+                            strategy:   Strat1,
+                            annealFn:   wfn,
                             compactFn:  compactfn,
                             window:     self)
       gAnnealThread.createThread(annealMain, arg)

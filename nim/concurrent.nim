@@ -4,12 +4,13 @@ import rects
 
 
 type
+  Strategy* = enum Strat1, Strat2
   CompactFn* = proc() {.closure.}
   AnnealFn*[S,pT] = proc(initState: S, pTable: pT, temp: float) {.closure.}
   RandomArg* = tuple[pRectTable: ptr RectTable,
                      window: wWindow]
-  AnnealArg* = tuple[initState:  PosTable,
-                     pRectTable: ptr RectTable,
+  AnnealArg* = tuple[pRectTable: ptr RectTable,
+                     strategy:   Strategy,
                      annealFn:   AnnealFn[PosTable, ptr RectTable],
                      compactFn:  CompactFn,
                      window:     wWindow

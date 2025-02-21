@@ -1,7 +1,6 @@
 # Simulated annealing
 import std/[algorithm, locks, math, os, random, sets, sugar, strformat]
 from sequtils import toSeq
-#from std/os import sleep
 import wnim, winim/inc/[windef,winuser]
 from wnim/private/wHelper import `+`
 import concurrent, rects, userMessages, blockRand
@@ -14,32 +13,33 @@ import concurrent, rects, userMessages, blockRand
 
 #[ 
   Strategy 1 -- Randomize from startingState
-  nextStates can either move blocks around or swap pairs
-  availableStates = @[startingState]: SortedList[<25]
-  store first fitness value
-  for t in MAX_TEMP..0:
-    seedState = biased random choice from availableStates
-    for state in nextStates(seedState):
-      compact and measure fitness
-      if fitness in top 25, add non-compacted state to available states
+  interState <- initial State
+  For temp in MaxTemp .. 0:
+    interState <- biased best of 25
+    For 1.. NumNextStates:
+      perturb rectTable with annealFn
+      compact and calc heuristic
+      capture rectTable positions if heur in top 25
       
-  Stratgey 2 -- Randomize from compact state
-  availableStates = @[startingState.compact]: SortedList[<25]
-  store first fitness value
-  for t in MAX_TEMP..0:
-    seedState = biased random choice from availableStates
-    for state in nextStates(seedState):
-      compact and measure fitness
-      option -- compact can use min distance based on temp
-      if fitness in top 25, add compacted state to available states
+  Strategy 2 -- Randomize from compact state
+  Compact first and calc heuristic
+  interState <- first compacted state
+  For temp in MaxTemp .. 0:
+    interState <- biased best of 25
+    For 1.. NumNextStates:
+      perturb rectTable with annealFn
+      compact and calc heuristic
+      *option -- compact can use min distance based on temp
+      capture rectTable positions if heur in top 25
 
     ]#
 
-const NUM_NEXT_STATES = 25
-const MAX_TEMP* = 100.0
-const TEMP_STEP = 1
-const MINPROB = 0.1    # low end of probability distribution function
-const MAXPROB = 10.0  # high end of probability distribution function
+const
+  NumNextStates = 25
+  MaxTemp = 100.0
+  TempStep = 1
+  MinProb = 0.1   # low end of probability distribution function
+  MaxProb = 10.0  # high end of probability distribution function
 
 
 proc pairs[T](a: openArray[T]): seq[(T, T)] =
@@ -52,8 +52,8 @@ proc pairs[T](a: openArray[T]): seq[(T, T)] =
 
 proc moveAmt(temp: float, maxAmt: wSize): wPoint =
   # At maximum temp, maximum move is wSize/2
-  let maxX = maxAmt.width.float  * temp / MAX_TEMP
-  let maxY = maxAmt.height.float * temp / MAX_TEMP
+  let maxX = maxAmt.width.float  * temp / MaxTemp
+  let maxY = maxAmt.height.float * temp / MaxTemp
   let xmv  = (rand(maxX) - maxX/2.0).int
   let xmy  = (rand(maxY) - maxY/2.0).int
   result = (xmv, xmy)
@@ -64,20 +64,22 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float) =
   # initState must have at least the same keys as varTable.
   # Both tables must have x,y properties
   # Mutates pTable in place
-  let maxSwap = 1.0  # Proportion of blocks that will move at MAX_TEMP
-  let tempPct = temp / MAX_TEMP
+  let maxSwap = 1.0  # Proportion of blocks that will move at MaxTemp
+  let tempPct = temp / MaxTemp
   let numRects = 2 * (floor(pTable[].len.float * maxSwap * tempPct / 2.0)).int
-  #let ids = pTable[].keys.toSeq
   let ids = initState.keys.toSeq
-  var idSet = ids.toHashSet # {all ids}, assume ids from initState same as from pTable
+  var idSet = ids.toHashSet # {all ids}
   let rpairs = select(ids, numRects).pairs
+
+  # Just copy everything over if there are no swap pairs
   if rpairs.len == 0:
     for id, pos in initState:
       ptable[][id].x = pos.x
       ptable[][id].y = pos.y
     return
-  let pairTable = rpairs.toTable # to -> id mapping
+
   # Go through each table entry matching selected IDs
+  let pairTable = rpairs.toTable # to -> id mapping
   while idSet.len > 0:
     let a = idSet.pop
     if a in pairTable:
@@ -146,28 +148,34 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 proc annealMain*(arg: AnnealArg) {.thread.} =
   # Do main anneal function
-  let startTemp = MAX_TEMP
   let endTemp = 0.0
-  var interState = arg.initState
+  var temp = MaxTemp
   var best25: Table[float, PosTable]
   var bestEver: tuple[heur: float, table: PosTable]
-  var temp = startTemp
-  #var firstTime = true
   var heur: float
   var done: bool = false
+  
+  if arg.strategy == Strat1:
+    discard
+  elif arg.strategy == Strat2:
+    {.gcsafe.}: arg.compactFn()
+  
+  var interState = arg.pRectTable[].positions
+
   while temp > endTemp and not done:
     if best25.len > 0:
       let chosenHeur = selectHeuristic(best25.keys.toSeq) # Choose random with heuristic bias
       interState = best25[chosenHeur]
       best25.clear()
 
-    for i in 1..NUM_NEXT_STATES:
+    # These could be done in parallel
+    for i in 1..NumNextStates:
       withLock(gLock):
         arg.annealFn(interState, arg.pRectTable, temp)
         let poses = arg.pRectTable[].positions
         done = poses == interState
         if done: break
-        #{.gcsafe.}: arg.compactfn()
+        {.gcsafe.}: arg.compactFn()
         heur = arg.pRectTable[].fillRatio
         if heur > bestEver.heur:
           echo &"{temp}: {heur}"
@@ -177,13 +185,16 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       discard gAckChan.recv()
     SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
     discard gAckChan.recv()
-    temp -= TEMP_STEP
+    temp -= TempStep
 
   # Set positions
   withLock(gLock):
-    for id,pos in bestEver.table:
+    for id, pos in bestEver.table:
       arg.pRectTable[][id].x = pos.x
       arg.pRectTable[][id].y = pos.y
+    echo "xx!!"
+    echo arg.pRectTable[].fillRatio
+    echo "xx!!"
   SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
   discard gAckChan.recv()
   echo "Annealing done"
