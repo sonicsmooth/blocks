@@ -357,11 +357,12 @@ wClass(wMainPanel of wPanel):
                                primrev, secrev: bool) =
     if not self.mChk.value:
       let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
-                             primax:     primax, 
+                             primax:     primax,
                              secax:      secax,
                              primrev:    primrev,
                              secrev:     secrev,
-                             window:     self.mBlockPanel)
+                             window:     self,
+                             screenSize: self.mBlockPanel.clientSize)
       gCompactThread.createThread(compactWorker, arg)
     else:
       let 
