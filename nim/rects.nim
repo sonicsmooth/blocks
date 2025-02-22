@@ -3,13 +3,6 @@ from std/sequtils import toSeq
 import strutils
 import wNim/[wTypes]
 import wNim/private/wHelper
-export tables
-
-const
-  WRANGE = 25..75
-  HRANGE = 25..75
-  QTY* = 20
-
 
 type 
   RectID* = uint
@@ -36,6 +29,11 @@ type
   LeftEdge*   = object of VertEdge
   BottomEdge* = object of HorizEdge
   RightEdge*  = object of VertEdge
+
+const
+  WRANGE = 25..75
+  HRANGE = 25..75
+  QTY* = 20
 
 proc newPosTable*(): ref PosTable = 
   newTable[RectID, wPoint]()

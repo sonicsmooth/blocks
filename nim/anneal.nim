@@ -1,9 +1,10 @@
 # Simulated annealing
-import std/[algorithm, locks, math, os, random, sets, sugar, strformat]
-from sequtils import toSeq
-import wnim, winim/inc/[windef,winuser]
-from wnim/private/wHelper import `+`
-import concurrent, rects, userMessages, blockRand
+import std/[algorithm, locks, math, os, random, sets, sugar, strformat, tables]
+import sequtils
+import wnim
+import winim/inc/[windef,winuser]
+import blockRand, rects
+import concurrent, userMessages
 
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
@@ -17,7 +18,7 @@ import concurrent, rects, userMessages, blockRand
   For temp in MaxTemp .. 0:
     interState <- biased best of 25
     For 1.. NumNextStates:
-      perturb rectTable with annealFn
+      perturb rectTable with PerturbFn
       compact and calc heuristic
       capture rectTable positions if heur in top 25
       
@@ -27,12 +28,26 @@ import concurrent, rects, userMessages, blockRand
   For temp in MaxTemp .. 0:
     interState <- biased best of 25
     For 1.. NumNextStates:
-      perturb rectTable with annealFn
+      perturb rectTable with PerturbFn
       compact and calc heuristic
       *option -- compact can use min distance based on temp
       capture rectTable positions if heur in top 25
 
     ]#
+
+type
+  Strategy* = enum Strat1, Strat2
+  PerturbFn[S,pT] = proc(initState: S, pTable: pT, temp: float) {.closure.}
+  AnnealArg* = tuple
+    pRectTable: ptr RectTable
+    strategy:   Strategy
+    perturbFn:  PerturbFn[PosTable, ptr RectTable]
+    compactFn:  proc() {.closure.}
+    window:     wWindow
+  RandomArg* = tuple
+    pRectTable: ptr RectTable
+    window:  wWindow
+
 
 const
   NumNextStates = 100
@@ -41,6 +56,8 @@ const
   MinProb = 0.1   # low end of probability distribution function
   MaxProb = 10.0  # high end of probability distribution function
 
+var
+  gAnnealThread*: Thread[AnnealArg]
 
 proc pairs[T](a: openArray[T]): seq[(T, T)] =
   # Return contents of a as tuple-pairs
@@ -106,10 +123,10 @@ proc calcWiggle*[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
     item.x = initState[id].x + amt.x
     item.y = initState[id].y + amt.y
 
-proc makeSwapper*[S,pT](): AnnealFn[S,pT] =
+proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
   calcSwap[S,pT]
 
-proc makeWiggler*[S,pT](screenSize: wSize): AnnealFn[S,pT] =
+proc makeWiggler*[S,pT](screenSize: wSize): PerturbFn[S,pT] =
   let moveScale = 0.25
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                        (screenSize.height.float * moveScale).int)
@@ -162,7 +179,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   
   var interState = arg.pRectTable[].positions
 
-  while temp > endTemp: # and not done:
+  while temp > endTemp and not done:
     if best25.len > 0:
       let chosenHeur = selectHeuristic(best25.keys.toSeq) # Choose random with heuristic bias
       interState = best25[chosenHeur]
@@ -171,7 +188,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     # These could be done in parallel
     for i in 1..NumNextStates:
       withLock(gLock):
-        arg.annealFn(interState, arg.pRectTable, temp)
+        arg.perturbFn(interState, arg.pRectTable, temp)
         let perturbedPositions = arg.pRectTable[].positions
         done = perturbedPositions == interState
         if done: break
@@ -197,18 +214,18 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   discard gAckChan.recv()
   echo "Annealing done"
 
-proc doNothing*() {.thread.} =
-  for i in 1..10:
-    echo "DoNothing"
-    sleep(1000)
-  echo "thread done"
+# proc doNothing*() {.thread.} =
+#   for i in 1..10:
+#     echo "DoNothing"
+#     sleep(1000)
+#   echo "thread done"
 
-proc randomWorker*(arg: RandomArg) {.thread.} =
-  let size = (600,400)
-  let qty  = 100
-  for i in 1..100:
-    withLock(gLock):
-      randomizeRectsAll(arg.pRectTable[], size, qty)
-    SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
-    discard gAckChan.recv()
+# proc randomWorker*(arg: RandomArg) {.thread.} =
+#   let size = (600,400)
+#   let qty  = 100
+#   for i in 1..100:
+#     withLock(gLock):
+#       randomizeRectsAll(arg.pRectTable[], size, qty)
+#     SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
+#     discard gAckChan.recv()
     

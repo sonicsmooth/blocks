@@ -1,8 +1,10 @@
-import std/[tables, algorithm]
-from std/sugar import collect
-from sequtils import concat, delete, toSeq
+import std/[algorithm, locks, sugar, tables]
+import sequtils
+import wnim
 import wnim/wTypes
-import rects
+import winim/inc/winuser
+import blockRand, concurrent
+import rects, userMessages
 
 type 
   Axis* = enum X=true, Y=false
@@ -12,14 +14,29 @@ type
   GraphEdge  = tuple[frm, to: Node]
   Graph* = Table[GraphEdge, Weight]
   ScanType = enum Top, Mid, Bot
-  ScanEdge = tuple[id: RectID, pos: int, etype: ScanType]
-  ScanLine = tuple[pos: int,        
-                   top: seq[RectID],
-                   mid: seq[RectID],
-                   bot: seq[RectID],
-                   sorted: seq[RectID]]
+  ScanEdge = tuple
+    id: RectID
+    pos: int
+    etype: ScanType
+  ScanLine = tuple
+    pos: int        
+    top: seq[RectID]
+    mid: seq[RectID]
+    bot: seq[RectID]
+    sorted: seq[RectID]
+  CompactArg* = tuple
+    pRectTable: ptr RectTable
+    primax, secax: Axis
+    primrev, secrev: bool
+    window: wWindow
 
-const ROOTNODE = when RectID is string: "0" else: 0
+
+
+const
+  RootNode = when RectID is string: "0" else: 0
+
+var
+  gCompactThread*: Thread[CompactArg]
 
 proc rectCmpX(r1, r2: Rect): int = cmp(r1.x, r2.x)
 proc rectCmpY(r1, r2: Rect): int = cmp(r1.y, r2.y)
@@ -49,11 +66,11 @@ type DimGetter = proc(node: Node): int
 proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
   if axis == X:
     proc(node: Node): int =
-      if node != ROOTNODE:
+      if node != RootNode:
         result = rectTable[node].width
   else: # axis == Y:
     proc(node: Node): int =
-      if node != ROOTNODE:
+      if node != RootNode:
         result = rectTable[node].height
 
 proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
@@ -61,13 +78,13 @@ proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
   let getDim = MakeDimGetter(rectTable, axis)
   var src: Node
   for line in lines:
-    src = ROOTNODE
+    src = RootNode
     for dst in line.sorted:
       if dst in line.bot: continue
       if (src, dst) notin result:
         result[(src, dst)] = if reverse: dst.getDim else: src.getDim
       src = dst
-    src = ROOTNODE
+    src = RootNode
     for dst in line.sorted:
       if dst in line.top: continue
       if (src, dst) notin result:
@@ -143,14 +160,14 @@ proc MakeGraph*(rectTable: RectTable, axis: Axis, reverse: bool): Graph =
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node]): Table[RectID, Weight] =
   for node in nodes:
     result[node] = Weight.low
-  result[ROOTNODE] = 0
+  result[RootNode] = 0
 
   for iter in 0..nodes.len:
     for ge, weight in graph:
       if result[ge.frm] == Weight.low:              
         continue
       result[ge.to] = max(result[ge.to], result[ge.frm] + weight)
-  result.del(ROOTNODE)
+  result.del(RootNode)
 
 proc compact*(rectTable: RectTable, 
               axis: Axis,
@@ -188,3 +205,12 @@ proc iterCompact*(rectTable: RectTable,
     pos = rectTable.positions
 
 
+proc compactWorker*(arg: CompactArg) {.thread.} =
+  {.gcsafe.}:
+    withLock(gLock):
+      iterCompact(arg.pRectTable[], 
+                  arg.primax, arg.secax,
+                  arg.primrev, arg.secrev,
+                  arg.window.clientSize)
+  PostMessage(arg.window.mHwnd, USER_ALG_UPDATE, 0, 0)
+  
