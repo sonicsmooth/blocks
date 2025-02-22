@@ -15,20 +15,21 @@ type
   Graph* = Table[GraphEdge, Weight]
   ScanType = enum Top, Mid, Bot
   ScanEdge = tuple
-    id: RectID
-    pos: int
+    id:    RectID
+    pos:   int
     etype: ScanType
   ScanLine = tuple
-    pos: int        
-    top: seq[RectID]
-    mid: seq[RectID]
-    bot: seq[RectID]
+    pos:    int        
+    top:    seq[RectID]
+    mid:    seq[RectID]
+    bot:    seq[RectID]
     sorted: seq[RectID]
   CompactArg* = tuple
-    pRectTable: ptr RectTable
-    primax, secax: Axis
+    pRectTable:      ptr RectTable
+    primax,  secax:  Axis
     primrev, secrev: bool
-    window: wWindow
+    window:          wWindow
+    screenSize:      wSize
 
 
 
@@ -206,13 +207,11 @@ proc iterCompact*(rectTable: RectTable,
 
 
 proc compactWorker*(arg: CompactArg) {.thread.} =
-  echo "CompactWorker"
   {.gcsafe.}:
     withLock(gLock):
       iterCompact(arg.pRectTable[], 
                   arg.primax, arg.secax,
                   arg.primrev, arg.secrev,
-                  arg.window.clientSize)
+                  arg.screenSize)
   PostMessage(arg.window.mHwnd, USER_ALG_UPDATE, 0, 0)
-  echo "Done"
   
