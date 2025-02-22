@@ -355,25 +355,30 @@ wClass(wMainPanel of wPanel):
   proc delegate2DButtonCompact(self: wMainPanel,
                                primax, secax: Axis,
                                primrev, secrev: bool) =
-    let compactfn = proc() = 
-      iterCompact(self.mRectTable, primax, secax, primrev, secrev,
-                  self.mBlockPanel.clientSize)
     if not self.mChk.value:
-      let arg: CompactArg = (self.mRectTable.addr, primax, secax,
-                             primrev, secrev, self.mBlockPanel)
+      let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
+                             primax:     primax, 
+                             secax:      secax,
+                             primrev:    primrev,
+                             secrev:     secrev,
+                             window:     self.mBlockPanel)
       gCompactThread.createThread(compactWorker, arg)
     else:
-      let afn = 
-        when true: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
-        else:      makeSwapper[PosTable, ptr RectTable]()
-      let strat =
-        when true: Strat1
-        else:      Strat2
-      let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
-                            strategy:   strat,
-                            perturbFn:   afn,
-                            compactFn:  compactfn,
-                            window:     self)
+      let 
+        compactfn = proc() = 
+          iterCompact(self.mRectTable, primax, secax, primrev, secrev,
+                      self.mBlockPanel.clientSize)
+        afn = 
+          when true: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
+          else:      makeSwapper[PosTable, ptr RectTable]()
+        strat =
+          when true: Strat1
+          else:      Strat2
+        arg: AnnealArg = (pRectTable: self.mRectTable.addr,
+                          strategy:   strat,
+                          perturbFn:  afn,
+                          compactFn:  compactfn,
+                          window:     self)
       gAnnealThread.createThread(annealMain, arg)
       
 

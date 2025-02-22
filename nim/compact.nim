@@ -206,6 +206,7 @@ proc iterCompact*(rectTable: RectTable,
 
 
 proc compactWorker*(arg: CompactArg) {.thread.} =
+  echo "CompactWorker"
   {.gcsafe.}:
     withLock(gLock):
       iterCompact(arg.pRectTable[], 
@@ -213,4 +214,5 @@ proc compactWorker*(arg: CompactArg) {.thread.} =
                   arg.primrev, arg.secrev,
                   arg.window.clientSize)
   PostMessage(arg.window.mHwnd, USER_ALG_UPDATE, 0, 0)
+  echo "Done"
   
