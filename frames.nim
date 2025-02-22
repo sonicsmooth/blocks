@@ -359,10 +359,9 @@ wClass(wMainPanel of wPanel):
       iterCompact(self.mRectTable, primax, secax, primrev, secrev,
                   self.mBlockPanel.clientSize)
     if not self.mChk.value:
-      # TODO: make this into background thread
-      compactfn()
-      self.mBlockPanel.boundingBox()
-      self.refresh(false)
+      let arg: CompactArg = (self.mRectTable.addr, primax, secax,
+                             primrev, secrev, self.mBlockPanel)
+      gCompactThread.createThread(compactWorker, arg)
     else:
       let afn = 
         when true: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
@@ -372,7 +371,7 @@ wClass(wMainPanel of wPanel):
         else:      Strat2
       let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                             strategy:   strat,
-                            annealFn:   afn,
+                            perturbFn:   afn,
                             compactFn:  compactfn,
                             window:     self)
       gAnnealThread.createThread(annealMain, arg)
