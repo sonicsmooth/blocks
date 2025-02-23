@@ -366,20 +366,23 @@ wClass(wMainPanel of wPanel):
       gCompactThread.createThread(compactWorker, arg)
     else:
       let 
+        wigSwpn = false
+        str1Str2n = true
         compactfn = proc() = 
           iterCompact(self.mRectTable, primax, secax, primrev, secrev,
                       self.mBlockPanel.clientSize)
         afn = 
-          when true: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
-          else:      makeSwapper[PosTable, ptr RectTable]()
+          if wigSwpn: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
+          else:       makeSwapper[PosTable, ptr RectTable]()
         strat =
-          when true: Strat1
-          else:      Strat2
+          if str1Str2n: Strat1
+          else:         Strat2
         arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                           strategy:   strat,
                           perturbFn:  afn,
                           compactFn:  compactfn,
-                          window:     self)
+                          window:     self,
+                          initBmp:    not wigSwpn)
       gAnnealThread.createThread(annealMain, arg)
       
 
@@ -432,9 +435,10 @@ wClass(wMainPanel of wPanel):
     self.delegate2DButtonCompact(Y, X, true, false)
   proc onButtonCompact↓→(self: wMainPanel) =
     self.delegate2DButtonCompact(Y, X, true, true)
-  proc onAlgUpdate(self: wMainPanel) =
+  proc onAlgUpdate(self: wMainPanel, event: wEvent) =
     withLock(gLock):
-      self.mBlockPanel.initBmpCaches()
+      if event.wParam == ALG_INIT_BMP:
+        self.mBlockPanel.initBmpCaches()
       self.mBlockPanel.boundingBox()
     self.mBlockPanel.forceRedraw(0)
     gAckChan.send(true)
@@ -492,7 +496,7 @@ wClass(wMainPanel of wPanel):
     self.mButtons[12].wEvent_Button     do (): self.onButtonCompact↑→()
     self.mButtons[13].wEvent_Button     do (): self.onButtonCompact↓←()
     self.mButtons[14].wEvent_Button     do (): self.onButtonCompact↓→()
-    self.USER_ALG_UPDATE                do (): self.onAlgUpdate()
+    self.USER_ALG_UPDATE                do (event: wEvent): self.onAlgUpdate(event)
 
 
 

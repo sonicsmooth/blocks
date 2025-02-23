@@ -44,6 +44,7 @@ type
     perturbFn:  PerturbFn[PosTable, ptr RectTable]
     compactFn:  proc() {.closure.}
     window:     wWindow
+    initBmp:    bool
   RandomArg* = tuple
     pRectTable: ptr RectTable
     window:  wWindow
@@ -166,6 +167,9 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 proc annealMain*(arg: AnnealArg) {.thread.} =
   # Do main anneal function
   let endTemp = 0.0
+  let lparam =
+    if arg.initBmp: ALG_INIT_BMP
+    else:           ALG_NO_INIT_BMP
   var temp = MaxTemp
   var best25: Table[float, PosTable]
   var bestEver: tuple[heur: float, table: PosTable]
@@ -198,9 +202,9 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
           echo &"new best at {temp}: {heur}"
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
         capturePos(best25, perturbedPositions, heur)
-      SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
+      SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, lparam, 0)
       discard gAckChan.recv()
-    SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
+    SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, lparam, 0)
     discard gAckChan.recv()
     temp -= TempStep
 
@@ -210,7 +214,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       arg.pRectTable[][id].x = pos.x
       arg.pRectTable[][id].y = pos.y
     echo arg.pRectTable[].fillRatio
-  SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
+  SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, lparam, 0)
   discard gAckChan.recv()
   echo "Annealing done"
 
