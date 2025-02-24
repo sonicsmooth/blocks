@@ -51,9 +51,9 @@ type
 
 
 const
-  NumNextStates = 100
+  NumNextStates = 20
   MaxTemp = 100.0
-  TempStep = 1.0
+  TempStep = 2.0
   MinProb = 0.1   # low end of probability distribution function
   MaxProb = 10.0  # high end of probability distribution function
 
@@ -113,7 +113,7 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float) =
       pTable[][a].x = initState[a].x
       pTable[][a].y = initState[a].y
 
-proc calcWiggle*[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
+proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
   # Copies x,y values from initState to pTable with some amount
   # changed based on temperature
   # initState must have at least the same keys as varTable.
@@ -124,11 +124,17 @@ proc calcWiggle*[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
     item.x = initState[id].x + amt.x
     item.y = initState[id].y + amt.y
 
+proc copyPositions[S,pT](initState: S, pTable: pT) = 
+  # Just copy the positions
+  for id, item in pTable[]:
+    item.x = initState[id].x
+    item.y = initState[id].y
+
 proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
   calcSwap[S,pT]
 
 proc makeWiggler*[S,pT](screenSize: wSize): PerturbFn[S,pT] =
-  let moveScale = 0.25
+  let moveScale = 0.5
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                        (screenSize.height.float * moveScale).int)
   result = proc(initState: S, pTable: pT, temp: float) =
@@ -163,25 +169,32 @@ proc selectHeuristic(heuristics: openArray[float]): float =
         makeCdf(heurs.len.uint)
     sample(RND, heurs, cdf)
 
+proc update(hwnd: HWND, delay: int) = 
+  # Sends update message and waits for response
+  PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, 0)
+  discard gAckChan.recv()
+  if delay > 0:
+    sleep(delay)
+
 
 proc annealMain*(arg: AnnealArg) {.thread.} =
   # Do main anneal function
   let endTemp = 0.0
-  let lparam =
-    if arg.initBmp: ALG_INIT_BMP
-    else:           ALG_NO_INIT_BMP
   var temp = MaxTemp
   var best25: Table[float, PosTable]
   var bestEver: tuple[heur: float, table: PosTable]
   var heur: float
   var done: bool = false
-  
+  let update = proc(delay: int = 0) = update(arg.window.mHwnd, delay)
+
+
   if arg.strategy == Strat1:
     discard
   elif arg.strategy == Strat2:
     {.gcsafe.}: arg.compactFn()
   
   var interState = arg.pRectTable[].positions
+  var perturbedPositions: PosTable
 
   while temp > endTemp and not done:
     if best25.len > 0:
@@ -192,20 +205,29 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     # These could be done in parallel
     for i in 1..NumNextStates:
       withLock(gLock):
+        copyPositions(interState, arg.pRectTable)
+        gSendChan.send("Original")
+      update()
+      withLock(gLock):
         arg.perturbFn(interState, arg.pRectTable, temp)
-        let perturbedPositions = arg.pRectTable[].positions
+        gSendChan.send("Perturbed")
+      update()
+      withLock(gLock):
+        #let 
+        perturbedPositions = arg.pRectTable[].positions
         done = perturbedPositions == interState
         if done: break
         {.gcsafe.}: arg.compactFn()
+        gSendChan.send("Compacted")
+      update()
+      withLock(gLock):
         heur = arg.pRectTable[].fillRatio
         if heur > bestEver.heur:
           echo &"new best at {temp}: {heur}"
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
         capturePos(best25, perturbedPositions, heur)
-      SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, lparam, 0)
-      discard gAckChan.recv()
-    SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, lparam, 0)
-    discard gAckChan.recv()
+      update()
+    update()
     temp -= TempStep
 
   # Set positions
@@ -214,22 +236,8 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       arg.pRectTable[][id].x = pos.x
       arg.pRectTable[][id].y = pos.y
     echo arg.pRectTable[].fillRatio
-  SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, lparam, 0)
-  discard gAckChan.recv()
+  gSendChan.send(&"Final {bestEver.heur:.5}")
+  update()
   echo "Annealing done"
 
-# proc doNothing*() {.thread.} =
-#   for i in 1..10:
-#     echo "DoNothing"
-#     sleep(1000)
-#   echo "thread done"
-
-# proc randomWorker*(arg: RandomArg) {.thread.} =
-#   let size = (600,400)
-#   let qty  = 100
-#   for i in 1..100:
-#     withLock(gLock):
-#       randomizeRectsAll(arg.pRectTable[], size, qty)
-#     SendMessage(arg.window.mHwnd, USER_ALG_UPDATE.UINT, 0, 0)
-#     discard gAckChan.recv()
     

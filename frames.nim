@@ -28,6 +28,7 @@ type
     mMemDc: wMemoryDC
     mBmpDc: wMemoryDC
     mAllBbox: wRect
+    mText: string
 
   wMainPanel = ref object of wPanel
     mBlockPanel: wBlockPanel
@@ -84,13 +85,14 @@ wClass(wBlockPanel of wPanel):
     memDC.drawRectangle(zeroRect)
     memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     memDC.setTextBackground(rect.brushcolor)
-    memDC.drawLabel($rectstr, zeroRect.expand(-1), wCenter or wMiddle)
+    memDC.drawLabel(rectstr, zeroRect.expand(-1), wCenter or wMiddle)
   proc forceRedraw(self: wBlockPanel, wait: int) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
     if wait > 0: sleep(wait)
   proc initBmpCaches(self: wBlockPanel) =
     # Creates all new bitmaps
+    echo "initcaches"
     # TODO: check if ref is needed;  wBitmap is already a ref object
     self.mCachedBmps.clear()
     for id, rect in self.mRectTable:
@@ -277,6 +279,16 @@ wClass(wBlockPanel of wPanel):
     self.mMemDC.setPen(Pen(wBlack))
     self.mMemDc.setBrush(wTransparentBrush)
     self.mMemDc.drawRectangle(self.mAllBbox)
+
+    # draw text sent from other thread
+    let sw = self.mMemDc.charWidth * self.mText.len
+    let ch = self.mMemDc.charHeight
+    let textRect = (self.clientSize.width-sw, self.clientSize.height-ch, sw, ch)
+    self.mMemDc.setBrush(Brush(wBlack))
+    self.mMemDC.setTextBackground(self.backgroundColor)
+    self.mMemDC.setFont(Font(pointSize=16, wFontFamilyRoman))
+    self.mMemDC.drawLabel(self.mText, textRect, wMiddle)
+
     
     # Finally grab DC and do last blit
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
@@ -366,7 +378,7 @@ wClass(wMainPanel of wPanel):
       gCompactThread.createThread(compactWorker, arg)
     else:
       let 
-        wigSwpn = false
+        wigSwpn = true
         str1Str2n = true
         compactfn = proc() = 
           iterCompact(self.mRectTable, primax, secax, primrev, secrev,
@@ -436,11 +448,12 @@ wClass(wMainPanel of wPanel):
   proc onButtonCompact↓→(self: wMainPanel) =
     self.delegate2DButtonCompact(Y, X, true, true)
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
-    withLock(gLock):
-      if event.wParam == ALG_INIT_BMP:
-        self.mBlockPanel.initBmpCaches()
-      self.mBlockPanel.boundingBox()
-    self.mBlockPanel.forceRedraw(0)
+    let (success, msg) = gSendChan.tryRecv()
+    if success:
+      withLock(gLock):
+        self.mBlockPanel.boundingBox()
+        self.mBlockPanel.mText = msg
+      self.mBlockPanel.forceRedraw(0)
     gAckChan.send(true)
     
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
