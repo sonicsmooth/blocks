@@ -1,19 +1,20 @@
 import std/locks
 
 var
+  gCond*: Cond
   gLock*: Lock
-  gSendChan*: Channel[bool]
+  gSendChan*: Channel[string]
   gAckChan*: Channel[bool]
 
-proc init*() = 
+proc init*() =
+  gCond.initCond() 
   gLock.initLock()
-  gSendChan.open()
-  gAckChan.open()
+  gSendChan.open(10)
+  gAckChan.open(10)
 
 proc deinit*() =
-  gLock.deinitLock()
-  gSendChan.close()
   gAckChan.close()
-
-
+  gSendChan.close()
+  gLock.deinitLock()
+  gCond.deinitCond()
 
