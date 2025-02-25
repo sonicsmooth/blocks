@@ -175,8 +175,8 @@ proc update(hwnd: HWND, delay: int) =
   echo "update: Posting"
   PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, 0)
   echo "update: Receiving ack"
-  discard gAckChan.recv()
-  echo "Update: Received ack"
+  let rx = gAckChan.recv()
+  echo "Update: Received ack: ", rx
   if delay > 0:
     sleep(delay)
 
@@ -217,7 +217,9 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
         echo "anneaMain: sending"
         gSendChan.send("Perturbed")
         echo "anneaMain: sent"
+      echo "annealMain: updating A"
       update()
+      echo "annealMain: updated A"
       echo "annealMain: locking"
       withLock(gLock):
         echo "annealMain: locked"
@@ -241,7 +243,12 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
           echo &"new best at {temp}: {heur}"
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
         capturePos(best25, perturbedPositions, heur)
+      echo "annealMain: updating B"
       update()
+      echo "annealMain: updated B"
+    
+    
+    
     update()
 
   # Set positions
