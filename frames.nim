@@ -381,8 +381,10 @@ wClass(wMainPanel of wPanel):
         wigSwpn = true
         str1Str2n = true
         compactfn = proc() = 
+          echo "compactfn: iterCompacting"
           iterCompact(self.mRectTable, primax, secax, primrev, secrev,
                       self.mBlockPanel.clientSize)
+          echo "compactfn: iterCompacted"
         afn = 
           if wigSwpn: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
           else:       makeSwapper[PosTable, ptr RectTable]()
