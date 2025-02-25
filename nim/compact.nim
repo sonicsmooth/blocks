@@ -197,21 +197,21 @@ proc iterCompact*(rectTable: RectTable,
                   primrev, secrev: bool,
                   clientSize: wSize) =
   # Run compact function until rectTable doesn't change
-  # echo "iter1"
+  echo "iter1"
   var pos, lastPos: PosTable
-  # echo "iter2"
+  echo "iter2"
   pos = rectTable.positions
-  # echo "iter3"
+  echo "iter3"
   while pos != lastPos:
-    # echo "iter4"
+    echo "iter4"
     compact(rectTable, primax, primrev, clientSize)
-    # echo "iter5"
+    echo "iter5"
     compact(rectTable, secax, secrev, clientSize)
-    # echo "iter6"
+    echo "iter6"
     lastPos = pos
-    # echo "iter7"
+    echo "iter7"
     pos = rectTable.positions
-    # echo "iter8"
+    echo "iter8"
 
 
 proc compactWorker*(arg: CompactArg) {.thread.} =
