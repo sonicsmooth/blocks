@@ -447,22 +447,27 @@ wClass(wMainPanel of wPanel):
     self.delegate2DButtonCompact(Y, X, true, false)
   proc onButtonCompact↓→(self: wMainPanel) =
     self.delegate2DButtonCompact(Y, X, true, true)
+  var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
     echo "onAlgUpdate: receiving"
-    let (success, msg) = gSendChan.tryRecv()
-    echo "onAlgUpdate: recved"
-    if success:
-      echo "onAlgUpdate: locking"
-      withLock(gLock):
-        echo "onAlgUpdate: locked"
-        self.mBlockPanel.boundingBox()
+    let (msgAvail, msg) = gSendChan.tryRecv()
+    if msgAvail:
+        echo "onAlgUpdate: recved: ", msg
         self.mBlockPanel.mText = msg
-        echo "onAlgUpdate: redrawing"
-        self.mBlockPanel.forceRedraw(0)
-        echo "onAlgUpdate: redrew"
-    echo "onAlgUpdate: unlocked, acking"
-    gAckChan.send(true)
+    echo "onAlgUpdate: locking"
+    withLock(gLock):
+      echo "onAlgUpdate: locked"
+      self.mBlockPanel.boundingBox()
+      echo "onAlgUpdate: redrawing"
+      self.mBlockPanel.forceRedraw(0)
+      echo "onAlgUpdate: redrew"
+    echo "onAlgUpdate: unlocked"
+    # if msgAvail:
+    echo "onAlgUpdate: acking: ", ackCnt
+    gAckChan.send(ackCnt)
+    inc ackCnt
     echo "onAlgUpdate: acked"
+    echo "onAlgUpdate: leaving"
     
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)

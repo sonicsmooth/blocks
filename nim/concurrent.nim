@@ -4,7 +4,7 @@ var
   gCond*: Cond
   gLock*: Lock
   gSendChan*: Channel[string]
-  gAckChan*: Channel[bool]
+  gAckChan*: Channel[int]
 
 proc init*() =
   gCond.initCond() 
