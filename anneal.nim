@@ -3,8 +3,8 @@ import std/[algorithm, locks, math, os, random, sets, sugar, strformat, tables]
 import sequtils
 import wnim
 import winim/inc/[windef,winuser]
-import blockRand, rects
 import concurrent, userMessages
+import blockRand, arange, rects
 
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
@@ -53,6 +53,7 @@ type
 const
   NumNextStates = 20
   MaxTemp = 100.0
+  MinTemp = 0.0
   TempStep = 2.0
   MinProb = 0.1   # low end of probability distribution function
   MaxProb = 10.0  # high end of probability distribution function
@@ -171,22 +172,22 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 proc update(hwnd: HWND, delay: int) = 
   # Sends update message and waits for response
+  echo "update: Posting"
   PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, 0)
+  echo "update: Receiving ack"
   discard gAckChan.recv()
+  echo "Update: Received ack"
   if delay > 0:
     sleep(delay)
 
 
 proc annealMain*(arg: AnnealArg) {.thread.} =
   # Do main anneal function
-  let endTemp = 0.0
-  var temp = MaxTemp
   var best25: Table[float, PosTable]
   var bestEver: tuple[heur: float, table: PosTable]
   var heur: float
   var done: bool = false
   let update = proc(delay: int = 0) = update(arg.window.mHwnd, delay)
-
 
   if arg.strategy == Strat1:
     discard
@@ -196,7 +197,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   var interState = arg.pRectTable[].positions
   var perturbedPositions: PosTable
 
-  while temp > endTemp and not done:
+  for temp in arange(MaxTemp .. MinTemp, TempStep):
     if best25.len > 0:
       let chosenHeur = selectHeuristic(best25.keys.toSeq) # Choose random with heuristic bias
       interState = best25[chosenHeur]
@@ -204,23 +205,37 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
 
     # These could be done in parallel
     for i in 1..NumNextStates:
+      echo i
       withLock(gLock):
         copyPositions(interState, arg.pRectTable)
-        gSendChan.send("Original")
-      update()
-      withLock(gLock):
+        #echo "here 7", &" {temp}:{i}"
+      #   gSendChan.send("Original")
+      # update()
+      # withLock(gLock):
         arg.perturbFn(interState, arg.pRectTable, temp)
+        # echo "here 8", &" {temp}:{i}"
+        echo "anneaMain: sending"
         gSendChan.send("Perturbed")
+        echo "anneaMain: sent"
       update()
+      echo "annealMain: locking"
       withLock(gLock):
-        #let 
+        echo "annealMain: locked"
+        #let perturbedPositions = arg.pRectTable[].positions
         perturbedPositions = arg.pRectTable[].positions
+        # echo "here 9", &" {temp}:{i}"
         done = perturbedPositions == interState
-        if done: break
+        # echo "here 10", &" {temp}:{i}"
+        if done: 
+          break
+        echo "annealMain: compacting"
         {.gcsafe.}: arg.compactFn()
-        gSendChan.send("Compacted")
-      update()
-      withLock(gLock):
+        echo "annealMain: compacted"
+      #   gSendChan.send("Compacted")
+      #   echo "here 13", &" {temp}:{i}"
+      # update()
+      # echo "here 14", &" {temp}:{i}"
+      # withLock(gLock):
         heur = arg.pRectTable[].fillRatio
         if heur > bestEver.heur:
           echo &"new best at {temp}: {heur}"
@@ -228,7 +243,6 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
         capturePos(best25, perturbedPositions, heur)
       update()
     update()
-    temp -= TempStep
 
   # Set positions
   withLock(gLock):
