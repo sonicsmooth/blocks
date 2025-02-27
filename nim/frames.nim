@@ -380,11 +380,9 @@ wClass(wMainPanel of wPanel):
       let 
         wigSwpn = true
         str1Str2n = true
-        compactfn = proc() = 
-          echo "compactfn: iterCompacting"
+        compactfn = proc() {.closure.} = 
           iterCompact(self.mRectTable, primax, secax, primrev, secrev,
                       self.mBlockPanel.clientSize)
-          echo "compactfn: iterCompacted"
         afn = 
           if wigSwpn: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
           else:       makeSwapper[PosTable, ptr RectTable]()
@@ -451,25 +449,15 @@ wClass(wMainPanel of wPanel):
     self.delegate2DButtonCompact(Y, X, true, true)
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
-    echo "onAlgUpdate: receiving"
     let (msgAvail, msg) = gSendChan.tryRecv()
     if msgAvail:
-        echo "onAlgUpdate: recved: ", msg
         self.mBlockPanel.mText = msg
-    echo "onAlgUpdate: locking"
     withLock(gLock):
-      echo "onAlgUpdate: locked"
       self.mBlockPanel.boundingBox()
-      echo "onAlgUpdate: redrawing"
       self.mBlockPanel.forceRedraw(0)
-      echo "onAlgUpdate: redrew"
-    echo "onAlgUpdate: unlocked"
     # if msgAvail:
-    echo "onAlgUpdate: acking: ", ackCnt
     gAckChan.send(ackCnt)
     inc ackCnt
-    echo "onAlgUpdate: acked"
-    echo "onAlgUpdate: leaving"
     
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)

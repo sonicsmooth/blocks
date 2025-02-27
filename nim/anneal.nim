@@ -132,13 +132,15 @@ proc copyPositions[S,pT](initState: S, pTable: pT) =
     item.y = initState[id].y
 
 proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
-  calcSwap[S,pT]
+  # Just forward the call, but tag with .closure., if that helps at all
+  result = proc(initState: S, pTable: pT, temp: float) {.closure.} =
+    calcSwap[S,pT](initState, pTable, temp)
 
 proc makeWiggler*[S,pT](screenSize: wSize): PerturbFn[S,pT] =
   let moveScale = 0.5
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                        (screenSize.height.float * moveScale).int)
-  result = proc(initState: S, pTable: pT, temp: float) =
+  result = proc(initState: S, pTable: pT, temp: float) {.closure.} =
     calcWiggle(initState, pTable, temp, maxAmt)
 
 proc capturePos[T](capTable: var Table[float, PosTable], 
@@ -172,11 +174,8 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 
 proc update(hwnd: HWND, delay: int) = 
   # Sends update message and waits for response
-  echo "update: Posting"
   PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, 0)
-  echo "update: Receiving ack"
   let rx = gAckChan.recv()
-  echo "Update: Received ack: ", rx
   if delay > 0:
     sleep(delay)
 
@@ -205,7 +204,6 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
 
     # These could be done in parallel
     for i in 1..NumNextStates:
-      echo i
       withLock(gLock):
         copyPositions(interState, arg.pRectTable)
         #echo "here 7", &" {temp}:{i}"
@@ -214,25 +212,17 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       # withLock(gLock):
         arg.perturbFn(interState, arg.pRectTable, temp)
         # echo "here 8", &" {temp}:{i}"
-        echo "anneaMain: sending"
-        gSendChan.send("Perturbed")
-        echo "anneaMain: sent"
-      echo "annealMain: updating A"
-      update()
-      echo "annealMain: updated A"
-      echo "annealMain: locking"
-      withLock(gLock):
-        echo "annealMain: locked"
-        #let perturbedPositions = arg.pRectTable[].positions
+      #   gSendChan.send("Perturbed")
+      # update()
+      # withLock(gLock):
+      #   #let perturbedPositions = arg.pRectTable[].positions
         perturbedPositions = arg.pRectTable[].positions
         # echo "here 9", &" {temp}:{i}"
         done = perturbedPositions == interState
         # echo "here 10", &" {temp}:{i}"
         if done: 
           break
-        echo "annealMain: compacting"
         {.gcsafe.}: arg.compactFn()
-        echo "annealMain: compacted"
       #   gSendChan.send("Compacted")
       #   echo "here 13", &" {temp}:{i}"
       # update()
@@ -243,12 +233,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
           echo &"new best at {temp}: {heur}"
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
         capturePos(best25, perturbedPositions, heur)
-      echo "annealMain: updating B"
       update()
-      echo "annealMain: updated B"
-    
-    
-    
     update()
 
   # Set positions
