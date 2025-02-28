@@ -1,10 +1,11 @@
 # TEST!!
-import std/[locks, sets, strformat, tables ]
+import std/[locks, segfaults, sets, strformat, tables ]
 from std/os import sleep
 from std/sequtils import toSeq
-import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
-             wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wCheckBox, wSlider,
-             wPaintDC, wMemoryDC, wBitmap, wFont]
+# import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
+#              wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wCheckBox, wSlider,
+#              wPaintDC, wMemoryDC, wBitmap, wFont]
+import wNim
 from wNim/private/wHelper import `-`
 import winim except RECT
 import anneal, compact, concurrent, rects, userMessages
@@ -93,6 +94,7 @@ wClass(wBlockPanel of wPanel):
   proc initBmpCaches(self: wBlockPanel) =
     # Creates all new bitmaps
     echo "initcaches"
+    writeStackTrace()
     # TODO: check if ref is needed;  wBitmap is already a ref object
     self.mCachedBmps.clear()
     for id, rect in self.mRectTable:
@@ -303,7 +305,7 @@ wClass(wBlockPanel of wPanel):
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    self.initBmpCaches()
+    #self.initBmpCaches()
     self.mBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
                         SourceConstantAlpha: 240,
                         AlphaFormat: 0)
@@ -383,7 +385,7 @@ wClass(wMainPanel of wPanel):
         compactfn = proc() {.closure.} = 
           iterCompact(self.mRectTable, primax, secax, primrev, secrev,
                       self.mBlockPanel.clientSize)
-        afn = 
+        perturbFn = 
           if wigSwpn: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
           else:       makeSwapper[PosTable, ptr RectTable]()
         strat =
@@ -391,7 +393,7 @@ wClass(wMainPanel of wPanel):
           else:         Strat2
         arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                           strategy:   strat,
-                          perturbFn:  afn,
+                          perturbFn:  perturbFn,
                           compactFn:  compactfn,
                           window:     self,
                           initBmp:    not wigSwpn)
@@ -454,8 +456,7 @@ wClass(wMainPanel of wPanel):
         self.mBlockPanel.mText = msg
     withLock(gLock):
       self.mBlockPanel.boundingBox()
-      self.mBlockPanel.forceRedraw(0)
-    # if msgAvail:
+    self.mBlockPanel.forceRedraw(0)
     gAckChan.send(ackCnt)
     inc ackCnt
     
