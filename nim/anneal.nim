@@ -3,8 +3,9 @@ import std/[algorithm, locks, math, os, random, sets, sugar, strformat, tables]
 import sequtils
 import wnim
 import winim/inc/[windef,winuser]
-import concurrent, userMessages
+import userMessages
 import blockRand, arange, rects
+import concurrent
 
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
@@ -44,11 +45,15 @@ type
     perturbFn:  PerturbFn[PosTable, ptr RectTable]
     compactFn:  proc() {.closure.}
     window:     wWindow
-    initBmp:    bool
+    comm:       AnnealComm
   RandomArg* = tuple
     pRectTable: ptr RectTable
     window:  wWindow
-
+  AnnealComm* = ref object of RootObj
+    idx*: int
+    thread*: Thread[AnnealArg]
+    sendChan*: Channel[string]
+    ackChan*: Channel[int]
 
 const
   NumNextStates = 20
@@ -59,7 +64,20 @@ const
   MaxProb = 10.0  # high end of probability distribution function
 
 var
-  gAnnealThread*: Thread[AnnealArg]
+  gAnnealComms*: array[numThreads, AnnealComm]
+
+
+
+proc init*() =
+  for i in gAnnealComms.low..gAnnealComms.high:
+    gAnnealComms[i] = new AnnealComm
+    gAnnealComms[i].sendChan.open(10)
+    gAnnealComms[i].ackChan.open(10)
+
+proc deinit*() =
+  for i in gAnnealComms.low..gAnnealComms.high:
+    gAnnealComms[i].sendChan.close()
+    gAnnealComms[i].ackChan.close()
 
 proc pairs[T](a: openArray[T]): seq[(T, T)] =
   # Return contents of a as tuple-pairs
@@ -172,13 +190,12 @@ proc selectHeuristic(heuristics: openArray[float]): float =
         makeCdf(heurs.len.uint)
     sample(RND, heurs, cdf)
 
-proc update(hwnd: HWND, delay: int) = 
+proc update(hwnd: HWND, threadIdx: int, delay: int) = 
   # Sends update message and waits for response
-  PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, 0)
-  let rx = gAckChan.recv()
+  PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, threadIdx)
+  let rx = gAnnealComms[threadIdx].ackChan.recv()
   if delay > 0:
     sleep(delay)
-
 
 proc annealMain*(arg: AnnealArg) {.thread.} =
   # Do main anneal function
@@ -186,7 +203,10 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   var bestEver: tuple[heur: float, table: PosTable]
   var heur: float
   var done: bool = false
-  let update = proc(delay: int = 0) = update(arg.window.mHwnd, delay)
+  proc update(delay:int=0) = 
+    update(arg.window.mHwnd, arg.comm.idx, delay)
+  proc sendText(msg: string) =
+    gAnnealComms[arg.comm.idx].sendChan.send(msg)
 
   if arg.strategy == Strat1:
     discard
@@ -206,35 +226,19 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     for i in 1..NumNextStates:
       withLock(gLock):
         copyPositions(interState, arg.pRectTable)
-        #echo "here 7", &" {temp}:{i}"
-      #   gSendChan.send("Original")
-      # update()
-      # withLock(gLock):
         arg.perturbFn(interState, arg.pRectTable, temp)
-        # echo "here 8", &" {temp}:{i}"
-      #   gSendChan.send("Perturbed")
-      # update()
-      # withLock(gLock):
-      #   #let perturbedPositions = arg.pRectTable[].positions
         perturbedPositions = arg.pRectTable[].positions
-        # echo "here 9", &" {temp}:{i}"
         done = perturbedPositions == interState
-        # echo "here 10", &" {temp}:{i}"
         if done: 
-          break
+          break #TODO: confirm this gets out of withLock
         {.gcsafe.}: arg.compactFn()
-      #   gSendChan.send("Compacted")
-      #   echo "here 13", &" {temp}:{i}"
-      # update()
-      # echo "here 14", &" {temp}:{i}"
-      # withLock(gLock):
         heur = arg.pRectTable[].fillRatio
         if heur > bestEver.heur:
           echo &"new best at {temp}: {heur}"
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
-        capturePos(best25, perturbedPositions, heur)
-      update()
-    update()
+      capturePos(best25, perturbedPositions, heur)
+      {.gcsafe.}: update()
+    {.gcsafe.}: update()
 
   # Set positions
   withLock(gLock):
@@ -242,8 +246,9 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       arg.pRectTable[][id].x = pos.x
       arg.pRectTable[][id].y = pos.y
     echo arg.pRectTable[].fillRatio
-  gSendChan.send(&"Final {bestEver.heur:.5}")
-  update()
+  {.gcsafe.}:
+    sendText(&"Final {bestEver.heur:.5}")
+    update()
   echo "Annealing done"
 
     

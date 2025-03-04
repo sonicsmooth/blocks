@@ -1,20 +1,23 @@
 import std/locks
 
+const
+  numThreads* = 10
+
 var
-  gCond*: Cond
+  #gCond*: Cond
   gLock*: Lock
-  gSendChan*: Channel[string]
-  gAckChan*: Channel[int]
+  #gSendChan*: Channel[string]
+  #gAckChan*: Channel[int]
 
 proc init*() =
-  gCond.initCond() 
+  #gCond.initCond() 
   gLock.initLock()
-  gSendChan.open(10)
-  gAckChan.open(10)
+  #gSendChan.open(10)
+  #gAckChan.open(10)
 
 proc deinit*() =
-  gAckChan.close()
-  gSendChan.close()
+  #gAckChan.close()
+  #gSendChan.close()
   gLock.deinitLock()
-  gCond.deinitCond()
+  #gCond.deinitCond()
 
