@@ -394,20 +394,18 @@ wClass(wMainPanel of wPanel):
           if str1Str2n: Strat1
           else:         Strat2
       for i in gAnnealComms.low..gAnnealComms.high:
-        gAnnealComms[i].idx = i
+        if gAnnealComms[i].thread.running:
+          continue
         let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                               strategy:   strat,
                               perturbFn:  perturbFn,
                               compactFn:  compactfn,
                               window:     self,
                               comm:       gAnnealComms[i])
-        # if gAnnealThreads[i].running:
-        #   continue
-        
         gAnnealComms[i].thread.createThread(annealMain, arg)
         let h = gAnnealComms[i].thread.handle
         echo &"Started threadIdx {i} with handle {h}"
-        # break
+        break
 
       
 
