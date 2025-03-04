@@ -50,7 +50,7 @@ type
     pRectTable: ptr RectTable
     window:  wWindow
   AnnealComm* = ref object of RootObj
-    idx*: int
+    index*: int
     thread*: Thread[AnnealArg]
     sendChan*: Channel[string]
     ackChan*: Channel[int]
@@ -71,6 +71,7 @@ var
 proc init*() =
   for i in gAnnealComms.low..gAnnealComms.high:
     gAnnealComms[i] = new AnnealComm
+    gAnnealComms[i].index = i
     gAnnealComms[i].sendChan.open(10)
     gAnnealComms[i].ackChan.open(10)
 
@@ -204,9 +205,9 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   var heur: float
   var done: bool = false
   proc update(delay:int=0) = 
-    update(arg.window.mHwnd, arg.comm.idx, delay)
+    update(arg.window.mHwnd, arg.comm.index, delay)
   proc sendText(msg: string) =
-    gAnnealComms[arg.comm.idx].sendChan.send(msg)
+    gAnnealComms[arg.comm.index].sendChan.send(msg)
 
   if arg.strategy == Strat1:
     discard
@@ -234,7 +235,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
         {.gcsafe.}: arg.compactFn()
         heur = arg.pRectTable[].fillRatio
         if heur > bestEver.heur:
-          echo &"new best at {temp}: {heur}"
+          #echo &"new best at {temp}: {heur}"
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
       capturePos(best25, perturbedPositions, heur)
       {.gcsafe.}: update()
