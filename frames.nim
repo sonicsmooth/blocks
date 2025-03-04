@@ -8,7 +8,8 @@ from std/sequtils import toSeq
 import wNim
 from wNim/private/wHelper import `-`
 import winim except RECT
-import anneal, compact, concurrent, rects, userMessages
+import anneal, compact, rects, userMessages
+import concurrent
 
 # TODO: copy background before move
 # TODO: Hover
@@ -377,7 +378,8 @@ wClass(wMainPanel of wPanel):
                              secrev:     secrev,
                              window:     self,
                              screenSize: self.mBlockPanel.clientSize)
-      gCompactThread.createThread(compactWorker, arg)
+      if not gCompactThread.running:
+        gCompactThread.createThread(compactWorker, arg)
     else:
       let 
         wigSwpn = true
@@ -391,13 +393,22 @@ wClass(wMainPanel of wPanel):
         strat =
           if str1Str2n: Strat1
           else:         Strat2
-        arg: AnnealArg = (pRectTable: self.mRectTable.addr,
-                          strategy:   strat,
-                          perturbFn:  perturbFn,
-                          compactFn:  compactfn,
-                          window:     self,
-                          initBmp:    not wigSwpn)
-      gAnnealThread.createThread(annealMain, arg)
+      for i in gAnnealComms.low..gAnnealComms.high:
+        gAnnealComms[i].idx = i
+        let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
+                              strategy:   strat,
+                              perturbFn:  perturbFn,
+                              compactFn:  compactfn,
+                              window:     self,
+                              comm:       gAnnealComms[i])
+        # if gAnnealThreads[i].running:
+        #   continue
+        
+        gAnnealComms[i].thread.createThread(annealMain, arg)
+        let h = gAnnealComms[i].thread.handle
+        echo &"Started threadIdx {i} with handle {h}"
+        # break
+
       
 
   proc onResize(self: wMainPanel) =
@@ -451,13 +462,14 @@ wClass(wMainPanel of wPanel):
     self.delegate2DButtonCompact(Y, X, true, true)
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
-    let (msgAvail, msg) = gSendChan.tryRecv()
+    let (idx, _) = lParamTuple[int](event)
+    let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
     if msgAvail:
-        self.mBlockPanel.mText = msg
+        self.mBlockPanel.mText = $idx & ": " & msg 
     withLock(gLock):
       self.mBlockPanel.boundingBox()
-    self.mBlockPanel.forceRedraw(0)
-    gAckChan.send(ackCnt)
+      self.mBlockPanel.forceRedraw(0)
+      gAnnealComms[idx].ackChan.send(ackCnt)
     inc ackCnt
     
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
