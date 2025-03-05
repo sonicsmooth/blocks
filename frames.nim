@@ -363,39 +363,32 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.initBmpCaches()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
-    compact(self.mRectTable, axis, reverse, self.mBlockPanel.clientSize)
-    self.mBlockPanel.boundingBox()
+    withLock(gLock):
+      compact(self.mRectTable, axis, reverse, self.mBlockPanel.clientSize)
+      self.mBlockPanel.boundingBox()
     self.refresh(false)
 
   proc delegate2DButtonCompact(self: wMainPanel,
                                primax, secax: Axis,
                                primrev, secrev: bool) =
-    if not self.mChk.value:
-      let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
-                             primax:     primax,
-                             secax:      secax,
-                             primrev:    primrev,
-                             secrev:     secrev,
-                             window:     self,
-                             screenSize: self.mBlockPanel.clientSize)
-      if not gCompactThread.running:
-        gCompactThread.createThread(compactWorker, arg)
-    else:
-      let 
-        wigSwpn = true
-        str1Str2n = true
-        compactfn = proc() {.closure.} = 
+    if gCompactThread.running:
+      return
+    for i in gAnnealComms.low .. gAnnealComms.high:
+      if gAnnealComms[i].thread.running:
+        return
+    if self.mChk.value:
+      let wigSwpn = true
+      let str1Str2n = true
+      let compactfn = proc() {.closure.} = 
           iterCompact(self.mRectTable, primax, secax, primrev, secrev,
                       self.mBlockPanel.clientSize)
-        perturbFn = 
+      let perturbFn = 
           if wigSwpn: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
           else:       makeSwapper[PosTable, ptr RectTable]()
-        strat =
+      let strat =
           if str1Str2n: Strat1
           else:         Strat2
-      for i in gAnnealComms.low..gAnnealComms.high:
-        if gAnnealComms[i].thread.running:
-          continue
+      for i in gAnnealComms.low .. gAnnealComms.high:
         let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                               strategy:   strat,
                               perturbFn:  perturbFn,
@@ -403,9 +396,18 @@ wClass(wMainPanel of wPanel):
                               window:     self,
                               comm:       gAnnealComms[i])
         gAnnealComms[i].thread.createThread(annealMain, arg)
-        let h = gAnnealComms[i].thread.handle
-        echo &"Started threadIdx {i} with handle {h}"
         break
+    else:
+      let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
+                              primax:     primax,
+                              secax:      secax,
+                              primrev:    primrev,
+                              secrev:     secrev,
+                              window:     self,
+                              screenSize: self.mBlockPanel.clientSize)
+      gCompactThread.createThread(compactWorker, arg)
+      gCompactThread.joinThread()
+      self.refresh(false)
 
       
 

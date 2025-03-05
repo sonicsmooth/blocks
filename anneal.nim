@@ -204,7 +204,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   var bestEver: tuple[heur: float, table: PosTable]
   var heur: float
   var done: bool = false
-  proc update(delay:int=0) = 
+  proc update(delay: int = 0) = 
     update(arg.window.mHwnd, arg.comm.index, delay)
   proc sendText(msg: string) =
     gAnnealComms[arg.comm.index].sendChan.send(msg)

@@ -30,6 +30,12 @@ type
     primrev, secrev: bool
     window:          wWindow
     screenSize:      wSize
+  # CompactComm* = ref object of RootObj
+  #   index*: int
+  #   thread*: Thread[CompactArg]
+  #   sendChan*: Channel[string]
+  #   ackChan*: Channel[int]
+
 
 
 
