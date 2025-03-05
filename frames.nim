@@ -368,9 +368,7 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.boundingBox()
     self.refresh(false)
 
-  proc delegate2DButtonCompact(self: wMainPanel,
-                               primax, secax: Axis,
-                               primrev, secrev: bool) =
+  proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     if gCompactThread.running:
       return
     for i in gAnnealComms.low .. gAnnealComms.high:
@@ -380,8 +378,7 @@ wClass(wMainPanel of wPanel):
       let wigSwpn = true
       let str1Str2n = true
       let compactfn = proc() {.closure.} = 
-          iterCompact(self.mRectTable, primax, secax, primrev, secrev,
-                      self.mBlockPanel.clientSize)
+          iterCompact(self.mRectTable, direction, self.mBlockPanel.clientSize)
       let perturbFn = 
           if wigSwpn: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
           else:       makeSwapper[PosTable, ptr RectTable]()
@@ -399,12 +396,9 @@ wClass(wMainPanel of wPanel):
         break
     else:
       let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
-                              primax:     primax,
-                              secax:      secax,
-                              primrev:    primrev,
-                              secrev:     secrev,
-                              window:     self,
-                              screenSize: self.mBlockPanel.clientSize)
+                            direction:   direction,
+                            window:      self,
+                            screenSize:  self.mBlockPanel.clientSize)
       gCompactThread.createThread(compactWorker, arg)
       gCompactThread.joinThread()
       self.refresh(false)
@@ -445,21 +439,21 @@ wClass(wMainPanel of wPanel):
   proc onButtonCompact↓(self: wMainPanel) =
     self.delegate1DButtonCompact(Y, true)
   proc onButtonCompact←↑(self: wMainPanel) =
-    self.delegate2DButtonCompact(X, Y, false, false)
+    self.delegate2DButtonCompact((X, Y, false, false))
   proc onButtonCompact←↓(self: wMainPanel) =
-    self.delegate2DButtonCompact(X, Y, false, true)
+    self.delegate2DButtonCompact((X, Y, false, true))
   proc onButtonCompact→↑(self: wMainPanel) =
-    self.delegate2DButtonCompact(X, Y, true, false)
+    self.delegate2DButtonCompact((X, Y, true, false))
   proc onButtonCompact→↓(self: wMainPanel) =
-    self.delegate2DButtonCompact(X, Y, true, true)
+    self.delegate2DButtonCompact((X, Y, true, true))
   proc onButtonCompact↑←(self: wMainPanel) =
-    self.delegate2DButtonCompact(Y, X, false, false)
+    self.delegate2DButtonCompact((Y, X, false, false))
   proc onButtonCompact↑→(self: wMainPanel) =
-    self.delegate2DButtonCompact(Y, X, false, true)
+    self.delegate2DButtonCompact((Y, X, false, true))
   proc onButtonCompact↓←(self: wMainPanel) =
-    self.delegate2DButtonCompact(Y, X, true, false)
+    self.delegate2DButtonCompact((Y, X, true, false))
   proc onButtonCompact↓→(self: wMainPanel) =
-    self.delegate2DButtonCompact(Y, X, true, true)
+    self.delegate2DButtonCompact((Y, X, true, true))
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
     let (idx, _) = lParamTuple[int](event)

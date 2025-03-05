@@ -24,17 +24,15 @@ type
     mid:    seq[RectID]
     bot:    seq[RectID]
     sorted: seq[RectID]
-  CompactArg* = tuple
-    pRectTable:      ptr RectTable
+  CompactDir* = tuple
     primax,  secax:  Axis
     primrev, secrev: bool
+    
+  CompactArg* = tuple
+    pRectTable:      ptr RectTable
+    direction:       CompactDir
     window:          wWindow
     screenSize:      wSize
-  # CompactComm* = ref object of RootObj
-  #   index*: int
-  #   thread*: Thread[CompactArg]
-  #   sendChan*: Channel[string]
-  #   ackChan*: Channel[int]
 
 
 
@@ -198,16 +196,13 @@ proc compact*(rectTable: RectTable,
     for id, rect in rectTable:
       rect.y = clientSize.height - lp[id]
 
-proc iterCompact*(rectTable: RectTable, 
-                  primax, secax: Axis,
-                  primrev, secrev: bool,
-                  clientSize: wSize) =
+proc iterCompact*(rectTable: RectTable, direction: CompactDir, clientSize: wSize) =
   # Run compact function until rectTable doesn't change
   var pos, lastPos: PosTable
   pos = rectTable.positions
   while pos != lastPos:
-    compact(rectTable, primax, primrev, clientSize)
-    compact(rectTable, secax, secrev, clientSize)
+    compact(rectTable, direction.primax, direction.primrev, clientSize)
+    compact(rectTable, direction.secax, direction.secrev, clientSize)
     lastPos = pos
     pos = rectTable.positions
 
@@ -215,9 +210,6 @@ proc iterCompact*(rectTable: RectTable,
 proc compactWorker*(arg: CompactArg) {.thread.} =
   {.gcsafe.}:
     withLock(gLock):
-      iterCompact(arg.pRectTable[], 
-                  arg.primax, arg.secax,
-                  arg.primrev, arg.secrev,
-                  arg.screenSize)
+      iterCompact(arg.pRectTable[], arg.direction, arg.screenSize)
   PostMessage(arg.window.mHwnd, USER_ALG_UPDATE, 0, 0)
   
