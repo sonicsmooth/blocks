@@ -374,17 +374,12 @@ wClass(wMainPanel of wPanel):
     for i in gAnnealComms.low .. gAnnealComms.high:
       if gAnnealComms[i].thread.running:
         return
-    if self.mChk.value:
-      let wigSwpn = true
-      let str1Str2n = true
-      let compactfn = proc() {.closure.} = 
-          iterCompact(self.mRectTable, direction, self.mBlockPanel.clientSize)
-      let perturbFn = 
-          if wigSwpn: makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
-          else:       makeSwapper[PosTable, ptr RectTable]()
-      let strat =
-          if str1Str2n: Strat1
-          else:         Strat2
+    if self.mChk.value: # Do anneal
+      proc compactfn() {.closure.} = 
+        iterCompact(self.mRectTable, direction, self.mBlockPanel.clientSize)
+      #let perturbFn = makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
+      let perturbFn = makeSwapper[PosTable, ptr RectTable]()
+      let strat = Strat2
       for i in gAnnealComms.low .. gAnnealComms.high:
         let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                               strategy:   strat,
@@ -394,7 +389,7 @@ wClass(wMainPanel of wPanel):
                               comm:       gAnnealComms[i])
         gAnnealComms[i].thread.createThread(annealMain, arg)
         break
-    else:
+    else: # Not anneal, just normal 2d compact
       let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
                             direction:   direction,
                             window:      self,
