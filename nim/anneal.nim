@@ -42,6 +42,7 @@ type
   AnnealArg* = tuple
     pRectTable: ptr RectTable
     strategy:   Strategy
+    initTemp:   float
     perturbFn:  PerturbFn[PosTable, ptr RectTable]
     compactFn:  proc() {.closure.}
     window:     wWindow
@@ -59,7 +60,7 @@ const
   NumNextStates = 20
   MaxTemp = 100.0
   MinTemp = 0.0
-  InitTemp = MaxTemp
+  #InitTemp = MaxTemp
   TempStep = 1.0
   MinProb = 0.1   # low end of probability distribution function
   MaxProb = 10.0  # high end of probability distribution function
@@ -112,7 +113,6 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float) =
 
   # Just copy everything over if there are no swap pairs
   if rpairs.len == 0:
-    echo "Nothing to do"
     for id, pos in initState:
       ptable[][id].x = pos.x
       ptable[][id].y = pos.y
@@ -215,14 +215,13 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
 
   if arg.strategy == Strat1:
     discard
-    
   elif arg.strategy == Strat2:
     {.gcsafe.}: arg.compactFn()
   
   var interState = arg.pRectTable[].positions
   var perturbedPositions: PosTable
 
-  for temp in arange(InitTemp .. MinTemp, TempStep):
+  for temp in arange(arg.initTemp .. MinTemp, TempStep):
     # At the start of each temp, choose random from best25
     # with heuristic bias.  Then clear best25
     if best25.len > 0:
@@ -244,8 +243,8 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
         if done: 
           break #TODO: confirm this gets out of withLock
         {.gcsafe.}: arg.compactFn()
-      sendText(&"Compact {i}, temp={temp}")
-      update()
+      #sendText(&"Compact {i}, temp={temp}")
+      #update()
 
       # Measure heuristic
       withLock(gLock):
@@ -253,8 +252,9 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
         if heur > bestEver.heur:
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
       capturePos(best25, perturbedPositions, heur)
-  # End of temp
-  update()
+    # End of temp
+    sendText(&"temp={temp}")
+    update()
 
   # Set positions
   withLock(gLock):
@@ -264,7 +264,6 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     echo arg.pRectTable[].fillRatio
   {.gcsafe.}:
     sendText(&"Final {bestEver.heur:.5}")
-    update()
-  echo "Annealing done"
+  update()
 
     
