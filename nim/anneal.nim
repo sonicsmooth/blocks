@@ -59,7 +59,8 @@ const
   NumNextStates = 20
   MaxTemp = 100.0
   MinTemp = 0.0
-  TempStep = 2.0
+  InitTemp = MaxTemp
+  TempStep = 1.0
   MinProb = 0.1   # low end of probability distribution function
   MaxProb = 10.0  # high end of probability distribution function
 
@@ -106,11 +107,12 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float) =
   let tempPct = temp / MaxTemp
   let numRects = 2 * (floor(pTable[].len.float * maxSwap * tempPct / 2.0)).int
   let ids = initState.keys.toSeq
-  var idSet = ids.toHashSet # {all ids}
+  var idSet = ids.toHashSet
   let rpairs = select(ids, numRects).pairs
 
   # Just copy everything over if there are no swap pairs
   if rpairs.len == 0:
+    echo "Nothing to do"
     for id, pos in initState:
       ptable[][id].x = pos.x
       ptable[][id].y = pos.y
@@ -194,7 +196,8 @@ proc selectHeuristic(heuristics: openArray[float]): float =
 proc update(hwnd: HWND, threadIdx: int, delay: int) = 
   # Sends update message and waits for response
   PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, threadIdx)
-  let rx = gAnnealComms[threadIdx].ackChan.recv()
+  {.gcsafe.}:
+    discard gAnnealComms[threadIdx].ackChan.recv()
   if delay > 0:
     sleep(delay)
 
@@ -207,39 +210,51 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   proc update(delay: int = 0) = 
     update(arg.window.mHwnd, arg.comm.index, delay)
   proc sendText(msg: string) =
-    gAnnealComms[arg.comm.index].sendChan.send(msg)
+    {.gcsafe.}:
+      gAnnealComms[arg.comm.index].sendChan.send(msg)
 
   if arg.strategy == Strat1:
     discard
+    
   elif arg.strategy == Strat2:
     {.gcsafe.}: arg.compactFn()
   
   var interState = arg.pRectTable[].positions
   var perturbedPositions: PosTable
 
-  for temp in arange(MaxTemp .. MinTemp, TempStep):
+  for temp in arange(InitTemp .. MinTemp, TempStep):
+    # At the start of each temp, choose random from best25
+    # with heuristic bias.  Then clear best25
     if best25.len > 0:
-      let chosenHeur = selectHeuristic(best25.keys.toSeq) # Choose random with heuristic bias
-      interState = best25[chosenHeur]
+      interState = best25[selectHeuristic(best25.keys.toSeq)]
       best25.clear()
 
     # These could be done in parallel
     for i in 1..NumNextStates:
+      # Perturb
       withLock(gLock):
-        copyPositions(interState, arg.pRectTable)
         arg.perturbFn(interState, arg.pRectTable, temp)
+      #sendText(&"Perturb {i}, temp={temp}")
+      #update()
+
+      # Compact
+      withLock(gLock):
         perturbedPositions = arg.pRectTable[].positions
         done = perturbedPositions == interState
         if done: 
           break #TODO: confirm this gets out of withLock
         {.gcsafe.}: arg.compactFn()
+      sendText(&"Compact {i}, temp={temp}")
+      update()
+
+      # Measure heuristic
+      withLock(gLock):
         heur = arg.pRectTable[].fillRatio
         if heur > bestEver.heur:
-          #echo &"new best at {temp}: {heur}"
           bestEver = (heur, arg.pRectTable[].positions) # <-- compactPositions
       capturePos(best25, perturbedPositions, heur)
-      {.gcsafe.}: update()
-    {.gcsafe.}: update()
+  # End of temp
+  update()
 
   # Set positions
   withLock(gLock):
