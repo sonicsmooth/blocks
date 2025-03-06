@@ -17,8 +17,7 @@ import concurrent
 # TODO: Implement rotation
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
-# TODO: change temperature slider during run if checkbox
-# TODO: gray out slider or use it as max starting temp
+# TODO: Radiobox for strategies and perturbFn
 
 
 type 
@@ -38,6 +37,12 @@ type
     mSpnr: wSpinCtrl
     mTxt:  wStaticText
     mChk:  wCheckBox
+    mBox1: wStaticBox
+    mBox2: wStaticBox
+    mRad1: wRadioButton
+    mRad2: wRadioButton
+    mRad3: wRadioButton
+    mRad4: wRadioButton
     mSldr: wSlider
     mButtons: array[17, wButton]
 
@@ -353,6 +358,22 @@ wClass(wMainPanel of wPanel):
     self.mSldr.size    = (bw, bh)
     yPosAcc += bmarg + bh
 
+    # Static box1 and radio button position, size
+    self.mBox1.position = (bmarg, yPosAcc + bmarg)
+    self.mRad1.position = (bmarg*2, yPosAcc + bmarg*3)
+    self.mRad2.position = (bmarg*2, yPosAcc + bmarg*3 + self.mRad1.size.height)
+    self.mBox1.size = (bw, self.mRad1.size.height + bmarg +
+                           self.mRad2.size.height + bmarg*2)
+    yPosAcc += bmarg + self.mBox1.size.height
+
+    # Static box2 position, size
+    self.mBox2.position = (bmarg, yPosAcc + bmarg)
+    self.mRad3.position = (bmarg*2, yPosAcc + bmarg*3)
+    self.mRad4.position = (bmarg*2, yPosAcc + bmarg*3 + self.mRad3.size.height)
+    self.mBox2.size = (bw, self.mRad3.size.height + bmarg +
+                           self.mRad4.size.height + bmarg*2)
+    yPosAcc += bmarg + self.mBox2.size.height
+
     # Buttons position, size
     for i, butt in self.mButtons:
       butt.position = (bmarg, yPosAcc)
@@ -377,12 +398,18 @@ wClass(wMainPanel of wPanel):
     if self.mChk.value: # Do anneal
       proc compactfn() {.closure.} = 
         iterCompact(self.mRectTable, direction, self.mBlockPanel.clientSize)
-      #let perturbFn = makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
-      let perturbFn = makeSwapper[PosTable, ptr RectTable]()
-      let strat = Strat2
+      let 
+        strat = 
+          if self.mRad1.value: Strat1
+          else:                Strat2
+        perturbFn = if self.mRad3.value:
+          makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
+        else:
+          makeSwapper[PosTable, ptr RectTable]()
       for i in gAnnealComms.low .. gAnnealComms.high:
         let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                               strategy:   strat,
+                              initTemp:   self.mSldr.value.float,
                               perturbFn:  perturbFn,
                               compactFn:  compactfn,
                               window:     self,
@@ -398,8 +425,6 @@ wClass(wMainPanel of wPanel):
       gCompactThread.joinThread()
       self.refresh(false)
 
-      
-
   proc onResize(self: wMainPanel) =
       self.layout()
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
@@ -412,6 +437,19 @@ wClass(wMainPanel of wPanel):
       self.randomizeRectsAll(self.mSpnr.value)
       self.mBlockPanel.boundingBox()
       self.refresh(false)
+  proc onCheckBox(self: wMainPanel, event: wEvent) =
+    if self.mChk.value:
+      self.mSldr.enable()
+      self.mRad1.enable()
+      self.mRad2.enable()
+      self.mRad3.enable()
+      self.mRad4.enable()
+    else:
+      self.mSldr.disable()
+      self.mRad1.disable()
+      self.mRad2.disable()
+      self.mRad3.disable()
+      self.mRad4.disable()
   proc onSlider(self: wMainPanel, event: wEvent) =
     let pos = event.scrollPos
     let hWnd = GetAncestor(self.handle, GA_ROOT)
@@ -468,6 +506,12 @@ wClass(wMainPanel of wPanel):
     self.mSpnr  = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
     self.mTxt   = StaticText(self, label="Qty", style=wSpRight)
     self.mChk   = CheckBox(self, label="Anneal", style=wChkAlignRight)
+    self.mBox1  = StaticBox(self, label="Strategy")
+    self.mBox2  = StaticBox(self, label="Perturb Func")
+    self.mRad1  = RadioButton(self, label="Strat1", style=wRbGroup)
+    self.mRad2  = RadioButton(self, label="Strat2")
+    self.mRad3  = RadioButton(self, label="Wiggle", style=wRbGroup)
+    self.mRad4  = RadioButton(self, label="Swap")
     self.mSldr  = Slider(self)
     self.mButtons[ 0] = Button(self, label = "randomize All"     )
     self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
@@ -493,11 +537,14 @@ wClass(wMainPanel of wPanel):
     self.mSpnr.setRange(1, 10000)
     self.mSldr.setValue(20)
     self.mChk.setValue(true)
+    self.mRad1.click()
+    self.mRad3.click()
 
     # Connect events
     self.wEvent_Size                    do (event: wEvent): self.onResize()
     self.mSpnr.wEvent_Spin              do (event: wEvent): self.onSpinSpin(event)
     self.mSpnr.wEvent_TextEnter         do (): self.onSpinTextEnter()
+    self.mChk.wEvent_CheckBox           do (event: wEvent): self.onCheckBox(event)
     self.mSldr.wEvent_Slider            do (event: wEvent): self.onSlider(event)
     self.mButtons[ 0].wEvent_Button     do (): self.onButtonrandomizeAll()
     self.mButtons[ 1].wEvent_Button     do (): self.onButtonrandomizePos()
