@@ -17,7 +17,6 @@ import concurrent
 # TODO: Implement rotation
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
-# TODO: Radiobox for strategies and perturbFn
 
 
 type 
@@ -52,6 +51,16 @@ type
     mMenuFile:  wMenu
     #mStatusBar: wStatusBar # already defined by wNim
 
+  Command = enum
+    Move
+    Delete
+    Rotate
+  
+  # Direction = enum
+  #   Left
+  #   Up
+  #   Right
+  #   Down
 
 var 
   MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
@@ -123,6 +132,7 @@ wClass(wBlockPanel of wPanel):
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+  var lastRatio: float
   proc moveRectsBy(self: wBlockPanel, rectIds: openArray[RectID], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Determine bounding boxes before and after the move.
@@ -145,6 +155,23 @@ wClass(wBlockPanel of wPanel):
     # let dirtyIds = rectInRects(unionBbox, self.mRectTable)
     # MOUSE_DATA.dirtyIds = dirtyIds
     # self.refresh(false, unionBbox)
+    self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    let ratio = self.mRectTable.fillRatio
+    if ratio != lastRatio:
+      echo ratio
+      lastRatio = ratio
+    self.refresh(false)
+  proc deleteRects(self: wBlockPanel, rectIds: openArray[RectID]) =
+    for id in rectIds:
+      echo "deleting ", id
+      self.mRectTable.del(id)
+      self.mCachedBmps.del(id)
+      SELECTED.excl(id)
+    self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.refresh(false)
+  proc rotateRects(self: wBlockPanel, rectIds: openArray[RectID]) =
+    for id in rectIds:
+      echo "rotating ", id
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
@@ -186,7 +213,6 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
-    echo self.mRectTable.fillRatio
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
@@ -234,14 +260,15 @@ wClass(wBlockPanel of wPanel):
       MOUSE_DATA.clickHitIds.setLen(0)
       MOUSE_DATA.clearStarted = false
   proc onKeyDown(self: wBlockPanel, event: wEvent) = 
-    var delta: wPoint
-    case event.keyCode
-      of wKey_Left:  delta = (-1, 0)
-      of wKey_Up:    delta = (0, -1)
-      of wKey_Right: delta = (1, 0)
-      of wKey_Down:  delta = (0, 1)
-      else: return
-    self.moveRectsBy(SELECTED.toSeq, delta)
+    const cmdLookup = {wKey_Left:   Move,   wKey_Up:    Move,
+                       wKey_Right:  Move,   wKey_Down:  Move,
+                       wKey_Delete: Delete, wKey_Space: Rotate}.toTable
+    const moveLookup: array[wKey_Left .. wKey_Down, wPoint] =
+      [(-1,0), (0, -1), (1, 0), (0, 1)]
+    case cmdLookup[event.keyCode]:
+    of Move: self.moveRectsBy(SELECTED.toSeq, moveLookup[event.keyCode])
+    of Delete: self.deleteRects(SELECTED.toSeq)
+    of Rotate: self.rotateRects(SELECTED.toSeq)
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
