@@ -17,6 +17,7 @@ import concurrent
 # TODO: Implement rotation
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
+# TODO: select by rectangle
 
 
 type 
@@ -219,7 +220,8 @@ wClass(wBlockPanel of wPanel):
       if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
-        toggleRectSelection(self.mRectTable, lastHitId)
+        if SELECTED.len == 0 or event.keyCode == wKey_LCtrl:
+          toggleRectSelection(self.mRectTable, lastHitId)
         self.updateBmpCache(lastHitId)
         self.refresh(false, self.mRectTable[lastHitId].wRect)
       elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
@@ -265,6 +267,8 @@ wClass(wBlockPanel of wPanel):
                        wKey_Delete: Delete, wKey_Space: Rotate}.toTable
     const moveLookup: array[wKey_Left .. wKey_Down, wPoint] =
       [(-1,0), (0, -1), (1, 0), (0, 1)]
+    if not (event.keyCode in cmdLookup):
+      return
     case cmdLookup[event.keyCode]:
     of Move: self.moveRectsBy(SELECTED.toSeq, moveLookup[event.keyCode])
     of Delete: self.deleteRects(SELECTED.toSeq)
