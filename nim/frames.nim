@@ -24,6 +24,7 @@ type
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
     mCachedBmps: Table[RectID, ref wBitmap]
+    mRatio: float
     mBigBmp: wBitmap
     mBlendFunc: BLENDFUNCTION
     mMemDc: wMemoryDC
@@ -57,23 +58,20 @@ type
     Delete
     Rotate
   
-  # Direction = enum
-  #   Left
-  #   Up
-  #   Right
-  #   Down
-
 var 
-  MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
-                    dirtyIds:     seq[RectID],
-                    hitPos:       wPoint,
-                    clickpos:     wPoint,
-                    clearStarted: bool]
+  MOUSE_DATA: tuple[clickHitIds:      seq[RectID],
+                    dirtyIds:         seq[RectID],
+                    hitPos:           wPoint,
+                    clickPos:         wPoint,
+                    lastPos:          wPoint,
+                    dragBoxStarted:   bool
+                    selectBoxStarted: bool]
   SELECTED: HashSet[RectID]
 
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
+
 proc toggleRectSelection(table: RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
@@ -81,6 +79,7 @@ proc toggleRectSelection(table: RectTable, id: RectID) =
   else:
     table[id].selected = true
     SELECTED.incl(id)
+
 proc clearRectSelection(table: RectTable) = 
   for id in SELECTED:
     table[id].selected = false
@@ -133,7 +132,11 @@ wClass(wBlockPanel of wPanel):
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
-  var lastRatio: float
+  proc updateRatio(self: wBlockPanel) =
+    let ratio = self.mRectTable.fillRatio
+    if ratio != self.mRatio:
+      echo ratio
+      self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: openArray[RectID], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Determine bounding boxes before and after the move.
@@ -157,10 +160,7 @@ wClass(wBlockPanel of wPanel):
     # MOUSE_DATA.dirtyIds = dirtyIds
     # self.refresh(false, unionBbox)
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    let ratio = self.mRectTable.fillRatio
-    if ratio != lastRatio:
-      echo ratio
-      lastRatio = ratio
+    self.updateRatio()
     self.refresh(false)
   proc deleteRects(self: wBlockPanel, rectIds: openArray[RectID]) =
     for id in rectIds:
@@ -169,39 +169,41 @@ wClass(wBlockPanel of wPanel):
       self.mCachedBmps.del(id)
       SELECTED.excl(id)
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.updateRatio()
     self.refresh(false)
   proc rotateRects(self: wBlockPanel, rectIds: openArray[RectID]) =
     for id in rectIds:
       echo "rotating ", id
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.updateRatio()
     self.refresh(false)
+  
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
-    MOUSE_DATA.clickpos = event.mousePos
-    # This captures all rects under mousept and keeps the
+    MOUSE_DATA.clickPos = event.mousePos
+    MOUSE_DATA.lastPos  = event.mousePos
+    # This captures all rects under mousept and keeps the list
     # even after mouse has moved away from original pos.  Is this
     # what we want?  Or do we want the list to change as the
     # mouse moves around, with the currently top-selected rect
     # a the front of the list?
+    # Also, for ptInRects, maybe we only want to return a single ID,
+    # so which one is that?  The highest number?  The first returned
+    # from the table?  The top of the layer stack?
     let hits = ptInRects(event.mousePos, self.mRectTable)
     if hits.len > 0:
       # Click down on rect
-      MOUSE_DATA.hitPos = event.mousePos
       MOUSE_DATA.clickHitIds = hits
       MOUSE_DATA.dirtyIds = rectInRects(hits[^1], self.mRectTable)
-      MOUSE_DATA.clearStarted = false
+      MOUSE_DATA.dragBoxStarted = true
+      MOUSE_DATA.selectBoxStarted = false
     else: 
       # Click down in clear area
-      MOUSE_DATA.clearStarted = true
+      MOUSE_DATA.dragBoxStarted = false
+      MOUSE_DATA.selectBoxStarted = true
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
-
-    # DEBUG
-    # let pir = ptInRects(event.mousePos, self.mRectTable)
-    # if pir.len > 0:
-    #   echo pir
-    #   echo self.mRectTable
 
     # Todo: hovering over
 
@@ -214,9 +216,11 @@ wClass(wBlockPanel of wPanel):
     let delta = event.mousePos - MOUSE_DATA.hitPos
     self.moveRectsBy(@[hits[^1]], delta)
     MOUSE_DATA.hitPos = event.mousePos
+  
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
-    if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
+    if event.mousePos == MOUSE_DATA.clickPos: # released without dragging
+      
       if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
@@ -224,6 +228,7 @@ wClass(wBlockPanel of wPanel):
           toggleRectSelection(self.mRectTable, lastHitId)
         self.updateBmpCache(lastHitId)
         self.refresh(false, self.mRectTable[lastHitId].wRect)
+      
       elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
         # Remember selected rects, deselect, redraw
         if SELECTED.len == 0:
@@ -261,6 +266,7 @@ wClass(wBlockPanel of wPanel):
     else: # dragged then released
       MOUSE_DATA.clickHitIds.setLen(0)
       MOUSE_DATA.clearStarted = false
+  
   proc onKeyDown(self: wBlockPanel, event: wEvent) = 
     const cmdLookup = {wKey_Left:   Move,   wKey_Up:    Move,
                        wKey_Right:  Move,   wKey_Down:  Move,
@@ -273,6 +279,7 @@ wClass(wBlockPanel of wPanel):
     of Move: self.moveRectsBy(SELECTED.toSeq, moveLookup[event.keyCode])
     of Delete: self.deleteRects(SELECTED.toSeq)
     of Rotate: self.rotateRects(SELECTED.toSeq)
+  
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
@@ -358,6 +365,7 @@ wClass(wBlockPanel of wPanel):
     self.wEvent_KeyDown    do (event: wEvent): self.onKeyDown(event)
     self.USER_PAINT_DONE   do (): self.onPaintDone()
 
+
 wClass(wMainPanel of wPanel):
   proc layout(self: wMainPanel) =
     let 
@@ -418,6 +426,7 @@ wClass(wMainPanel of wPanel):
     withLock(gLock):
       compact(self.mRectTable, axis, reverse, self.mBlockPanel.clientSize)
       self.mBlockPanel.boundingBox()
+    self.mBlockPanel.updateRatio()
     self.refresh(false)
 
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
@@ -462,11 +471,13 @@ wClass(wMainPanel of wPanel):
     let qty = event.getSpinPos() + event.getSpinDelta()
     self.randomizeRectsAll(qty)
     self.mBlockPanel.boundingBox()
+    self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onSpinTextEnter(self: wMainPanel) =
     if self.mSpnr.value > 0:
       self.randomizeRectsAll(self.mSpnr.value)
       self.mBlockPanel.boundingBox()
+      self.mBlockPanel.updateRatio()
       self.refresh(false)
   proc onCheckBox(self: wMainPanel, event: wEvent) =
     if self.mChk.value:
@@ -488,11 +499,13 @@ wClass(wMainPanel of wPanel):
   proc onButtonrandomizeAll(self: wMainPanel) =
     self.randomizeRectsAll(self.mSpnr.value)
     self.mBlockPanel.boundingBox()
+    self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onButtonrandomizePos(self: wMainPanel) =
     let sz = self.mBlockPanel.clientSize
     rects.randomizeRectsPos(self.mRectTable, sz)
     self.mBlockPanel.boundingBox()
+    self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onButtonCompact←(self: wMainPanel) =
     self.delegate1DButtonCompact(X, false)
