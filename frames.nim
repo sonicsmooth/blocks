@@ -60,12 +60,12 @@ type
   
   MouseState = enum
     None
-    LmbDownInSpace
     LmbDownInRect
-    CtrlLmbDownInSpace
+    LmbDownInSpace
     CtrlLmbDownInRect
-    ShftLmbDownInSpace
+    CtrlLmbDownInSpace
     ShftLmbDownInRect
+    ShftLmbDownInSpace
     DraggingRect
     DraggingSelect
 
@@ -83,6 +83,8 @@ proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
 
+
+
 proc toggleRectSelect(table: RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
@@ -91,8 +93,10 @@ proc toggleRectSelect(table: RectTable, id: RectID) =
     table[id].selected = true
     SELECTED.incl(id)
 
-proc toggleRectSelect(table: RectTable, ids: openArray[RectId]) =
-  for id in ids:
+proc toggleRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
+  # Todo: check if this copies openArray, or add when... case
+  let sel = ids.toSeq
+  for id in sel:
     toggleRectSelect(table, id)
 
 proc toggleRectSelect(table: RectTable) =
@@ -101,27 +105,38 @@ proc toggleRectSelect(table: RectTable) =
       toggleRectSelect(table, id)
 
 
+
 proc clearRectSelect(table: RectTable, id: RectID) =
   table[id].selected = false
   SELECTED.excl(id)
 
-proc clearRectSelect(table: RectTable, ids: openArray[RectId]) =
-  for id in ids:
-    clearRectSelect(table, id)
+proc clearRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
+  # Todo: check if this copies openArray, or add when... case
+  let sel = ids.toSeq
+  for id in sel: table[id].selected = false
+  for id in sel: SELECTED.excl(id)
 
 proc clearRectSelect(table: RectTable) = 
   let sel = SELECTED.toSeq
-  for id in sel:
-    clearRectSelect(table, id)
+  for id in sel: table[id].selected = false
+  SELECTED.clear()
+
 
 
 proc setRectSelect(table: RectTable, id: RectID) =
   table[id].selected = true
   SELECTED.incl(id)
 
-proc setRectSelect(table: RectTable, ids: openArray[RectId]) =
-  for id in ids:
-    setRectSelect(table, id)
+proc setRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
+  # Todo: check if this copies openArray, or add when... case
+  let sel = ids.toSeq
+  for id in sel: table[id].selected = true
+  for id in sel: SELECTED.incl(id)
+
+proc setRectSelect(table: RectTable) = 
+  let sel = SELECTED.toSeq
+  for id in sel: table[id].selected = true
+  for id in sel: SELECTED.incl(id)
 
 
 
@@ -162,8 +177,8 @@ wClass(wBlockPanel of wPanel):
     new bmp
     bmp[] = rectToBmp(self.mRectTable[id])
     self.mCachedBmps[id] = bmp
-  proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID]) = 
-    for id in ids:
+  proc updateBmpCaches(self: wBlockPanel, ids: seq[RectID] | HashSet[RectId]) = 
+    for id in ids.toSeq:
       self.updateBmpCache(id)
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
@@ -260,33 +275,26 @@ wClass(wBlockPanel of wPanel):
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickPos: # released without dragging
       
-      # non-drag click-release in a block
-      # Clear previous selection if SELECTED.len == 1
-      # Toggle selection if SELECTED.len == 0 or 1
+      # Non-drag click-release in a block:
+      # Clear all previous selections if not ctrl
+      # Toggle selection
       # Clear dragBoxStarted and selectBoxStarted
-
-      if MOUSE_DATA.clickHitIds.len > 0: 
+      #if MOUSE_DATA.clickHitIds.len > 0:
+      if MOUSE_DATA.dragRectStarted:
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
-        if SELECTED.len == 0:
-          setRectSelect(self.mRectTable, lastHitId)
-          self.updateBmpCache(lastHitId)
-        elif SELECTED.len == 1 and lastHitId == SELECTED.toSeq[0]:
-          echo "same, clear"
-          clearRectSelect(self.mRectTable, lastHitId)
-          self.updateBmpCache(lastHitId)
-        else:
-          let sel = SELECTED.toSeq
-          echo &"different, disable {sel} and add {lastHitId}"
-          clearRectSelect(self.mRectTable, sel)
-          self.updateBmpCaches(sel)
-          
-          setRectSelect(self.mRectTable, lastHitId)
-          self.updateBmpCache(lastHitId)
-        #self.refresh(false, self.mRectTable[lastHitId].wRect)
+        MOUSE_DATA.dirtyIds.setLen(0)
+        var others = SELECTED
+        others.excl(lastHitId)
+        if not event.ctrlDown:
+          clearRectSelect(self.mRectTable, others)
+          MOUSE_DATA.dirtyIds = others.toSeq
+        toggleRectSelect(self.mRectTable, lastHitId)
+        MOUSE_DATA.dirtyIds.add(lastHitId)
+        self.updateBmpCaches(MOUSE_DATA.dirtyIds)
         self.refresh(false)
 
-      elif MOUSE_DATA.dragRectStarted: # non-drag click-release in blank space
+      elif MOUSE_DATA.selectBoxStarted: # non-drag click-release in blank space
         echo "clearing"
         # Remember selected rects, deselect, redraw
         if SELECTED.len == 0:
@@ -323,7 +331,7 @@ wClass(wBlockPanel of wPanel):
 
     else: # dragged then released
       MOUSE_DATA.clickHitIds.setLen(0)
-      MOUSE_DATA.clearStarted = false
+      MOUSE_DATA.dragRectStarted = false
   
   proc onKeyDown(self: wBlockPanel, event: wEvent) = 
     const cmdLookup = {wKey_Left:   Move,   wKey_Up:    Move,
@@ -401,8 +409,8 @@ wClass(wBlockPanel of wPanel):
     release(gLock)
   
   proc onPaintDone(self: wBlockPanel) =
-    if MOUSE_DATA.clearStarted:
-      MOUSE_DATA.clearStarted = false
+    if MOUSE_DATA.dragRectStarted:
+      MOUSE_DATA.dragRectStarted = false
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
