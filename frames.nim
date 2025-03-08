@@ -57,12 +57,25 @@ type
     Delete
     Rotate
   
+  MouseState = enum
+    None
+    LmbDownInSpace
+    LmbDownInRect
+    CtrlLmbDownInSpace
+    CtrlLmbDownInRect
+    ShftLmbDownInSpace
+    ShftLmbDownInRect
+    DraggingRect
+    DraggingSelect
+
 var 
-  MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
-                    dirtyIds:     seq[RectID],
-                    hitPos:       wPoint,
-                    clickpos:     wPoint,
-                    clearStarted: bool]
+  MOUSE_DATA: tuple[clickHitIds:      seq[RectID],
+                    dirtyIds:         seq[RectID],
+                    hitPos:           wPoint,
+                    clickPos:         wPoint,
+                    lastPos:          wPoint,
+                    dragRectStarted:  bool,
+                    selectBoxStarted: bool]
   SELECTED: HashSet[RectID]
 
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
@@ -199,8 +212,10 @@ wClass(wBlockPanel of wPanel):
       echo "rotating ", id
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.refresh(false)
+
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
-    MOUSE_DATA.clickpos = event.mousePos
+    MOUSE_DATA.clickPos = event.mousePos
+    MOUSE_DATA.lastPos  = event.mousePos
     # This captures all rects under mousept and keeps the
     # even after mouse has moved away from original pos.  Is this
     # what we want?  Or do we want the list to change as the
@@ -209,23 +224,19 @@ wClass(wBlockPanel of wPanel):
     let hits = ptInRects(event.mousePos, self.mRectTable)
     if hits.len > 0:
       # Click down on rect
-      MOUSE_DATA.hitPos = event.mousePos
       MOUSE_DATA.clickHitIds = hits
       MOUSE_DATA.dirtyIds = rectInRects(hits[^1], self.mRectTable)
-      MOUSE_DATA.clearStarted = false
+      MOUSE_DATA.dragRectStarted = true
+      MOUSE_DATA.selectBoxStarted = false # probably a don't care
     else: 
       # Click down in clear area
-      MOUSE_DATA.clearStarted = true
+      MOUSE_DATA.selectBoxStarted = true
+      MOUSE_DATA.dragRectStarted = false # probably a don't care
+
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
-
-    # DEBUG
-    # let pir = ptInRects(event.mousePos, self.mRectTable)
-    # if pir.len > 0:
-    #   echo pir
-    #   echo self.mRectTable
 
     # Todo: hovering over
 
@@ -234,14 +245,20 @@ wClass(wBlockPanel of wPanel):
       return
 
     # Move rect
-    # TODO: create new lastPos
-    let delta = event.mousePos - MOUSE_DATA.hitPos
+    let delta = event.mousePos - MOUSE_DATA.lastPos
     self.moveRectsBy(@[hits[^1]], delta)
-    MOUSE_DATA.hitPos = event.mousePos
+    MOUSE_DATA.lastPos = event.mousePos
+
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
-    if event.mousePos == MOUSE_DATA.clickpos: # released without dragging
-      if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
+    if event.mousePos == MOUSE_DATA.clickPos: # released without dragging
+      
+      # non-drag click-release in a block
+      # Clear previous selection if SELECTED.len == 1
+      # Toggle selection if SELECTED.len == 0 or 1
+      # Clear dragBoxStarted and selectBoxStarted
+
+      if MOUSE_DATA.clickHitIds.len > 0: 
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
         if SELECTED.len == 0:
@@ -261,11 +278,12 @@ wClass(wBlockPanel of wPanel):
           self.updateBmpCache(lastHitId)
         #self.refresh(false, self.mRectTable[lastHitId].wRect)
         self.refresh(false)
-      elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
+
+      elif MOUSE_DATA.dragRectStarted: # non-drag click-release in blank space
         echo "clearing"
         # Remember selected rects, deselect, redraw
         if SELECTED.len == 0:
-          MOUSE_DATA.clearStarted = false
+          MOUSE_DATA.dragRectStarted = false
           return
         MOUSE_DATA.dirtyIds = SELECTED.toSeq
         let dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
