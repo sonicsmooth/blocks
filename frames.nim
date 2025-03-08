@@ -57,12 +57,6 @@ type
     Delete
     Rotate
   
-  # Direction = enum
-  #   Left
-  #   Up
-  #   Right
-  #   Down
-
 var 
   MOUSE_DATA: tuple[clickHitIds:  seq[RectID],
                     dirtyIds:     seq[RectID],
@@ -74,17 +68,47 @@ var
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
-proc toggleRectSelection(table: RectTable, id: RectID) = 
+
+proc toggleRectSelect(table: RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
     SELECTED.excl(id)
   else:
     table[id].selected = true
     SELECTED.incl(id)
-proc clearRectSelection(table: RectTable) = 
-  for id in SELECTED:
-    table[id].selected = false
-  SELECTED.clear()
+
+proc toggleRectSelect(table: RectTable, ids: openArray[RectId]) =
+  for id in ids:
+    toggleRectSelect(table, id)
+
+proc toggleRectSelect(table: RectTable) =
+    let sel = SELECTED.toSeq
+    for id in sel:
+      toggleRectSelect(table, id)
+
+
+proc clearRectSelect(table: RectTable, id: RectID) =
+  table[id].selected = false
+  SELECTED.excl(id)
+
+proc clearRectSelect(table: RectTable, ids: openArray[RectId]) =
+  for id in ids:
+    clearRectSelect(table, id)
+
+proc clearRectSelect(table: RectTable) = 
+  let sel = SELECTED.toSeq
+  for id in sel:
+    clearRectSelect(table, id)
+
+
+proc setRectSelect(table: RectTable, id: RectID) =
+  table[id].selected = true
+  SELECTED.incl(id)
+
+proc setRectSelect(table: RectTable, ids: openArray[RectId]) =
+  for id in ids:
+    setRectSelect(table, id)
+
 
 
 wClass(wBlockPanel of wPanel):
@@ -220,18 +244,32 @@ wClass(wBlockPanel of wPanel):
       if MOUSE_DATA.clickHitIds.len > 0: # non-drag click-release in a block
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
-        if SELECTED.len == 0 or event.keyCode == wKey_LCtrl:
-          toggleRectSelection(self.mRectTable, lastHitId)
-        self.updateBmpCache(lastHitId)
-        self.refresh(false, self.mRectTable[lastHitId].wRect)
+        if SELECTED.len == 0:
+          setRectSelect(self.mRectTable, lastHitId)
+          self.updateBmpCache(lastHitId)
+        elif SELECTED.len == 1 and lastHitId == SELECTED.toSeq[0]:
+          echo "same, clear"
+          clearRectSelect(self.mRectTable, lastHitId)
+          self.updateBmpCache(lastHitId)
+        else:
+          let sel = SELECTED.toSeq
+          echo &"different, disable {sel} and add {lastHitId}"
+          clearRectSelect(self.mRectTable, sel)
+          self.updateBmpCaches(sel)
+          
+          setRectSelect(self.mRectTable, lastHitId)
+          self.updateBmpCache(lastHitId)
+        #self.refresh(false, self.mRectTable[lastHitId].wRect)
+        self.refresh(false)
       elif MOUSE_DATA.clearStarted: # non-drag click-release in blank space
+        echo "clearing"
         # Remember selected rects, deselect, redraw
         if SELECTED.len == 0:
           MOUSE_DATA.clearStarted = false
           return
         MOUSE_DATA.dirtyIds = SELECTED.toSeq
         let dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
-        clearRectSelection(self.mRectTable)
+        clearRectSelect(self.mRectTable)
         self.updateBmpCaches(MOUSE_DATA.dirtyIds)
 
         # Two ways to redraw deselected boxes without
