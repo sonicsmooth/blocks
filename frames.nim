@@ -30,6 +30,7 @@ type
     mMemDc: wMemoryDC
     mBmpDc: wMemoryDC
     mAllBbox: wRect
+    mSelectBox: wRect
     mText: string
 
   wMainPanel = ref object of wPanel
@@ -82,7 +83,6 @@ var
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
-
 
 
 proc toggleRectSelect(table: RectTable, id: RectID) = 
@@ -138,6 +138,15 @@ proc setRectSelect(table: RectTable) =
   for id in sel: table[id].selected = true
   for id in sel: SELECTED.incl(id)
 
+
+proc normalizeSelectRect(rect: ref wRect, startPos, endPos: wPoint) =
+  # make sure that rect.x,y is always upper left
+  let (sx,sy) = startPos
+  let (ex,ey) = endPos
+  rect.x = min(sx, ex)
+  rect.y = min(sy, ey)
+  rect.width = abs(ex - sx)
+  rect.height = abs(ey - sy)
 
 
 wClass(wBlockPanel of wPanel):
@@ -257,6 +266,9 @@ wClass(wBlockPanel of wPanel):
 
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
+    echo MOUSE_DATA
+
+
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
 
@@ -296,7 +308,7 @@ wClass(wBlockPanel of wPanel):
 
       # non-drag click-release in blank space
       # Clear all selections
-        # Remember selected rects, deselect, redraw
+      # Remember selected rects, deselect, redraw
       elif MOUSE_DATA.selectBoxStarted: 
         MOUSE_DATA.selectBoxStarted = false
         MOUSE_DATA.dragRectStarted = false # Probably a don't care
