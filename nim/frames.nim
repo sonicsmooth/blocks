@@ -294,19 +294,21 @@ wClass(wBlockPanel of wPanel):
         self.updateBmpCaches(MOUSE_DATA.dirtyIds)
         self.refresh(false)
 
-      elif MOUSE_DATA.selectBoxStarted: # non-drag click-release in blank space
-        echo "clearing"
+      # non-drag click-release in blank space
+      # Clear all selections
         # Remember selected rects, deselect, redraw
+      elif MOUSE_DATA.selectBoxStarted: 
+        MOUSE_DATA.selectBoxStarted = false
+        MOUSE_DATA.dragRectStarted = false # Probably a don't care
         if SELECTED.len == 0:
-          MOUSE_DATA.dragRectStarted = false
           return
         MOUSE_DATA.dirtyIds = SELECTED.toSeq
-        let dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
         clearRectSelect(self.mRectTable)
         self.updateBmpCaches(MOUSE_DATA.dirtyIds)
 
         # Two ways to redraw deselected boxes without
         # redrawing evenything
+        let dirtyRects = self.mRectTable[MOUSE_DATA.dirtyIds]
         if false:
           # Let windows accumulate bounding boxes
           # TODO: figure out how to accumulate regions
