@@ -14,7 +14,7 @@ import concurrent
 # TODO: Implement rotation
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
-# TODO: select by rectangle
+# TODO: move UI events to another file
 
 
 type 
@@ -55,6 +55,8 @@ type
     Move
     Delete
     Rotate
+    Select
+    SelectAll
   
   MouseState = enum
     None
@@ -106,11 +108,13 @@ proc clearRectSelect(table: RectTable, id: RectID) =
 proc clearRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
-  for id in sel: table[id].selected = false
+  for id in sel:
+    table[id].selected = false
 
 proc clearRectSelect(table: RectTable) = 
   let sel = table.selected
-  for id in sel: table[id].selected = false
+  for id in sel:
+    table[id].selected = false
 
 
 
@@ -120,11 +124,13 @@ proc setRectSelect(table: RectTable, id: RectID) =
 proc setRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
-  for id in sel: table[id].selected = true
+  for id in sel:
+    table[id].selected = true
 
 proc setRectSelect(table: RectTable) = 
-  let sel = table.selected
-  for id in sel: table[id].selected = true
+  # select all
+  for id, rect in table:
+    rect.selected = true
 
 
 proc normalizeSelectRect(rect: var wRect, startPos, endPos: wPoint) =
@@ -226,7 +232,12 @@ wClass(wBlockPanel of wPanel):
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
-  
+  proc selectAll(self: wBlockPanel) =
+    setRectSelect(self.mRectTable)
+    self.initBmpCaches()
+    self.refresh()
+
+
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
     MOUSE_DATA.clickPos = event.mousePos
     MOUSE_DATA.lastPos  = event.mousePos
@@ -349,9 +360,10 @@ wClass(wBlockPanel of wPanel):
     self.refresh(false)
   
   proc onKeyDown(self: wBlockPanel, event: wEvent) = 
-    const cmdLookup = {wKey_Left:   Move,   wKey_Up:    Move,
-                       wKey_Right:  Move,   wKey_Down:  Move,
-                       wKey_Delete: Delete, wKey_Space: Rotate}.toTable
+    const cmdLookup = {wKey_Left:   Move,     wKey_Up:    Move,
+                       wKey_Right:  Move,     wKey_Down:  Move,
+                       wKey_Delete: Delete,   wKey_Space: Rotate,
+                       wKey_A:      SelectAll }.toTable
     const moveLookup: array[wKey_Left .. wKey_Down, wPoint] =
       [(-1,0), (0, -1), (1, 0), (0, 1)]
     if not (event.keyCode in cmdLookup):
@@ -360,6 +372,10 @@ wClass(wBlockPanel of wPanel):
     of Move: self.moveRectsBy(self.mRectTable.selected, moveLookup[event.keyCode])
     of Delete: self.deleteRects(self.mRectTable.selected)
     of Rotate: self.rotateRects(self.mRectTable.selected)
+    of Select: discard
+    of SelectAll:
+      if event.ctrlDown:
+        self.selectAll()
   
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
