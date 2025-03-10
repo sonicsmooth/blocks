@@ -1,4 +1,4 @@
-import std/[random, tables, strformat]
+import std/[random, sets, tables, strformat]
 from std/sequtils import toSeq
 import strutils
 import wNim/[wTypes]
@@ -60,6 +60,11 @@ proc `$`*(table: RectTable): string =
 proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[Rect] =
   for idx in idxs:
     result.add(table[idx])
+
+proc selected*(table: RectTable): seq[RectId] =
+  for id,rect in table:
+    if rect.selected:
+      result.add(id)
 
 proc wRect*(rect: Rect): wRect =
   result = (rect.x, rect.y, rect.width, rect.height)
