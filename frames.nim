@@ -139,7 +139,7 @@ proc setRectSelect(table: RectTable) =
   for id in sel: SELECTED.incl(id)
 
 
-proc normalizeSelectRect(rect: ref wRect, startPos, endPos: wPoint) =
+proc normalizeSelectRect(rect: var wRect, startPos, endPos: wPoint) =
   # make sure that rect.x,y is always upper left
   let (sx,sy) = startPos
   let (ex,ey) = endPos
@@ -242,6 +242,9 @@ wClass(wBlockPanel of wPanel):
     self.refresh(false)
   
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
+    defer:
+      echo MOUSE_DATA
+
     MOUSE_DATA.clickPos = event.mousePos
     MOUSE_DATA.lastPos  = event.mousePos
     # This captures all rects under mousept and keeps the list
@@ -266,11 +269,10 @@ wClass(wBlockPanel of wPanel):
 
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
-    echo MOUSE_DATA
-
-
-    let hWnd = GetAncestor(self.handle, GA_ROOT)
-    SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+    defer:
+      echo MOUSE_DATA
+      let hWnd = GetAncestor(self.handle, GA_ROOT)
+      SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
 
     # Todo: hovering over
 
@@ -278,12 +280,21 @@ wClass(wBlockPanel of wPanel):
     if hits.len == 0: # Just moving around the screen
       return
 
-    # Move rect
-    let delta = event.mousePos - MOUSE_DATA.lastPos
-    self.moveRectsBy(@[hits[^1]], delta)
+    # Move rect or draw selection box
+    if MOUSE_DATA.dragRectStarted:
+      let delta = event.mousePos - MOUSE_DATA.lastPos
+      self.moveRectsBy(@[hits[^1]], delta)
+    elif MOUSE_DATA.selectBoxStarted:
+      normalizeSelectRect(self.mSelectBox, MOUSE_DATA.clickPos, event.mousePos)
+      echo self.mSelectBox
+    
     MOUSE_DATA.lastPos = event.mousePos
+    
 
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
+    defer:
+      echo MOUSE_DATA
+
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickPos: # released without dragging
       
@@ -293,6 +304,7 @@ wClass(wBlockPanel of wPanel):
       # Clear dragBoxStarted and selectBoxStarted
       #if MOUSE_DATA.clickHitIds.len > 0:
       if MOUSE_DATA.dragRectStarted:
+        MOUSE_DATA.dragRectStarted = false
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
         MOUSE_DATA.dirtyIds.setLen(0)
@@ -344,6 +356,7 @@ wClass(wBlockPanel of wPanel):
           self.refresh(false, bbox2)
 
     else: # dragged then released
+      MOUSE_DATA.selectBoxStarted = false
       MOUSE_DATA.clickHitIds.setLen(0)
       MOUSE_DATA.dragRectStarted = false
   
