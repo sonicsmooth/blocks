@@ -217,7 +217,6 @@ wClass(wBlockPanel of wPanel):
     for id in rectIds:
       self.mRectTable.del(id)
       self.mCachedBmps.del(id)
-
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
