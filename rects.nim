@@ -283,6 +283,8 @@ proc moveRect*(rect: Rect, oldpos, newpos: wPoint) =
   moveRectBy(rect, delta)
 
 proc boundingBox*(rects: openArray[wRect|Rect|PosWidth]): wRect =
+  if rects.len == 0:
+    return
   # Bbox from a bunch of wRects
   var left = rects[0].x
   var top = rects[0].y
