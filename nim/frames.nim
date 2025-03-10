@@ -1,10 +1,7 @@
 # TEST!!
 import std/[locks, segfaults, sets, strformat, tables ]
-from std/os import sleep
 from std/sequtils import toSeq
-# import wNim/[wApp, wMacros, wFrame, wPanel, wEvent, wButton, wBrush, wPen,
-#              wStatusBar, wMenuBar, wSpinCtrl, wStaticText, wCheckBox, wSlider,
-#              wPaintDC, wMemoryDC, wBitmap, wFont]
+from std/os import sleep
 import wNim
 from wNim/private/wHelper import `-`
 import winim except RECT
@@ -283,15 +280,13 @@ wClass(wBlockPanel of wPanel):
       setRectSelect(self.mRectTable, rectsInBox)
       self.updateBmpCaches(SELECTED)
       self.updateBmpCaches(sel)
+      #MOUSE_DATA.dirtyIds = SELECTED.toSeq & sel.toSeq
       self.refresh(false) # TODO optimize what gets invalidated
     
     MOUSE_DATA.lastPos = event.mousePos
     
 
   proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
-    defer:
-      echo MOUSE_DATA
-
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickPos: # released without dragging
       # Non-drag click-release in a block:
@@ -421,9 +416,10 @@ wClass(wBlockPanel of wPanel):
     self.mMemDc.drawRectangle(self.mAllBbox)
 
     # Draw selection box
-    self.mMemDC.setPen(Pen(wBlue))
-    self.mMemDc.setBrush(wTransparentBrush)
-    self.mMemDc.drawRectangle(self.mSelectBox)
+    if self.mSelectBox.width > 0:
+      self.mMemDC.setPen(Pen(wBlue))
+      self.mMemDc.setBrush(wTransparentBrush)
+      self.mMemDc.drawRectangle(self.mSelectBox)
 
     # draw text sent from other thread
     let sw = self.mMemDc.charWidth * self.mText.len
