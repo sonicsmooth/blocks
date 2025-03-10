@@ -66,6 +66,16 @@ proc selected*(table: RectTable): seq[RectId] =
     if rect.selected:
       result.add(id)
 
+proc positions*(rectTable: RectTable): PosTable =
+  for id,rect in rectTable:
+    result[id] = (rect.x, rect.y)
+
+proc setPositions*[T:Table](rectTable: var RectTable, pos: T) =
+  # Set rects in rectTable to positions
+  for id, rect in rectTable:
+    rect.x = pos[id].x
+    rect.y = pos[id].y
+
 proc wRect*(rect: Rect): wRect =
   result = (rect.x, rect.y, rect.width, rect.height)
 
@@ -83,18 +93,6 @@ proc ids*(rects: openArray[Rect]): seq[RectID] =
 proc pos*(rect: Rect): wPoint =
   (rect.x, rect.y)
 
-proc positions*(rectTable: RectTable): PosTable =
-  for id,rect in rectTable:
-    #result[id] = (rect.x, rect.y, rect.width, rect.height)
-    result[id] = (rect.x, rect.y)
-
-proc setPositions*[T:Table](rectTable: var RectTable, pos: T) =
-  # Set rects in rectTable to positions
-  for id, rect in rectTable:
-    rect.x = pos[id].x
-    rect.y = pos[id].y
-    #rect.width = pos[id].width
-    #rect.height = pos[id].height
 
 proc size*(rect: Rect): wSize =
   (rect.width, rect.height)
