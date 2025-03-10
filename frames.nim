@@ -242,9 +242,6 @@ wClass(wBlockPanel of wPanel):
     self.refresh(false)
   
   proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
-    defer:
-      echo MOUSE_DATA
-
     MOUSE_DATA.clickPos = event.mousePos
     MOUSE_DATA.lastPos  = event.mousePos
     # This captures all rects under mousept and keeps the list
@@ -281,9 +278,11 @@ wClass(wBlockPanel of wPanel):
     elif MOUSE_DATA.selectBoxStarted:
       normalizeSelectRect(self.mSelectBox, MOUSE_DATA.clickPos, event.mousePos)
       let rectsInBox = rectInRects(self.mSelectBox, self.mRectTable)
-      echo rectsInBox
+      var sel = SELECTED
+      clearRectSelect(self.mRectTable)
       setRectSelect(self.mRectTable, rectsInBox)
-      self.updateBmpCaches(rectsInBox)
+      self.updateBmpCaches(SELECTED)
+      self.updateBmpCaches(sel)
       self.refresh(false) # TODO optimize what gets invalidated
     
     MOUSE_DATA.lastPos = event.mousePos
@@ -422,7 +421,6 @@ wClass(wBlockPanel of wPanel):
     self.mMemDc.drawRectangle(self.mAllBbox)
 
     # Draw selection box
-    echo self.mSelectBox
     self.mMemDC.setPen(Pen(wBlue))
     self.mMemDc.setBrush(wTransparentBrush)
     self.mMemDc.drawRectangle(self.mSelectBox)
