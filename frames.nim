@@ -261,11 +261,9 @@ wClass(wBlockPanel of wPanel):
       MOUSE_DATA.clickHitIds = hits
       MOUSE_DATA.dirtyIds = rectInRects(hits[^1], self.mRectTable)
       MOUSE_DATA.dragRectStarted = true
-      MOUSE_DATA.selectBoxStarted = false # probably a don't care
     else: 
       # Click down in clear area
       MOUSE_DATA.selectBoxStarted = true
-      MOUSE_DATA.dragRectStarted = false # probably a don't care
 
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
@@ -276,17 +274,14 @@ wClass(wBlockPanel of wPanel):
 
     # Todo: hovering over
 
-    let hits = MOUSE_DATA.clickHitIds
-    if hits.len == 0: # Just moving around the screen
-      return
-
     # Move rect or draw selection box
     if MOUSE_DATA.dragRectStarted:
       let delta = event.mousePos - MOUSE_DATA.lastPos
+      let hits = MOUSE_DATA.clickHitIds
       self.moveRectsBy(@[hits[^1]], delta)
     elif MOUSE_DATA.selectBoxStarted:
       normalizeSelectRect(self.mSelectBox, MOUSE_DATA.clickPos, event.mousePos)
-      echo self.mSelectBox
+      self.refresh(false) # Todo optimize what gets invalidated
     
     MOUSE_DATA.lastPos = event.mousePos
     
@@ -297,12 +292,10 @@ wClass(wBlockPanel of wPanel):
 
     SetFocus(self.mHwnd) # Selects region so it captures keyboard
     if event.mousePos == MOUSE_DATA.clickPos: # released without dragging
-      
       # Non-drag click-release in a block:
       # Clear all previous selections if not ctrl
       # Toggle selection
       # Clear dragBoxStarted and selectBoxStarted
-      #if MOUSE_DATA.clickHitIds.len > 0:
       if MOUSE_DATA.dragRectStarted:
         MOUSE_DATA.dragRectStarted = false
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
@@ -323,7 +316,6 @@ wClass(wBlockPanel of wPanel):
       # Remember selected rects, deselect, redraw
       elif MOUSE_DATA.selectBoxStarted: 
         MOUSE_DATA.selectBoxStarted = false
-        MOUSE_DATA.dragRectStarted = false # Probably a don't care
         if SELECTED.len == 0:
           return
         MOUSE_DATA.dirtyIds = SELECTED.toSeq
@@ -359,6 +351,13 @@ wClass(wBlockPanel of wPanel):
       MOUSE_DATA.selectBoxStarted = false
       MOUSE_DATA.clickHitIds.setLen(0)
       MOUSE_DATA.dragRectStarted = false
+
+    # In any case, clear selection rectangle
+    self.mSelectBox.x = 0
+    self.mSelectBox.y = 0
+    self.mSelectBox.width = 0
+    self.mSelectBox.height = 0
+    self.refresh(false)
   
   proc onKeyDown(self: wBlockPanel, event: wEvent) = 
     const cmdLookup = {wKey_Left:   Move,   wKey_Up:    Move,
@@ -418,6 +417,12 @@ wClass(wBlockPanel of wPanel):
     self.mMemDC.setPen(Pen(wBlack))
     self.mMemDc.setBrush(wTransparentBrush)
     self.mMemDc.drawRectangle(self.mAllBbox)
+
+    # Draw selection box
+    echo self.mSelectBox
+    self.mMemDC.setPen(Pen(wBlue))
+    self.mMemDc.setBrush(wTransparentBrush)
+    self.mMemDc.drawRectangle(self.mSelectBox)
 
     # draw text sent from other thread
     let sw = self.mMemDc.charWidth * self.mText.len
