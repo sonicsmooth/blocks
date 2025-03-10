@@ -268,7 +268,6 @@ wClass(wBlockPanel of wPanel):
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
     defer:
-      echo MOUSE_DATA
       let hWnd = GetAncestor(self.handle, GA_ROOT)
       SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
 
@@ -281,7 +280,11 @@ wClass(wBlockPanel of wPanel):
       self.moveRectsBy(@[hits[^1]], delta)
     elif MOUSE_DATA.selectBoxStarted:
       normalizeSelectRect(self.mSelectBox, MOUSE_DATA.clickPos, event.mousePos)
-      self.refresh(false) # Todo optimize what gets invalidated
+      let rectsInBox = rectInRects(self.mSelectBox, self.mRectTable)
+      echo rectsInBox
+      setRectSelect(self.mRectTable, rectsInBox)
+      self.updateBmpCaches(rectsInBox)
+      self.refresh(false) # TODO optimize what gets invalidated
     
     MOUSE_DATA.lastPos = event.mousePos
     
