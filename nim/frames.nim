@@ -224,7 +224,6 @@ wClass(wBlockPanel of wPanel):
     self.refresh(false)
   proc deleteRects(self: wBlockPanel, rectIds: openArray[RectID]) =
     for id in rectIds:
-      echo "deleting ", id
       self.mRectTable.del(id)
       self.mCachedBmps.del(id)
       SELECTED.excl(id)
@@ -276,12 +275,13 @@ wClass(wBlockPanel of wPanel):
       normalizeSelectRect(self.mSelectBox, MOUSE_DATA.clickPos, event.mousePos)
       let rectsInBox = rectInRects(self.mSelectBox, self.mRectTable)
       var sel = SELECTED
-      clearRectSelect(self.mRectTable)
+      if not event.ctrlDown:
+        clearRectSelect(self.mRectTable)
       setRectSelect(self.mRectTable, rectsInBox)
       self.updateBmpCaches(SELECTED)
       self.updateBmpCaches(sel)
-      #MOUSE_DATA.dirtyIds = SELECTED.toSeq & sel.toSeq
-      self.refresh(false) # TODO optimize what gets invalidated
+      # TODO optimize what gets invalidated
+      self.refresh(false) 
     
     MOUSE_DATA.lastPos = event.mousePos
     
