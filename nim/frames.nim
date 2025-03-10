@@ -75,7 +75,6 @@ var
                     lastPos:          wPoint,
                     dragRectStarted:  bool,
                     selectBoxStarted: bool]
-  #SELECTED: HashSet[RectID]
 
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
@@ -85,12 +84,8 @@ proc lParamTuple[T](event: wEvent): auto {.inline.} =
 proc toggleRectSelect(table: RectTable, id: RectID) = 
   if table[id].selected:
     table[id].selected = false
-    #SELECTED.excl(id)
-    #assert table.selected == SELECTED
   else:
     table[id].selected = true
-    #SELECTED.incl(id)
-    #assert table.selected == SELECTED
 
 proc toggleRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
   # Todo: check if this copies openArray, or add when... case
@@ -99,53 +94,37 @@ proc toggleRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
     toggleRectSelect(table, id)
 
 proc toggleRectSelect(table: RectTable) =
-    #let sel = SELECTED.toSeq
     let sel = table.selected
     for id in sel:
       toggleRectSelect(table, id)
-    #assert table.selected == SELECTED
 
 
 
 proc clearRectSelect(table: RectTable, id: RectID) =
   table[id].selected = false
-  #SELECTED.excl(id)
-  #assert table.selected == SELECTED
 
 proc clearRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel: table[id].selected = false
-  #for id in sel: SELECTED.excl(id)
-  #assert table.selected == SELECTED
 
 proc clearRectSelect(table: RectTable) = 
-  #let sel = SELECTED.toSeq
   let sel = table.selected
   for id in sel: table[id].selected = false
-  #SELECTED.clear()
-  #assert table.selected == SELECTED
 
 
 
 proc setRectSelect(table: RectTable, id: RectID) =
   table[id].selected = true
-  #SELECTED.incl(id)
-  #assert table.selected == SELECTED
 
 proc setRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel: table[id].selected = true
-  #for id in sel: SELECTED.incl(id)
-  #assert table.selected == SELECTED
 
 proc setRectSelect(table: RectTable) = 
-  #let sel = SELECTED.toSeq
   let sel = table.selected
   for id in sel: table[id].selected = true
-  #for id in sel: SELECTED.incl(id)
-  #assert table.selected == SELECTED
 
 
 proc normalizeSelectRect(rect: var wRect, startPos, endPos: wPoint) =
@@ -238,8 +217,6 @@ wClass(wBlockPanel of wPanel):
     for id in rectIds:
       self.mRectTable.del(id)
       self.mCachedBmps.del(id)
-      #SELECTED.excl(id)
-      #assert self.mRectTable.selected == SELECTED
 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
@@ -288,12 +265,10 @@ wClass(wBlockPanel of wPanel):
     elif MOUSE_DATA.selectBoxStarted:
       normalizeSelectRect(self.mSelectBox, MOUSE_DATA.clickPos, event.mousePos)
       let rectsInBox = rectInRects(self.mSelectBox, self.mRectTable)
-      #var sel = SELECTED
       var sel = self.mRectTable.selected
       if not event.ctrlDown:
         clearRectSelect(self.mRectTable)
       setRectSelect(self.mRectTable, rectsInBox)
-      #self.updateBmpCaches(SELECTED)
       self.updateBmpCaches(self.mRectTable.selected)
       self.updateBmpCaches(sel)
       # TODO optimize what gets invalidated
@@ -314,9 +289,10 @@ wClass(wBlockPanel of wPanel):
         let lastHitId = MOUSE_DATA.clickHitIds[^1]
         MOUSE_DATA.clickHitIds.setLen(0)
         MOUSE_DATA.dirtyIds.setLen(0)
-        #var others = SELECTED
         var others = self.mRectTable.selected
-        others.del(lastHitId)
+        let hitidx = others.find(lastHitId)
+        if hitidx >= 0:
+          others.del(hitidx)
         if not event.ctrlDown:
           clearRectSelect(self.mRectTable, others)
           MOUSE_DATA.dirtyIds = others.toSeq
@@ -330,10 +306,8 @@ wClass(wBlockPanel of wPanel):
       # Remember selected rects, deselect, redraw
       elif MOUSE_DATA.selectBoxStarted: 
         MOUSE_DATA.selectBoxStarted = false
-        #if SELECTED.len == 0:
         if self.mRectTable.selected.len == 0:
           return
-        #MOUSE_DATA.dirtyIds = SELECTED.toSeq
         MOUSE_DATA.dirtyIds = self.mRectTable.selected
         clearRectSelect(self.mRectTable)
         self.updateBmpCaches(MOUSE_DATA.dirtyIds)
@@ -384,9 +358,6 @@ wClass(wBlockPanel of wPanel):
     if not (event.keyCode in cmdLookup):
       return
     case cmdLookup[event.keyCode]:
-    # of Move: self.moveRectsBy(SELECTED.toSeq, moveLookup[event.keyCode])
-    # of Delete: self.deleteRects(SELECTED.toSeq)
-    # of Rotate: self.rotateRects(SELECTED.toSeq)
     of Move: self.moveRectsBy(self.mRectTable.selected, moveLookup[event.keyCode])
     of Delete: self.deleteRects(self.mRectTable.selected)
     of Rotate: self.rotateRects(self.mRectTable.selected)
