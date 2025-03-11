@@ -1,7 +1,7 @@
 import std/random
 import std/segfaults
 import wNim/wApp
-import frames, rects
+import frames, rectTable
 import concurrent, anneal
 
 

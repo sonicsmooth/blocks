@@ -18,8 +18,8 @@ type
     brushcolor*: wColor
     selected*: bool
   PosWidth = tuple[x,y,width,height:int]
-  RectTable* = ref Table[RectID, Rect]   # meant to be shared
-  PosTable* = Table[RectID, wPoint] # meant to have value semantics
+  #RectTable* = ref Table[RectID, Rect]   # meant to be shared
+  #PosTable* = Table[RectID, wPoint] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -35,12 +35,6 @@ const
   HRANGE = 25..75
   QTY* = 20
 
-proc newPosTable*(): ref PosTable = 
-  newTable[RectID, wPoint]()
-
-proc newRectTable*(): RectTable =
-  newTable[RectID, Rect]()
-
 proc `$`*(r: Rect): string =
   result =
     "{id: \"" & $r.id & "\", " &
@@ -52,29 +46,6 @@ proc `$`*(r: Rect): string =
     "pencolor: " & &"0x{r.pencolor:0x}" & ", " &
     "brushcolor: " & &"0x{r.brushcolor:0x}" & ", " &
     "selected: " & $r.selected & "}"
-
-proc `$`*(table: RectTable): string =
-  for k,v in table:
-    result.add(&"{k}: {v}\n")
-
-proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[Rect] =
-  for idx in idxs:
-    result.add(table[idx])
-
-proc selected*(table: RectTable): seq[RectId] =
-  for id,rect in table:
-    if rect.selected:
-      result.add(id)
-
-proc positions*(rectTable: RectTable): PosTable =
-  for id,rect in rectTable:
-    result[id] = (rect.x, rect.y)
-
-proc setPositions*[T:Table](rectTable: var RectTable, pos: T) =
-  # Set rects in rectTable to positions
-  for id, rect in rectTable:
-    rect.x = pos[id].x
-    rect.y = pos[id].y
 
 proc wRect*(rect: Rect): wRect =
   result = (rect.x, rect.y, rect.width, rect.height)
@@ -157,7 +128,7 @@ proc `>=`*(edge1, edge2: HorizEdge): bool =
 proc `==`*(edge1, edge2: HorizEdge): bool =
   edge1.pt0.y == edge2.pt0.y
 
-proc isPointInRect(pt: wpoint, rect: wRect): bool = 
+proc isPointInRect*(pt: wpoint, rect: wRect): bool = 
     let lrcorner: wPoint = (rect.x + rect.width,
                             rect.y + rect.height)
     pt.x >= rect.x and pt.x <= lrcorner.x and
@@ -196,27 +167,6 @@ proc isRectOverRect*(rect1, rect2: wRect): bool =
   rect1.bottom > rect2.bottom and
   rect1.right  > rect2.right
 
-proc ptInRects*(pt: wPoint, table: RectTable): seq[RectID] = 
-  # Returns seq of Rect IDs from table whose rect 
-  # surrounds or contacts pt
-  # Optimization? -- return after first one
-  for id, rect in table:
-    if isPointInRect(pt, rect.wRect):
-      result.add(id)
-
-proc rectInRects*(rect: wRect, table: RectTable): seq[RectID] = 
-  # Return seq of Rect IDs from table that intersect rect
-  # Return seq also includes rect
-  # Typically rect is moving around and touches objs in table
-  # Or rect is a bounding box and we're looking for where 
-  # it touches other blocks
-  for id, tabRect in table:
-    if isRectInRect(rect, tabRect.wRect) or 
-       isRectOverRect(rect, tabRect.wRect):
-      result.add(id)
-
-proc rectInRects*(rectId: RectID, table: RectTable): seq[RectID] = 
-  rectInRects(table[rectId].wRect, table)
 
 #TODO: make converter here
 
@@ -252,26 +202,6 @@ proc randRect*(id: RectID, screenSize: wSize): Rect =
                 pencolor: randColor(), 
                 brushcolor: randColor())
 
-proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
-  table.clear()
-  for i in 1..qty:
-    let rid = toRectId(i)
-    table[rid] = randRect(rid, size)
-
-proc randomizeRectsAllLog*(table: var RectTable, size: wSize, qty: int) = 
-  # Randomize in a way that has fewer large blocks and more small blocks
-  table.clear()
-  for i in 1..qty:
-    let rid = toRectId(i)
-    table[rid] = randRect(rid, size)
-
-
-
-proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
-  for id, rect in table:
-    rect.x = rand(screenSize.width  - rect.width  - 1)
-    rect.y = rand(screenSize.height - rect.height - 1)
-
 proc moveRectBy*(rect: Rect, delta: wPoint) =
   rect.x += delta.x
   rect.y += delta.y
@@ -295,9 +225,6 @@ proc boundingBox*(rects: openArray[wRect|Rect|PosWidth]): wRect =
     bottom = max(bottom, rect.y+rect.height)
   (x:left, y: top, width: right - left, height: bottom - top)
 
-proc boundingBox*(rectTable: RectTable): wRect =
-  boundingBox(rectTable.values.toSeq)
-
 proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
 
@@ -307,9 +234,6 @@ proc aspectRatio*(rect: wRect|Rect): float =
 
 proc aspectRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
   boundingBox(rects).aspectRatio
-
-proc aspectRatio*(rtable: RectTable): float =
-  rtable.values.toSeq.aspectRatio
 
 # fillRatio finds the ratio of fill area to bounding box
 # Of a bunch of rectangles.  This can be given by 
@@ -323,12 +247,6 @@ proc fillRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
     usedArea += r.area
   let totalArea = boundingBox(rects).area
   usedArea / totalArea
-
-proc fillRatio*(rtable: RectTable): float =
-  rtable.values.toSeq.fillRatio
-
-# proc fillRatio*(postable: PosTable, stable: SizeTable): float =
-#   posWidths(postable, stable).fillRatio
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect
