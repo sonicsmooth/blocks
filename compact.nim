@@ -4,7 +4,7 @@ import wnim
 import wnim/wTypes
 import winim/inc/winuser
 import blockRand, concurrent
-import rects, userMessages
+import rectTable, userMessages
 
 type 
   Axis* = enum X=true, Y=false

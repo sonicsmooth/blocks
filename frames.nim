@@ -5,7 +5,7 @@ from std/os import sleep
 import wNim
 from wNim/private/wHelper import `-`
 import winim except RECT
-import anneal, compact, rects, userMessages
+import anneal, compact, rects, rectTable, userMessages
 import concurrent
 
 # TODO: copy background before move
@@ -82,55 +82,6 @@ proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
 
-
-proc toggleRectSelect(table: RectTable, id: RectID) = 
-  if table[id].selected:
-    table[id].selected = false
-  else:
-    table[id].selected = true
-
-proc toggleRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
-  # Todo: check if this copies openArray, or add when... case
-  let sel = ids.toSeq
-  for id in sel:
-    toggleRectSelect(table, id)
-
-proc toggleRectSelect(table: RectTable) =
-    let sel = table.selected
-    for id in sel:
-      toggleRectSelect(table, id)
-
-
-
-proc clearRectSelect(table: RectTable, id: RectID) =
-  table[id].selected = false
-
-proc clearRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
-  # Todo: check if this copies openArray, or add when... case
-  let sel = ids.toSeq
-  for id in sel:
-    table[id].selected = false
-
-proc clearRectSelect(table: RectTable) = 
-  let sel = table.selected
-  for id in sel:
-    table[id].selected = false
-
-
-
-proc setRectSelect(table: RectTable, id: RectID) =
-  table[id].selected = true
-
-proc setRectSelect(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
-  # Todo: check if this copies openArray, or add when... case
-  let sel = ids.toSeq
-  for id in sel:
-    table[id].selected = true
-
-proc setRectSelect(table: RectTable) = 
-  # select all
-  for id, rect in table:
-    rect.selected = true
 
 
 proc normalizeSelectRect(rect: var wRect, startPos, endPos: wPoint) =
@@ -213,7 +164,7 @@ wClass(wBlockPanel of wPanel):
       moveRectBy(rect, delta)
     # let afterBbox = bounding_box(rects)
     # let unionBbox = bounding_box(@[beforeBbox, afterBbox])
-    # let dirtyIds = rectInRects(unionBbox, self.mRectTable)
+    # let dirtyIds = self.mRectTable.rectInRects(unionBbox)
     # MOUSE_DATA.dirtyIds = dirtyIds
     # self.refresh(false, unionBbox)
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
@@ -235,6 +186,7 @@ wClass(wBlockPanel of wPanel):
   proc selectAll(self: wBlockPanel) =
     setRectSelect(self.mRectTable)
     self.initBmpCaches()
+    self.updateRatio()
     self.refresh()
 
 
@@ -249,11 +201,11 @@ wClass(wBlockPanel of wPanel):
     # Also, for ptInRects, maybe we only want to return a single ID,
     # so which one is that?  The highest number?  The first returned
     # from the table?  The top of the layer stack?
-    let hits = ptInRects(event.mousePos, self.mRectTable)
+    let hits = self.mRectTable.ptInRects(event.mousePos)
     if hits.len > 0:
       # Click down on rect
       MOUSE_DATA.clickHitIds = hits
-      MOUSE_DATA.dirtyIds = rectInRects(hits[^1], self.mRectTable)
+      MOUSE_DATA.dirtyIds = self.mRectTable.rectInRects(hits[^1])
       MOUSE_DATA.dragRectStarted = true
     else: 
       # Click down in clear area
@@ -274,7 +226,7 @@ wClass(wBlockPanel of wPanel):
       self.moveRectsBy(@[hits[^1]], delta)
     elif MOUSE_DATA.selectBoxStarted:
       normalizeSelectRect(self.mSelectBox, MOUSE_DATA.clickPos, event.mousePos)
-      let rectsInBox = rectInRects(self.mSelectBox, self.mRectTable)
+      let rectsInBox = self.mRectTable.rectInRects(self.mSelectBox)
       var sel = self.mRectTable.selected
       if not event.ctrlDown:
         clearRectSelect(self.mRectTable)
@@ -342,7 +294,7 @@ wClass(wBlockPanel of wPanel):
           # Pro: This has only one refresh call, so only one paint
           # Con: This may draw more blocks than have been deselected.
           let bbox1       = boundingBox(dirtyRects.wRects)
-          let rectsInBbox = rectInRects(bbox1, self.mRectTable)
+          let rectsInBbox = self.mRectTable.rectInRects(bbox1)
           let bbox2       = boundingBox(self.mRectTable[rectsInBbox])
           MOUSE_DATA.dirtyIds = rectsInBbox
           self.refresh(false, bbox2)
@@ -522,7 +474,7 @@ wClass(wMainPanel of wPanel):
       butt.size     = (bw, bh)
       yPosAcc += bh
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
-    rects.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
+    rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
     self.mBlockPanel.initBmpCaches()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
@@ -606,7 +558,7 @@ wClass(wMainPanel of wPanel):
     self.refresh(false)
   proc onButtonrandomizePos(self: wMainPanel) =
     let sz = self.mBlockPanel.clientSize
-    rects.randomizeRectsPos(self.mRectTable, sz)
+    rectTable.randomizeRectsPos(self.mRectTable, sz)
     self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
@@ -750,7 +702,7 @@ wClass(wMainFrame of wFrame):
     let sldrVal = self.mMainPanel.mSldr.value
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-    rects.randomizeRectsAll(rectTable, newBlockSz, self.mMainPanel.mSpnr.value)
+    rectTable.randomizeRectsAll(newBlockSz, self.mMainPanel.mSpnr.value)
     self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
     self.mMainPanel.mBlockPanel.initBmpCaches()
 
