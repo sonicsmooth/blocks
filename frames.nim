@@ -77,7 +77,7 @@ var
                     lastPos:          wPoint,
                     dragRectStarted:  bool,
                     selectBoxStarted: bool]
-  LAST_SELECT: seq[RectID]
+  #LAST_SELECT: seq[RectID]
 
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
@@ -198,18 +198,9 @@ wClass(wBlockPanel of wPanel):
       MOUSE_DATA.clickHitIds = hits
       MOUSE_DATA.dirtyIds = self.mRectTable.rectInRects(hits[^1])
       MOUSE_DATA.dragRectStarted = true
-      LAST_SELECT.setLen(0)
-      echo LAST_SELECT
     else: 
       # Click down in clear area
       MOUSE_DATA.selectBoxStarted = true
-      # Remember current selection if control pressed
-      if event.ctrlDown:
-        LAST_SELECT = self.mRectTable.selected
-        echo LAST_SELECT
-      else:
-        LAST_SELECT.setLen(0)
-        echo LAST_SELECT
 
   proc onMouseMove(self: wBlockPanel, event: wEvent) = 
     # Update message on main frame
@@ -228,18 +219,10 @@ wClass(wBlockPanel of wPanel):
       var rt: ref Table[RectID, Rect] = self.mRectTable
       self.mSelectBox = normalizeRectCoords(MOUSE_DATA.clickPos, event.mousePos)
       let rectsInBox = rt.rectInRects(self.mSelectBox)
-      if event.ctrlDown:
-        setRectSelect(rt, rectsInBox, false) # set blocks
-      else:
-        # Need to go back to previously selected blocks
-        # then add new blocks
-        if LAST_SELECT.len > 0: echo "clear all before setting existing again"
-        setRectSelect(rt, LAST_SELECT, true) # Set only existing selection
-        if rectsInBox.len > 0: echo "set new blocks"
-        setRectSelect(rt, rectsInBox, false) # set new blocks
-
-      self.updateBmpCaches(self.mRectTable.selected)
-      self.updateBmpCaches(LAST_SELECT)
+      let oldSel = rt.selected
+      setRectSelect(rt, rectsInBox, not event.ctrlDown) # set new blocks only
+      self.updateBmpCaches(oldSel)
+      self.updateBmpCaches(rectsInBox)
       # TODO optimize what gets invalidated
       self.refresh(false) 
     
@@ -276,9 +259,7 @@ wClass(wBlockPanel of wPanel):
       elif MOUSE_DATA.selectBoxStarted: 
         MOUSE_DATA.selectBoxStarted = false
         if self.mRectTable.selected.len == 0:
-          LAST_SELECT.setLen(0)
-          return
-        MOUSE_DATA.dirtyIds = self.mRectTable.selected
+          MOUSE_DATA.dirtyIds = self.mRectTable.selected
         clearRectSelect(self.mRectTable)
         self.updateBmpCaches(MOUSE_DATA.dirtyIds)
 
@@ -313,7 +294,6 @@ wClass(wBlockPanel of wPanel):
       MOUSE_DATA.dragRectStarted = false
 
     # In any case, clear selection rectangle
-    LAST_SELECT.setLen(0)
     self.mSelectBox.x = 0
     self.mSelectBox.y = 0
     self.mSelectBox.width = 0
