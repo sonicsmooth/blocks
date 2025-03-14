@@ -96,16 +96,6 @@ proc lParamTuple[T](event: wEvent): auto {.inline.} =
 
 
 
-proc normalizeSelectRect(rect: var wRect, startPos, endPos: wPoint) =
-  # make sure that rect.x,y is always upper left
-  let (sx,sy) = startPos
-  let (ex,ey) = endPos
-  rect.x = min(sx, ex)
-  rect.y = min(sy, ey)
-  rect.width = abs(ex - sx)
-  rect.height = abs(ey - sy)
-
-
 wClass(wBlockPanel of wPanel):
   proc rectToBmp(rect: rects.Rect): wBitmap = 
     # Draw rect and label onto bitmap; return bitmap.
@@ -339,6 +329,7 @@ wClass(wBlockPanel of wPanel):
       elif mouseData.selectBoxStarted: 
         mouseData.selectBoxStarted = false
         if self.mRectTable.selected.len == 0:
+          LAST_SELECT.setLen(0)
           return
         mouseData.dirtyIds = self.mRectTable.selected
         discard clearRectSelect(self.mRectTable)
@@ -375,6 +366,7 @@ wClass(wBlockPanel of wPanel):
       mouseData.dragRectStarted = false
 
     # In any case, clear selection rectangle
+    LAST_SELECT.setLen(0)
     self.mSelectBox.x = 0
     self.mSelectBox.y = 0
     self.mSelectBox.width = 0

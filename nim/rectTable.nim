@@ -88,19 +88,34 @@ proc fillRatio*(rtable: RectTable): float =
   rtable.values.toSeq.fillRatio
 
 
+# Forward decls
+proc toggleRectSelect*(table: RectTable, id: RectID) 
+proc toggleRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId])
+proc toggleRectSelect*(table: RectTable)
+proc clearRectSelect*(table: RectTable)
+proc clearRectSelect*(table: RectTable, id: RectID, only: bool=false)
+proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId], only: bool=false)
+proc setRectSelect*(table: RectTable)
+proc setRectSelect*(table: RectTable, id: RectID, only: bool=false)
+proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId], only: bool=false)
+
 proc toggleRectSelect*(table: RectTable, id: RectID) = 
+  echo "togglingA ", id
   table[id].selected = not table[id].selected
 
 proc toggleRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
   # Todo: check if this copies openArray, or add when... case
   #let sel = ids.toSeq
+  #echo "tolling allB"
   for rect in table.values:
+    echo "togglingB ", rect.id
     rect.selected = not rect.selected
 
 proc toggleRectSelect*(table: RectTable) =
-    let sel = table.selected
-    for id in sel:
-      toggleRectSelect(table, id)
+  #echo "tolling allC"
+  for rect in table.values:
+    echo "togglingC ", rect.id
+    rect.selected = not rect.selected
 
 
 proc clearRectSelect*(table: RectTable): seq[RectId] = 
@@ -114,6 +129,8 @@ proc clearRectSelect*(table: RectTable, id: RectID): bool =
 
 proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
+  if only: # Set all before setting ids
+    setRectSelect(table)
   let sel = ids.toSeq
   for id in result:
     if table[id].selected == true:
@@ -123,7 +140,9 @@ proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq
 
 proc setRectSelect*(table: RectTable) = 
   # select all
+  #echo "setting allG"
   for id, rect in table:
+    echo "  settingG ", id
     rect.selected = true
 
 proc setRectSelect*(table: RectTable, id: RectID): bool =
@@ -132,6 +151,8 @@ proc setRectSelect*(table: RectTable, id: RectID): bool =
 
 proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
+  if only: # Clear all before setting ids
+    clearRectSelect(table)
   let sel = ids.toSeq
   for id in sel:
     if table[id].selected == false:

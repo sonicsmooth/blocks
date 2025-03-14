@@ -228,6 +228,15 @@ proc boundingBox*(rects: openArray[wRect|Rect|PosWidth]): wRect =
 proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
 
+proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
+  # make sure that rect.x,y is always upper left
+  let (sx,sy) = startPos
+  let (ex,ey) = endPos
+  result.x = min(sx, ex)
+  result.y = min(sy, ey)
+  result.width = abs(ex - sx)
+  result.height = abs(ey - sy)
+
 
 proc aspectRatio*(rect: wRect|Rect): float =
   rect.width.float / rect.height.float
