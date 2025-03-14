@@ -285,7 +285,7 @@ wClass(wBlockPanel of wPanel):
       let hits = mouseData.clickHitIds
       self.moveRectsBy(@[hits[^1]], delta)
     elif mouseData.selectBoxStarted:
-      normalizeSelectRect(self.mSelectBox, mouseData.clickPos, event.mousePos)
+      self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
       let rectsInBox = self.mRectTable.rectInRects(self.mSelectBox)
       var sel = self.mRectTable.selected
       if not event.ctrlDown:
