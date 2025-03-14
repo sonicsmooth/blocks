@@ -103,18 +103,21 @@ proc toggleRectSelect*(table: RectTable) =
       toggleRectSelect(table, id)
 
 
-proc clearRectSelect*(table: RectTable) = 
-  let sel = table.selected
-  for id in sel:
+proc clearRectSelect*(table: RectTable): seq[RectId] = 
+  result = table.selected
+  for id in result:
     table[id].selected = false
 
-proc clearRectSelect*(table: RectTable, id: RectID) =
+proc clearRectSelect*(table: RectTable, id: RectID): bool =
+  result = table[id].selected
   table[id].selected = false
 
-proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
+proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
-  for id in sel:
+  for id in result:
+    if table[id].selected == true:
+      result.add(id)
     table[id].selected = false
 
 
@@ -123,12 +126,15 @@ proc setRectSelect*(table: RectTable) =
   for id, rect in table:
     rect.selected = true
 
-proc setRectSelect*(table: RectTable, id: RectID) =
+proc setRectSelect*(table: RectTable, id: RectID): bool =
+  result = table[id].selected
   table[id].selected = true
 
-proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
+proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel:
+    if table[id].selected == false:
+      result.add(id)
     table[id].selected = true
 
