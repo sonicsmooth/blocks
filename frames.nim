@@ -186,10 +186,13 @@ wClass(wBlockPanel of wPanel):
     self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
-    setRectSelect(self.mRectTable)
+    discard setRectSelect(self.mRectTable)
     self.initBmpCache()
     self.updateRatio()
     self.refresh()
+  
+
+
   
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
     if not (event.keyCode in cmdTable): return
@@ -219,6 +222,7 @@ wClass(wBlockPanel of wPanel):
       etype = event.getEventType
 
 
+    self.mText = $mouseData.state
     case mouseData.state
     of None:
       case etype
@@ -241,7 +245,7 @@ wClass(wBlockPanel of wPanel):
     # of wEvent_LeftDoubleClick: discard
     # of wEvent_KeyUp: discard
     else: echo &"{etype}:x"
-
+    self.refresh()
 
 
 
