@@ -118,29 +118,23 @@ proc toggleRectSelect*(table: RectTable) =
     rect.selected = not rect.selected
 
 
-proc clearRectSelect*(table: RectTable) = 
-  # Clear all
-  #echo "clearing allD"
-  for rect in table.values:
-    if rect.selected:
-      echo "clearingD ", rect.id
-      # TODO: check if it's faster to do if-then-else
-      # TODO: vs just setting everything to false
-      rect.selected = false
+proc clearRectSelect*(table: RectTable): seq[RectId] = 
+  result = table.selected
+  for id in result:
+    table[id].selected = false
 
-proc clearRectSelect*(table: RectTable, id: RectID, only: bool=false) =
-  if only: # Set all before setting id
-    setRectSelect(table)
-  echo "clearingE ", id
+proc clearRectSelect*(table: RectTable, id: RectID): bool =
+  result = table[id].selected
   table[id].selected = false
 
-proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId], only: bool=false) =
+proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
   if only: # Set all before setting ids
     setRectSelect(table)
   let sel = ids.toSeq
-  for id in sel:
-    echo "clearingF ", id
+  for id in result:
+    if table[id].selected == true:
+      result.add(id)
     table[id].selected = false
 
 
@@ -151,18 +145,17 @@ proc setRectSelect*(table: RectTable) =
     echo "  settingG ", id
     rect.selected = true
 
-proc setRectSelect*(table: RectTable, id: RectID, only: bool=false) =
-  if only: # Clear all before setting id
-    clearRectSelect(table)
-  echo "settingH ", id
+proc setRectSelect*(table: RectTable, id: RectID): bool =
+  result = table[id].selected
   table[id].selected = true
 
-proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId], only: bool=false) =
+proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
   if only: # Clear all before setting ids
     clearRectSelect(table)
   let sel = ids.toSeq
   for id in sel:
-    echo "settingI ", id
+    if table[id].selected == false:
+      result.add(id)
     table[id].selected = true
 
