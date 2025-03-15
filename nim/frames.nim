@@ -72,17 +72,18 @@ type
 
 
 
-const cmdTable: CmdTable = 
-  {(key: wKey_Esc,    ctrl: false, alt: false, shift: false): CmdEscape,
-   (key: wKey_Left,   ctrl: false, alt: false, shift: false): CmdMove,
-   (key: wKey_Up,     ctrl: false, alt: false, shift: false): CmdMove,
-   (key: wKey_Right,  ctrl: false, alt: false, shift: false): CmdMove,
-   (key: wKey_Down,   ctrl: false, alt: false, shift: false): CmdMove,
-   (key: wKey_Delete, ctrl: false, alt: false, shift: false): CmdDelete,
-   (key: wKey_Space,  ctrl: false, alt: false, shift: false): CmdRotate,
-   (key: wKey_A,      ctrl: true,  alt: false, shift: false): CmdSelectAll }.toTable
-const moveTable: array[wKey_Left .. wKey_Down, wPoint] =
-  [(-1,0), (0, -1), (1, 0), (0, 1)]
+const 
+  cmdTable: CmdTable = 
+    {(key: wKey_Esc,    ctrl: false, shift: false, alt: false): CmdEscape,
+    (key: wKey_Left,   ctrl: false, shift: false, alt: false): CmdMove,
+    (key: wKey_Up,     ctrl: false, shift: false, alt: false): CmdMove,
+    (key: wKey_Right,  ctrl: false, shift: false, alt: false): CmdMove,
+    (key: wKey_Down,   ctrl: false, shift: false, alt: false): CmdMove,
+    (key: wKey_Delete, ctrl: false, shift: false, alt: false): CmdDelete,
+    (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotate,
+    (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
+  moveTable: array[wKey_Left .. wKey_Down, wPoint] =
+    [(-1,0), (0, -1), (1, 0), (0, 1)]
 
 var 
   mouseData: tuple[clickHitIds:      seq[RectID],
@@ -120,7 +121,7 @@ wClass(wBlockPanel of wPanel):
     memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     memDC.setTextBackground(rect.brushcolor)
     memDC.drawLabel(rectstr, zeroRect.expand(-1), wCenter or wMiddle)
-  proc forceRedraw(self: wBlockPanel, wait: int) = 
+  proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
     if wait > 0: sleep(wait)
@@ -219,18 +220,19 @@ wClass(wBlockPanel of wPanel):
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
 
-    # Stay if we have a modifier or legitimate key
-    # else leave
-    let stay = isModifier() or (event.keyCode in cmdTable)
-    if not stay:
+    if isModifier():
+      return
+
+    # Stay if we have a modifier or legitimate key, else leave
+    let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
+    if not (k in cmdTable):
       resetMouseData()
       resetBox()
       mouseData.state = StateNone
       return
 
     let sel = self.mRectTable.selected
-    let cktk: CmdKey = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
-    case cmdTable[cktk]:
+    case cmdTable[k]:
     of CmdEscape:
       echo "escaping"
       resetMouseData()
@@ -261,6 +263,8 @@ wClass(wBlockPanel of wPanel):
     # Unified event processing
     let etype = event.getEventType
 
+    # Do all key processing first
+    # Everything else is mouse state stuff
     if etype == wEvent_KeyDown:
       self.processKeyDown(event)
       return
@@ -307,20 +311,29 @@ wClass(wBlockPanel of wPanel):
       case etype
       of wEvent_MouseMove:
         let delta = event.mousePos - mouseData.lastPos
-        moveRectBy(self.mRectTable[hitid], delta)
+        if event.ctrlDown:
+          echo "Moving maybe many rects"
+          self.moveRectsBy(self.mRectTable.selected, delta)
+        else:
+          echo "Moving 1 rect"
+          moveRectBy(self.mRectTable[hitid], delta)
         mouseData.lastPos = event.mousePos
         self.refresh(false)
       else:
         mouseData.state = StateNone
       
     of StateLMBDownInSpace:
+      echo "here1"
       case etype
       of wEvent_MouseMove:
         if event.ctrlDown:
+          echo "here2"
           mouseData.state = StateDraggingSelectAdd
-        else: 
+        else:
+          echo "here3"
           mouseData.state = StateDraggingSelectNew
       of wEvent_LeftUp:
+        echo "here4"
         let oldsel = self.mRectTable.clearRectSelect()
         mouseData.dirtyIds = oldsel
         self.updateBmpCache(oldsel)
@@ -343,8 +356,15 @@ wClass(wBlockPanel of wPanel):
 
     else: # other states
       case etype
-      #of wEvent_KeyDown: self.processKeyDown(event)
       else: discard
+
+    self.mText = &"State: {mouseData.state} "
+    self.mText &= &"Ctrl={event.ctrlDown} "
+    self.mText &= &"Shift={event.shiftDown} "
+    self.mText &= &"Alt={event.altDown}"
+    self.refresh(false)
+    self.forceRedraw()
+
 
   
   
