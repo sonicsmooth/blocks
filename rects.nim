@@ -1,5 +1,4 @@
 import std/[random, sets, tables, strformat]
-from std/sequtils import toSeq
 import strutils
 import wNim/[wTypes]
 import wNim/private/wHelper

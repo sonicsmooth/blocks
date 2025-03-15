@@ -105,21 +105,15 @@ proc setRectSelect*(table: RectTable, id: RectID): bool
 proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId]
 
 proc toggleRectSelect*(table: RectTable, id: RectID) = 
-  echo "togglingA ", id
   table[id].selected = not table[id].selected
 
 proc toggleRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
   # Todo: check if this copies openArray, or add when... case
-  #let sel = ids.toSeq
-  #echo "tolling allB"
   for rect in table.values:
-    echo "togglingB ", rect.id
     rect.selected = not rect.selected
 
 proc toggleRectSelect*(table: RectTable) =
-  #echo "tolling allC"
   for rect in table.values:
-    echo "togglingC ", rect.id
     rect.selected = not rect.selected
 
 
@@ -135,8 +129,8 @@ proc clearRectSelect*(table: RectTable, id: RectID): bool =
 proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
-  for id in result:
-    if table[id].selected == true:
+  for id in sel:
+    if table[id].selected:
       result.add(id)
     table[id].selected = false
 
@@ -154,7 +148,7 @@ proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[R
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel:
-    if table[id].selected == false:
+    if not table[id].selected:
       result.add(id)
     table[id].selected = true
 
