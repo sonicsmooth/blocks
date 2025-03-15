@@ -244,6 +244,7 @@ wClass(wBlockPanel of wPanel):
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
       else: discard
+
     of StateLMBDownInRect:
       let hitid = mouseData.clickHitIds[^1]
       case etype
@@ -278,6 +279,22 @@ wClass(wBlockPanel of wPanel):
       else:
         mouseData.state = StateNone
       
+    of StateLMBDownInSpace:
+      case etype
+      of wEvent_MouseMove:
+        if event.ctrlDown:
+          mouseData.state = StateDraggingSelectAdd
+        else: 
+          mouseData.state = StateDraggingSelectNew
+      of wEvent_LeftUp:
+        let oldsel = self.mRectTable.clearRectSelect()
+        mouseData.dirtyIds = oldsel
+        self.updateBmpCache(oldsel)
+        mouseData.state = StateNone
+        self.refresh(false)
+      else:
+        mouseData.state = StateNone
+
 
     else: # other states
       case etype
