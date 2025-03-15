@@ -3,7 +3,7 @@ import sequtils
 import wnim
 import wnim/wTypes
 import winim/inc/winuser
-import blockRand, concurrent
+import randBlock, concurrent
 import rectTable, userMessages
 
 type 
