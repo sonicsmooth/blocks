@@ -274,8 +274,6 @@ wClass(wBlockPanel of wPanel):
         moveRectBy(self.mRectTable[hitid], delta)
         mouseData.lastPos = event.mousePos
         self.refresh(false)
-      of wEvent_LeftUp:
-        mouseData.state = StateNone
       else:
         mouseData.state = StateNone
       
@@ -295,6 +293,17 @@ wClass(wBlockPanel of wPanel):
       else:
         mouseData.state = StateNone
 
+    of StateDraggingSelectNew:
+      case etype
+      of wEvent_MouseMove:
+        self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
+        self.refresh(false)
+      of wEvent_LeftUp:
+        self.mSelectBox = (0,0,0,0)
+        mouseData.state = StateNone
+        self.refresh(false)
+      else:
+        mouseData.state = StateNone
 
     else: # other states
       case etype
