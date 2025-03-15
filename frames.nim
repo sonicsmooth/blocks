@@ -248,6 +248,8 @@ wClass(wBlockPanel of wPanel):
       let hitid = mouseData.clickHitIds[^1]
       case etype
       of wEvent_KeyDown: self.processKeyDown(event)
+      of wEvent_MouseMove:
+        mouseData.state = StateDraggingRect
       of wEvent_LeftUp:
         if event.mousePos == mouseData.clickPos: # click and release in rect
           var oldsel = self.mRectTable.selected
@@ -260,8 +262,22 @@ wClass(wBlockPanel of wPanel):
           mouseData.dirtyIds = oldsel & hitid
           self.refresh(false)
         mouseData.state = StateNone
-        
-      else: discard
+      else:
+        mouseData.state = StateNone
+    
+    of StateDraggingRect:
+      let hitid = mouseData.clickHitIds[^1]
+      case etype
+      of wEvent_MouseMove:
+        let delta = event.mousePos - mouseData.lastPos
+        moveRectBy(self.mRectTable[hitid], delta)
+        mouseData.lastPos = event.mousePos
+        self.refresh(false)
+      of wEvent_LeftUp:
+        mouseData.state = StateNone
+      else:
+        mouseData.state = StateNone
+      
 
     else: # other states
       case etype
