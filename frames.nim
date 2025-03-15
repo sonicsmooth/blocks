@@ -89,6 +89,9 @@ var
                    selectBoxStarted: bool  # deprecate this
                    ]
 
+proc delif[T](s: var seq[T], item: T) =
+  if item in s:
+    s.del(s.find(item))
 
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
@@ -249,20 +252,13 @@ wClass(wBlockPanel of wPanel):
         if event.mousePos == mouseData.clickPos: # click and release in rect
           var oldsel = self.mRectTable.selected
           if not event.ctrlDown: # clear existing except this one
-            if hitid in oldsel:
-              # Hit already in selected so clear all except hit
-              let idx = oldsel.find(hitid)
-              if idx >= 0: oldsel.del(idx)
+            oldsel.delif(hitid)
             discard self.mRectTable.clearRectSelect(oldsel)
             self.updateBmpCache(oldsel)
           self.mRectTable.toggleRectSelect(hitid) 
           self.updateBmpCache(hitid)
           mouseData.dirtyIds = oldsel & hitid
           self.refresh(false)
-        mouseData.clickHitIds.setLen(0)
-        mouseData.dirtyIds.setLen(0)
-        mouseData.clickPos = (0,0)
-        mouseData.lastPos = (0,0)
         mouseData.state = StateNone
         
       else: discard
