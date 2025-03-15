@@ -4,7 +4,7 @@ import sequtils
 import wnim
 import winim/inc/[windef,winuser]
 import userMessages
-import blockRand, arange, rectTable
+import randBlock, arange, rectTable
 import concurrent
 
 # At each temperature generate 100 randomized next states

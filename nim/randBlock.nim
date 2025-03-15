@@ -1,4 +1,5 @@
-import std/[math, random, sugar]
+import std/[math, random]
+from std/sugar import collect
 
 const
   MINPROB = 0.1    # low end of probability distribution function
