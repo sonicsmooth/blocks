@@ -1,6 +1,6 @@
 # TEST!!
 import std/[locks, segfaults, sets, strformat, tables ]
-from std/sequtils import toSeq
+from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
 from wNim/private/wHelper import `-`
@@ -81,7 +81,7 @@ const moveTable: array[wKey_Left .. wKey_Down, wPoint] =
 var 
   mouseData: tuple[clickHitIds:      seq[RectID],
                    dirtyIds:         seq[RectID],
-                   hitPos:           wPoint,
+                   #hitPos:           wPoint,
                    clickPos:         wPoint,
                    lastPos:          wPoint,
                    state:            MouseState,
@@ -206,14 +206,14 @@ wClass(wBlockPanel of wPanel):
       echo "escaping"
       mouseData.clickHitIds.setLen(0)
       mouseData.dirtyIds.setLen(0)
-      mouseData.hitPos = (0,0)
+      #mouseData.hitPos = (0,0)
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
       mouseData.state = StateNone
-      let oldsel = self.mRectTable.clearRectSelect()
-      if oldsel.len > 0:
-        self.updateBmpCache(oldsel)
-        self.refresh()
+      # let oldsel = self.mRectTable.clearRectSelect()
+      # if oldsel.len > 0:
+      #   self.updateBmpCache(oldsel)
+      #   self.refresh()
     of CmdMove:   self.moveRectsBy(self.mRectTable.selected, moveTable[event.keyCode])
     of CmdDelete: self.deleteRects(self.mRectTable.selected)
     of CmdRotate: self.rotateRects(self.mRectTable.selected)
@@ -241,7 +241,31 @@ wClass(wBlockPanel of wPanel):
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
       else: discard
-
+    of StateLMBDownInRect:
+      let hitid = mouseData.clickHitIds[^1]
+      case etype
+      of wEvent_KeyDown: self.processKeyDown(event)
+      of wEvent_LeftUp:
+        if event.mousePos == mouseData.clickPos: # click and release in rect
+          var oldsel = self.mRectTable.selected
+          if not event.ctrlDown: # clear existing except this one
+            if hitid in oldsel:
+              # Hit already in selected so clear all except hit
+              let idx = oldsel.find(hitid)
+              if idx >= 0: oldsel.del(idx)
+            discard self.mRectTable.clearRectSelect(oldsel)
+            self.updateBmpCache(oldsel)
+          self.mRectTable.toggleRectSelect(hitid) 
+          self.updateBmpCache(hitid)
+          mouseData.dirtyIds = oldsel & hitid
+          self.refresh(false)
+        mouseData.clickHitIds.setLen(0)
+        mouseData.dirtyIds.setLen(0)
+        mouseData.clickPos = (0,0)
+        mouseData.lastPos = (0,0)
+        mouseData.state = StateNone
+        
+      else: discard
 
     else: # other states
       case etype
