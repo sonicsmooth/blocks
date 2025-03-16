@@ -220,16 +220,18 @@ wClass(wBlockPanel of wPanel):
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
 
-    if isModifier():
-      return
+    # if isModifier():
+    #   echo "modifier"
+    #   return
 
     # Stay if we have a modifier or legitimate key, else leave
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
     if not (k in cmdTable):
-      resetMouseData()
-      resetBox()
-      mouseData.state = StateNone
-      return
+      if not isModifier():
+        resetMouseData()
+        resetBox()
+        mouseData.state = StateNone
+        return
 
     let sel = self.mRectTable.selected
     case cmdTable[k]:
@@ -253,8 +255,8 @@ wClass(wBlockPanel of wPanel):
     of CmdSelect:
       discard
     of CmdSelectAll:
-      if event.ctrlDown:
-        self.selectAll()
+      echo "select basic"
+      self.selectAll()
       self.mSelectBox = (0,0,0,0)
       mouseData.state = StateNone
 
