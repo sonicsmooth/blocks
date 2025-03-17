@@ -215,6 +215,7 @@ wClass(wBlockPanel of wPanel):
     event.ctrlDown or event.shiftDown or event.altDown
 
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
+    # event must not be a modifier key
     proc resetBox() =
       self.mSelectBox = (0,0,0,0)
       self.refresh(false)
@@ -224,22 +225,9 @@ wClass(wBlockPanel of wPanel):
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
 
-    # if isModifierEvent():
-    #   return
-
-    # Stay if we have a modifier or legitimate key, else leave
+    # Stay only if we have a legitimate key combination
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
     if not (k in cmdTable):
-      # if isModifier():
-      #   # bit 30 indicates whether it's the first or a repeated key
-      #   # downBefore=1 indicates a repeat
-      #   # https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
-      #   let downBefore = event.mLparam.shr(30).bitand(0x1).bool
-      #   if not downBefore:
-      #     self.mText = modifierText(event)
-      #     self.refresh(false)
-      #   return
-      # else:
       resetMouseData()
       resetBox()
       mouseData.state = StateNone
