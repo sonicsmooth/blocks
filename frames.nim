@@ -208,6 +208,16 @@ wClass(wBlockPanel of wPanel):
 
 
 
+
+
+
+
+
+
+
+
+
+
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
     proc isModifier(): bool = 
       event.ctrlDown or event.shiftDown or event.altDown
@@ -220,14 +230,12 @@ wClass(wBlockPanel of wPanel):
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
 
-    # if isModifier():
-    #   echo "modifier"
-    #   return
-
     # Stay if we have a modifier or legitimate key, else leave
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
     if not (k in cmdTable):
-      if not isModifier():
+      if isModifier():
+        return
+      else:
         resetMouseData()
         resetBox()
         mouseData.state = StateNone
@@ -380,6 +388,14 @@ wClass(wBlockPanel of wPanel):
     # of wEvent_MiddleDoubleClick: discard
     # of wEvent_LeftDoubleClick: discard
     # of wEvent_KeyUp: discard
+
+
+
+
+
+
+
+
 
 
 
