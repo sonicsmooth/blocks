@@ -1,5 +1,5 @@
 # TEST!!
-import std/[locks, segfaults, sets, strformat, tables ]
+import std/[bitops, locks, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
@@ -75,13 +75,13 @@ type
 const 
   cmdTable: CmdTable = 
     {(key: wKey_Esc,    ctrl: false, shift: false, alt: false): CmdEscape,
-    (key: wKey_Left,   ctrl: false, shift: false, alt: false): CmdMove,
-    (key: wKey_Up,     ctrl: false, shift: false, alt: false): CmdMove,
-    (key: wKey_Right,  ctrl: false, shift: false, alt: false): CmdMove,
-    (key: wKey_Down,   ctrl: false, shift: false, alt: false): CmdMove,
-    (key: wKey_Delete, ctrl: false, shift: false, alt: false): CmdDelete,
-    (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotate,
-    (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
+     (key: wKey_Left,   ctrl: false, shift: false, alt: false): CmdMove,
+     (key: wKey_Up,     ctrl: false, shift: false, alt: false): CmdMove,
+     (key: wKey_Right,  ctrl: false, shift: false, alt: false): CmdMove,
+     (key: wKey_Down,   ctrl: false, shift: false, alt: false): CmdMove,
+     (key: wKey_Delete, ctrl: false, shift: false, alt: false): CmdDelete,
+     (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotate,
+     (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
   moveTable: array[wKey_Left .. wKey_Down, wPoint] =
     [(-1,0), (0, -1), (1, 0), (0, 1)]
 
@@ -203,8 +203,10 @@ wClass(wBlockPanel of wPanel):
 
 
 
-
-
+  proc modifierText(event: wEvent): string = 
+    result &= &"Ctrl={event.ctrlDown} "
+    result &= &"Shift={event.shiftDown} "
+    result &= &"Alt={event.altDown}"
 
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
     proc isModifier(): bool = 
@@ -222,6 +224,13 @@ wClass(wBlockPanel of wPanel):
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
     if not (k in cmdTable):
       if isModifier():
+        # bit 30 indicates whether it's the first or a repeated key
+        # downBefore=1 indicates a repeat
+        # https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
+        let downBefore = event.mLparam.shr(30).bitand(0x1).bool
+        if not downBefore:
+          self.mText = modifierText(event)
+          self.refresh(false)
         return
       else:
         resetMouseData()
@@ -232,7 +241,6 @@ wClass(wBlockPanel of wPanel):
     let sel = self.mRectTable.selected
     case cmdTable[k]:
     of CmdEscape:
-      echo "escaping"
       resetMouseData()
       resetBox()
       mouseData.state = StateNone
@@ -270,7 +278,6 @@ wClass(wBlockPanel of wPanel):
     case mouseData.state
     of StateNone:
       case etype
-      #of wEvent_KeyDown: self.processKeyDown(event)
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         mouseData.clickPos = event.mousePos
@@ -359,12 +366,9 @@ wClass(wBlockPanel of wPanel):
         mouseData.state = StateNone
 
 
-    self.mText = &"State: {mouseData.state} "
-    self.mText &= &"Ctrl={event.ctrlDown} "
-    self.mText &= &"Shift={event.shiftDown} "
-    self.mText &= &"Alt={event.altDown}"
+    self.mText = modifierText(event)
+    self.mText &= &"\nState: {mouseData.state} "
     self.refresh(false)
-    self.forceRedraw()
 
 
   
