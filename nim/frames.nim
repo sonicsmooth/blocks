@@ -207,10 +207,14 @@ wClass(wBlockPanel of wPanel):
     result &= &"Ctrl={event.ctrlDown} "
     result &= &"Shift={event.shiftDown} "
     result &= &"Alt={event.altDown}"
+  proc isModifierEvent(event: wEvent): bool = 
+    event.keyCode == wKey_Ctrl or
+    event.keyCode == wKey_Shift or
+    event.keyCode == wKey_Alt
+  proc isModifierPresent(event: wEvent): bool = 
+    event.ctrlDown or event.shiftDown or event.altDown
 
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
-    proc isModifier(): bool = 
-      event.ctrlDown or event.shiftDown or event.altDown
     proc resetBox() =
       self.mSelectBox = (0,0,0,0)
       self.refresh(false)
@@ -220,23 +224,26 @@ wClass(wBlockPanel of wPanel):
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
 
+    # if isModifierEvent():
+    #   return
+
     # Stay if we have a modifier or legitimate key, else leave
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
     if not (k in cmdTable):
-      if isModifier():
-        # bit 30 indicates whether it's the first or a repeated key
-        # downBefore=1 indicates a repeat
-        # https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
-        let downBefore = event.mLparam.shr(30).bitand(0x1).bool
-        if not downBefore:
-          self.mText = modifierText(event)
-          self.refresh(false)
-        return
-      else:
-        resetMouseData()
-        resetBox()
-        mouseData.state = StateNone
-        return
+      # if isModifier():
+      #   # bit 30 indicates whether it's the first or a repeated key
+      #   # downBefore=1 indicates a repeat
+      #   # https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
+      #   let downBefore = event.mLparam.shr(30).bitand(0x1).bool
+      #   if not downBefore:
+      #     self.mText = modifierText(event)
+      #     self.refresh(false)
+      #   return
+      # else:
+      resetMouseData()
+      resetBox()
+      mouseData.state = StateNone
+      return
 
     let sel = self.mRectTable.selected
     case cmdTable[k]:
@@ -267,6 +274,10 @@ wClass(wBlockPanel of wPanel):
 
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     # Unified event processing
+    # We don't deal with modifier keys directly
+    if isModifierEvent(event):
+      return
+    
     let etype = event.getEventType
 
     # Do all key processing first
