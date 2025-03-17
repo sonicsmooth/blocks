@@ -158,26 +158,16 @@ wClass(wBlockPanel of wPanel):
       self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: openArray[RectID], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
-    # Determine bounding boxes before and after the move.
-    # Redraw what needs to be redrawn
-    # This can be done by one of:
-    # 1. Do one refresh for each bbox.
-    # 2. Do union of bbox and dirty everything inside, then one refresh
-    # 3. Redraw everything
-    # 4. Render all non-affected blocks as "background" then redraw
-    #    just the affected blocks at the new position
-
-    # Here we're doing option 3.  Too many artifacts otherwise
-    # FIXME: some artifacts when using kb
+    # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
     let rects = self.mRectTable[rectIDs]
-    # let beforeBbox = bounding_box(rects)
     for rect in rects:
       moveRectBy(rect, delta)
-    # let afterBbox = bounding_box(rects)
-    # let unionBbox = bounding_box(@[beforeBbox, afterBbox])
-    # let dirtyIds = self.mRectTable.rectInRects(unionBbox)
-    # mouseData.dirtyIds = dirtyIds
-    # self.refresh(false, unionBbox)
+    self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.updateRatio()
+    self.refresh(false)
+  proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: wPoint) =
+    # Common proc to move one or more Rects; used by mouse and keyboard
+    moveRectBy(self.mRectTable[rectId], delta)
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
@@ -197,12 +187,10 @@ wClass(wBlockPanel of wPanel):
   proc selectAll(self: wBlockPanel) =
     discard setRectSelect(self.mRectTable)
     self.initBmpCache()
-    self.updateRatio()
     self.refresh()
   proc selectNone(self: wBlockPanel) =
     discard clearRectSelect(self.mRectTable)
     self.initBmpCache()
-    self.updateRatio()
     self.refresh()
   
 
@@ -298,7 +286,6 @@ wClass(wBlockPanel of wPanel):
     of StateLMBDownInRect:
       let hitid = mouseData.clickHitIds[^1]
       case etype
-      #of wEvent_KeyDown: self.processKeyDown(event)
       of wEvent_MouseMove:
         mouseData.state = StateDraggingRect
       of wEvent_LeftUp:
@@ -318,32 +305,27 @@ wClass(wBlockPanel of wPanel):
     
     of StateDraggingRect:
       let hitid = mouseData.clickHitIds[^1]
+      let sel = self.mRectTable.selected
       case etype
       of wEvent_MouseMove:
         let delta = event.mousePos - mouseData.lastPos
-        if event.ctrlDown:
-          echo "Moving maybe many rects"
-          self.moveRectsBy(self.mRectTable.selected, delta)
+        if event.ctrlDown and hitid in sel:
+          self.moveRectsBy(sel, delta)
         else:
-          echo "Moving 1 rect"
-          moveRectBy(self.mRectTable[hitid], delta)
+          self.moveRectBy(hitid, delta)
         mouseData.lastPos = event.mousePos
         self.refresh(false)
       else:
         mouseData.state = StateNone
       
     of StateLMBDownInSpace:
-      echo "here1"
       case etype
       of wEvent_MouseMove:
         if event.ctrlDown:
-          echo "here2"
           mouseData.state = StateDraggingSelectAdd
         else:
-          echo "here3"
           mouseData.state = StateDraggingSelectNew
       of wEvent_LeftUp:
-        echo "here4"
         let oldsel = self.mRectTable.clearRectSelect()
         mouseData.dirtyIds = oldsel
         self.updateBmpCache(oldsel)
@@ -364,9 +346,18 @@ wClass(wBlockPanel of wPanel):
       else:
         mouseData.state = StateNone
 
-    else: # other states
+    of StateDraggingSelectAdd:
       case etype
-      else: discard
+      of wEvent_MouseMove:
+        self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
+        self.refresh(false)
+      of wEvent_LeftUp:
+        self.mSelectBox = (0,0,0,0)
+        mouseData.state = StateNone
+        self.refresh(false)
+      else:
+        mouseData.state = StateNone
+
 
     self.mText = &"State: {mouseData.state} "
     self.mText &= &"Ctrl={event.ctrlDown} "
