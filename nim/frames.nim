@@ -25,6 +25,7 @@ type
     mRatio: float
     mBigBmp: wBitmap
     mBlendFunc: BLENDFUNCTION
+    mSelectBlendFunc: BLENDFUNCTION
     mMemDc: wMemoryDC
     mBmpDc: wMemoryDC
     mAllBbox: wRect
@@ -68,7 +69,6 @@ type
     StateLMBDownInRect
     StateLMBDownInSpace
     StateDraggingRect
-    #StateDraggingSelectNew
     StateDraggingSelect
 
 
@@ -205,9 +205,9 @@ wClass(wBlockPanel of wPanel):
 
 
   proc modifierText(event: wEvent): string = 
-    result &= &"Ctrl={event.ctrlDown} "
-    result &= &"Shift={event.shiftDown} "
-    result &= &"Alt={event.altDown}"
+    if event.ctrlDown: result &= "Ctrl"
+    if event.shiftDown: result &= "Shift"
+    if event.altDown: result &= "Alt"
   proc isModifierEvent(event: wEvent): bool = 
     event.keyCode == wKey_Ctrl or
     event.keyCode == wKey_Shift or
@@ -267,21 +267,19 @@ wClass(wBlockPanel of wPanel):
 
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     # Unified event processing
+
     # We don't deal with modifier keys directly
     if isModifierEvent(event):
       return
     
-    let etype = event.getEventType
-
-    # Do all key processing first
-    # Everything else is mouse state stuff
-    if etype == wEvent_KeyDown:
+    # Do all key processing first; all else is mouse state stuff
+    if event.getEventType == wEvent_KeyDown:
       self.processKeyDown(event)
       return
 
     case mouseData.state
     of StateNone:
-      case etype
+      case event.getEventType
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         mouseData.clickPos = event.mousePos
@@ -293,10 +291,9 @@ wClass(wBlockPanel of wPanel):
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
       else: discard
-
     of StateLMBDownInRect:
       let hitid = mouseData.clickHitIds[^1]
-      case etype
+      case event.getEventType
       of wEvent_MouseMove:
         mouseData.state = StateDraggingRect
       of wEvent_LeftUp:
@@ -313,11 +310,10 @@ wClass(wBlockPanel of wPanel):
         mouseData.state = StateNone
       else:
         mouseData.state = StateNone
-    
     of StateDraggingRect:
       let hitid = mouseData.clickHitIds[^1]
       let sel = self.mRectTable.selected
-      case etype
+      case event.getEventType
       of wEvent_MouseMove:
         let delta = event.mousePos - mouseData.lastPos
         if event.ctrlDown and hitid in sel:
@@ -328,9 +324,8 @@ wClass(wBlockPanel of wPanel):
         self.refresh(false)
       else:
         mouseData.state = StateNone
-      
     of StateLMBDownInSpace:
-      case etype
+      case event.getEventType
       of wEvent_MouseMove:
         mouseData.state = StateDraggingSelect
         if event.ctrlDown:
@@ -345,9 +340,8 @@ wClass(wBlockPanel of wPanel):
         self.refresh(false)
       else:
         mouseData.state = StateNone
-    
     of StateDraggingSelect:
-      case etype
+      case event.getEventType
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
         let newsel = self.mRectTable.rectInRects(self.mSelectBox).toHashSet
@@ -363,32 +357,10 @@ wClass(wBlockPanel of wPanel):
       else:
         mouseData.state = StateNone
 
-
-    self.mText = modifierText(event)
-    self.mText &= &"\nState: {mouseData.state} "
+    self.mText.setLen(0)
+    self.mText &= modifierText(event)
+    self.mText &= &"State: {mouseData.state}"
     self.refresh(false)
-
-
-  
-  
-    # of wEvent_RightDown: discard
-    # of wEvent_RightUp: discard
-    # of wEvent_MouseWheel: discard
-    # of wEvent_MouseHorizontalWheel: discard
-    # of wEvent_RightDoubleClick: discard
-    # of wEvent_MiddleDown: discard
-    # of wEvent_MiddleUp: discard
-    # of wEvent_MiddleDoubleClick: discard
-    # of wEvent_LeftDoubleClick: discard
-    # of wEvent_KeyUp: discard
-
-
-
-
-
-
-
-
 
 
 
@@ -537,6 +509,9 @@ wClass(wBlockPanel of wPanel):
       if event.ctrlDown:
         self.selectAll()
   
+  template towColor(r: untyped, g: untyped, b: untyped): wColor =
+        wColor(wColor(r and 0xff) or (wColor(g and 0xff) shl 8) or (wColor(b and 0xff) shl 16))
+
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
@@ -585,9 +560,22 @@ wClass(wBlockPanel of wPanel):
 
     # Draw CmdSelection box
     if self.mSelectBox.width > 0:
-      self.mMemDC.setPen(Pen(wBlue))
-      self.mMemDc.setBrush(wTransparentBrush)
-      self.mMemDc.drawRectangle(self.mSelectBox)
+      let
+        x = self.mSelectBox.x
+        y = self.mSelectBox.y
+        w = self.mSelectBox.width
+        h = self.mSelectBox.height
+      var
+        tmpMemDc = MemoryDC()
+        tmpBmp = Bitmap(w, h)
+      tmpMemDc.selectObject(tmpBmp)
+      tmpMemDc.setBackground(self.backgroundColor)
+      tmpMemDC.setPen(Pen(towColor(0,120,215)))
+      tmpMemDC.setBrush(Brush(towColor(0,102,204)))
+      tmpMemDc.drawRectangle(0,0,w,h)
+      AlphaBlend(self.mMemDc.mHdc, x, y, w, h,
+                 tmpMemDC.mHdc, 0, 0,
+                 w, h, self.mSelectBlendFunc)
 
     # draw text sent from other thread
     let sw = self.mMemDc.charWidth * self.mText.len
@@ -598,7 +586,6 @@ wClass(wBlockPanel of wPanel):
     self.mMemDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     self.mMemDC.drawLabel(self.mText, textRect, wMiddle)
 
-    
     # Finally grab DC and do last blit
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
     mouseData.dirtyIds.setLen(0)
@@ -615,6 +602,9 @@ wClass(wBlockPanel of wPanel):
     #self.initBmpCache()
     self.mBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
                         SourceConstantAlpha: 240,
+                        AlphaFormat: 0)
+    self.mSelectBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
+                        SourceConstantAlpha: 100,
                         AlphaFormat: 0)
     self.mBmpDC  = MemoryDC()
     self.mMemDc = MemoryDC()
