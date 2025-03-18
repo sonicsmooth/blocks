@@ -570,7 +570,7 @@ wClass(wBlockPanel of wPanel):
         tmpBmp = Bitmap(w, h)
       tmpMemDc.selectObject(tmpBmp)
       tmpMemDc.setBackground(self.backgroundColor)
-      tmpMemDC.setPen(Pen(towColor(0,120,215)))
+      tmpMemDC.setPen(Pen(towColor(255,120,215)))
       tmpMemDC.setBrush(Brush(towColor(0,102,204)))
       tmpMemDc.drawRectangle(0,0,w,h)
       AlphaBlend(self.mMemDc.mHdc, x, y, w, h,
