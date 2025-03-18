@@ -225,26 +225,26 @@ wClass(wBlockPanel of wPanel):
       mouseData.dirtyIds.setLen(0)
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
+    proc escape() =
+      resetMouseData()
+      resetBox()
+      if mouseData.state == StateDraggingSelect:
+        let clrsel = self.mRectTable.selected.toHashSet - self.mFirmSelection
+        discard self.mRectTable.clearRectSelect(clrsel)
+        self.updateBmpCache(clrsel)
+        self.refresh(false)
+      mouseData.state = StateNone
 
     # Stay only if we have a legitimate key combination
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
     if not (k in cmdTable):
-      resetMouseData()
-      resetBox()
-      mouseData.state = StateNone
+      escape()
       return
 
     let sel = self.mRectTable.selected
     case cmdTable[k]:
     of CmdEscape:
-      resetMouseData()
-      resetBox()
-      if mouseData.state == StateDraggingSelect:
-        let oldsel = self.mRectTable.selected.toHashSet
-        discard self.mRectTable.clearRectSelect(oldsel - self.mFirmSelection)
-        self.updateBmpCache(oldsel - self.mFirmSelection)
-        self.refresh(false)
-      mouseData.state = StateNone
+      escape()
     of CmdMove:
       self.moveRectsBy(sel, moveTable[event.keyCode])
       resetBox()
