@@ -240,9 +240,9 @@ wClass(wBlockPanel of wPanel):
       resetMouseData()
       resetBox()
       if mouseData.state == StateDraggingSelect:
-        let oldsel = self.mRectTable.clearRectSelect()
-        #self.mFirmSelection.clear()
-        self.updateBmpCache(oldsel)
+        let oldsel = self.mRectTable.selected.toHashSet
+        discard self.mRectTable.clearRectSelect(oldsel - self.mFirmSelection)
+        self.updateBmpCache(oldsel - self.mFirmSelection)
         self.refresh(false)
       mouseData.state = StateNone
     of CmdMove:
