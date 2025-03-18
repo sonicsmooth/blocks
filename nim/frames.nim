@@ -15,7 +15,7 @@ import concurrent
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
 # TODO: Move UI events to another file
-
+# TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
 
 type 
   wBlockPanel = ref object of wPanel
@@ -24,8 +24,8 @@ type
     mFirmSelection: HashSet[RectID]
     mRatio: float
     mBigBmp: wBitmap
-    mBlendFunc: BLENDFUNCTION
-    mSelectBlendFunc: BLENDFUNCTION
+    # mBlendFunc: BLENDFUNCTION
+    # mSelectBlendFunc: BLENDFUNCTION
     mMemDc: wMemoryDC
     mBmpDc: wMemoryDC
     mAllBbox: wRect
@@ -512,6 +512,12 @@ wClass(wBlockPanel of wPanel):
   template towColor(r: untyped, g: untyped, b: untyped): wColor =
         wColor(wColor(r and 0xff) or (wColor(g and 0xff) shl 8) or (wColor(b and 0xff) shl 16))
 
+  template blendFunc(alpha: untyped): BLENDFUNCTION =
+    BLENDFUNCTION(BlendOp: AC_SRC_OVER,
+                  SourceConstantAlpha: alpha,
+                  AlphaFormat: 0)
+
+
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
@@ -551,7 +557,7 @@ wClass(wBlockPanel of wPanel):
       AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
                  rect.size.width, rect.size.height,
                  self.mBmpDC.mHdc, 0, 0,
-                 rect.size.width, rect.size.height, self.mBlendFunc)
+                 rect.size.width, rect.size.height, blendFunc(240))
 
     # draw bounding box for everything
     self.mMemDC.setPen(Pen(wBlack))
@@ -559,25 +565,26 @@ wClass(wBlockPanel of wPanel):
     self.mMemDc.drawRectangle(self.mAllBbox)
 
     # Draw CmdSelection box
+    # Draw solid box to tmpMemDC, then alpha blend to memDc
+    # Draw outline to memDc
     if self.mSelectBox.width > 0:
-      let
-        x = self.mSelectBox.x
-        y = self.mSelectBox.y
-        w = self.mSelectBox.width
-        h = self.mSelectBox.height
-      var
-        tmpMemDc = MemoryDC()
-        tmpBmp = Bitmap(w, h)
+      let x = self.mSelectBox.x
+      let y = self.mSelectBox.y
+      let w = self.mSelectBox.width
+      let h = self.mSelectBox.height
+      var tmpMemDc = MemoryDC()
+      var tmpBmp = Bitmap(w, h)
       tmpMemDc.selectObject(tmpBmp)
-      tmpMemDc.setBackground(self.backgroundColor)
-      tmpMemDC.setPen(Pen(towColor(0,60,108)))
-      tmpMemDC.setBrush(Brush(towColor(0,102,204)))
-      tmpMemDc.drawRectangle(0,0,w,h)
+      tmpMemDC.setBrush(Brush(towColor(0, 102, 204)))
+      tmpMemDc.drawRectangle(0, 0, w, h)
       AlphaBlend(self.mMemDc.mHdc, x, y, w, h,
-                 tmpMemDC.mHdc, 0, 0,
-                 w, h, self.mSelectBlendFunc)
+                 tmpMemDC.mHdc,    0, 0, w, h,
+                 blendFunc(70))
+      self.mMemDc.setPen(Pen(towColor(0, 120, 215), width=1))
+      self.mMemDc.setBrush(wTransparentBrush)
+      self.mMemDc.drawRectangle(x,y,w,h)
 
-    # draw text sent from other thread
+    # draw current text, possibly sent from other thread
     let sw = self.mMemDc.charWidth * self.mText.len
     let ch = self.mMemDc.charHeight
     let textRect = (self.clientSize.width-sw, self.clientSize.height-ch, sw, ch)
@@ -586,10 +593,10 @@ wClass(wBlockPanel of wPanel):
     self.mMemDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     self.mMemDC.drawLabel(self.mText, textRect, wMiddle)
 
-    # Finally grab DC and do last blit
+    # Finally do last blit to main dc
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
     mouseData.dirtyIds.setLen(0)
-    #SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
+    SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
     release(gLock)
   
   proc onPaintDone(self: wBlockPanel) =
@@ -599,13 +606,6 @@ wClass(wBlockPanel of wPanel):
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    #self.initBmpCache()
-    self.mBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
-                        SourceConstantAlpha: 240,
-                        AlphaFormat: 0)
-    self.mSelectBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
-                        SourceConstantAlpha: 100,
-                        AlphaFormat: 0)
     self.mBmpDC  = MemoryDC()
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
@@ -631,7 +631,7 @@ wClass(wBlockPanel of wPanel):
     self.wEvent_MouseHorizontalWheel do (event: wEvent): self.processUiEvent(event)
     self.wEvent_KeyDown              do (event: wEvent): self.processUiEvent(event)
     self.wEvent_KeyUp                do (event: wEvent): self.processUiEvent(event)
-    self.USER_PAINT_DONE             do (): self.onPaintDone()
+    #self.USER_PAINT_DONE             do (): self.onPaintDone()
 
 
 wClass(wMainPanel of wPanel):
