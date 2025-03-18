@@ -21,6 +21,7 @@ type
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
     mCachedBmps: Table[RectID, ref wBitmap]
+    mFirmSelection: HashSet[RectID]
     mRatio: float
     mBigBmp: wBitmap
     mBlendFunc: BLENDFUNCTION
@@ -67,8 +68,8 @@ type
     StateLMBDownInRect
     StateLMBDownInSpace
     StateDraggingRect
-    StateDraggingSelectNew
-    StateDraggingSelectAdd
+    #StateDraggingSelectNew
+    StateDraggingSelect
 
 
 
@@ -238,6 +239,11 @@ wClass(wBlockPanel of wPanel):
     of CmdEscape:
       resetMouseData()
       resetBox()
+      if mouseData.state == StateDraggingSelect:
+        let oldsel = self.mRectTable.clearRectSelect()
+        #self.mFirmSelection.clear()
+        self.updateBmpCache(oldsel)
+        self.refresh(false)
       mouseData.state = StateNone
     of CmdMove:
       self.moveRectsBy(sel, moveTable[event.keyCode])
@@ -254,7 +260,6 @@ wClass(wBlockPanel of wPanel):
     of CmdSelect:
       discard
     of CmdSelectAll:
-      echo "select basic"
       self.selectAll()
       self.mSelectBox = (0,0,0,0)
       mouseData.state = StateNone
@@ -327,10 +332,11 @@ wClass(wBlockPanel of wPanel):
     of StateLMBDownInSpace:
       case etype
       of wEvent_MouseMove:
+        mouseData.state = StateDraggingSelect
         if event.ctrlDown:
-          mouseData.state = StateDraggingSelectAdd
+          self.mFirmSelection = self.mRectTable.selected.toHashSet
         else:
-          mouseData.state = StateDraggingSelectNew
+          self.mFirmSelection.clear()
       of wEvent_LeftUp:
         let oldsel = self.mRectTable.clearRectSelect()
         mouseData.dirtyIds = oldsel
@@ -339,23 +345,16 @@ wClass(wBlockPanel of wPanel):
         self.refresh(false)
       else:
         mouseData.state = StateNone
-
-    of StateDraggingSelectNew:
+    
+    of StateDraggingSelect:
       case etype
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
-        self.refresh(false)
-      of wEvent_LeftUp:
-        self.mSelectBox = (0,0,0,0)
-        mouseData.state = StateNone
-        self.refresh(false)
-      else:
-        mouseData.state = StateNone
-
-    of StateDraggingSelectAdd:
-      case etype
-      of wEvent_MouseMove:
-        self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
+        let newsel = self.mRectTable.rectInRects(self.mSelectBox).toHashSet
+        let oldsel = self.mRectTable.clearRectSelect().toHashSet
+        discard self.mRectTable.setRectSelect(self.mFirmSelection)
+        discard self.mRectTable.setRectSelect(newsel)
+        self.updateBmpCache(oldsel - self.mFirmSelection + newsel)
         self.refresh(false)
       of wEvent_LeftUp:
         self.mSelectBox = (0,0,0,0)
