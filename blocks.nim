@@ -1,6 +1,7 @@
 import std/random
 import std/segfaults
 import wNim/wApp
+import wNim/wUtils
 import frames, rectTable
 import concurrent, anneal
 
@@ -9,6 +10,7 @@ import concurrent, anneal
 when isMainModule:
   try:
     randomize()
+    wSetSystemDpiAware()
     concurrent.init()
     anneal.init()
     let init_size = (800, 600)
