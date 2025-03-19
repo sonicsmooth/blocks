@@ -234,7 +234,6 @@ proc boundingBox*(rects: seq[wRect|Rect]): wRect =
     top    = min(top,    r.top.pt0.y)
     right  = max(right,  r.top.pt1.x)
     bottom = max(bottom, r.bottom.pt1.y)
-    echo left, " ", top
   (x: left, y: top, width: right - left, height: bottom - top)
 
 proc area*(rect: wRect|Rect): int =

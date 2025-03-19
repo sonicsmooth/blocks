@@ -184,8 +184,10 @@ wClass(wBlockPanel of wPanel):
     self.refresh(false)
   proc rotateRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
-      echo "rotating ", id
-      inc self.mRectTable[id].rot
+      if self.mRectTable[id].rot < R270:
+        inc self.mRectTable[id].rot
+      else:
+        self.mRectTable[id].rot = R0
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateBmpCache(rectIds.toSeq)
     self.updateRatio()
