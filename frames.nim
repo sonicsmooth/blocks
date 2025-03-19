@@ -113,7 +113,11 @@ wClass(wBlockPanel of wPanel):
     # doesn't overwrite the border
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
-    let zeroRect: wRect = (0, 0, rect.width, rect.height)
+    let zeroRect: wRect =
+      if rect.rot == R0 or rect.rot == R180:
+        (0, 0, rect.width, rect.height)
+      else:
+        (0, 0, rect.height, rect.width)
     var rectstr = $rect.id
     if rect.selected: rectstr &= "*"
     memDC.selectObject(result)
@@ -182,7 +186,9 @@ wClass(wBlockPanel of wPanel):
   proc rotateRects(self: wBlockPanel, rectIds: openArray[RectID]) =
     for id in rectIds:
       echo "rotating ", id
+      inc self.mRectTable[id].rot
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.updateBmpCache(rectIds.toSeq)
     self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
