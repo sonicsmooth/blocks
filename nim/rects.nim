@@ -202,7 +202,7 @@ proc randRect*(id: RectID, screenSize: wSize): Rect =
                 width: rectSizeW,
                 height: rectSizeH,
                 origin: (0,0),
-                rot: R0,
+                rot: rand(Rotation),
                 selected: false,
                 pencolor: randColor(), 
                 brushcolor: randColor())

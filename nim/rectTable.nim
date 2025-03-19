@@ -67,13 +67,13 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 
 proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
   table.clear()
-  table[1] = Rect(id: 1, x: 10, y: 10, width: 200, height: 80, rot: R0,
-                  selected: false, pencolor: wColor(0x00ff0000), brushcolor: wColor(0x00ff0000))
-  table[2] = Rect(id: 2, x: 600, y: 300, width: 200, height: 80, rot: R90,
-                  selected: false, pencolor: wColor(0x000000ff), brushcolor: wColor(0x000000ff))
-  # for i in 1..qty:
-  #   let rid = toRectId(i)
-  #   table[rid] = randRect(rid, size)
+  # table[1] = Rect(id: 1, x: 10, y: 10, width: 200, height: 80, rot: R0,
+  #                 selected: false, pencolor: wColor(0x00ff0000), brushcolor: wColor(0x00ff0000))
+  # table[2] = Rect(id: 2, x: 600, y: 300, width: 200, height: 80, rot: R90,
+  #                 selected: false, pencolor: wColor(0x000000ff), brushcolor: wColor(0x000000ff))
+  for i in 1..qty:
+    let rid = toRectId(i)
+    table[rid] = randRect(rid, size)
 
 proc randomizeRectsAllLog*(table: var RectTable, size: wSize, qty: int) = 
   # Randomize in a way that has fewer large blocks and more small blocks
