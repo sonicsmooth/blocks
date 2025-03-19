@@ -17,8 +17,6 @@ type
     brushcolor*: wColor
     selected*: bool
   PosWidth = tuple[x,y,width,height:int]
-  #RectTable* = ref Table[RectID, Rect]   # meant to be shared
-  #PosTable* = Table[RectID, wPoint] # meant to have value semantics
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -197,6 +195,7 @@ proc randRect*(id: RectID, screenSize: wSize): Rect =
                 y: rectPosY,
                 width: rectSizeW,
                 height: rectSizeH,
+                rot: R0,
                 selected: false,
                 pencolor: randColor(), 
                 brushcolor: randColor())
