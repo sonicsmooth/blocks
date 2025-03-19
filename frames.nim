@@ -69,6 +69,13 @@ type
     StateDraggingRect
     StateDraggingSelect
 
+  MouseData = tuple
+    clickHitIds: seq[RectID]
+    dirtyIds:    seq[RectID]
+    clickPos:    wPoint
+    lastPos:     wPoint
+    state:       MouseState
+
 
 
 const 
@@ -85,11 +92,7 @@ const
     [(-1,0), (0, -1), (1, 0), (0, 1)]
 
 var 
-  mouseData: tuple[clickHitIds:      seq[RectID],
-                   dirtyIds:         seq[RectID],
-                   clickPos:         wPoint,
-                   lastPos:          wPoint,
-                   state:            MouseState]
+  mouseData: MouseData
 
 proc excl[T](s: var seq[T], item: T) =
   # Not order preserving because it uses del
