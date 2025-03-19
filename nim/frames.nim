@@ -76,8 +76,6 @@ type
     lastPos:     wPoint
     state:       MouseState
 
-
-
 const 
   cmdTable: CmdTable = 
     {(key: wKey_Esc,    ctrl: false, shift: false, alt: false): CmdEscape,
