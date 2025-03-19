@@ -99,19 +99,19 @@ proc fillRatio*(rtable: RectTable): float =
 
 # Forward decls
 proc toggleRectSelect*(table: RectTable, id: RectID) 
-proc toggleRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId])
+proc toggleRectSelect*(table: RectTable, ids: seq[RectId])
 proc toggleRectSelect*(table: RectTable)
 proc clearRectSelect*(table: RectTable): seq[RectId]
 proc clearRectSelect*(table: RectTable, id: RectID): bool
-proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId]
+proc clearRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId]
 proc setRectSelect*(table: RectTable): seq[RectId]
 proc setRectSelect*(table: RectTable, id: RectID): bool
-proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId]
+proc setRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId]
 
 proc toggleRectSelect*(table: RectTable, id: RectID) = 
   table[id].selected = not table[id].selected
 
-proc toggleRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]) =
+proc toggleRectSelect*(table: RectTable, ids: seq[RectId]) =
   # Todo: check if this copies openArray, or add when... case
   for rect in table.values:
     rect.selected = not rect.selected
@@ -130,7 +130,7 @@ proc clearRectSelect*(table: RectTable, id: RectID): bool =
   result = table[id].selected
   table[id].selected = false
 
-proc clearRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
+proc clearRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel:
@@ -148,7 +148,7 @@ proc setRectSelect*(table: RectTable, id: RectID): bool =
   result = table[id].selected
   table[id].selected = true
 
-proc setRectSelect*(table: RectTable, ids: seq[RectId] | HashSet[RectId]): seq[RectId] =
+proc setRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] =
   # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel:

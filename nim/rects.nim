@@ -208,7 +208,7 @@ proc moveRect*(rect: Rect, oldpos, newpos: wPoint) =
   let delta = newpos - oldpos
   moveRectBy(rect, delta)
 
-proc boundingBox*(rects: openArray[wRect|Rect|PosWidth]): wRect =
+proc boundingBox*(rects: seq[wRect|Rect|PosWidth]): wRect =
   if rects.len == 0:
     return
   # Bbox from a bunch of wRects
@@ -239,20 +239,18 @@ proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
 proc aspectRatio*(rect: wRect|Rect): float =
   rect.width.float / rect.height.float
 
-proc aspectRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
-  boundingBox(rects).aspectRatio
+proc aspectRatio*(rects: seq[wRect|Rect|PosWidth]): float =
+  rects.boundingBox.aspectRatio
 
 # fillRatio finds the ratio of fill area to bounding box
-# Of a bunch of rectangles.  This can be given by 
-# a seq/array of rectangles, a RectTable, or two tables --
-# position and size
+# of a bunch of rectangles.
 
-proc fillRatio*(rects: openArray[wRect|Rect|PosWidth]): float =
+proc fillRatio*(rects: seq[wRect|Rect|PosWidth]): float =
   # Find fill fillRatio of a seq of rects
   var usedArea: int
   for r in rects: 
     usedArea += r.area
-  let totalArea = boundingBox(rects).area
+  let totalArea = rects.boundingBox.area
   usedArea / totalArea
 
 proc expand*(rect: wRect, amt: int): wRect =
