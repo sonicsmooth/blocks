@@ -32,6 +32,7 @@ const
   HRANGE = 25..75
   QTY* = 20
 
+
 # Procs for single Rect
 proc `$`*(rect: Rect): string =
   var strs: seq[string]
@@ -112,31 +113,22 @@ proc ids*(rects: seq[Rect]): seq[RectID] =
 # So we only look at pt0
 proc `<`*(edge1, edge2: VertEdge): bool =
   edge1.pt0.x < edge2.pt0.x
-
 proc `<=`*(edge1, edge2: VertEdge): bool =
   edge1.pt0.x <= edge2.pt0.x
-
 proc `>`*(edge1, edge2: VertEdge): bool =
   edge1.pt0.x > edge2.pt0.x
-
 proc `>=`*(edge1, edge2: VertEdge): bool =
   edge1.pt0.x >= edge2.pt0.x
-
 proc `==`*(edge1, edge2: VertEdge): bool =
   edge1.pt0.x == edge2.pt0.x
-
 proc `<`*(edge1, edge2: HorizEdge): bool =
   edge1.pt0.y < edge2.pt0.y
-
 proc `<=`*(edge1, edge2: HorizEdge): bool =
   edge1.pt0.y <= edge2.pt0.y
-
 proc `>`*(edge1, edge2: HorizEdge): bool =
   edge1.pt0.y > edge2.pt0.y
-
 proc `>=`*(edge1, edge2: HorizEdge): bool =
   edge1.pt0.y >= edge2.pt0.y
-
 proc `==`*(edge1, edge2: HorizEdge): bool =
   edge1.pt0.y == edge2.pt0.y
 
@@ -224,7 +216,6 @@ proc moveRectTo*(rect: Rect, oldpos, newpos: wPoint) =
   rect.y = newpos.y
   #let delta = newpos - oldpos
   #moveRectBy(rect, delta)
-
 proc boundingBox*(rects: seq[wRect|Rect]): wRect =
   var left, right, top, bottom: int
   left = int.high
@@ -235,7 +226,6 @@ proc boundingBox*(rects: seq[wRect|Rect]): wRect =
     right  = max(right,  r.top.pt1.x)
     bottom = max(bottom, r.bottom.pt1.y)
   (x: left, y: top, width: right - left, height: bottom - top)
-
 proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
 proc aspectRatio*(rect: wRect|Rect): float =
@@ -263,3 +253,9 @@ proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
   result.y = min(sy, ey)
   result.width = abs(ex - sx)
   result.height = abs(ey - sy)
+converter toFloat*(rot: Rotation): float =
+  case rot:
+  of R0: 0.0
+  of R90: 90.0
+  of R180: 180.0
+  of R270: 270.0

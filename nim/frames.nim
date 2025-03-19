@@ -3,6 +3,7 @@ import std/[bitops, locks, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
+import winim
 from wNim/private/wHelper import `-`
 import winim except RECT
 import anneal, compact, rects, rectTable, userMessages
@@ -112,19 +113,45 @@ wClass(wBlockPanel of wPanel):
     # doesn't overwrite the border
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
-    let zeroRect: wRect =
-      if rect.rot == R0 or rect.rot == R180:
-        (0, 0, rect.width, rect.height)
-      else:
-        (0, 0, rect.height, rect.width)
-    var rectstr = $rect.id
-    if rect.selected: rectstr &= "*"
+    let (w,h) = (rect.wRect.width, rect.wRect.height)
+    let (w2, h2) = (int(w/2), int(h/2))
+    let flat = rect.rot == R0 or rect.rot == R180
+    let zeroRect: wRect = (0,0,w,h)
+    let rectMidPt: wPoint = (w2, h2)
+    let rectstr = if rect.selected: $rect.id & "*"
+                  else: $rect.id
+    let line = T(rectstr)
+    var txtSz: SIZE
+    # doesn't quite get it right
+    GetTextExtentPoint32(memDC.mHdc, line, line.len, &txtSz)
+    txtSz.cx += 9
+    txtSz.cy += 20
+    let (xos, yos) = (0,0)
+    let (tw2, th2) = 
+      case rect.rot:
+      of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
+      of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
+      of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
+      of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
+    let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
+    # echo "Rect id: ", rect.id
+    # echo "Rect pos: ", (rect.x, rect.y)
+    # echo "Rect Size: ", (w,h)
+    # echo "Rect Midpt: ", (w2,h2)
+    # echo "Txt size: ", txtSz
+    # echo "Txt midpt: ", (tw2, th2)
+    # echo "rot pt: ", rotPt
+    # echo ""
     memDC.selectObject(result)
     memDc.setBrush(Brush(rect.brushcolor))
     memDC.drawRectangle(zeroRect)
+    # memDC.setPen(Pen(wBlack))
+    # memDC.drawLine(0,h2,w,h2)
+    # memDC.drawLine(w2,0,w2,h)
     memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
+    #memDC.setTextBackground(wWhite)
     memDC.setTextBackground(rect.brushcolor)
-    memDC.drawLabel(rectstr, zeroRect.expand(-1), wCenter or wMiddle)
+    memDC.drawRotatedtext(rectstr, rotPt, rect.rot)
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
@@ -397,7 +424,7 @@ wClass(wBlockPanel of wPanel):
       self.mMemDc.selectObject(self.mBigBmp)
 
     # Clear mem, erase old position
-    var dirtyRects: seq[Rect]
+    var dirtyRects: seq[rects.Rect]
     if mouseData.dirtyIds.len == 0:
       # Draw everything when there is nothing CmdSelected
       dirtyRects = self.mRectTable.values.toSeq
