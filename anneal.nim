@@ -134,6 +134,7 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float) =
     else:
       pTable[][a].x = initState[a].x
       pTable[][a].y = initState[a].y
+    pTable[][a].rot = rand(Rotation)
 
 proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
   # Copies x,y values from initState to pTable with some amount
@@ -145,6 +146,7 @@ proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
     let amt = moveAmt(temp, maxAmt)
     item.x = initState[id].x + amt.x
     item.y = initState[id].y + amt.y
+    item.rot = rand(Rotation)
 
 proc copyPositions[S,pT](initState: S, pTable: pT) = 
   # Just copy the positions

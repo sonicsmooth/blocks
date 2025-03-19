@@ -17,6 +17,7 @@ import concurrent
 # TODO: checkbox for show intermediate steps
 # TODO: Move UI events to another file
 # TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
+# TODO: update bmp cache if randomizing has changed rotation.  Maybe just have 4 caches per block
 
 type 
   wBlockPanel = ref object of wPanel
