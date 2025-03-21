@@ -672,6 +672,12 @@ wClass(wMainPanel of wPanel):
     let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
     if msgAvail:
         self.mBlockPanel.mText = $idx & ": " & msg 
+    
+    let (idAvail, ids) = gAnnealComms[idx].idChan.tryRecv()
+    if idAvail:
+      echo ids
+      self.mBlockPanel.updateBmpCache(ids)
+    
     withLock(gLock):
       self.mBlockPanel.boundingBox()
       self.mBlockPanel.forceRedraw(0)

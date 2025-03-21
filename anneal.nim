@@ -38,7 +38,7 @@ import concurrent
 
 type
   Strategy* = enum Strat1, Strat2
-  PerturbFn[S,pT] = proc(initState: S, pTable: pT, temp: float) {.closure.}
+  PerturbFn[S,pT] = proc(initState: S, pTable: pT, temp: float): seq[RectID] {.closure.}
   AnnealArg* = tuple
     pRectTable: ptr RectTable
     strategy:   Strategy
@@ -54,6 +54,7 @@ type
     index*: int
     thread*: Thread[AnnealArg]
     sendChan*: Channel[string]
+    idChan*: Channel[seq[RectID]]
     ackChan*: Channel[int]
 
 const
@@ -75,11 +76,13 @@ proc init*() =
     gAnnealComms[i] = new AnnealComm
     gAnnealComms[i].index = i
     gAnnealComms[i].sendChan.open(10)
+    gAnnealComms[i].idChan.open(10)
     gAnnealComms[i].ackChan.open(10)
 
 proc deinit*() =
   for i in gAnnealComms.low..gAnnealComms.high:
     gAnnealComms[i].sendChan.close()
+    gAnnealComms[i].idChan.close()
     gAnnealComms[i].ackChan.close()
 
 proc pairs[T](a: openArray[T]): seq[(T, T)] =
@@ -98,7 +101,7 @@ proc moveAmt(temp: float, maxAmt: wSize): wPoint =
   let xmy  = (rand(maxY) - maxY/2.0).int
   result = (xmv, xmy)
 
-proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float) =
+proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float): seq[RectID] =
   # Copies x,y values from initState to pTable with some blocks
   # swapped based on temperature
   # initState must have at least the same keys as varTable.
@@ -128,15 +131,18 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float) =
       let bPos: wPoint = (initState[b].x, initState[b].y)
       pTable[][a].x = bPos.x
       pTable[][a].y = bPos.y
+      pTable[][a].rot = rand(Rotation) #todo: probability based on temp
       pTable[][b].x = aPos.x
       pTable[][b].y = aPos.y
+      pTable[][b].rot = rand(Rotation)
+      result.add(a)
+      result.add(b)
       idSet.excl(b)
     else:
       pTable[][a].x = initState[a].x
       pTable[][a].y = initState[a].y
-    pTable[][a].rot = rand(Rotation)
 
-proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
+proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize): seq[RectID] =
   # Copies x,y values from initState to pTable with some amount
   # changed based on temperature
   # initState must have at least the same keys as varTable.
@@ -146,7 +152,8 @@ proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize) =
     let amt = moveAmt(temp, maxAmt)
     item.x = initState[id].x + amt.x
     item.y = initState[id].y + amt.y
-    item.rot = rand(Rotation)
+    item.rot = rand(Rotation) # TODO: update probability of rotation based on temp
+    result.add(id)
 
 proc copyPositions[S,pT](initState: S, pTable: pT) = 
   # Just copy the positions
@@ -156,14 +163,15 @@ proc copyPositions[S,pT](initState: S, pTable: pT) =
 
 proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
   # Just forward the call, but tag with .closure., if that helps at all
-  result = proc(initState: S, pTable: pT, temp: float) {.closure.} =
+  # swapper fn returns seq of IDs needing cache update
+  result = proc(initState: S, pTable: pT, temp: float): seq[RectID] {.closure.} =
     calcSwap[S,pT](initState, pTable, temp)
 
 proc makeWiggler*[S,pT](screenSize: wSize): PerturbFn[S,pT] =
   let moveScale = 0.5
   let maxAmt: wSize = ((screenSize.width.float  * moveScale).int,
                        (screenSize.height.float * moveScale).int)
-  result = proc(initState: S, pTable: pT, temp: float) {.closure.} =
+  result = proc(initState: S, pTable: pT, temp: float): seq[RectID] {.closure.} =
     calcWiggle(initState, pTable, temp, maxAmt)
 
 proc capturePos[T](capTable: var Table[float, PosTable], 
@@ -195,8 +203,10 @@ proc selectHeuristic(heuristics: openArray[float]): float =
         makeCdf(heurs.len.uint)
     sample(RND, heurs, cdf)
 
-proc update(hwnd: HWND, threadIdx: int, delay: int) = 
+proc update(hwnd: HWND, threadIdx: int, ids: seq[RectID], delay: int) = 
   # Sends update message and waits for response
+  {.gcsafe.}:
+    gAnnealComms[threadIdx].idChan.send(ids)
   PostMessage(hwnd, USER_ALG_UPDATE.UINT, 0, threadIdx)
   {.gcsafe.}:
     discard gAnnealComms[threadIdx].ackChan.recv()
@@ -209,8 +219,8 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   var bestEver: tuple[heur: float, table: PosTable]
   var heur: float
   var done: bool = false
-  proc update(delay: int = 0) = 
-    update(arg.window.mHwnd, arg.comm.index, delay)
+  proc update(ids: seq[RectID] = @[], delay: int = 0) = 
+    update(arg.window.mHwnd, arg.comm.index, ids, delay)
   proc sendText(msg: string) =
     {.gcsafe.}:
       gAnnealComms[arg.comm.index].sendChan.send(msg)
@@ -222,6 +232,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   
   var interState = arg.pRectTable[].positions
   var perturbedPositions: PosTable
+  var ids: seq[RectID]
 
   for temp in arange(arg.initTemp .. MinTemp, TempStep):
     # At the start of each temp, choose random from best25
@@ -234,9 +245,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     for i in 1..NumNextStates:
       # Perturb
       withLock(gLock):
-        arg.perturbFn(interState, arg.pRectTable, temp)
-      #sendText(&"Perturb {i}, temp={temp}")
-      #update()
+        ids = arg.perturbFn(interState, arg.pRectTable, temp)
 
       # Compact
       withLock(gLock):
@@ -245,8 +254,6 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
         if done: 
           break #TODO: confirm this gets out of withLock
         {.gcsafe.}: arg.compactFn()
-      #sendText(&"Compact {i}, temp={temp}")
-      #update()
 
       # Measure heuristic
       withLock(gLock):
@@ -256,7 +263,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       capturePos(best25, perturbedPositions, heur)
     # End of temp
     sendText(&"temp={temp}")
-    update()
+    update(ids)
 
   # Set positions
   withLock(gLock):
