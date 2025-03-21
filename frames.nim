@@ -124,8 +124,9 @@ wClass(wBlockPanel of wPanel):
     var txtSz: SIZE
     # doesn't quite get it right, so add some extra size
     GetTextExtentPoint32(memDC.mHdc, line, line.len, &txtSz)
+    # Magic numbers to fix the offset
     txtSz.cx += 9
-    txtSz.cy += 20
+    txtSz.cy += 12
     let (xos, yos) = (0,0)
     let (tw2, th2) = 
       case rect.rot:
@@ -137,9 +138,9 @@ wClass(wBlockPanel of wPanel):
     memDC.selectObject(result)
     memDc.setBrush(Brush(rect.brushcolor))
     memDC.drawRectangle(zeroRect)
-    memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
+    memDC.setFont(Font(pointSize=12, wFontFamilyRoman))
     memDC.setTextBackground(rect.brushcolor)
-    memDC.drawRotatedtext(rectstr, rotPt, rect.rot)
+    memDC.drawRotatedtext(rectstr, rotPt, rect.rot.toFloat)
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
@@ -173,7 +174,7 @@ wClass(wBlockPanel of wPanel):
   proc updateRatio(self: wBlockPanel) =
     let ratio = self.mRectTable.fillRatio
     if ratio != self.mRatio:
-      echo ratio
+      #echo ratio
       self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
@@ -199,10 +200,10 @@ wClass(wBlockPanel of wPanel):
     self.refresh(false)
   proc rotateRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
-      if self.mRectTable[id].rot < R270:
-        inc self.mRectTable[id].rot
-      else:
-        self.mRectTable[id].rot = R0
+      #if self.mRectTable[id].rot < R270:
+      inc self.mRectTable[id].rot
+      #else:
+       # self.mRectTable[id].rot = R0
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateBmpCache(rectIds.toSeq)
     self.updateRatio()
@@ -675,7 +676,6 @@ wClass(wMainPanel of wPanel):
     
     let (idAvail, ids) = gAnnealComms[idx].idChan.tryRecv()
     if idAvail:
-      echo ids
       self.mBlockPanel.updateBmpCache(ids)
     
     withLock(gLock):

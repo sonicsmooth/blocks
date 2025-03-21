@@ -6,14 +6,15 @@ export rects
 
 type 
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
-  PosTable* = Table[RectID, wPoint] # meant to have value semantics
+  PosRot = tuple[x: int, y: int, rot: Rotation]
+  PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
 
 proc newRectTable*(): RectTable =
   newTable[RectID, Rect]()
 
 proc newPosTable*(): ref PosTable = 
-  newTable[RectID, wPoint]()
+  newTable[RectID, PosRot]()
 
 proc `$`*(table: RectTable): string =
   for k,v in table:
@@ -35,7 +36,7 @@ proc notSelected*(table: RectTable): seq[RectId] =
 
 proc positions*(table: RectTable): PosTable =
   for id, rect in table:
-    result[id] = (rect.x, rect.y)
+    result[id] = (rect.x, rect.y, rect.rot)
 
 proc setPositions*[T:Table](table: var RectTable, pos: T) =
   # Set rects in rectTable to positions
@@ -68,18 +69,20 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
   table.clear()
   # table[1] = Rect(id: 1, x: 10, y: 10, width: 200, height: 80, rot: R0,
-  #                 selected: false, pencolor: wColor(0x00ff0000), brushcolor: wColor(0x00ff0000))
+  #                 selected: false, pencolor: wColor(0x007f0000), brushcolor: wColor(0x00ff0000))
   # table[2] = Rect(id: 2, x: 600, y: 300, width: 200, height: 80, rot: R90,
-  #                 selected: false, pencolor: wColor(0x000000ff), brushcolor: wColor(0x000000ff))
+  #                 selected: false, pencolor: wColor(0x0000007f), brushcolor: wColor(0x000000ff))
+  # table[3] = Rect(id: 3, x: 700, y: 400, width: 200, height: 80, rot: R270,
+  #                 selected: false, pencolor: wColor(0x00007f00), brushcolor: wColor(0x0000ff00))
   for i in 1..qty:
-    let rid = toRectId(i)
+    let rid = i.RectID #toRectId(i)
     table[rid] = randRect(rid, size)
 
 proc randomizeRectsAllLog*(table: var RectTable, size: wSize, qty: int) = 
   # Randomize in a way that has fewer large blocks and more small blocks
   table.clear()
   for i in 1..qty:
-    let rid = toRectId(i)
+    let rid = i.RectID # toRectId(i)
     table[rid] = randRect(rid, size)
 
 proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
