@@ -16,7 +16,6 @@ type
     pencolor*: wColor
     brushcolor*: wColor
     selected*: bool
-  #PosWidth = tuple[x,y,width,height:int]
   Edge* = object of RootObj
     pt0*: wPoint
     pt1*: wPoint
@@ -253,9 +252,67 @@ proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
   result.y = min(sy, ey)
   result.width = abs(ex - sx)
   result.height = abs(ey - sy)
-converter toFloat*(rot: Rotation): float =
+#converter toFloat*(rot: Rotation): float =
+proc toFloat*(rot: Rotation): float =
   case rot:
   of R0: 0.0
   of R90: 90.0
   of R180: 180.0
   of R270: 270.0
+proc inc*(r: var Rotation) =
+  case r:
+  of R270: r = R0
+  else: inc r
+proc dec*(r: var Rotation)=
+  case r:
+  of R0: r = R270
+  else: dec r
+proc `+`*(r1, r2:Rotation): Rotation =
+  case r1:
+  of R0: r2
+  of R90:
+    case r2:
+    of R0: R90
+    of R90: R180
+    of R180: R270
+    of R270: R0
+  of R180:
+    case r2:
+    of R0: R180
+    of R90: R270
+    of R180: R0
+    of R270: R90
+  of R270:
+    case r2:
+    of R0: R270
+    of R90: R0
+    of R180: R90
+    of R270: R180
+proc `-`*(r1, r2:Rotation): Rotation =
+  # Todo: test this
+  case r1:
+  of R0:
+    case r2:
+    of R0: R180
+    of R90: R270
+    of R180: R0
+    of R270: R90
+  of R90:
+    case r2:
+    of R0: R90
+    of R90: R0
+    of R180: R270
+    of R270: R180
+  of R180:
+    case r2:
+    of R0: R180
+    of R90: R90
+    of R180: R0
+    of R270: R270
+  of R270:
+    case r2:
+    of R0: R270
+    of R90: R180
+    of R180: R90
+    of R270: R0
+    
