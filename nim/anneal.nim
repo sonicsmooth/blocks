@@ -158,10 +158,6 @@ proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize): seq
     let amt = moveAmt(temp, maxAmt)
     item.x = initState[id].x + amt.x
     item.y = initState[id].y + amt.y
-    # echo "---"
-    # echo initState[id].rot
-    # echo amt.rot
-    # echo initState[id].rot + amt.rot
     item.rot = initState[id].rot + amt.rot
     result.add(id)
 
