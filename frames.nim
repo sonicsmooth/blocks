@@ -58,7 +58,8 @@ type
     CmdEscape
     CmdMove
     CmdDelete
-    CmdRotate
+    CmdRotateCCW
+    CmdRotateCW
     CmdSelect
     CmdSelectAll
 
@@ -87,7 +88,8 @@ const
      (key: wKey_Right,  ctrl: false, shift: false, alt: false): CmdMove,
      (key: wKey_Down,   ctrl: false, shift: false, alt: false): CmdMove,
      (key: wKey_Delete, ctrl: false, shift: false, alt: false): CmdDelete,
-     (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotate,
+     (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotateCCW,
+     (key: wKey_Space,  ctrl: false, shift: true,  alt: false): CmdRotateCW,
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
   moveTable: array[wKey_Left .. wKey_Down, wPoint] =
     [(-1,0), (0, -1), (1, 0), (0, 1)]
@@ -275,11 +277,21 @@ wClass(wBlockPanel of wPanel):
       self.deleteRects(sel)
       resetBox()
       mouseData.state = StateNone
-    of CmdRotate:
+    of CmdRotateCCW:
       if mouseData.state == StateDraggingRect or 
          mouseData.state == StateLMBDownInRect:
         self.rotateRects(@[mouseData.clickHitIds[^1]])
       else:
+        self.rotateRects(sel)
+        resetBox()
+        mouseData.state = StateNone
+    of CmdRotateCW:
+      if mouseData.state == StateDraggingRect or 
+         mouseData.state == StateLMBDownInRect:
+        echo "Rotate CW"
+        self.rotateRects(@[mouseData.clickHitIds[^1]])
+      else:
+        echo "Rotate CW"
         self.rotateRects(sel)
         resetBox()
         mouseData.state = StateNone
@@ -301,6 +313,8 @@ wClass(wBlockPanel of wPanel):
     # Do all key processing first; all else is mouse state stuff
     if event.getEventType == wEvent_KeyDown:
       self.processKeyDown(event)
+      return
+    elif event.getEventType == wEvent_KeyUp:
       return
 
     case mouseData.state
