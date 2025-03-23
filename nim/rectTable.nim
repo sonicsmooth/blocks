@@ -115,7 +115,6 @@ proc toggleRectSelect*(table: RectTable, id: RectID) =
   table[id].selected = not table[id].selected
 
 proc toggleRectSelect*(table: RectTable, ids: seq[RectId]) =
-  # Todo: check if this copies openArray, or add when... case
   for rect in table.values:
     rect.selected = not rect.selected
 
@@ -134,7 +133,6 @@ proc clearRectSelect*(table: RectTable, id: RectID): bool =
   table[id].selected = false
 
 proc clearRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] =
-  # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel:
     if table[id].selected:
@@ -152,7 +150,6 @@ proc setRectSelect*(table: RectTable, id: RectID): bool =
   table[id].selected = true
 
 proc setRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] =
-  # Todo: check if this copies openArray, or add when... case
   let sel = ids.toSeq
   for id in sel:
     if not table[id].selected:
