@@ -55,7 +55,6 @@ converter wRect*(rect: Rect): wRect =
   else:
     result = (rect.x, rect.y, rect.height, rect.width)
 
-
 # Procs for single wRect
 proc upperLeft*(rect: wRect): wPoint =
   (rect.x, rect.y)

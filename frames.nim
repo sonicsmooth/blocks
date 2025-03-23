@@ -22,7 +22,8 @@ import concurrent
 type 
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
-    mCachedBmps: Table[RectID, ref wBitmap]
+    mCachedBmps: Table[RectID, wtypes.wBitmap]
+    #mCachedBmps: Table[RectID, ref wBitmap]
     mFirmSelection: seq[RectID]
     mRatio: float
     mBigBmp: wBitmap
@@ -114,33 +115,47 @@ wClass(wBlockPanel of wPanel):
     # doesn't overwrite the border
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
-    let (w,h) = (rect.wRect.width, rect.wRect.height)
-    let (w2, h2) = (int(w/2), int(h/2))
+
+    # Draw main filled rectangle
+    let (w,h) = (rect.wRect.width, rect.wRect.height) # TODO: change to bbox.width, etc
+    let mainBrush = Brush(rect.brushcolor)
     let zeroRect: wRect = (0,0,w,h)
-    let rectMidPt: wPoint = (w2, h2)
-    let rectstr = if rect.selected: $rect.id & "*"
-                  else: $rect.id
-    let line = T(rectstr)
-    var txtSz: SIZE
-    # doesn't quite get it right, so add some extra size
-    GetTextExtentPoint32(memDC.mHdc, line, line.len, &txtSz)
-    # Magic numbers to fix the offset
-    txtSz.cx += 9
-    txtSz.cy += 12
-    let (xos, yos) = (0,0)
-    let (tw2, th2) = 
-      case rect.rot:
-      of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
-      of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
-      of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
-      of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
-    let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
     memDC.selectObject(result)
-    memDc.setBrush(Brush(rect.brushcolor))
+    memDc.setBrush(mainBrush)
     memDC.drawRectangle(zeroRect)
-    memDC.setFont(Font(pointSize=12, wFontFamilyRoman))
+
+    # Draw text in rectangle
+    let font = Font(pointSize=12, wFontFamilyRoman)
+    let selstr = if rect.selected: $rect.id & "*"
+                  else: $rect.id
+    let rectstr = if rect.rot == R90 or rect.rot == R270:
+                    "(" & selstr & ")"
+                  else: selstr
+
+    memDC.setFont(font)
     memDC.setTextBackground(rect.brushcolor)
-    memDC.drawRotatedtext(rectstr, rotPt, rect.rot.toFloat)
+
+    when true:
+      memDC.drawLabel(rectstr, zeroRect, align=wCenter or wMiddle)
+    else:
+      let (w2, h2) = (int(w/2), int(h/2))
+      let rectMidPt: wPoint = (w2, h2)
+      let tstr = T(rectstr)
+      var txtSz: SIZE
+      GetTextExtentPoint32(memDC.mHdc, tstr, tstr.len, &txtSz)
+      # Magic numbers to fix the inexact value returned by above
+      txtSz.cx += 9
+      txtSz.cy += 12
+      let (tw2, th2) = 
+        case rect.rot:
+        of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
+        of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
+        of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
+        of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
+      let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
+      # Buggy rotated text
+      memDC.drawRotatedtext(rectstr, rotPt, rect.rot.toFloat)
+
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
@@ -152,16 +167,10 @@ wClass(wBlockPanel of wPanel):
     # TODO: check if ref is needed;  wBitmap is already a ref object
     self.mCachedBmps.clear()
     for id, rect in self.mRectTable:
-      var bmp: ref wBitmap
-      new bmp
-      bmp[] = rectToBmp(rect)
-      self.mCachedBmps[id] = bmp
+      self.mCachedBmps[id] = rectToBmp(rect)
   proc updateBmpCache(self: wBlockPanel, id: RectID) =
     # Creates one new bitmap; used for selection
-    var bmp: ref wBitmap
-    new bmp
-    bmp[] = rectToBmp(self.mRectTable[id])
-    self.mCachedBmps[id] = bmp
+    self.mCachedBmps[id] = rectToBmp(self.mRectTable[id])
   proc updateBmpCache(self: wBlockPanel, ids: seq[RectID]) = 
     for id in ids:
       self.updateBmpCache(id)
@@ -426,7 +435,7 @@ wClass(wBlockPanel of wPanel):
 
     # Blend cached bitmaps
     for rect in dirtyRects:
-      self.mBmpDc.selectObject(self.mCachedBmps[rect.id][])
+      self.mBmpDc.selectObject(self.mCachedBmps[rect.id])
       AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
                  rect.size.width, rect.size.height,
                  self.mBmpDC.mHdc, 0, 0,
@@ -564,6 +573,7 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
+    echo GC_getStatistics()
 
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     if gCompactThread.running:
