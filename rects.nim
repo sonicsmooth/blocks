@@ -213,8 +213,6 @@ proc moveRectTo*(rect: Rect, oldpos, newpos: wPoint) =
   assert false
   rect.x = newpos.x
   rect.y = newpos.y
-  #let delta = newpos - oldpos
-  #moveRectBy(rect, delta)
 proc boundingBox*(rects: seq[wRect|Rect]): wRect =
   var left, right, top, bottom: int
   left = int.high

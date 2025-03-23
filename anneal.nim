@@ -154,16 +154,15 @@ proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize): seq
   # initState must have at least the same keys as varTable.
   # Both tables must have x,y properties
   # Mutates pTable in place
-  static: echo typeof(pTable)
-  static: echo typeof(pTable[][1].rot)
   for id, item in pTable[]:
     let amt = moveAmt(temp, maxAmt)
     item.x = initState[id].x + amt.x
     item.y = initState[id].y + amt.y
-    echo initState[id].rot
-    echo amt.rot
-    echo initState[id].rot + amt.rot
-    #item.rot = initState[id].rot + amt.rot
+    # echo "---"
+    # echo initState[id].rot
+    # echo amt.rot
+    # echo initState[id].rot + amt.rot
+    item.rot = initState[id].rot + amt.rot
     result.add(id)
 
 proc copyPositions[S,pT](initState: S, pTable: pT) = 
@@ -283,7 +282,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       arg.pRectTable[][id].x   = pos.x
       arg.pRectTable[][id].y   = pos.y
       arg.pRectTable[][id].rot = pos.rot
-    echo arg.pRectTable[].fillRatio
+    #echo arg.pRectTable[].fillRatio
   {.gcsafe.}:
     sendText(&"Final {bestEver.heur:.5}")
   update(arg.pRectTable[].keys.toSeq)
