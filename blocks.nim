@@ -5,7 +5,9 @@ import wNim/wUtils
 import frames, rectTable
 import concurrent, anneal
 
-
+when compileOption("profiler"):
+  echo "profiling"
+  import std/nimprof
 
 when isMainModule:
   try:

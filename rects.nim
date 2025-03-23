@@ -170,18 +170,6 @@ proc isRectOverRect*(rect1, rect2: wRect): bool =
 
 
 # Misc Procs
-proc toRectId*(id: int): RectId =
-  # TODO: make this less stupid
-  echo "toRectId"
-  when RectId is int:    result = id.int
-  elif RectId is int16:  result = id.int16 
-  elif RectId is int32:  result = id.int32 
-  elif RectId is int64:  result = id.int64
-  elif RectId is uint:   result = id.uint 
-  elif RectId is uint16: result = id.uint16 
-  elif RectId is uint32: result = id.uint32 
-  elif RectId is uint64: result = id.uint64
-  elif RectId is string: result = $id
 proc randRect*(id: RectID, screenSize: wSize): Rect = 
   let rectSizeW: int = rand(WRANGE)
   let rectSizeH: int = rand(HRANGE)
@@ -292,7 +280,6 @@ proc `+`*(r1, r2:Rotation): Rotation =
     of R180: R90
     of R270: R180
 proc `-`*(r1, r2:Rotation): Rotation =
-  # Todo: test this
   case r1:
   of R0:
     case r2:

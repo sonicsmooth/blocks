@@ -259,7 +259,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
         perturbedPositions = arg.pRectTable[].positions
         done = perturbedPositions == interState
         if done: 
-          break #TODO: confirm this gets out of withLock
+          break # assume this gets out of withLock
         {.gcsafe.}: arg.compactFn()
 
       # Measure heuristic

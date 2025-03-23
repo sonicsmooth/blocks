@@ -1,4 +1,3 @@
-# TEST!!
 import std/[bitops, locks, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
@@ -12,18 +11,14 @@ import concurrent
 # TODO: copy background before Move
 # TODO: Hover
 # TODO: Figure out invalidate region
-# TODO: Implement rotation
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
-# TODO: Move UI events to another file
 # TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
-# TODO: update bmp cache if randomizing has changed rotation.  Maybe just have 4 caches per block
 
 type 
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
     mCachedBmps: Table[RectID, wtypes.wBitmap]
-    #mCachedBmps: Table[RectID, ref wBitmap]
     mFirmSelection: seq[RectID]
     mRatio: float
     mBigBmp: wBitmap
@@ -165,8 +160,6 @@ wClass(wBlockPanel of wPanel):
   proc initBmpCache(self: wBlockPanel) =
     # Creates all new bitmaps
     echo "initCache"
-    writeStackTrace()
-    # TODO: check if ref is needed;  wBitmap is already a ref object
     self.mCachedBmps.clear()
     for id, rect in self.mRectTable:
       self.mCachedBmps[id] = rectToBmp(rect)
@@ -422,7 +415,6 @@ wClass(wBlockPanel of wPanel):
     if not tryAcquire(gLock):
       return
 
-    # TODO: CmdMove this to where it is used
     var clipRect1: winim.RECT
     GetUpdateRect(self.mHwnd, clipRect1, false)
     var clipRect2: wRect = (x: clipRect1.left - 1, 
