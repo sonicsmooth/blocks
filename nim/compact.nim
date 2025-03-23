@@ -72,11 +72,11 @@ proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
   if axis == X:
     proc(node: Node): int =
       if node != RootNode:
-        result = rectTable[node].width
+        result = rectTable[node].wRect.width
   else: # axis == Y:
     proc(node: Node): int =
       if node != RootNode:
-        result = rectTable[node].height
+        result = rectTable[node].wRect.height
 
 proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
                   axis: Axis, reverse: bool): Graph = 
@@ -104,9 +104,9 @@ proc PosChooser(ax: MajMin): proc(rect: Rect): int =
 
 proc SizeChooser(ax: MajMin): proc(rect: Rect): int =
   if ax == Major:
-    proc(rect: Rect): int = rect.width
+    proc(rect: Rect): int = rect.wRect.width
   else:
-    proc(rect: Rect): int = rect.height
+    proc(rect: Rect): int = rect.wRect.height
 
 proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool): seq[ScanLine] =
   let 

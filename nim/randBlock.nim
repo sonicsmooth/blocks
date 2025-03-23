@@ -21,7 +21,7 @@ proc makeCdf25*(): seq[float] {.compileTime.} =
   # return cumulative distribution function of length 25 at compile time
   let expScale = ln(MAXPROB / MINPROB) / 24.0
   let pdf = collect(
-    for x in 0..<25: 
+    for x in 0 ..< 25: 
       MINPROB * exp(x.float * expScale))
   pdf.cumsummed
 
