@@ -209,10 +209,7 @@ wClass(wBlockPanel of wPanel):
     self.refresh(false)
   proc rotateRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
-      #if self.mRectTable[id].rot < R270:
       inc self.mRectTable[id].rot
-      #else:
-       # self.mRectTable[id].rot = R0
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateBmpCache(rectIds.toSeq)
     self.updateRatio()
@@ -279,9 +276,13 @@ wClass(wBlockPanel of wPanel):
       resetBox()
       mouseData.state = StateNone
     of CmdRotate:
-      self.rotateRects(sel)
-      resetBox()
-      mouseData.state = StateNone
+      if mouseData.state == StateDraggingRect or 
+         mouseData.state == StateLMBDownInRect:
+        self.rotateRects(@[mouseData.clickHitIds[^1]])
+      else:
+        self.rotateRects(sel)
+        resetBox()
+        mouseData.state = StateNone
     of CmdSelect:
       discard
     of CmdSelectAll:
