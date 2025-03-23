@@ -3,6 +3,7 @@ import std/[bitops, locks, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
+import winim
 from wNim/private/wHelper import `-`
 import winim except RECT
 import anneal, compact, rects, rectTable, userMessages
@@ -15,15 +16,17 @@ import concurrent
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
 # TODO: Move UI events to another file
-
+# TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
+# TODO: update bmp cache if randomizing has changed rotation.  Maybe just have 4 caches per block
 
 type 
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
-    mCachedBmps: Table[RectID, ref wBitmap]
+    mCachedBmps: Table[RectID, wtypes.wBitmap]
+    #mCachedBmps: Table[RectID, ref wBitmap]
+    mFirmSelection: seq[RectID]
     mRatio: float
     mBigBmp: wBitmap
-    mBlendFunc: BLENDFUNCTION
     mMemDc: wMemoryDC
     mBmpDc: wMemoryDC
     mAllBbox: wRect
@@ -55,7 +58,8 @@ type
     CmdEscape
     CmdMove
     CmdDelete
-    CmdRotate
+    CmdRotateCCW
+    CmdRotateCW
     CmdSelect
     CmdSelectAll
 
@@ -67,10 +71,14 @@ type
     StateLMBDownInRect
     StateLMBDownInSpace
     StateDraggingRect
-    StateDraggingSelectNew
-    StateDraggingSelectAdd
+    StateDraggingSelect
 
-
+  MouseData = tuple
+    clickHitIds: seq[RectID]
+    dirtyIds:    seq[RectID]
+    clickPos:    wPoint
+    lastPos:     wPoint
+    state:       MouseState
 
 const 
   cmdTable: CmdTable = 
@@ -80,25 +88,22 @@ const
      (key: wKey_Right,  ctrl: false, shift: false, alt: false): CmdMove,
      (key: wKey_Down,   ctrl: false, shift: false, alt: false): CmdMove,
      (key: wKey_Delete, ctrl: false, shift: false, alt: false): CmdDelete,
-     (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotate,
+     (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotateCCW,
+     (key: wKey_Space,  ctrl: false, shift: true,  alt: false): CmdRotateCW,
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
   moveTable: array[wKey_Left .. wKey_Down, wPoint] =
     [(-1,0), (0, -1), (1, 0), (0, 1)]
 
 var 
-  mouseData: tuple[clickHitIds:      seq[RectID],
-                   dirtyIds:         seq[RectID],
-                   clickPos:         wPoint,
-                   lastPos:          wPoint,
-                   state:            MouseState,
-                   dragRectStarted:  bool, # deprecate this
-                   selectBoxStarted: bool  # deprecate this
-                   ]
+  mouseData: MouseData
 
-proc delif[T](s: var seq[T], item: T) =
-  if item in s:
+proc excl[T](s: var seq[T], item: T) =
+  # Not order preserving because it uses del
+  # Use delete to preserve order
+  while item in s:
     s.del(s.find(item))
 
+# TODO: make this a template
 proc lParamTuple[T](event: wEvent): auto {.inline.} =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
@@ -112,15 +117,47 @@ wClass(wBlockPanel of wPanel):
     # doesn't overwrite the border
     result = Bitmap(rect.size)
     var memDC = MemoryDC()
-    let zeroRect: wRect = (0, 0, rect.width, rect.height)
-    var rectstr = $rect.id
-    if rect.selected: rectstr &= "*"
+
+    # Draw main filled rectangle
+    let (w,h) = (rect.wRect.width, rect.wRect.height) # TODO: change to bbox.width, etc
+    let mainBrush = Brush(rect.brushcolor)
+    let zeroRect: wRect = (0,0,w,h)
     memDC.selectObject(result)
-    memDc.setBrush(Brush(rect.brushcolor))
+    memDc.setBrush(mainBrush)
     memDC.drawRectangle(zeroRect)
-    memDC.setFont(Font(pointSize=16, wFontFamilyRoman))
+
+    # Draw text in rectangle
+    let font = Font(pointSize=12, wFontFamilyRoman)
+    let selstr = if rect.selected: $rect.id & "*"
+                  else: $rect.id
+    let rectstr = if rect.rot == R90 or rect.rot == R270:
+                    "(" & selstr & ")"
+                  else: selstr
+
+    memDC.setFont(font)
     memDC.setTextBackground(rect.brushcolor)
-    memDC.drawLabel(rectstr, zeroRect.expand(-1), wCenter or wMiddle)
+
+    when true:
+      memDC.drawLabel(rectstr, zeroRect, align=wCenter or wMiddle)
+    else:
+      let (w2, h2) = (int(w/2), int(h/2))
+      let rectMidPt: wPoint = (w2, h2)
+      let tstr = T(rectstr)
+      var txtSz: SIZE
+      GetTextExtentPoint32(memDC.mHdc, tstr, tstr.len, &txtSz)
+      # Magic numbers to fix the inexact value returned by above
+      txtSz.cx += 9
+      txtSz.cy += 12
+      let (tw2, th2) = 
+        case rect.rot:
+        of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
+        of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
+        of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
+        of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
+      let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
+      # Buggy rotated text
+      memDC.drawRotatedtext(rectstr, rotPt, rect.rot.toFloat)
+
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
@@ -132,18 +169,12 @@ wClass(wBlockPanel of wPanel):
     # TODO: check if ref is needed;  wBitmap is already a ref object
     self.mCachedBmps.clear()
     for id, rect in self.mRectTable:
-      var bmp: ref wBitmap
-      new bmp
-      bmp[] = rectToBmp(rect)
-      self.mCachedBmps[id] = bmp
+      self.mCachedBmps[id] = rectToBmp(rect)
   proc updateBmpCache(self: wBlockPanel, id: RectID) =
     # Creates one new bitmap; used for selection
-    var bmp: ref wBitmap
-    new bmp
-    bmp[] = rectToBmp(self.mRectTable[id])
-    self.mCachedBmps[id] = bmp
-  proc updateBmpCache(self: wBlockPanel, ids: seq[RectID] | HashSet[RectId]) = 
-    for id in ids.toSeq:
+    self.mCachedBmps[id] = rectToBmp(self.mRectTable[id])
+  proc updateBmpCache(self: wBlockPanel, ids: seq[RectID]) = 
+    for id in ids:
       self.updateBmpCache(id)
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
@@ -154,9 +185,9 @@ wClass(wBlockPanel of wPanel):
   proc updateRatio(self: wBlockPanel) =
     let ratio = self.mRectTable.fillRatio
     if ratio != self.mRatio:
-      echo ratio
+      #echo ratio
       self.mRatio = ratio
-  proc moveRectsBy(self: wBlockPanel, rectIds: openArray[RectID], delta: wPoint) =
+  proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
     let rects = self.mRectTable[rectIDs]
@@ -171,17 +202,18 @@ wClass(wBlockPanel of wPanel):
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
-  proc deleteRects(self: wBlockPanel, rectIds: openArray[RectID]) =
+  proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
       self.mRectTable.del(id)
       self.mCachedBmps.del(id)
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
-  proc rotateRects(self: wBlockPanel, rectIds: openArray[RectID]) =
+  proc rotateRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
-      echo "rotating ", id
+      inc self.mRectTable[id].rot
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
+    self.updateBmpCache(rectIds.toSeq)
     self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
@@ -196,21 +228,19 @@ wClass(wBlockPanel of wPanel):
 
 
 
-
-
-
-
-
-
-
   proc modifierText(event: wEvent): string = 
-    result &= &"Ctrl={event.ctrlDown} "
-    result &= &"Shift={event.shiftDown} "
-    result &= &"Alt={event.altDown}"
+    if event.ctrlDown: result &= "Ctrl"
+    if event.shiftDown: result &= "Shift"
+    if event.altDown: result &= "Alt"
+  proc isModifierEvent(event: wEvent): bool = 
+    event.keyCode == wKey_Ctrl or
+    event.keyCode == wKey_Shift or
+    event.keyCode == wKey_Alt
+  proc isModifierPresent(event: wEvent): bool = 
+    event.ctrlDown or event.shiftDown or event.altDown
 
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
-    proc isModifier(): bool = 
-      event.ctrlDown or event.shiftDown or event.altDown
+    # event must not be a modifier key
     proc resetBox() =
       self.mSelectBox = (0,0,0,0)
       self.refresh(false)
@@ -219,31 +249,26 @@ wClass(wBlockPanel of wPanel):
       mouseData.dirtyIds.setLen(0)
       mouseData.clickPos = (0,0)
       mouseData.lastPos = (0,0)
+    proc escape() =
+      resetMouseData()
+      resetBox()
+      if mouseData.state == StateDraggingSelect:
+        let clrsel = (self.mRectTable.selected.toHashSet - self.mFirmSelection.toHashSet).toSeq
+        discard self.mRectTable.clearRectSelect(clrsel)
+        self.updateBmpCache(clrsel)
+        self.refresh(false)
+      mouseData.state = StateNone
 
-    # Stay if we have a modifier or legitimate key, else leave
+    # Stay only if we have a legitimate key combination
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
     if not (k in cmdTable):
-      if isModifier():
-        # bit 30 indicates whether it's the first or a repeated key
-        # downBefore=1 indicates a repeat
-        # https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-keydown
-        let downBefore = event.mLparam.shr(30).bitand(0x1).bool
-        if not downBefore:
-          self.mText = modifierText(event)
-          self.refresh(false)
-        return
-      else:
-        resetMouseData()
-        resetBox()
-        mouseData.state = StateNone
-        return
+      escape()
+      return
 
     let sel = self.mRectTable.selected
     case cmdTable[k]:
     of CmdEscape:
-      resetMouseData()
-      resetBox()
-      mouseData.state = StateNone
+      escape()
     of CmdMove:
       self.moveRectsBy(sel, moveTable[event.keyCode])
       resetBox()
@@ -252,14 +277,27 @@ wClass(wBlockPanel of wPanel):
       self.deleteRects(sel)
       resetBox()
       mouseData.state = StateNone
-    of CmdRotate:
-      self.rotateRects(sel)
-      resetBox()
-      mouseData.state = StateNone
+    of CmdRotateCCW:
+      if mouseData.state == StateDraggingRect or 
+         mouseData.state == StateLMBDownInRect:
+        self.rotateRects(@[mouseData.clickHitIds[^1]])
+      else:
+        self.rotateRects(sel)
+        resetBox()
+        mouseData.state = StateNone
+    of CmdRotateCW:
+      if mouseData.state == StateDraggingRect or 
+         mouseData.state == StateLMBDownInRect:
+        echo "Rotate CW"
+        self.rotateRects(@[mouseData.clickHitIds[^1]])
+      else:
+        echo "Rotate CW"
+        self.rotateRects(sel)
+        resetBox()
+        mouseData.state = StateNone
     of CmdSelect:
       discard
     of CmdSelectAll:
-      echo "select basic"
       self.selectAll()
       self.mSelectBox = (0,0,0,0)
       mouseData.state = StateNone
@@ -267,17 +305,21 @@ wClass(wBlockPanel of wPanel):
 
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     # Unified event processing
-    let etype = event.getEventType
 
-    # Do all key processing first
-    # Everything else is mouse state stuff
-    if etype == wEvent_KeyDown:
+    # We don't deal with modifier keys directly
+    if isModifierEvent(event):
+      return
+    
+    # Do all key processing first; all else is mouse state stuff
+    if event.getEventType == wEvent_KeyDown:
       self.processKeyDown(event)
+      return
+    elif event.getEventType == wEvent_KeyUp:
       return
 
     case mouseData.state
     of StateNone:
-      case etype
+      case event.getEventType
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         mouseData.clickPos = event.mousePos
@@ -289,17 +331,16 @@ wClass(wBlockPanel of wPanel):
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
       else: discard
-
     of StateLMBDownInRect:
       let hitid = mouseData.clickHitIds[^1]
-      case etype
+      case event.getEventType
       of wEvent_MouseMove:
         mouseData.state = StateDraggingRect
       of wEvent_LeftUp:
         if event.mousePos == mouseData.clickPos: # click and release in rect
           var oldsel = self.mRectTable.selected
           if not event.ctrlDown: # clear existing except this one
-            oldsel.delif(hitid)
+            oldsel.excl(hitid)
             discard self.mRectTable.clearRectSelect(oldsel)
             self.updateBmpCache(oldsel)
           self.mRectTable.toggleRectSelect(hitid) 
@@ -309,11 +350,10 @@ wClass(wBlockPanel of wPanel):
         mouseData.state = StateNone
       else:
         mouseData.state = StateNone
-    
     of StateDraggingRect:
       let hitid = mouseData.clickHitIds[^1]
       let sel = self.mRectTable.selected
-      case etype
+      case event.getEventType
       of wEvent_MouseMove:
         let delta = event.mousePos - mouseData.lastPos
         if event.ctrlDown and hitid in sel:
@@ -324,14 +364,14 @@ wClass(wBlockPanel of wPanel):
         self.refresh(false)
       else:
         mouseData.state = StateNone
-      
     of StateLMBDownInSpace:
-      case etype
+      case event.getEventType
       of wEvent_MouseMove:
+        mouseData.state = StateDraggingSelect
         if event.ctrlDown:
-          mouseData.state = StateDraggingSelectAdd
+          self.mFirmSelection = self.mRectTable.selected
         else:
-          mouseData.state = StateDraggingSelectNew
+          self.mFirmSelection.setLen(0)
       of wEvent_LeftUp:
         let oldsel = self.mRectTable.clearRectSelect()
         mouseData.dirtyIds = oldsel
@@ -340,11 +380,15 @@ wClass(wBlockPanel of wPanel):
         self.refresh(false)
       else:
         mouseData.state = StateNone
-
-    of StateDraggingSelectNew:
-      case etype
+    of StateDraggingSelect:
+      case event.getEventType
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
+        let newsel = self.mRectTable.rectInRects(self.mSelectBox)
+        let oldsel = self.mRectTable.clearRectSelect()
+        discard self.mRectTable.setRectSelect(self.mFirmSelection)
+        discard self.mRectTable.setRectSelect(newsel)
+        self.updateBmpCache((oldsel.toHashSet - self.mFirmSelection.toHashSet + newsel.toHashSet).toSeq)
         self.refresh(false)
       of wEvent_LeftUp:
         self.mSelectBox = (0,0,0,0)
@@ -353,192 +397,24 @@ wClass(wBlockPanel of wPanel):
       else:
         mouseData.state = StateNone
 
-    of StateDraggingSelectAdd:
-      case etype
-      of wEvent_MouseMove:
-        self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
-        self.refresh(false)
-      of wEvent_LeftUp:
-        self.mSelectBox = (0,0,0,0)
-        mouseData.state = StateNone
-        self.refresh(false)
-      else:
-        mouseData.state = StateNone
-
-
-    self.mText = modifierText(event)
-    self.mText &= &"\nState: {mouseData.state} "
+    self.mText.setLen(0)
+    self.mText &= modifierText(event)
+    self.mText &= &"State: {mouseData.state}"
     self.refresh(false)
 
 
+# Todo: hovering over
+# TODO optimize what gets invalidated during move
   
-  
-    # of wEvent_RightDown: discard
-    # of wEvent_RightUp: discard
-    # of wEvent_MouseWheel: discard
-    # of wEvent_MouseHorizontalWheel: discard
-    # of wEvent_RightDoubleClick: discard
-    # of wEvent_MiddleDown: discard
-    # of wEvent_MiddleUp: discard
-    # of wEvent_MiddleDoubleClick: discard
-    # of wEvent_LeftDoubleClick: discard
-    # of wEvent_KeyUp: discard
+  template towColor(r: untyped, g: untyped, b: untyped): wColor =
+        wColor(wColor(r and 0xff) or (wColor(g and 0xff) shl 8) or (wColor(b and 0xff) shl 16))
+
+  template blendFunc(alpha: untyped): BLENDFUNCTION =
+    BLENDFUNCTION(BlendOp: AC_SRC_OVER,
+                  SourceConstantAlpha: alpha,
+                  AlphaFormat: 0)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  proc onMouseLeftDown(self: wBlockPanel, event: wEvent) =
-    mouseData.clickPos = event.mousePos
-    mouseData.lastPos  = event.mousePos
-    # This captures all rects under mousept and keeps the list
-    # even after mouse has CmdMoved away from original pos.  Is this
-    # what we want?  Or do we want the list to change as the
-    # mouse CmdMoves around, with the currently top-selected rect
-    # a the front of the list?
-    # Also, for ptInRects, maybe we only want to return a single ID,
-    # so which one is that?  The highest number?  The first returned
-    # from the table?  The top of the layer stack?
-    let hits = self.mRectTable.ptInRects(event.mousePos)
-    if hits.len > 0:
-      # Click down on rect
-      mouseData.clickHitIds = hits
-      mouseData.dirtyIds = self.mRectTable.rectInRects(hits[^1])
-      mouseData.dragRectStarted = true
-    else: 
-      # Click down in clear area
-      mouseData.selectBoxStarted = true
-
-  proc onMouseCmdMove(self: wBlockPanel, event: wEvent) = 
-    # Update message on main frame
-    defer:
-      let hWnd = GetAncestor(self.handle, GA_ROOT)
-      SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
-
-    # Todo: hovering over
-
-    # CmdMove rect or draw selection box
-    if mouseData.dragRectStarted:
-      let delta = event.mousePos - mouseData.lastPos
-      let hits = mouseData.clickHitIds
-      self.moveRectsBy(@[hits[^1]], delta)
-    elif mouseData.selectBoxStarted:
-      self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
-      let rectsInBox = self.mRectTable.rectInRects(self.mSelectBox)
-      var sel = self.mRectTable.selected
-      if not event.ctrlDown:
-        discard clearRectSelect(self.mRectTable)
-      discard setRectSelect(self.mRectTable, rectsInBox)
-      self.updateBmpCache(self.mRectTable.selected)
-      self.updateBmpCache(sel)
-      # TODO optimize what gets invalidated
-      self.refresh(false) 
-    
-    mouseData.lastPos = event.mousePos
-    
-
-  proc onMouseLeftUp(self: wBlockPanel, event: wEvent) =
-    SetFocus(self.mHwnd) # selects region so it captures keyboard
-    if event.mousePos == mouseData.clickPos: # released without dragging
-      # Non-drag click-release in a block:
-      # Clear all previous selections if not ctrl
-      # Toggle selection
-      # Clear dragBoxStarted and selectBoxStarted
-      if mouseData.dragRectStarted:
-        mouseData.dragRectStarted = false
-        let lastHitId = mouseData.clickHitIds[^1]
-        mouseData.clickHitIds.setLen(0)
-        mouseData.dirtyIds.setLen(0)
-        var others = self.mRectTable.selected
-        let hitidx = others.find(lastHitId)
-        if hitidx >= 0:
-          others.del(hitidx)
-        if not event.ctrlDown:
-          discard clearRectSelect(self.mRectTable, others)
-          mouseData.dirtyIds = others.toSeq
-        toggleRectSelect(self.mRectTable, lastHitId)
-        mouseData.dirtyIds.add(lastHitId)
-        self.updateBmpCache(mouseData.dirtyIds)
-        self.refresh(false)
-
-      # non-drag click-release in blank space
-      # Clear all selections
-      # Remember selected rects, deselect, redraw
-      elif mouseData.selectBoxStarted: 
-        mouseData.selectBoxStarted = false
-        if self.mRectTable.selected.len == 0:
-          return
-        mouseData.dirtyIds = self.mRectTable.selected
-        discard clearRectSelect(self.mRectTable)
-        self.updateBmpCache(mouseData.dirtyIds)
-
-        # Two ways to redraw deselected boxes without
-        # redrawing evenything
-        let dirtyRects = self.mRectTable[mouseData.dirtyIds]
-        if false:
-          # Let windows accumulate bounding boxes
-          # TODO: figure out how to accumulate regions
-          # Pro: it only redraws the deselected boxes
-          # Con: there may be some chance that onpaint is
-          # called before the refreshed have finished
-          # accumulating the regions
-          for rect in dirtyRects:
-            self.refresh(false, rect.wRect)
-        elif true:
-          # Add rects that intersect bbox
-          # If you don't do this, then stuff inside
-          # the bbox of the deselected blocks gets ovedrawn
-          # with background.
-          # Pro: This has only one refresh call, so only one paint
-          # Con: This may draw more blocks than have been deselected.
-          let bbox1       = boundingBox(dirtyRects.wRects)
-          let rectsInBbox = self.mRectTable.rectInRects(bbox1)
-          let bbox2       = boundingBox(self.mRectTable[rectsInBbox])
-          mouseData.dirtyIds = rectsInBbox
-          self.refresh(false, bbox2)
-
-    else: # dragged then released
-      mouseData.selectBoxStarted = false
-      mouseData.clickHitIds.setLen(0)
-      mouseData.dragRectStarted = false
-
-    # In any case, clear selection rectangle
-    self.mSelectBox.x = 0
-    self.mSelectBox.y = 0
-    self.mSelectBox.width = 0
-    self.mSelectBox.height = 0
-    self.refresh(false)
-  
-  proc onKeyDown(self: wBlockPanel, event: wEvent) = 
-    const cmdTable = {wKey_Left:    CmdMove,     wKey_Up:    CmdMove,
-                       wKey_Right:  CmdMove,     wKey_Down:  CmdMove,
-                       wKey_Delete: CmdDelete,   wKey_Space: CmdRotate,
-                       wKey_A:      CmdSelectAll }.toTable
-    const moveTable: array[wKey_Left .. wKey_Down, wPoint] =
-      [(-1,0), (0, -1), (1, 0), (0, 1)]
-    if not (event.keyCode in cmdTable):
-      return
-    case cmdTable[event.keyCode]:
-    of CmdEscape: discard # TODO: fill in
-    of CmdMove: self.moveRectsBy(self.mRectTable.selected, moveTable[event.keyCode])
-    of CmdDelete: self.deleteRects(self.mRectTable.selected)
-    of CmdRotate: self.rotateRects(self.mRectTable.selected)
-    of CmdSelect: discard
-    of CmdSelectAll:
-      if event.ctrlDown:
-        self.selectAll()
-  
   proc onPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
@@ -561,7 +437,7 @@ wClass(wBlockPanel of wPanel):
       self.mMemDc.selectObject(self.mBigBmp)
 
     # Clear mem, erase old position
-    var dirtyRects: seq[Rect]
+    var dirtyRects: seq[rects.Rect]
     if mouseData.dirtyIds.len == 0:
       # Draw everything when there is nothing CmdSelected
       dirtyRects = self.mRectTable.values.toSeq
@@ -574,11 +450,11 @@ wClass(wBlockPanel of wPanel):
 
     # Blend cached bitmaps
     for rect in dirtyRects:
-      self.mBmpDc.selectObject(self.mCachedBmps[rect.id][])
+      self.mBmpDc.selectObject(self.mCachedBmps[rect.id])
       AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
                  rect.size.width, rect.size.height,
                  self.mBmpDC.mHdc, 0, 0,
-                 rect.size.width, rect.size.height, self.mBlendFunc)
+                 rect.size.width, rect.size.height, blendFunc(240))
 
     # draw bounding box for everything
     self.mMemDC.setPen(Pen(wBlack))
@@ -586,12 +462,26 @@ wClass(wBlockPanel of wPanel):
     self.mMemDc.drawRectangle(self.mAllBbox)
 
     # Draw CmdSelection box
+    # Draw solid box to tmpMemDC, then alpha blend to memDc
+    # Draw outline to memDc
     if self.mSelectBox.width > 0:
-      self.mMemDC.setPen(Pen(wBlue))
+      let x = self.mSelectBox.x
+      let y = self.mSelectBox.y
+      let w = self.mSelectBox.width
+      let h = self.mSelectBox.height
+      var tmpMemDc = MemoryDC()
+      var tmpBmp = Bitmap(w, h)
+      tmpMemDc.selectObject(tmpBmp)
+      tmpMemDC.setBrush(Brush(towColor(0, 102, 204)))
+      tmpMemDc.drawRectangle(0, 0, w, h)
+      AlphaBlend(self.mMemDc.mHdc, x, y, w, h,
+                 tmpMemDC.mHdc,    0, 0, w, h,
+                 blendFunc(70))
+      self.mMemDc.setPen(Pen(towColor(0, 120, 215), width=1))
       self.mMemDc.setBrush(wTransparentBrush)
-      self.mMemDc.drawRectangle(self.mSelectBox)
+      self.mMemDc.drawRectangle(x,y,w,h)
 
-    # draw text sent from other thread
+    # draw current text, possibly sent from other thread
     let sw = self.mMemDc.charWidth * self.mText.len
     let ch = self.mMemDc.charHeight
     let textRect = (self.clientSize.width-sw, self.clientSize.height-ch, sw, ch)
@@ -600,35 +490,25 @@ wClass(wBlockPanel of wPanel):
     self.mMemDC.setFont(Font(pointSize=16, wFontFamilyRoman))
     self.mMemDC.drawLabel(self.mText, textRect, wMiddle)
 
-    
-    # Finally grab DC and do last blit
+    # Finally do last blit to main dc
     dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
     mouseData.dirtyIds.setLen(0)
-    #SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
+    SendMessage(self.mHwnd, USER_PAINT_DONE, 0, 0)
     release(gLock)
   
   proc onPaintDone(self: wBlockPanel) =
-    if mouseData.dragRectStarted:
-      mouseData.dragRectStarted = false
+    discard
+
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
     wPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    #self.initBmpCache()
-    self.mBlendFunc = BLENDFUNCTION(BlendOp: AC_SRC_OVER,
-                        SourceConstantAlpha: 240,
-                        AlphaFormat: 0)
     self.mBmpDC  = MemoryDC()
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
 
     self.wEvent_Size       do (event: wEvent): self.onResize(event)
     self.wEvent_Paint      do (event: wEvent): self.onPaint(event)
-    # self.wEvent_MouseCmdMove  do (event: wEvent): self.onMouseCmdMove(event)
-    # self.wEvent_LeftDown   do (event: wEvent): self.onMouseLeftDown(event)
-    # self.wEvent_LeftUp     do (event: wEvent): self.onMouseLeftUp(event)
-    # self.wEvent_KeyDown    do (event: wEvent): self.onKeyDown(event)
-
     self.wEvent_MouseMove            do (event: wEvent): self.processUiEvent(event)
     self.wEvent_LeftDown             do (event: wEvent): self.processUiEvent(event)
     self.wEvent_LeftUp               do (event: wEvent): self.processUiEvent(event)
@@ -643,7 +523,7 @@ wClass(wBlockPanel of wPanel):
     self.wEvent_MouseHorizontalWheel do (event: wEvent): self.processUiEvent(event)
     self.wEvent_KeyDown              do (event: wEvent): self.processUiEvent(event)
     self.wEvent_KeyUp                do (event: wEvent): self.processUiEvent(event)
-    self.USER_PAINT_DONE             do (): self.onPaintDone()
+    #self.USER_PAINT_DONE             do (): self.onPaintDone()
 
 
 wClass(wMainPanel of wPanel):
@@ -708,6 +588,7 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
+    echo GC_getStatistics()
 
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     if gCompactThread.running:
@@ -817,6 +698,11 @@ wClass(wMainPanel of wPanel):
     let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
     if msgAvail:
         self.mBlockPanel.mText = $idx & ": " & msg 
+    
+    let (idAvail, ids) = gAnnealComms[idx].idChan.tryRecv()
+    if idAvail:
+      self.mBlockPanel.updateBmpCache(ids)
+    
     withLock(gLock):
       self.mBlockPanel.boundingBox()
       self.mBlockPanel.forceRedraw(0)
