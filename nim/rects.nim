@@ -258,12 +258,18 @@ proc toFloat*(rot: Rotation): float =
   of R270: 270.0
 proc inc*(r: var Rotation) =
   case r:
+  of R0:   r = R90
+  of R90:  r = R180
+  of R180: r = R270
   of R270: r = R0
-  else: inc r
+
 proc dec*(r: var Rotation)=
   case r:
-  of R0: r = R270
-  else: dec r
+  of R0:   r = R270
+  of R90:  r = R0
+  of R180: r = R90
+  of R270: r = R180
+  
 proc `+`*(r1, r2:Rotation): Rotation =
   case r1:
   of R0: r2
