@@ -29,6 +29,7 @@ proc select*[T](a: openArray[T], n: int): seq[T] =
   # Choose n samples from a
   while result.len < n:
     let s = RND.sample(a)
+    echo s
     if s in result:
       continue
     result.add(s)
