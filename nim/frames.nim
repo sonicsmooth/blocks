@@ -571,7 +571,7 @@ wClass(wMainPanel of wPanel):
       butt.size     = (bw, bh)
       yPosAcc += bh
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
-    rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty)
+    rectTable.randomizeRectsAllLog(self.mRectTable, self.mBlockPanel.clientSize, qty)
     self.mBlockPanel.initBmpCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
@@ -805,7 +805,7 @@ wClass(wMainFrame of wFrame):
     let sldrVal = self.mMainPanel.mSldr.value
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-    rectTable.randomizeRectsAll(newBlockSz, self.mMainPanel.mSpnr.value)
+    rectTable.randomizeRectsAllLog(newBlockSz, self.mMainPanel.mSpnr.value)
     self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
     self.mMainPanel.mBlockPanel.initBmpCache()
 

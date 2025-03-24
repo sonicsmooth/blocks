@@ -1,7 +1,7 @@
 import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
-import rects
+import rects, randblock
 export rects
 
 type 
@@ -78,11 +78,17 @@ proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) =
     let rid = i.RectID #toRectId(i)
     table[rid] = randRect(rid, size)
 
+proc cdf10To1(): seq[float] {.compileTime.} =
+  makeCdf(10, 1.0, 10.0)
+
 proc randomizeRectsAllLog*(table: var RectTable, size: wSize, qty: int) = 
   # Randomize in a way that has fewer large blocks and more small blocks
+  let cdf = cdf10To1()
+  let areas = select(cdf, qty)
+  echo areas.len
   table.clear()
   for i in 1..qty:
-    let rid = i.RectID # toRectId(i)
+    let rid = i.RectID
     table[rid] = randRect(rid, size)
 
 proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
