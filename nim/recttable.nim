@@ -1,8 +1,25 @@
 import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
-import rects, randblock
+import rects
 export rects
+
+# TODO: Find a way to partition blocks into different regions
+# TODO: Each region has a list of the blocks that are in it
+# TODO: Each region is maybe split into further regions.
+# TODO: The idea is that you can find a block in O(log(n)) time
+# TODO: rather than O(n) time, when searching by x,y coordinate
+# TODO: This is maybe where a proper database comes into play.
+# if leftedge in set_11_00
+#    if leftedge in set_10_00
+#      do stuff
+#    else # in set_01_00
+# else # in set_00_11
+#    if leftedge in set_00_10:
+#      do stuff
+#    else # in set_00_01:
+#      do stuff
+
 
 type 
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
@@ -66,7 +83,7 @@ proc rectInRects*(table: RectTable, rect: wRect): seq[RectID] =
 proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] = 
   table.rectInRects(table[rectId].wRect)
 
-proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) = 
+proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: bool=false) = 
   table.clear()
   # table[1] = Rect(id: 1, x: 10, y: 10, width: 200, height: 80, rot: R0,
   #                 selected: false, pencolor: wColor(0x007f0000), brushcolor: wColor(0x00ff0000))
@@ -75,26 +92,21 @@ proc randomizeRectsAll*(table: var RectTable, size: wSize, qty: int) =
   # table[3] = Rect(id: 3, x: 700, y: 400, width: 200, height: 80, rot: R270,
   #                 selected: false, pencolor: wColor(0x00007f00), brushcolor: wColor(0x0000ff00))
   for i in 1..qty:
-    let rid = i.RectID #toRectId(i)
-    table[rid] = randRect(rid, size)
-
-proc cdf10To1(): seq[float] {.compileTime.} =
-  makeCdf(10, 1.0, 10.0)
-
-proc randomizeRectsAllLog*(table: var RectTable, size: wSize, qty: int) = 
-  # Randomize in a way that has fewer large blocks and more small blocks
-  let cdf = cdf10To1()
-  let areas = select(cdf, qty)
-  echo areas.len
-  table.clear()
-  for i in 1..qty:
     let rid = i.RectID
-    table[rid] = randRect(rid, size)
+    table[rid] = randRect(rid, panelSize, log)
 
-proc randomizeRectsPos*(table: RectTable, screenSize: wSize) =
+
+# proc randomizeRectsAllLog*(table: var RectTable, panelSize: wSize, qty: int) = 
+#   # Randomize in a way that has fewer large blocks and more small blocks
+#   table.clear()
+#   for i in 1..qty:
+#     let rid = i.RectID
+#     table[rid] = randRect(rid, size)
+
+proc randomizeRectsPos*(table: RectTable, panelSize: wSize) =
   for id, rect in table:
-    rect.x = rand(screenSize.width  - rect.width  - 1)
-    rect.y = rand(screenSize.height - rect.height - 1)
+    rect.x = rand(panelSize.width  - rect.width  - 1)
+    rect.y = rand(panelSize.height - rect.height - 1)
 
 proc boundingBox*(rectTable: RectTable): wRect =
   boundingBox(rectTable.values.toSeq)

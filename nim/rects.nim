@@ -1,6 +1,7 @@
-import std/[random, sets, tables, strformat, strutils]
+import std/[random, sets, sequtils, strutils, tables]
 import wNim/[wTypes]
 import wNim/private/wHelper
+import randrect
 
 type 
   RectID* = uint
@@ -27,8 +28,9 @@ type
   RightEdge*  = object of VertEdge
 
 const
-  WRANGE = 25..75
-  HRANGE = 25..75
+  scale = 3
+  WRANGE = (5*scale) .. (75*scale)
+  HRANGE = (5*scale) .. (75*scale)
   QTY* = 20
 
 
@@ -39,10 +41,10 @@ proc `$`*(rect: Rect): string =
     strs.add(k & ": " & $val)
   result = strs.join("\n")
 
-proc pos*(rect: Rect): wPoint =
+proc pos*(rect: Rect): wPoint {.inline.} =
   (rect.x, rect.y)
 
-proc size*(rect: Rect): wSize =
+proc size*(rect: Rect): wSize {.inline.} =
   if rect.rot == R0 or rect.rot == R180:
     (rect.width, rect.height)
   else:
@@ -109,35 +111,35 @@ proc ids*(rects: seq[Rect]): seq[RectID] =
 # Procs for edges
 # Comparators assume edges are truly vertical or horizontal
 # So we only look at pt0
-proc `<`*(edge1, edge2: VertEdge): bool =
+proc `<`*(edge1, edge2: VertEdge): bool {.inline.} =
   edge1.pt0.x < edge2.pt0.x
-proc `<=`*(edge1, edge2: VertEdge): bool =
+proc `<=`*(edge1, edge2: VertEdge): bool {.inline.} =
   edge1.pt0.x <= edge2.pt0.x
-proc `>`*(edge1, edge2: VertEdge): bool =
+proc `>`*(edge1, edge2: VertEdge): bool {.inline.} =
   edge1.pt0.x > edge2.pt0.x
-proc `>=`*(edge1, edge2: VertEdge): bool =
+proc `>=`*(edge1, edge2: VertEdge): bool {.inline.} =
   edge1.pt0.x >= edge2.pt0.x
-proc `==`*(edge1, edge2: VertEdge): bool =
+proc `==`*(edge1, edge2: VertEdge): bool {.inline.} =
   edge1.pt0.x == edge2.pt0.x
-proc `<`*(edge1, edge2: HorizEdge): bool =
+proc `<`*(edge1, edge2: HorizEdge): bool {.inline.} =
   edge1.pt0.y < edge2.pt0.y
-proc `<=`*(edge1, edge2: HorizEdge): bool =
+proc `<=`*(edge1, edge2: HorizEdge): bool {.inline.} =
   edge1.pt0.y <= edge2.pt0.y
-proc `>`*(edge1, edge2: HorizEdge): bool =
+proc `>`*(edge1, edge2: HorizEdge): bool {.inline.} =
   edge1.pt0.y > edge2.pt0.y
-proc `>=`*(edge1, edge2: HorizEdge): bool =
+proc `>=`*(edge1, edge2: HorizEdge): bool {.inline.} =
   edge1.pt0.y >= edge2.pt0.y
-proc `==`*(edge1, edge2: HorizEdge): bool =
+proc `==`*(edge1, edge2: HorizEdge): bool {.inline.} =
   edge1.pt0.y == edge2.pt0.y
 
 
 # Procs for hit testing
-proc isPointInRect*(pt: wPoint, rect: wRect): bool = 
+proc isPointInRect*(pt: wPoint, rect: wRect): bool {.inline.} = 
     let lrcorner: wPoint = (rect.x + rect.width,
                             rect.y + rect.height)
     pt.x >= rect.x and pt.x <= lrcorner.x and
     pt.y >= rect.y and pt.y <= lrcorner.y
-proc isEdgeInRect(edge: VertEdge, rect: wRect): bool =
+proc isEdgeInRect(edge: VertEdge, rect: wRect): bool {.inline.} =
   let edgeInside = (edge >= rect.left and edge <= rect.right)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
@@ -145,7 +147,7 @@ proc isEdgeInRect(edge: VertEdge, rect: wRect): bool =
   let pt1Outside = edge.pt1.y > rect.bottom.pt0.y
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
-proc isEdgeInRect(edge: HorizEdge, rect: wRect): bool =
+proc isEdgeInRect(edge: HorizEdge, rect: wRect): bool {.inline.} =
   let edgeInside = (edge >= rect.top and edge <= rect.bottom)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
@@ -170,28 +172,44 @@ proc isRectOverRect*(rect1, rect2: wRect): bool =
 
 
 # Misc Procs
-proc randRect*(id: RectID, screenSize: wSize): Rect = 
-  let rectSizeW: int = rand(WRANGE)
-  let rectSizeH: int = rand(HRANGE)
-  let rectPosX:  int = rand(screenSize.width  - rectSizeW  - 1)
-  let rectPosY:  int = rand(screenSize.height - rectSizeH - 1)
-  proc randColor: wColor = 
-    let 
-      b: int = rand(255) shl 16
-      g: int = rand(255) shl 8
-      r: int = rand(255)
-    wColor(b or g or r) # 00bbggrr
+proc randColor: wColor = 
+  let 
+    b: int = rand(255) shl 16
+    g: int = rand(255) shl 8
+    r: int = rand(255)
+  wColor(b or g or r) # 00bbggrr
+
+proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect = 
+  var rw: int
+  var rh: int
+  let rectPosX:  int = rand(panelSize.width  - rw  - 1)
+  let rectPosY:  int = rand(panelSize.height - rh - 1)
+
+  if log: # Make log distribution
+    let wcdf = makecdf(WRANGE.len, 100.0, 0.1) # TODO: memoize this
+    let hcdf = makecdf(HRANGE.len, 100.0, 0.1) # TODO: or compile-time
+    while true:
+      rw = RND.sample(WRANGE.toSeq, wcdf)
+      rh = RND.sample(HRANGE.toSeq, hcdf)
+      if rw/rh >= (1/3) and rw/rh <= 3.0:
+        break
+  else: # Flat distribution
+    rw = rand(WRANGE)
+    rh = rand(HRANGE)
 
   result = Rect(id: id, 
                 x: rectPosX,
                 y: rectPosY,
-                width: rectSizeW,
-                height: rectSizeH,
+                width: rw,
+                height: rh,
                 origin: (0,0),
                 rot: rand(Rotation),
                 selected: false,
                 pencolor: randColor(), 
                 brushcolor: randColor())
+
+
+
 proc moveRectBy*(rect: Rect, delta: wPoint) =
   rect.x += delta.x
   rect.y += delta.y

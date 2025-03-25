@@ -1,4 +1,3 @@
-import std/sequtils
 import std/math
 
 iterator arange*[A:SomeNumber](slice: HSlice[A,A], step: A ): A =

@@ -8,7 +8,7 @@ const
 var 
   RND* = initRand()
 
-proc makeCdf*(length: uint, mnp: float=MINPROB, mxp: float=MAXPROB): seq[float] =
+proc makeCdf*(length: int, mnp: float=MINPROB, mxp: float=MAXPROB): seq[float] =
   # return cumulative distribution function from mnp to mxp of length length
   let expScale = ln(mxp / mnp) / (length.float - 1.0)
   let pdf = collect(
@@ -25,11 +25,12 @@ proc makeCdf25*(): seq[float] {.compileTime.} =
       MINPROB * exp(x.float * expScale))
   pdf.cumsummed
 
-proc select*[T](a: openArray[T], n: int): seq[T] =
-  # Choose n samples from a
-  while result.len < n:
+proc select*[T](a: openArray[T], qty: int): seq[T] =
+  # Choose qty unique samples from a using global RND state
+  while result.len < qty:
     let s = RND.sample(a)
-    echo s
     if s in result:
       continue
     result.add(s)
+
+    
