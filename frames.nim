@@ -1,4 +1,4 @@
-import std/[bitops, locks, math, segfaults, sets, strformat, tables ]
+import std/[bitops, locks, math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
@@ -15,10 +15,11 @@ import concurrent
 # TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
 
 type
-  cacheKey = tuple[id:RectID, selected: bool, rot: Rotation]
+  CacheKey = tuple[id:RectID, selected: bool, rot: Rotation]
+  FontTable = Table[float, wtypes.wFont]
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
-    mBmpCache: Table[cacheKey, wtypes.wBitmap]
+    mBmpCache: Table[CacheKey, wtypes.wBitmap]
     mFirmSelection: seq[RectID]
     mRatio: float
     mBigBmp: wBitmap
@@ -75,6 +76,7 @@ type
     lastPos:     wPoint
     state:       MouseState
 
+
 const 
   cmdTable: CmdTable = 
     {(key: wKey_Esc,    ctrl: false, shift: false, alt: false): CmdEscape,
@@ -92,6 +94,11 @@ const
 
 var 
   mouseData: MouseData
+  fontPts: seq[float] = collect(for x in 6..24: x.float)
+  fonts: FontTable = collect(
+                       for sz in fontPts: 
+                         (sz, Font(sz, wFontFamilyRoman))).toTable
+  #fonts: array[fontPts, wFont] = collect(for sz in fontPts: Font(sz.float, wFontFamilyRoman))
 
 proc excl[T](s: var seq[T], item: T) =
   # Not order preserving because it uses del
@@ -107,10 +114,12 @@ proc lParamTuple[T](event: wEvent): auto {.inline.} =
 
 proc fontSize(size: wSize): float =
   # Return font size based on rect size
+  # round to int
   let px = min(size.width, size.height)
   let scale = 0.25
-  let spix = px.float * scale
-  clamp(spix, 6.0 .. 24.0)
+  let spix:float  = (px.float * scale).round.float
+  let fp = fontPts[fontPts.low] .. fontPts[fontPts.high]
+  clamp(spix, fp)
 
 
 wClass(wBlockPanel of wPanel):
@@ -131,7 +140,7 @@ wClass(wBlockPanel of wPanel):
     memDC.drawRectangle(zeroRect)
 
     # Draw text in rectangle
-    let font = Font(pointSize=fontSize(rotsz), wFontFamilyRoman)
+    let font = fonts[fontSize(rotsz)]
     let selstr = $rect.id & (if sel: "*" else: "")
     let rectstr = if rot == R90 or rot == R270: "(" & selstr & ")"
                   else: selstr
