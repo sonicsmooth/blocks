@@ -95,14 +95,6 @@ proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: b
     let rid = i.RectID
     table[rid] = randRect(rid, panelSize, log)
 
-
-# proc randomizeRectsAllLog*(table: var RectTable, panelSize: wSize, qty: int) = 
-#   # Randomize in a way that has fewer large blocks and more small blocks
-#   table.clear()
-#   for i in 1..qty:
-#     let rid = i.RectID
-#     table[rid] = randRect(rid, size)
-
 proc randomizeRectsPos*(table: RectTable, panelSize: wSize) =
   for id, rect in table:
     rect.x = rand(panelSize.width  - rect.width  - 1)

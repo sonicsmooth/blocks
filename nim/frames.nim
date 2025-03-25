@@ -111,11 +111,12 @@ wClass(wBlockPanel of wPanel):
     # Draw rect and label onto bitmap; return bitmap.
     # Label gets a shrunk down rectangle so it 
     # doesn't overwrite the border
-    result = Bitmap(rect.size)
+    let rotsz = rect.rotateSize(rot)
+    let (w,h) = (rotsz.width, rotsz.height)
+    result = Bitmap((w,h))
     var memDC = MemoryDC()
 
     # Draw main filled rectangle
-    let (w,h) = (rect.wRect.width, rect.wRect.height) # TODO: change to bbox.width, etc
     let mainBrush = Brush(rect.brushcolor)
     let zeroRect: wRect = (0,0,w,h)
     memDC.selectObject(result)
@@ -129,27 +130,27 @@ wClass(wBlockPanel of wPanel):
                   else: selstr
     memDC.setFont(font)
     memDC.setTextBackground(rect.brushcolor)
-
     when true:
       memDC.drawLabel(rectstr, zeroRect, align=wCenter or wMiddle)
     else:
-      let (w2, h2) = (int(w/2), int(h/2))
-      let rectMidPt: wPoint = (w2, h2)
-      let tstr = T(rectstr)
-      var txtSz: SIZE
-      GetTextExtentPoint32(memDC.mHdc, tstr, tstr.len, &txtSz)
-      # Magic numbers to fix the inexact value returned by above
-      txtSz.cx += 9
-      txtSz.cy += 12
-      let (tw2, th2) = 
-        case rot:
-        of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
-        of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
-        of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
-        of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
-      let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
-      # Buggy rotated text
-      memDC.drawRotatedtext(rectstr, rotPt, rot.toFloat)
+      discard
+      # let (w2, h2) = (int(w/2), int(h/2))
+      # let rectMidPt: wPoint = (w2, h2)
+      # let tstr = T(rectstr)
+      # var txtSz: SIZE
+      # GetTextExtentPoint32(memDC.mHdc, tstr, tstr.len, &txtSz)
+      # # Magic numbers to fix the inexact value returned by above
+      # txtSz.cx += 9
+      # txtSz.cy += 12
+      # let (tw2, th2) = 
+      #   case rot:
+      #   of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
+      #   of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
+      #   of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
+      #   of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
+      # let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
+      # # Buggy rotated text
+      # memDC.drawRotatedtext(rectstr, rotPt, rot.toFloat)
 
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
@@ -157,23 +158,12 @@ wClass(wBlockPanel of wPanel):
     if wait > 0: sleep(wait)
   proc initBmpCache(self: wBlockPanel) =
     # Creates all new bitmaps
-    echo "initCache"
     self.mBmpCache.clear()
     for id, rect in self.mRectTable:
-      self.mBmpCache[(id, false, R0  )] = rectToBmp(rect, false, R0  )
-      self.mBmpCache[(id, false, R90 )] = rectToBmp(rect, false, R90 )
-      self.mBmpCache[(id, false, R180)] = rectToBmp(rect, false, R180)
-      self.mBmpCache[(id, false, R270)] = rectToBmp(rect, false, R270)
-      self.mBmpCache[(id, true,  R0  )] = rectToBmp(rect, true,  R0  )
-      self.mBmpCache[(id, true,  R90 )] = rectToBmp(rect, true,  R90 )
-      self.mBmpCache[(id, true,  R180)] = rectToBmp(rect, true,  R180)
-      self.mBmpCache[(id, true,  R270)] = rectToBmp(rect, true,  R270)
-  # proc updateBmpCache(self: wBlockPanel, id: RectID) =
-  #   # Creates one new bitmap; used for selection
-  #   self.mBmpCache[id] = rectToBmp(self.mRectTable[id])
-  # proc updateBmpCache(self: wBlockPanel, ids: seq[RectID]) = 
-  #   for id in ids:
-  #     self.updateBmpCache(id)
+      for sel in [false, true]:
+        for rot in Rotation:
+          self.mBmpCache[(id, sel, rot)] = rectToBmp(rect, sel, rot)
+
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
@@ -183,7 +173,7 @@ wClass(wBlockPanel of wPanel):
   proc updateRatio(self: wBlockPanel) =
     let ratio = self.mRectTable.fillRatio
     if ratio != self.mRatio:
-      #echo ratio
+      echo ratio
       self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
@@ -212,16 +202,13 @@ wClass(wBlockPanel of wPanel):
     for id in rectIds:
       inc self.mRectTable[id].rot
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    #self.updateBmpCache(rectIds.toSeq)
     self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
     discard setRectSelect(self.mRectTable)
-    #self.initBmpCache()
     self.refresh()
   proc selectNone(self: wBlockPanel) =
     discard clearRectSelect(self.mRectTable)
-    #self.initBmpCache()
     self.refresh()
   
 
@@ -254,7 +241,6 @@ wClass(wBlockPanel of wPanel):
       if mouseData.state == StateDraggingSelect:
         let clrsel = (self.mRectTable.selected.toHashSet - self.mFirmSelection.toHashSet).toSeq
         discard self.mRectTable.clearRectSelect(clrsel)
-        #self.updateBmpCache(clrsel)
         self.refresh(false)
       mouseData.state = StateNone
 
@@ -341,9 +327,7 @@ wClass(wBlockPanel of wPanel):
           if not event.ctrlDown: # clear existing except this one
             oldsel.excl(hitid)
             discard self.mRectTable.clearRectSelect(oldsel)
-            #self.updateBmpCache(oldsel)
           self.mRectTable.toggleRectSelect(hitid) 
-          #self.updateBmpCache(hitid)
           mouseData.dirtyIds = oldsel & hitid
           self.refresh(false)
         mouseData.state = StateNone
@@ -374,7 +358,6 @@ wClass(wBlockPanel of wPanel):
       of wEvent_LeftUp:
         let oldsel = self.mRectTable.clearRectSelect()
         mouseData.dirtyIds = oldsel
-        #self.updateBmpCache(oldsel)
         mouseData.state = StateNone
         self.refresh(false)
       else:
@@ -384,10 +367,9 @@ wClass(wBlockPanel of wPanel):
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
         let newsel = self.mRectTable.rectInRects(self.mSelectBox)
-        let oldsel = self.mRectTable.clearRectSelect()
+        #let oldsel = self.mRectTable.clearRectSelect()
         discard self.mRectTable.setRectSelect(self.mFirmSelection)
         discard self.mRectTable.setRectSelect(newsel)
-        #self.updateBmpCache((oldsel.toHashSet - self.mFirmSelection.toHashSet + newsel.toHashSet).toSeq)
         self.refresh(false)
       of wEvent_LeftUp:
         self.mSelectBox = (0,0,0,0)
@@ -399,7 +381,6 @@ wClass(wBlockPanel of wPanel):
     self.mText.setLen(0)
     self.mText &= modifierText(event)
     self.mText &= &"State: {mouseData.state}"
-    self.refresh(false)
 
 
 # Todo: hovering over
@@ -429,6 +410,7 @@ wClass(wBlockPanel of wPanel):
                             height: clipRect1.bottom - clipRect1.top + 2)
 
     # Make sure in-mem bitmap is initialized to correct size
+    # Todo: Move this to onsize
     let size = event.window.clientSize
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
@@ -448,11 +430,15 @@ wClass(wBlockPanel of wPanel):
 
     # Blend cached bitmaps
     for rect in dirtyRects:
-      self.mBmpDc.selectObject(self.mBmpCache[(rect.id, rect.selected, rect.rot)])
-      AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
-                 rect.size.width, rect.size.height,
+      let cachekey = (rect.id, rect.selected, rect.rot)
+      let bmp = self.mBmpCache[cachekey]
+      let (dstx, dsty) = (rect.pos.x, rect.pos.y)
+      let (rsw, rsh) = (rect.size.width, rect.size.height)
+      self.mBmpDc.selectObject(bmp)
+      AlphaBlend(self.mMemDc.mHdc, dstx, dsty, 
+                 rsw, rsh,
                  self.mBmpDC.mHdc, 0, 0,
-                 rect.size.width, rect.size.height, blendFunc(240))
+                 rsw, rsh, blendFunc(240))
 
     # draw bounding box for everything
     self.mMemDC.setPen(Pen(wBlack))
@@ -505,8 +491,8 @@ wClass(wBlockPanel of wPanel):
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
 
-    self.wEvent_Size       do (event: wEvent): self.onResize(event)
-    self.wEvent_Paint      do (event: wEvent): self.onPaint(event)
+    self.wEvent_Size                 do (event: wEvent): self.onResize(event)
+    self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
     self.wEvent_MouseMove            do (event: wEvent): self.processUiEvent(event)
     self.wEvent_LeftDown             do (event: wEvent): self.processUiEvent(event)
     self.wEvent_LeftUp               do (event: wEvent): self.processUiEvent(event)
@@ -529,7 +515,7 @@ wClass(wMainPanel of wPanel):
     let 
       (cszw, cszh) = self.clientSize
       bmarg = 8
-      (bw, bh) = (130, 30)
+      (bw, bh) = (150, 30)
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
     self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
     self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
