@@ -4,7 +4,6 @@ from std/os import sleep
 import wNim
 import winim
 from wNim/private/wHelper import `-`
-import winim except RECT
 import anneal, compact, rects, rectTable, userMessages
 import concurrent
 
@@ -88,6 +87,7 @@ const
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
   moveTable: array[wKey_Left .. wKey_Down, wPoint] =
     [(-1,0), (0, -1), (1, 0), (0, 1)]
+  logRandomize = true
 
 var 
   mouseData: MouseData
@@ -571,7 +571,7 @@ wClass(wMainPanel of wPanel):
       butt.size     = (bw, bh)
       yPosAcc += bh
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
-    rectTable.randomizeRectsAllLog(self.mRectTable, self.mBlockPanel.clientSize, qty)
+    rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty, logRandomize)
     self.mBlockPanel.initBmpCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
@@ -805,7 +805,7 @@ wClass(wMainFrame of wFrame):
     let sldrVal = self.mMainPanel.mSldr.value
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-    rectTable.randomizeRectsAllLog(newBlockSz, self.mMainPanel.mSpnr.value)
+    rectTable.randomizeRectsAll(newBlockSz, self.mMainPanel.mSpnr.value, logRandomize)
     self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
     self.mMainPanel.mBlockPanel.initBmpCache()
 

@@ -3,8 +3,8 @@ import sequtils
 import wnim
 import wnim/wTypes
 import winim/inc/winuser
-import randBlock, concurrent
-import rectTable, userMessages
+import randrect, concurrent
+import recttable, userMessages
 
 type 
   Axis* = enum X=true, Y=false
@@ -27,7 +27,6 @@ type
   CompactDir* = tuple
     primax,  secax:  Axis
     primrev, secrev: bool
-    
   CompactArg* = tuple
     pRectTable:      ptr RectTable
     direction:       CompactDir

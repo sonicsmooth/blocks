@@ -4,7 +4,7 @@ import sequtils
 import wnim
 import winim/inc/[windef,winuser]
 import userMessages
-import randBlock, arange, rectTable
+import randrect, arange, recttable
 import concurrent
 
 # At each temperature generate 100 randomized next states
@@ -207,7 +207,7 @@ proc selectHeuristic(heuristics: openArray[float]): float =
       if heurs.len == 25: 
         makeCdf25()
       else:
-        makeCdf(heurs.len.uint)
+        makeCdf(heurs.len)
     sample(RND, heurs, cdf)
 
 proc update(hwnd: HWND, threadIdx: int, ids: seq[RectID], delay: int) = 
