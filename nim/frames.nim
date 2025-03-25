@@ -1,4 +1,4 @@
-import std/[bitops, locks, segfaults, sets, strformat, tables ]
+import std/[bitops, locks, math, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
@@ -105,6 +105,13 @@ proc lParamTuple[T](event: wEvent): auto {.inline.} =
    HIWORD(event.getlParam).T)
 
 
+proc fontSize(size: wSize): float =
+  # Return font size based on rect size
+  let px = min(size.width, size.height)
+  let scale = 0.25
+  let spix = px.float * scale
+  clamp(spix, 6.0 .. 24.0)
+
 
 wClass(wBlockPanel of wPanel):
   proc rectToBmp(rect: rects.Rect, sel: bool, rot: Rotation): wBitmap = 
@@ -124,7 +131,7 @@ wClass(wBlockPanel of wPanel):
     memDC.drawRectangle(zeroRect)
 
     # Draw text in rectangle
-    let font = Font(pointSize=12, wFontFamilyRoman)
+    let font = Font(pointSize=fontSize(rotsz), wFontFamilyRoman)
     let selstr = $rect.id & (if sel: "*" else: "")
     let rectstr = if rot == R90 or rot == R270: "(" & selstr & ")"
                   else: selstr
@@ -174,6 +181,7 @@ wClass(wBlockPanel of wPanel):
     let ratio = self.mRectTable.fillRatio
     if ratio != self.mRatio:
       echo ratio
+      self.mText = $ratio
       self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
@@ -193,8 +201,9 @@ wClass(wBlockPanel of wPanel):
   proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
       self.mRectTable.del(id)
-      let rect = self.mRectTable[id]
-      self.mBmpCache.del((id, rect.selected, rect.rot))
+      for sel in [true, false]:
+        for rot in Rotation:
+          self.mBmpCache.del((id, sel, rot))
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
