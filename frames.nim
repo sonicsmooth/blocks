@@ -41,6 +41,7 @@ type
     mRad2: wRadioButton
     mRad3: wRadioButton
     mRad4: wRadioButton
+    mRad5: wRadioButton
     mSldr: wSlider
     mButtons: array[17, wButton]
 
@@ -531,8 +532,8 @@ wClass(wBlockPanel of wPanel):
 wClass(wMainPanel of wPanel):
   proc layout(self: wMainPanel) =
     let 
-      (cszw, cszh) = self.clientSize
       bmarg = 8
+      (cszw, cszh) = self.clientSize
       (bw, bh) = (150, 30)
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
     self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
@@ -560,26 +561,26 @@ wClass(wMainPanel of wPanel):
     yPosAcc += bmarg + bh
 
     # Static box1 and radio button position, size
-    self.mBox1.position = (bmarg, yPosAcc + bmarg)
-    self.mRad1.position = (bmarg*2, yPosAcc + bmarg*3)
-    self.mRad2.position = (bmarg*2, yPosAcc + bmarg*3 + self.mRad1.size.height)
-    self.mBox1.size = (bw, self.mRad1.size.height + bmarg +
-                           self.mRad2.size.height + bmarg*2)
-    yPosAcc += bmarg + self.mBox1.size.height
+    self.mBox1.position = (bmarg,   yPosAcc          )
+    self.mRad1.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad1.size.height
+    self.mRad2.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad2.size.height
+    self.mRad3.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad3.size.height
+    self.mBox1.size = (bw, self.mRad1.size.height*3 + bmarg*4)
+    yPosAcc += bmarg*5
 
     # Static box2 position, size
-    self.mBox2.position = (bmarg, yPosAcc + bmarg)
-    self.mRad3.position = (bmarg*2, yPosAcc + bmarg*3)
-    self.mRad4.position = (bmarg*2, yPosAcc + bmarg*3 + self.mRad3.size.height)
-    self.mBox2.size = (bw, self.mRad3.size.height + bmarg +
-                           self.mRad4.size.height + bmarg*2)
-    yPosAcc += bmarg + self.mBox2.size.height
+    self.mBox2.position = (bmarg,   yPosAcc          )
+    self.mRad4.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad4.size.height
+    self.mRad5.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad5.size.height
+    self.mBox2.size = (bw, self.mRad4.size.height*2 + bmarg*4)
+    yPosAcc += bmarg*5
 
     # Buttons position, size
     for i, butt in self.mButtons:
       butt.position = (bmarg, yPosAcc)
       butt.size     = (bw, bh)
       yPosAcc += bh
+
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
     rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty, logRandomize)
     self.mBlockPanel.initBmpCache()
@@ -603,12 +604,14 @@ wClass(wMainPanel of wPanel):
         iterCompact(self.mRectTable, direction, self.mBlockPanel.clientSize)
       let 
         strat = 
-          if self.mRad1.value: Strat1
-          else:                Strat2
+          if self.mRad1.value:   Strat1
+          elif self.mRad2.value: Strat2
+          else:                  Strat3
         perturbFn = if self.mRad3.value:
           makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
         else:
           makeSwapper[PosTable, ptr RectTable]()
+      echo strat
       for i in gAnnealComms.low .. gAnnealComms.high:
         let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                               strategy:   strat,
@@ -649,12 +652,14 @@ wClass(wMainPanel of wPanel):
       self.mRad2.enable()
       self.mRad3.enable()
       self.mRad4.enable()
+      self.mRad5.enable()
     else:
       self.mSldr.disable()
       self.mRad1.disable()
       self.mRad2.disable()
       self.mRad3.disable()
       self.mRad4.disable()
+      self.mRad5.disable()
   proc onSlider(self: wMainPanel, event: wEvent) =
     let pos = event.scrollPos
     let hWnd = GetAncestor(self.handle, GA_ROOT)
@@ -702,9 +707,6 @@ wClass(wMainPanel of wPanel):
         self.mBlockPanel.mText = $idx & ": " & msg 
     
     let (idAvail, ids) = gAnnealComms[idx].idChan.tryRecv()
-    # if idAvail:
-    #   self.mBlockPanel.updateBmpCache(ids)
-    
     withLock(gLock):
       self.mBlockPanel.boundingBox()
       self.mBlockPanel.forceRedraw(0)
@@ -720,10 +722,11 @@ wClass(wMainPanel of wPanel):
     self.mChk   = CheckBox(self, label="Anneal", style=wChkAlignRight)
     self.mBox1  = StaticBox(self, label="Strategy")
     self.mBox2  = StaticBox(self, label="Perturb Func")
-    self.mRad1  = RadioButton(self, label="Strat1", style=wRbGroup)
-    self.mRad2  = RadioButton(self, label="Strat2")
-    self.mRad3  = RadioButton(self, label="Wiggle", style=wRbGroup)
-    self.mRad4  = RadioButton(self, label="Swap")
+    self.mRad1  = RadioButton(self, label="Strat1", style=wRbGroup) # Reset to random after each compact
+    self.mRad2  = RadioButton(self, label="Strat2 ") # Reset to prev. compact after each compact
+    self.mRad3  = RadioButton(self, label="Strat3") # Slide in order from largest to smallest
+    self.mRad4  = RadioButton(self, label="Wiggle", style=wRbGroup)
+    self.mRad5  = RadioButton(self, label="Swap")
     self.mSldr  = Slider(self)
     self.mButtons[ 0] = Button(self, label = "randomize All"     )
     self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
@@ -750,7 +753,7 @@ wClass(wMainPanel of wPanel):
     self.mSldr.setValue(20)
     self.mChk.setValue(true)
     self.mRad1.click()
-    self.mRad3.click()
+    self.mRad4.click()
 
     # Connect events
     self.wEvent_Size                    do (event: wEvent): self.onResize()
