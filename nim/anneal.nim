@@ -34,10 +34,17 @@ import concurrent
       *option -- compact can use min distance based on temp
       capture rectTable positions if heur in top 25
 
+  Strategy3 -- Sort by size within box
+  Choose fence box
+  Sort rects by size
+  For qty = 1..N:
+    Select 1..qty rects
+    Compact left then up (or whatever)
+
     ]#
 
 type
-  Strategy* = enum Strat1, Strat2
+  Strategy* = enum Strat1, Strat2, Strat3
   PerturbFn[S,pT] = proc(initState: S, pTable: pT, temp: float): seq[RectID] {.closure.}
   AnnealArg* = tuple
     pRectTable: ptr RectTable
