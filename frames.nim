@@ -1,4 +1,4 @@
-import std/[bitops, locks, segfaults, sets, strformat, tables ]
+import std/[bitops, locks, math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
@@ -14,10 +14,12 @@ import concurrent
 # TODO: checkbox for show intermediate steps
 # TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
 
-type 
+type
+  CacheKey = tuple[id:RectID, selected: bool, rot: Rotation]
+  FontTable = Table[float, wtypes.wFont]
   wBlockPanel = ref object of wPanel
     mRectTable: RectTable
-    mCachedBmps: Table[RectID, wtypes.wBitmap]
+    mBmpCache: Table[CacheKey, wtypes.wBitmap]
     mFirmSelection: seq[RectID]
     mRatio: float
     mBigBmp: wBitmap
@@ -39,6 +41,7 @@ type
     mRad2: wRadioButton
     mRad3: wRadioButton
     mRad4: wRadioButton
+    mRad5: wRadioButton
     mSldr: wSlider
     mButtons: array[17, wButton]
 
@@ -74,6 +77,7 @@ type
     lastPos:     wPoint
     state:       MouseState
 
+
 const 
   cmdTable: CmdTable = 
     {(key: wKey_Esc,    ctrl: false, shift: false, alt: false): CmdEscape,
@@ -91,6 +95,11 @@ const
 
 var 
   mouseData: MouseData
+  fontPts: seq[float] = collect(for x in 6..24: x.float)
+  fonts: FontTable = collect(
+                       for sz in fontPts: 
+                         (sz, Font(sz, wFontFamilyRoman))).toTable
+  #fonts: array[fontPts, wFont] = collect(for sz in fontPts: Font(sz.float, wFontFamilyRoman))
 
 proc excl[T](s: var seq[T], item: T) =
   # Not order preserving because it uses del
@@ -104,17 +113,27 @@ proc lParamTuple[T](event: wEvent): auto {.inline.} =
    HIWORD(event.getlParam).T)
 
 
+proc fontSize(size: wSize): float =
+  # Return font size based on rect size
+  # round to int
+  let px = min(size.width, size.height)
+  let scale = 0.25
+  let spix:float  = (px.float * scale).round.float
+  let fp = fontPts[fontPts.low] .. fontPts[fontPts.high]
+  clamp(spix, fp)
+
 
 wClass(wBlockPanel of wPanel):
-  proc rectToBmp(rect: rects.Rect): wBitmap = 
+  proc rectToBmp(rect: rects.Rect, sel: bool, rot: Rotation): wBitmap = 
     # Draw rect and label onto bitmap; return bitmap.
     # Label gets a shrunk down rectangle so it 
     # doesn't overwrite the border
-    result = Bitmap(rect.size)
+    let rotsz = rect.rotateSize(rot)
+    let (w,h) = (rotsz.width, rotsz.height)
+    result = Bitmap((w,h))
     var memDC = MemoryDC()
 
     # Draw main filled rectangle
-    let (w,h) = (rect.wRect.width, rect.wRect.height) # TODO: change to bbox.width, etc
     let mainBrush = Brush(rect.brushcolor)
     let zeroRect: wRect = (0,0,w,h)
     memDC.selectObject(result)
@@ -122,36 +141,33 @@ wClass(wBlockPanel of wPanel):
     memDC.drawRectangle(zeroRect)
 
     # Draw text in rectangle
-    let font = Font(pointSize=12, wFontFamilyRoman)
-    let selstr = if rect.selected: $rect.id & "*"
-                  else: $rect.id
-    let rectstr = if rect.rot == R90 or rect.rot == R270:
-                    "(" & selstr & ")"
+    let font = fonts[fontSize(rotsz)]
+    let selstr = $rect.id & (if sel: "*" else: "")
+    let rectstr = if rot == R90 or rot == R270: "(" & selstr & ")"
                   else: selstr
-
     memDC.setFont(font)
     memDC.setTextBackground(rect.brushcolor)
-
     when true:
       memDC.drawLabel(rectstr, zeroRect, align=wCenter or wMiddle)
     else:
-      let (w2, h2) = (int(w/2), int(h/2))
-      let rectMidPt: wPoint = (w2, h2)
-      let tstr = T(rectstr)
-      var txtSz: SIZE
-      GetTextExtentPoint32(memDC.mHdc, tstr, tstr.len, &txtSz)
-      # Magic numbers to fix the inexact value returned by above
-      txtSz.cx += 9
-      txtSz.cy += 12
-      let (tw2, th2) = 
-        case rect.rot:
-        of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
-        of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
-        of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
-        of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
-      let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
-      # Buggy rotated text
-      memDC.drawRotatedtext(rectstr, rotPt, rect.rot.toFloat)
+      discard
+      # let (w2, h2) = (int(w/2), int(h/2))
+      # let rectMidPt: wPoint = (w2, h2)
+      # let tstr = T(rectstr)
+      # var txtSz: SIZE
+      # GetTextExtentPoint32(memDC.mHdc, tstr, tstr.len, &txtSz)
+      # # Magic numbers to fix the inexact value returned by above
+      # txtSz.cx += 9
+      # txtSz.cy += 12
+      # let (tw2, th2) = 
+      #   case rot:
+      #   of R0:   (-int(txtSz.cx/2), -int(txtSz.cy/2))
+      #   of R90:  (-int(txtSz.cy/2),  int(txtSz.cx/2))
+      #   of R180: ( int(txtSz.cx/2),  int(txtSz.cy/2))
+      #   of R270: ( int(txtSz.cy/2), -int(txtSz.cx/2))
+      # let rotPt = (rectMidPt.x + tw2, rectMidPt.y + th2)
+      # # Buggy rotated text
+      # memDC.drawRotatedtext(rectstr, rotPt, rot.toFloat)
 
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
@@ -159,16 +175,12 @@ wClass(wBlockPanel of wPanel):
     if wait > 0: sleep(wait)
   proc initBmpCache(self: wBlockPanel) =
     # Creates all new bitmaps
-    echo "initCache"
-    self.mCachedBmps.clear()
+    self.mBmpCache.clear()
     for id, rect in self.mRectTable:
-      self.mCachedBmps[id] = rectToBmp(rect)
-  proc updateBmpCache(self: wBlockPanel, id: RectID) =
-    # Creates one new bitmap; used for selection
-    self.mCachedBmps[id] = rectToBmp(self.mRectTable[id])
-  proc updateBmpCache(self: wBlockPanel, ids: seq[RectID]) = 
-    for id in ids:
-      self.updateBmpCache(id)
+      for sel in [false, true]:
+        for rot in Rotation:
+          self.mBmpCache[(id, sel, rot)] = rectToBmp(rect, sel, rot)
+
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
@@ -178,7 +190,8 @@ wClass(wBlockPanel of wPanel):
   proc updateRatio(self: wBlockPanel) =
     let ratio = self.mRectTable.fillRatio
     if ratio != self.mRatio:
-      #echo ratio
+      echo ratio
+      self.mText = $ratio
       self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
@@ -198,7 +211,9 @@ wClass(wBlockPanel of wPanel):
   proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
       self.mRectTable.del(id)
-      self.mCachedBmps.del(id)
+      for sel in [true, false]:
+        for rot in Rotation:
+          self.mBmpCache.del((id, sel, rot))
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
@@ -206,16 +221,13 @@ wClass(wBlockPanel of wPanel):
     for id in rectIds:
       inc self.mRectTable[id].rot
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
-    self.updateBmpCache(rectIds.toSeq)
     self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
     discard setRectSelect(self.mRectTable)
-    self.initBmpCache()
     self.refresh()
   proc selectNone(self: wBlockPanel) =
     discard clearRectSelect(self.mRectTable)
-    self.initBmpCache()
     self.refresh()
   
 
@@ -248,7 +260,6 @@ wClass(wBlockPanel of wPanel):
       if mouseData.state == StateDraggingSelect:
         let clrsel = (self.mRectTable.selected.toHashSet - self.mFirmSelection.toHashSet).toSeq
         discard self.mRectTable.clearRectSelect(clrsel)
-        self.updateBmpCache(clrsel)
         self.refresh(false)
       mouseData.state = StateNone
 
@@ -335,9 +346,7 @@ wClass(wBlockPanel of wPanel):
           if not event.ctrlDown: # clear existing except this one
             oldsel.excl(hitid)
             discard self.mRectTable.clearRectSelect(oldsel)
-            self.updateBmpCache(oldsel)
           self.mRectTable.toggleRectSelect(hitid) 
-          self.updateBmpCache(hitid)
           mouseData.dirtyIds = oldsel & hitid
           self.refresh(false)
         mouseData.state = StateNone
@@ -368,7 +377,6 @@ wClass(wBlockPanel of wPanel):
       of wEvent_LeftUp:
         let oldsel = self.mRectTable.clearRectSelect()
         mouseData.dirtyIds = oldsel
-        self.updateBmpCache(oldsel)
         mouseData.state = StateNone
         self.refresh(false)
       else:
@@ -378,10 +386,9 @@ wClass(wBlockPanel of wPanel):
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
         let newsel = self.mRectTable.rectInRects(self.mSelectBox)
-        let oldsel = self.mRectTable.clearRectSelect()
+        #let oldsel = self.mRectTable.clearRectSelect()
         discard self.mRectTable.setRectSelect(self.mFirmSelection)
         discard self.mRectTable.setRectSelect(newsel)
-        self.updateBmpCache((oldsel.toHashSet - self.mFirmSelection.toHashSet + newsel.toHashSet).toSeq)
         self.refresh(false)
       of wEvent_LeftUp:
         self.mSelectBox = (0,0,0,0)
@@ -393,7 +400,6 @@ wClass(wBlockPanel of wPanel):
     self.mText.setLen(0)
     self.mText &= modifierText(event)
     self.mText &= &"State: {mouseData.state}"
-    self.refresh(false)
 
 
 # Todo: hovering over
@@ -423,6 +429,7 @@ wClass(wBlockPanel of wPanel):
                             height: clipRect1.bottom - clipRect1.top + 2)
 
     # Make sure in-mem bitmap is initialized to correct size
+    # Todo: Move this to onsize
     let size = event.window.clientSize
     if isnil(self.mBigBmp) or self.mBigBmp.size != size:
       self.mBigBmp = Bitmap(size)
@@ -442,11 +449,15 @@ wClass(wBlockPanel of wPanel):
 
     # Blend cached bitmaps
     for rect in dirtyRects:
-      self.mBmpDc.selectObject(self.mCachedBmps[rect.id])
-      AlphaBlend(self.mMemDc.mHdc, rect.pos.x, rect.pos.y, 
-                 rect.size.width, rect.size.height,
+      let cachekey = (rect.id, rect.selected, rect.rot)
+      let bmp = self.mBmpCache[cachekey]
+      let (dstx, dsty) = (rect.pos.x, rect.pos.y)
+      let (rsw, rsh) = (rect.size.width, rect.size.height)
+      self.mBmpDc.selectObject(bmp)
+      AlphaBlend(self.mMemDc.mHdc, dstx, dsty, 
+                 rsw, rsh,
                  self.mBmpDC.mHdc, 0, 0,
-                 rect.size.width, rect.size.height, blendFunc(240))
+                 rsw, rsh, blendFunc(240))
 
     # draw bounding box for everything
     self.mMemDC.setPen(Pen(wBlack))
@@ -499,8 +510,8 @@ wClass(wBlockPanel of wPanel):
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
 
-    self.wEvent_Size       do (event: wEvent): self.onResize(event)
-    self.wEvent_Paint      do (event: wEvent): self.onPaint(event)
+    self.wEvent_Size                 do (event: wEvent): self.onResize(event)
+    self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
     self.wEvent_MouseMove            do (event: wEvent): self.processUiEvent(event)
     self.wEvent_LeftDown             do (event: wEvent): self.processUiEvent(event)
     self.wEvent_LeftUp               do (event: wEvent): self.processUiEvent(event)
@@ -521,9 +532,9 @@ wClass(wBlockPanel of wPanel):
 wClass(wMainPanel of wPanel):
   proc layout(self: wMainPanel) =
     let 
-      (cszw, cszh) = self.clientSize
       bmarg = 8
-      (bw, bh) = (130, 30)
+      (cszw, cszh) = self.clientSize
+      (bw, bh) = (150, 30)
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
     self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
     self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
@@ -550,26 +561,26 @@ wClass(wMainPanel of wPanel):
     yPosAcc += bmarg + bh
 
     # Static box1 and radio button position, size
-    self.mBox1.position = (bmarg, yPosAcc + bmarg)
-    self.mRad1.position = (bmarg*2, yPosAcc + bmarg*3)
-    self.mRad2.position = (bmarg*2, yPosAcc + bmarg*3 + self.mRad1.size.height)
-    self.mBox1.size = (bw, self.mRad1.size.height + bmarg +
-                           self.mRad2.size.height + bmarg*2)
-    yPosAcc += bmarg + self.mBox1.size.height
+    self.mBox1.position = (bmarg,   yPosAcc          )
+    self.mRad1.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad1.size.height
+    self.mRad2.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad2.size.height
+    self.mRad3.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad3.size.height
+    self.mBox1.size = (bw, self.mRad1.size.height*3 + bmarg*4)
+    yPosAcc += bmarg*5
 
     # Static box2 position, size
-    self.mBox2.position = (bmarg, yPosAcc + bmarg)
-    self.mRad3.position = (bmarg*2, yPosAcc + bmarg*3)
-    self.mRad4.position = (bmarg*2, yPosAcc + bmarg*3 + self.mRad3.size.height)
-    self.mBox2.size = (bw, self.mRad3.size.height + bmarg +
-                           self.mRad4.size.height + bmarg*2)
-    yPosAcc += bmarg + self.mBox2.size.height
+    self.mBox2.position = (bmarg,   yPosAcc          )
+    self.mRad4.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad4.size.height
+    self.mRad5.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mRad5.size.height
+    self.mBox2.size = (bw, self.mRad4.size.height*2 + bmarg*4)
+    yPosAcc += bmarg*5
 
     # Buttons position, size
     for i, butt in self.mButtons:
       butt.position = (bmarg, yPosAcc)
       butt.size     = (bw, bh)
       yPosAcc += bh
+
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
     rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty, logRandomize)
     self.mBlockPanel.initBmpCache()
@@ -593,12 +604,14 @@ wClass(wMainPanel of wPanel):
         iterCompact(self.mRectTable, direction, self.mBlockPanel.clientSize)
       let 
         strat = 
-          if self.mRad1.value: Strat1
-          else:                Strat2
+          if self.mRad1.value:   Strat1
+          elif self.mRad2.value: Strat2
+          else:                  Strat3
         perturbFn = if self.mRad3.value:
           makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
         else:
           makeSwapper[PosTable, ptr RectTable]()
+      echo strat
       for i in gAnnealComms.low .. gAnnealComms.high:
         let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                               strategy:   strat,
@@ -639,12 +652,14 @@ wClass(wMainPanel of wPanel):
       self.mRad2.enable()
       self.mRad3.enable()
       self.mRad4.enable()
+      self.mRad5.enable()
     else:
       self.mSldr.disable()
       self.mRad1.disable()
       self.mRad2.disable()
       self.mRad3.disable()
       self.mRad4.disable()
+      self.mRad5.disable()
   proc onSlider(self: wMainPanel, event: wEvent) =
     let pos = event.scrollPos
     let hWnd = GetAncestor(self.handle, GA_ROOT)
@@ -692,9 +707,6 @@ wClass(wMainPanel of wPanel):
         self.mBlockPanel.mText = $idx & ": " & msg 
     
     let (idAvail, ids) = gAnnealComms[idx].idChan.tryRecv()
-    if idAvail:
-      self.mBlockPanel.updateBmpCache(ids)
-    
     withLock(gLock):
       self.mBlockPanel.boundingBox()
       self.mBlockPanel.forceRedraw(0)
@@ -710,10 +722,11 @@ wClass(wMainPanel of wPanel):
     self.mChk   = CheckBox(self, label="Anneal", style=wChkAlignRight)
     self.mBox1  = StaticBox(self, label="Strategy")
     self.mBox2  = StaticBox(self, label="Perturb Func")
-    self.mRad1  = RadioButton(self, label="Strat1", style=wRbGroup)
-    self.mRad2  = RadioButton(self, label="Strat2")
-    self.mRad3  = RadioButton(self, label="Wiggle", style=wRbGroup)
-    self.mRad4  = RadioButton(self, label="Swap")
+    self.mRad1  = RadioButton(self, label="Strat1", style=wRbGroup) # Reset to random after each compact
+    self.mRad2  = RadioButton(self, label="Strat2 ") # Reset to prev. compact after each compact
+    self.mRad3  = RadioButton(self, label="Strat3") # Slide in order from largest to smallest
+    self.mRad4  = RadioButton(self, label="Wiggle", style=wRbGroup)
+    self.mRad5  = RadioButton(self, label="Swap")
     self.mSldr  = Slider(self)
     self.mButtons[ 0] = Button(self, label = "randomize All"     )
     self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
@@ -740,7 +753,7 @@ wClass(wMainPanel of wPanel):
     self.mSldr.setValue(20)
     self.mChk.setValue(true)
     self.mRad1.click()
-    self.mRad3.click()
+    self.mRad4.click()
 
     # Connect events
     self.wEvent_Size                    do (event: wEvent): self.onResize()
@@ -806,8 +819,8 @@ wClass(wMainFrame of wFrame):
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
     rectTable.randomizeRectsAll(newBlockSz, self.mMainPanel.mSpnr.value, logRandomize)
-    self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
     self.mMainPanel.mBlockPanel.initBmpCache()
+    self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
 
 
     # Connect Events
