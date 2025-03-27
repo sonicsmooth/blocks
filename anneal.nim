@@ -44,7 +44,7 @@ import concurrent
     ]#
 
 type
-  Strategy* = enum Strat1, Strat2, Strat3
+  Strategy* = enum Strat1, Strat2
   PerturbFn[S,pT] = proc(initState: S, pTable: pT, temp: float): seq[RectID] {.closure.}
   AnnealArg* = tuple
     pRectTable: ptr RectTable
