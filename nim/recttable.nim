@@ -2,7 +2,7 @@ import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
 import rects
-export rects
+export rects, tables
 
 # TODO: Find a way to partition blocks into different regions
 # TODO: Each region has a list of the blocks that are in it
@@ -20,6 +20,9 @@ export rects
 #    else # in set_00_01:
 #      do stuff
 
+# TODO: Migrate move, rotate, etc., to this module
+# TODO: instead of doing them individually where needed
+# TODO: Accomodate do-all, or do-selected
 
 type 
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
