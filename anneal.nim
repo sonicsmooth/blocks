@@ -248,6 +248,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   var interState = arg.pRectTable[].positions
   var perturbedPositions: PosTable
   var ids: seq[RectID]
+  bestEver = (arg.pRectTable[].fillRatio, arg.pRectTable[].positions)
 
   for temp in arange(arg.initTemp .. MinTemp, TempStep):
     # At the start of each temp, choose random from best25

@@ -302,6 +302,11 @@ wClass(wBlockPanel of wPanel):
     elif event.getEventType == wEvent_KeyUp:
       return
 
+    # Send mouse message for x,y position
+    if event.getEventType == wEvent_MouseMove:
+      let hWnd = GetAncestor(self.handle, GA_ROOT)
+      SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+
     case mouseData.state
     of StateNone:
       case event.getEventType
@@ -526,9 +531,9 @@ wClass(wMainPanel of wPanel):
                              cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Static text position, size
-    let bw1by2 = bw div 2
-    let bw1by3 = bw div 3
-    let bw2by3 = 2 * (bw div 3)
+    # let bw1by2 = bw div 2
+    # let bw1by3 = bw div 3
+    # let bw2by3 = 2 * (bw div 3)
     self.mTxt.position = (bmarg, bmarg)
     self.mTxt.size = (bw div 2, self.mTxt.size.height)
 
@@ -680,6 +685,9 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
+  proc onButtonTest(self: wMainPanel) =
+    for rect in self.mRectTable.values:
+      echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.width, rect.height)}, rot: {rect.rot}"
   proc onButtonCompact←(self: wMainPanel) =
     self.delegate1DButtonCompact(X, false)
   proc onButtonCompact→(self: wMainPanel) =
@@ -769,7 +777,7 @@ wClass(wMainPanel of wPanel):
     self.mSldr.wEvent_Slider            do (event: wEvent): self.onSlider(event)
     self.mButtons[ 0].wEvent_Button     do (): self.onButtonrandomizeAll()
     self.mButtons[ 1].wEvent_Button     do (): self.onButtonrandomizePos()
-    #self.mButtons[ 2].wEvent_Button     do (): self.onButtonTest()
+    self.mButtons[ 2].wEvent_Button     do (): self.onButtonTest()
     self.mButtons[ 3].wEvent_Button     do (): self.onButtonCompact←()
     self.mButtons[ 4].wEvent_Button     do (): self.onButtonCompact→()
     self.mButtons[ 5].wEvent_Button     do (): self.onButtonCompact↑()
@@ -825,7 +833,7 @@ wClass(wMainFrame of wFrame):
     # Do stuff
     self.size = (newWidth, newHeight)
     self.mMenuFile.append(1, "Open")
-    self.mStatusBar.setStatusWidths([-2, -1, 100])
+    self.mStatusBar.setStatusWidths([-2, -1, 200])
     
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
