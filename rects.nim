@@ -6,6 +6,7 @@ import randrect
 type 
   RectID* = uint
   Rotation* = enum R0, R90, R180, R270
+  Orientation* = enum Vertical, Horizontal
   Rect* = ref object
     id*: RectID
     x*: int
@@ -32,6 +33,15 @@ const
   WRANGE = (5*scale) .. (75*scale)
   HRANGE = (5*scale) .. (75*scale)
   QTY* = 20
+
+
+# Declarations
+proc toFloat*(rot: Rotation): float {.inline.}
+proc inc*(r: var Rotation) {.inline.}
+proc dec*(r: var Rotation) {.inline.}
+proc `+`*(r1, r2:Rotation): Rotation {.inline.}
+proc `-`*(r1, r2:Rotation): Rotation {.inline.}
+
 
 
 # Procs for single Rect
@@ -220,7 +230,9 @@ proc moveRectTo*(rect: Rect, oldpos, newpos: wPoint) =
 proc boundingBox*(rects: seq[wRect|Rect]): wRect =
   var left, right, top, bottom: int
   left = int.high
+  right = int.low
   top = int.high
+  bottom = int.low
   for r in rects:
     left   = min(left,   r.top.pt0.x)
     top    = min(top,    r.top.pt0.y)
@@ -236,6 +248,19 @@ proc rotateSize*(rect: wRect|Rect, amt: Rotation): wSize =
   of R90:  (rect.height, rect.width )
   of R180: (rect.width,  rect.height)
   of R270: (rect.height, rect.width )
+
+proc rotate*(rect: Rect, amt: Rotation) =
+  rect.rot = rect.rot + amt
+
+proc rotate*(rect: Rect, orient: Orientation) =
+  if rect.width >= rect.height:
+    if orient == Horizontal: rect.rot = R0
+    else: rect.rot = R90
+  else:
+    if orient == Horizontal: rect.rot = R90
+    else: rect.rot = R0
+    
+
 proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
 proc aspectRatio*(rect: wRect|Rect): float =
@@ -264,25 +289,25 @@ proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
   result.width = abs(ex - sx)
   result.height = abs(ey - sy)
 
-proc toFloat*(rot: Rotation): float {.inline.} =
+proc toFloat*(rot: Rotation): float =
   case rot:
   of R0: 0.0
   of R90: 90.0
   of R180: 180.0
   of R270: 270.0
-proc inc*(r: var Rotation) {.inline.} =
+proc inc*(r: var Rotation) =
   case r:
   of R0:   r = R90
   of R90:  r = R180
   of R180: r = R270
   of R270: r = R0
-proc dec*(r: var Rotation) {.inline.} =
+proc dec*(r: var Rotation) =
   case r:
   of R0:   r = R270
   of R90:  r = R0
   of R180: r = R90
   of R270: r = R180
-proc `+`*(r1, r2:Rotation): Rotation {.inline.} =
+proc `+`*(r1, r2:Rotation): Rotation =
   case r1:
   of R0: r2
   of R90:
@@ -303,7 +328,7 @@ proc `+`*(r1, r2:Rotation): Rotation {.inline.} =
     of R90: R0
     of R180: R90
     of R270: R180
-proc `-`*(r1, r2:Rotation): Rotation {.inline.} =
+proc `-`*(r1, r2:Rotation): Rotation =
   case r1:
   of R0:
     case r2:
