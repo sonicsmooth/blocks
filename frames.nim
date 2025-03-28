@@ -575,13 +575,14 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.initBmpCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
-    let sz = self.mBlockPanel.clientSize
+    #echo GC_getStatistics()
     withLock(gLock):
       compact(self.mRectTable, axis, reverse, self.mBlockPanel.mDstRect)
       self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
-    echo GC_getStatistics()
+    GC_fullCollect()
+    #echo GC_getStatistics()
 
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     # Leave if we have any threads already running
@@ -638,7 +639,6 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.boundingBox()
       self.mBlockPanel.updateRatio()
       self.refresh(false)
-  #proc onCheckBox(self: wMainPanel, event: wEvent) =
   proc onStrategyRadioButton(self: wMainPanel, event: wEvent) =
     if self.mCTRb1.value: # No strategy
       self.mSldr.disable()

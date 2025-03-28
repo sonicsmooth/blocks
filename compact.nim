@@ -177,12 +177,11 @@ proc compact*(rectTable: RectTable,
               axis: Axis,
               reverse: bool,
               dstRect: wRect) =
-  # Top level compact function
-  # TODO changes clientSize to some other way of specifying min/max x/y
+  # Top level compact function in one direction
   let graph = MakeGraph(rectTable, axis, reverse)
   let nodes = rectTable.keys.toSeq
   if axis == X and not reverse:
-    let lp = longestPathBellmanFord(graph, nodes, dstRect.x)
+    let lp = longestPathBellmanFord(graph, nodes, 0)
     for id, rect in rectTable:
       rect.x = dstRect.x + lp[id]
 
@@ -192,7 +191,7 @@ proc compact*(rectTable: RectTable,
       rect.x = dstRect.x + dstRect.width - lp[id]
 
   elif axis == Y and not reverse:
-    let lp = longestPathBellmanFord(graph, nodes, dstRect.y)
+    let lp = longestPathBellmanFord(graph, nodes, 0)
     for id, rect in rectTable:
       rect.y = dstRect.y + lp[id]
 
