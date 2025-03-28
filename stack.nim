@@ -1,3 +1,4 @@
+import std/sequtils
 import wnim/wtypes
 import recttable, compact
 
@@ -13,5 +14,14 @@ import recttable, compact
 # of (y,x,true,false):  stack to bottom, then to left,   overflow right
 # of (y,x,true,true):   stack to bottom, then to right,  overflow left
 
-proc stackCompact*(table: ptr RectTable, dstRect: wRect, direction: CompactDir) =
-  echo "compact stack from: ", dstrect, " dir: ", direction
+proc stackCompact*(table: RectTable, dstRect: wRect, direction: CompactDir) =
+  echo "compact stack"
+
+  # Rotate everything so it's vertical
+  let rects = table.values.toSeq
+  for rect in rects:
+    rect.rotate(Vertical)
+
+  # Sort by vertical size
+
+  compact(table, direction.primax, direction.primrev, dstRect)

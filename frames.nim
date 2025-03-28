@@ -203,9 +203,9 @@ wClass(wBlockPanel of wPanel):
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
-  proc rotateRects(self: wBlockPanel, rectIds: seq[RectId]) =
+  proc rotateRects(self: wBlockPanel, rectIds: seq[RectId], amt: Rotation) =
     for id in rectIds:
-      inc self.mRectTable[id].rot
+      self.mRectTable[id].rotate(amt)
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
@@ -265,19 +265,21 @@ wClass(wBlockPanel of wPanel):
     of CmdRotateCCW:
       if mouseData.state == StateDraggingRect or 
          mouseData.state == StateLMBDownInRect:
-        self.rotateRects(@[mouseData.clickHitIds[^1]])
+        echo "Rotate CCW"
+        self.rotateRects(@[mouseData.clickHitIds[^1]], R90)
       else:
-        self.rotateRects(sel)
+        echo "Rotate CCW"
+        self.rotateRects(sel, R90)
         resetBox()
         mouseData.state = StateNone
     of CmdRotateCW:
       if mouseData.state == StateDraggingRect or 
          mouseData.state == StateLMBDownInRect:
         echo "Rotate CW"
-        self.rotateRects(@[mouseData.clickHitIds[^1]])
+        self.rotateRects(@[mouseData.clickHitIds[^1]], R270)
       else:
         echo "Rotate CW"
-        self.rotateRects(sel)
+        self.rotateRects(sel, R270)
         resetBox()
         mouseData.state = StateNone
     of CmdSelect:
@@ -492,7 +494,7 @@ wClass(wBlockPanel of wPanel):
     self.mBmpDC  = MemoryDC()
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
-    self.mDstRect = (50, 50, 250, 250)
+    self.mDstRect = (50, 50, 350, 350)
 
     self.wEvent_Size                 do (event: wEvent): self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
@@ -578,11 +580,10 @@ wClass(wMainPanel of wPanel):
     #echo GC_getStatistics()
     withLock(gLock):
       compact(self.mRectTable, axis, reverse, self.mBlockPanel.mDstRect)
-      self.mBlockPanel.boundingBox()
+    self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
     GC_fullCollect()
-    #echo GC_getStatistics()
 
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     # Leave if we have any threads already running
@@ -623,7 +624,12 @@ wClass(wMainPanel of wPanel):
         break
     
     elif self.mCTRb3.value: # Do stack
-      stackCompact(self.mRectTable.addr, dstRect, direction)
+      withLock(gLock):
+        stackCompact(self.mRectTable, dstRect, direction)
+      self.mBlockPanel.boundingBox()
+      self.mBlockPanel.updateRatio()
+      self.refresh(false)
+
 
   proc onResize(self: wMainPanel) =
       self.layout()
