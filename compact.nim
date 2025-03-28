@@ -28,10 +28,10 @@ type
     primax,  secax:  Axis
     primrev, secrev: bool
   CompactArg* = tuple
-    pRectTable:      ptr RectTable
-    direction:       CompactDir
-    window:          wWindow
-    screenSize:      wSize
+    pRectTable: ptr RectTable
+    direction:  CompactDir
+    window:     wWindow
+    dstRect:    wRect
 
 
 
@@ -161,10 +161,10 @@ proc MakeGraph*(rectTable: RectTable, axis: Axis, reverse: bool): Graph =
   result = ComposeGraph(lines, rectTable, axis, reverse)
   
 
-proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node]): Table[RectID, Weight] =
+proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: int): Table[RectID, Weight] =
   for node in nodes:
     result[node] = Weight.low
-  result[RootNode] = 0
+  result[RootNode] = minpos
 
   for iter in 0..nodes.len:
     for ge, weight in graph:
@@ -176,39 +176,44 @@ proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node]): Table[RectID,
 proc compact*(rectTable: RectTable, 
               axis: Axis,
               reverse: bool,
-              clientSize: wSize) =
+              dstRect: wRect) =
   # Top level compact function
   # TODO changes clientSize to some other way of specifying min/max x/y
   let graph = MakeGraph(rectTable, axis, reverse)
   let nodes = rectTable.keys.toSeq
-  let lp = longestPathBellmanFord(graph, nodes)
   if axis == X and not reverse:
+    let lp = longestPathBellmanFord(graph, nodes, dstRect.x)
     for id, rect in rectTable:
-      rect.x = lp[id]
-  elif axis == X and reverse:
-    for id, rect in rectTable:
-      rect.x = clientSize.width - lp[id]
-  elif axis == Y and not reverse:
-    for id, rect in rectTable:
-      rect.y = lp[id]
-  elif axis == Y and reverse:
-    for id, rect in rectTable:
-      rect.y = clientSize.height - lp[id]
+      rect.x = dstRect.x + lp[id]
 
-proc iterCompact*(rectTable: RectTable, direction: CompactDir, clientSize: wSize) =
+  elif axis == X and reverse:
+    let lp = longestPathBellmanFord(graph, nodes, 0)
+    for id, rect in rectTable:
+      rect.x = dstRect.x + dstRect.width - lp[id]
+
+  elif axis == Y and not reverse:
+    let lp = longestPathBellmanFord(graph, nodes, dstRect.y)
+    for id, rect in rectTable:
+      rect.y = dstRect.y + lp[id]
+
+  elif axis == Y and reverse:
+    let lp = longestPathBellmanFord(graph, nodes, 0)
+    for id, rect in rectTable:
+      rect.y = dstRect.y + dstRect.height - lp[id]
+
+proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: wRect) =
   # Run compact function until rectTable doesn't change
   var pos, lastPos: PosTable
   pos = rectTable.positions
   while pos != lastPos:
-    compact(rectTable, direction.primax, direction.primrev, clientSize)
-    compact(rectTable, direction.secax, direction.secrev, clientSize)
+    compact(rectTable, direction.primax, direction.primrev, dstRect)
+    compact(rectTable, direction.secax, direction.secrev, dstRect)
     lastPos = pos
     pos = rectTable.positions
-
 
 proc compactWorker*(arg: CompactArg) {.thread.} =
   {.gcsafe.}:
     withLock(gLock):
-      iterCompact(arg.pRectTable[], arg.direction, arg.screenSize)
+      iterCompact(arg.pRectTable[], arg.direction, arg.dstRect)
   PostMessage(arg.window.mHwnd, USER_ALG_UPDATE, 0, 0)
   

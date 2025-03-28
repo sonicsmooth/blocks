@@ -4,7 +4,7 @@ from std/os import sleep
 import wNim
 import winim
 from wNim/private/wHelper import `-`
-import anneal, compact, rects, rectTable, userMessages
+import anneal, compact, rects, recttable, stack, userMessages
 import concurrent
 
 # TODO: copy background before Move
@@ -27,6 +27,7 @@ type
     mBmpDc: wMemoryDC
     mAllBbox: wRect
     mSelectBox: wRect
+    mDstRect: wRect
     mText: string
 
   wMainPanel = ref object of wPanel
@@ -459,6 +460,13 @@ wClass(wBlockPanel of wPanel):
       self.mMemDc.setBrush(wTransparentBrush)
       self.mMemDc.drawRectangle(x,y,w,h)
 
+    # Draw destination box
+    if self.mDstRect.width > 0:
+      self.mMemDc.setPen(Pen(wRed, width=1))
+      self.mMemDc.setBrush(wTransparentBrush)
+      self.mMemDc.drawRectangle(self.mDstRect)
+
+
     # draw current text, possibly sent from other thread
     let sw = self.mMemDc.charWidth * self.mText.len
     let ch = self.mMemDc.charHeight
@@ -484,6 +492,7 @@ wClass(wBlockPanel of wPanel):
     self.mBmpDC  = MemoryDC()
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
+    self.mDstRect = (50, 50, 250, 250)
 
     self.wEvent_Size                 do (event: wEvent): self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
@@ -566,39 +575,39 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.initBmpCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
+    let sz = self.mBlockPanel.clientSize
     withLock(gLock):
-      compact(self.mRectTable, axis, reverse, self.mBlockPanel.clientSize)
+      compact(self.mRectTable, axis, reverse, self.mBlockPanel.mDstRect)
       self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
     echo GC_getStatistics()
 
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
-    if gCompactThread.running:
-      return
+    # Leave if we have any threads already running
+    if gCompactThread.running: return
     for i in gAnnealComms.low .. gAnnealComms.high:
-      if gAnnealComms[i].thread.running:
-        return
-    #if self.mChk.value: # Do anneal
+      if gAnnealComms[i].thread.running: return
+
+    let sz = self.mBlockPanel.clientSize
+    let dstRect = self.mBlockPanel.mDstRect
+    
     if self.mCtrb1.value: # Not anneal, just normal 2d compact
       let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
-                            direction:   direction,
-                            window:      self,
-                            screenSize:  self.mBlockPanel.clientSize)
+                             direction:   direction,
+                             window:      self,
+                             dstRect:     dstRect)
       gCompactThread.createThread(compactWorker, arg)
       gCompactThread.joinThread()
       self.refresh(false)
+    
     elif self.mCTRb2.value: # Do anneal
       proc compactfn() {.closure.} = 
-        iterCompact(self.mRectTable, direction, self.mBlockPanel.clientSize)
-      let 
-        strat = 
-          if self.mAStratRb1.value: Strat1
-          else:                     Strat2
-        perturbFn = if self.mAStratRb3.value:
-          makeWiggler[PosTable, ptr RectTable](self.mBlockPanel.clientSize)
-        else:
-          makeSwapper[PosTable, ptr RectTable]()
+        iterCompact(self.mRectTable, direction, dstRect)
+      let strat = if self.mAStratRb1.value: Strat1
+                  else:                     Strat2
+      let perturbFn = if self.mAStratRb3.value: makeWiggler[PosTable, ptr RectTable](dstRect)
+                      else:                     makeSwapper[PosTable, ptr RectTable]()
       for i in gAnnealComms.low .. gAnnealComms.high:
         let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
                               strategy:   strat,
@@ -606,9 +615,14 @@ wClass(wMainPanel of wPanel):
                               perturbFn:  perturbFn,
                               compactFn:  compactfn,
                               window:     self,
+                              dstRect:    dstRect,
                               comm:       gAnnealComms[i])
+        # Weird, TODO: just do once
         gAnnealComms[i].thread.createThread(annealMain, arg)
         break
+    
+    elif self.mCTRb3.value: # Do stack
+      stackCompact(self.mRectTable.addr, dstRect, direction)
 
   proc onResize(self: wMainPanel) =
       self.layout()
@@ -704,7 +718,6 @@ wClass(wMainPanel of wPanel):
     # Create controls
     self.mSpnr      = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
     self.mTxt       = StaticText(self, label="Qty", style=wSpRight)
-    #self.mChk       = CheckBox(self, label="Anneal", style=wChkAlignRight)
     self.mBox1      = StaticBox(self, label="Anneal Strategy")
     self.mBox2      = StaticBox(self, label="Anneal Perturb Func")
     self.mCTRb1     = RadioButton(self, label="None", style=wRbGroup)
