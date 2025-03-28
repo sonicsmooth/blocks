@@ -1,4 +1,4 @@
-import std/sequtils
+import std/[algorithm, sequtils]
 import wnim/wtypes
 import recttable, compact
 
@@ -14,14 +14,38 @@ import recttable, compact
 # of (y,x,true,false):  stack to bottom, then to left,   overflow right
 # of (y,x,true,true):   stack to bottom, then to right,  overflow left
 
-proc stackCompact*(table: RectTable, dstRect: wRect, direction: CompactDir) =
-  echo "compact stack"
+proc vertCmp (r1, r2: Rect): int = cmp(r1.size.height, r2.size.height)
+proc horizCmp(r1, r2: Rect): int = cmp(r1.size.width,  r2.size.width )
 
-  # Rotate everything so it's vertical
-  let rects = table.values.toSeq
+proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) =
+
+  var dstRect = dstRect
+  # Rotate, sort by vertical size, and move to opposite corner
+  var rects = table.values.toSeq
+  var accRects: seq[RectID]
+  
   for rect in rects:
     rect.rotate(Vertical)
 
-  # Sort by vertical size
+  rects.sort(vertCmp, Descending) 
 
-  compact(table, direction.primax, direction.primrev, dstRect)
+  for rect in rects:
+    # TODO: use HRANGE.high
+    rect.x = int32.high - 1000 # TODO figure out why this is needed, why -1000, why not int?
+    rect.y = int32.high - 1000 # TODO figure out why this is needed, why -1000, why not int?
+
+  for rect in rects:
+    accRects.add(rect.id)
+    compact(table, direction.secax,  direction.secrev,  dstRect, accRects)
+    compact(table, direction.primax, direction.primrev, dstRect, accRects)
+    if rect.rightEdge.x > dstRect.rightEdge.x:
+      let bbox = boundingBox(table[accRects])
+      let newY = bbox.bottomEdge.y
+      dstRect.y = newY
+      accRects.setLen(0)
+      accRects.add(rect.id)
+
+
+
+
+

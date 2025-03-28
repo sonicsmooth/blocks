@@ -44,6 +44,10 @@ proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[Rect] =
   for idx in idxs:
     result.add(table[idx])
 
+proc add*(table: RectTable, rect: Rect) =
+  table[rect.id] = rect
+
+
 proc selected*(table: RectTable): seq[RectId] =
   for id, rect in table:
     if rect.selected:
