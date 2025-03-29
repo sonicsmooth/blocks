@@ -13,6 +13,7 @@ when isMainModule:
   try:
     randomize()
     wSetSystemDpiAware()
+    echo "DPI: ", wAppGetDpi()
     concurrent.init()
     anneal.init()
     let init_size = (800, 1200)
