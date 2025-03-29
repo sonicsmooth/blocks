@@ -1,5 +1,5 @@
 # Simulated annealing
-import std/[algorithm, locks, math, os, random, sets, sugar, strformat, tables]
+import std/[algorithm, locks, math, os, random, sets, strformat, tables]
 import sequtils
 import wnim
 import winim/inc/[windef,winuser]

@@ -522,18 +522,15 @@ wClass(wBlockPanel of wPanel):
 
 wClass(wMainPanel of wPanel):
   proc layout(self: wMainPanel) =
-    let bmarg = 8
+    let bmarg = self.dpiScale(8)
     let (cszw, cszh) = self.clientSize
-    let (bw, bh) = (150, 30)
+    let (bw, bh) = (self.dpiScale(150), self.dpiScale(30))
     let (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
     self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
     self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
                              cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Static text position, size
-    # let bw1by2 = bw div 2
-    # let bw1by3 = bw div 3
-    # let bw2by3 = 2 * (bw div 3)
     self.mTxt.position = (bmarg, bmarg)
     self.mTxt.size = (bw div 2, self.mTxt.size.height)
 
