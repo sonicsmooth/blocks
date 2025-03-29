@@ -499,7 +499,7 @@ wClass(wBlockPanel of wPanel):
     self.mBmpDC  = MemoryDC()
     self.mMemDc = MemoryDC()
     self.mMemDc.setBackground(self.backgroundColor)
-    self.mDstRect = (50, 50, 350, 350)
+    self.mDstRect = (10, 10, 2300, 1300)
 
     self.wEvent_Size                 do (event: wEvent): self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
