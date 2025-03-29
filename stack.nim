@@ -13,22 +13,14 @@ proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) 
   var rects = table.values.toSeq
   var accRects: seq[RectID]
   
-  for rect in rects:
-    if direction.primax == X:
+  if direction.primax == X:
+    for rect in rects:
       rect.rotate(Horizontal)
-    else:
+    rects.sort(horizCmp, Descending)
+  else:
+    for rect in rects:
       rect.rotate(Vertical)
-
-  case compoundDir(direction):
-    of UpLeft: rects.sort(vertCmp, Descending) 
-    of UpRight: rects.sort(vertCmp, Descending)
-    of DownLeft: rects.sort(vertCmp, Descending)
-    of DownRight: rects.sort(vertCmp, Descending)
-    of LeftUp: rects.sort(horizCmp, Descending)
-    of LeftDown: rects.sort(horizCmp, Descending)
-    of RightUp: rects.sort(horizCmp, Descending)
-    of RightDown: rects.sort(horizCmp, Descending)
-    else: discard
+    rects.sort(vertCmp, Descending)
 
   for rect in rects:
     rect.x = if isXAscending(direction): int32.high - WRANGE.b
@@ -59,7 +51,6 @@ proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) 
       if bbox.leftEdge.x < dstRect.leftEdge.x:
         dstRect.y -= bbox.height
         accRects = @[rect.id]
-    
     of LeftUp:
       if bbox.bottomEdge.y > dstRect.bottomEdge.y:
         dstRect.x = bbox.rightEdge.x
