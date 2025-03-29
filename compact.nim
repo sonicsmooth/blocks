@@ -3,7 +3,7 @@ import sequtils
 import wnim
 import wnim/wTypes
 import winim/inc/winuser
-import randrect, concurrent
+import concurrent
 import recttable, userMessages
 
 type 
@@ -27,6 +27,7 @@ type
   CompactDir* = tuple
     primax,  secax:  Axis
     primrev, secrev: bool
+  CompoundDir* = enum UpLeft,UpRight,DownLeft,DownRight,LeftUp,LeftDown,RightUp,RightDown
   CompactArg* = tuple
     pRectTable: ptr RectTable
     direction:  CompactDir
@@ -41,6 +42,25 @@ const
 
 var
   gCompactThread*: Thread[CompactArg]
+
+proc compoundDir*(cd: CompactDir): CompoundDir =
+  let compound = (cd.primax == X, cd.primrev, cd.secrev)
+  if   compound == (false, false, false): UpLeft
+  elif compound == (false, false, true ): UpRight
+  elif compound == (false, true,  false): DownLeft
+  elif compound == (false, true,  true ): DownRight
+  elif compound == (true,  false, false): LeftUp
+  elif compound == (true,  false, true ): LeftDown
+  elif compound == (true,  true,  false): RightUp
+  else: RightDown
+  
+proc isXAscending*(direction: CompactDir): bool =
+  (direction.primax == X and direction.primrev == false) or
+  (direction.secax  == X and direction.secrev  == false)
+
+proc isYAscending*(direction: CompactDir): bool = 
+  (direction.primax == Y and direction.primrev == false) or
+  (direction.secax  == Y and direction.secrev  == false)
 
 proc rectCmpX(r1, r2: Rect): int = 
   # Sort first by x position, then by id

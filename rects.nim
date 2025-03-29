@@ -30,9 +30,9 @@ type
 
 const
   scale = 3
-  WRANGE = (5*scale) .. (75*scale)
-  HRANGE = (5*scale) .. (75*scale)
-  QTY* = 5
+  WRANGE* = (5*scale) .. (75*scale)
+  HRANGE* = (5*scale) .. (75*scale)
+  QTY* = 50
 
 
 # Declarations

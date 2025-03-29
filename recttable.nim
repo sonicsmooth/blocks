@@ -24,6 +24,9 @@ export rects, tables
 # TODO: instead of doing them individually where needed
 # TODO: Accomodate do-all, or do-selected
 
+# TODO: Unify functions for individual rects into tables
+# TODO: example rotate, move, id, position, assign field value, etc.
+
 type 
   RectTable* = ref Table[RectID, Rect]   # meant to be shared
   PosRot = tuple[x: int, y: int, rot: Rotation]
