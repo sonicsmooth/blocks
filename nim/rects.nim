@@ -30,9 +30,9 @@ type
 
 const
   scale = 3
-  WRANGE = (5*scale) .. (75*scale)
-  HRANGE = (5*scale) .. (75*scale)
-  QTY* = 20
+  WRANGE* = (5*scale) .. (75*scale)
+  HRANGE* = (5*scale) .. (75*scale)
+  QTY* = 50
 
 
 # Declarations
@@ -49,7 +49,7 @@ proc `$`*(rect: Rect): string =
   var strs: seq[string]
   for k, val in rect[].fieldPairs:
     strs.add(k & ": " & $val)
-  result = strs.join("\n")
+  result = strs.join(", ")
 
 proc pos*(rect: Rect): wPoint {.inline.} =
   (rect.x, rect.y)
@@ -85,17 +85,24 @@ proc lowerRight*(rect: wRect): wPoint =
   # Should have -1 offset
   (rect.x + rect.width, rect.y + rect.height)
 
-proc top*(rect: wRect): TopEdge =
+proc topEdge*(rect: wRect): TopEdge =
   TopEdge(pt0: rect.upperLeft, pt1: rect.upperRight)
 
-proc left*(rect: wRect): LeftEdge =
+proc leftEdge*(rect: wRect): LeftEdge =
   LeftEdge(pt0: rect.upperLeft, pt1: rect.lowerLeft)
 
-proc bottom*(rect: wRect): BottomEdge =
+proc bottomEdge*(rect: wRect): BottomEdge =
   BottomEdge(pt0: rect.lowerLeft, pt1: rect.lowerRight)
 
-proc right*(rect: wRect): RightEdge =
+proc rightEdge*(rect: wRect): RightEdge =
   RightEdge(pt0: rect.upperRight, pt1: rect.lowerRight)
+
+proc x*(edge: VertEdge): int {.inline.} =
+  edge.pt0.x
+
+proc y*(edge: HorizEdge): int {.inline.} =
+  edge.pt0.y
+
 
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect
@@ -151,35 +158,35 @@ proc isPointInRect*(pt: wPoint, rect: wRect): bool {.inline.} =
     pt.x >= rect.x and pt.x <= lrcorner.x and
     pt.y >= rect.y and pt.y <= lrcorner.y
 proc isEdgeInRect(edge: VertEdge, rect: wRect): bool {.inline.} =
-  let edgeInside = (edge >= rect.left and edge <= rect.right)
+  let edgeInside = (edge >= rect.leftEdge and edge <= rect.rightEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.y < rect.top.pt0.y
-  let pt1Outside = edge.pt1.y > rect.bottom.pt0.y
+  let pt0Outside = edge.pt0.y < rect.topEdge.pt0.y
+  let pt1Outside = edge.pt1.y > rect.bottomEdge.pt0.y
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
 proc isEdgeInRect(edge: HorizEdge, rect: wRect): bool {.inline.} =
-  let edgeInside = (edge >= rect.top and edge <= rect.bottom)
+  let edgeInside = (edge >= rect.topEdge and edge <= rect.bottomEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.x < rect.left.pt0.x
-  let pt1Outside = edge.pt1.x > rect.right.pt0.x
+  let pt0Outside = edge.pt0.x < rect.leftEdge.pt0.x
+  let pt1Outside = edge.pt1.x > rect.rightEdge.pt0.x
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
 proc isRectInRect*(rect1, rect2: wRect): bool = 
   # Check if any corners or edges of rect2 are within rect1
   # Generally rect1 is moving around and rect2 is part of the db
-  isEdgeInRect(rect1.top,    rect2) or
-  isEdgeInRect(rect1.left,   rect2) or
-  isEdgeInRect(rect1.bottom, rect2) or
-  isEdgeInRect(rect1.right,  rect2)
+  isEdgeInRect(rect1.topEdge,    rect2) or
+  isEdgeInRect(rect1.leftEdge,   rect2) or
+  isEdgeInRect(rect1.bottomEdge, rect2) or
+  isEdgeInRect(rect1.rightEdge,  rect2)
 proc isRectOverRect*(rect1, rect2: wRect): bool =
   # Check if rect1 completely covers rect2
   # TODO: Use <=, >= instead of <, > ?
-  rect1.top    < rect2.top    and
-  rect1.left   < rect2.left   and
-  rect1.bottom > rect2.bottom and
-  rect1.right  > rect2.right
+  rect1.topEdge    < rect2.topEdge    and
+  rect1.leftEdge   < rect2.leftEdge   and
+  rect1.bottomEdge > rect2.bottomEdge and
+  rect1.rightEdge  > rect2.rightEdge
 
 
 # Misc Procs
@@ -234,16 +241,16 @@ proc boundingBox*(rects: seq[wRect|Rect]): wRect =
   top = int.high
   bottom = int.low
   for r in rects:
-    left   = min(left,   r.top.pt0.x)
-    top    = min(top,    r.top.pt0.y)
-    right  = max(right,  r.top.pt1.x)
-    bottom = max(bottom, r.bottom.pt1.y)
+    left   = min(left,   r.leftEdge.x)
+    top    = min(top,    r.topEdge.y)
+    right  = max(right,  r.rightEdge.x)
+    bottom = max(bottom, r.bottomEdge.y)
   (x: left, y: top, width: right - left, height: bottom - top)
 proc rotateSize*(rect: wRect|Rect, amt: Rotation): wSize =
   # Return size of rect if rotated by amt.
   # When rect.typeof is Rect, ignore current rotation
   # Basically swap the width, height if amt is 90 or 270
-  case amt:
+  case amt
   of R0:   (rect.width,  rect.height)
   of R90:  (rect.height, rect.width )
   of R180: (rect.width,  rect.height)
