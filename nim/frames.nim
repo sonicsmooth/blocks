@@ -13,6 +13,8 @@ import concurrent
 # TODO: update qty when spinner text loses focus
 # TODO: checkbox for show intermediate steps
 # TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
+# TODO: Separate options panel for packing
+
 
 type
   CacheKey = tuple[id:RectID, selected: bool, rot: Rotation]
@@ -110,11 +112,9 @@ proc excl[T](s: var seq[T], item: T) =
   while item in s:
     s.del(s.find(item))
 
-# TODO: make this a template
-proc lParamTuple[T](event: wEvent): auto {.inline.} =
+template lParamTuple[T](event: wEvent): auto =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
-
 
 proc fontSize(size: wSize): float =
   # Return font size based on rect size

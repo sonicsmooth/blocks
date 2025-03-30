@@ -24,9 +24,9 @@ proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) 
 
   for rect in rects:
     rect.x = if isXAscending(direction): int32.high - WRANGE.b
-             else: int32.low
+             else:                       int32.low
     rect.y = if isYAscending(direction): int32.high - HRANGE.b
-             else: int32.low
+             else:                       int32.low
 
   for rect in rects:
     accRects.add(rect.id)
