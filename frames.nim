@@ -1,4 +1,4 @@
-import std/[bitops, locks, math, segfaults, sets, sugar, strformat, tables ]
+import std/[algorithm, bitops, locks, math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
@@ -578,10 +578,10 @@ wClass(wMainPanel of wPanel):
     rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty, logRandomize)
     self.mBlockPanel.initBmpCache()
 
-  proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, reverse: bool) = 
+  proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
     #echo GC_getStatistics()
     withLock(gLock):
-      compact(self.mRectTable, axis, reverse, self.mBlockPanel.mDstRect)
+      compact(self.mRectTable, axis, sortOrder, self.mBlockPanel.mDstRect)
     self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
@@ -686,29 +686,29 @@ wClass(wMainPanel of wPanel):
     for rect in self.mRectTable.values:
       echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.width, rect.height)}, rot: {rect.rot}"
   proc onButtonCompact←(self: wMainPanel) =
-    self.delegate1DButtonCompact(X, false)
+    self.delegate1DButtonCompact(X, Ascending)
   proc onButtonCompact→(self: wMainPanel) =
-    self.delegate1DButtonCompact(X, true)
+    self.delegate1DButtonCompact(X, Descending)
   proc onButtonCompact↑(self: wMainPanel) =
-    self.delegate1DButtonCompact(Y, false)
+    self.delegate1DButtonCompact(Y, Ascending)
   proc onButtonCompact↓(self: wMainPanel) =
-    self.delegate1DButtonCompact(Y, true)
+    self.delegate1DButtonCompact(Y, Descending)
   proc onButtonCompact←↑(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, false, false))
+    self.delegate2DButtonCompact((X, Y, Ascending, Ascending))
   proc onButtonCompact←↓(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, false, true))
+    self.delegate2DButtonCompact((X, Y, Ascending, Descending))
   proc onButtonCompact→↑(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, true, false))
+    self.delegate2DButtonCompact((X, Y, Descending, Ascending))
   proc onButtonCompact→↓(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, true, true))
+    self.delegate2DButtonCompact((X, Y, Descending, Descending))
   proc onButtonCompact↑←(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, false, false))
+    self.delegate2DButtonCompact((Y, X, Ascending, Ascending))
   proc onButtonCompact↑→(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, false, true))
+    self.delegate2DButtonCompact((Y, X, Ascending, Descending))
   proc onButtonCompact↓←(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, true, false))
+    self.delegate2DButtonCompact((Y, X, Descending, Ascending))
   proc onButtonCompact↓→(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, true, true))
+    self.delegate2DButtonCompact((Y, X, Descending, Descending))
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
     let (idx, _) = lParamTuple[int](event)
@@ -794,7 +794,6 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel = BlockPanel(self, rectTable)
     self.mSpnr.setRange(1, 10000)
     self.mSldr.setValue(20)
-    #self.mChk.setValue(true)
     self.mCTRb1.click()
     self.mAStratRb1.click()
     self.mAStratRb3.click()

@@ -26,15 +26,13 @@ type
     sorted: seq[RectID]
   CompactDir* = tuple
     primax,  secax:  Axis
-    primrev, secrev: bool
+    primAsc, secAsc: SortOrder
   CompoundDir* = enum UpLeft,UpRight,DownLeft,DownRight,LeftUp,LeftDown,RightUp,RightDown
   CompactArg* = tuple
     pRectTable: ptr RectTable
     direction:  CompactDir
     window:     wWindow
     dstRect:    wRect
-
-
 
 
 const
@@ -44,23 +42,23 @@ var
   gCompactThread*: Thread[CompactArg]
 
 proc compoundDir*(cd: CompactDir): CompoundDir =
-  let compound = (cd.primax == X, cd.primrev, cd.secrev)
-  if   compound == (false, false, false): UpLeft
-  elif compound == (false, false, true ): UpRight
-  elif compound == (false, true,  false): DownLeft
-  elif compound == (false, true,  true ): DownRight
-  elif compound == (true,  false, false): LeftUp
-  elif compound == (true,  false, true ): LeftDown
-  elif compound == (true,  true,  false): RightUp
+  let compound = (cd.primax == X, cd.primAsc, cd.secAsc)
+  if   compound == (false, Ascending,  Ascending ): UpLeft
+  elif compound == (false, Ascending,  Descending): UpRight
+  elif compound == (false, Descending, Ascending ): DownLeft
+  elif compound == (false, Descending, Descending): DownRight
+  elif compound == (true,  Ascending,  Ascending ): LeftUp
+  elif compound == (true,  Ascending,  Descending): LeftDown
+  elif compound == (true,  Descending, Ascending ): RightUp
   else: RightDown
   
 proc isXAscending*(direction: CompactDir): bool =
-  (direction.primax == X and direction.primrev == false) or
-  (direction.secax  == X and direction.secrev  == false)
+  (direction.primax == X and direction.primAsc == Ascending) or
+  (direction.secax  == X and direction.secAsc  == Ascending)
 
 proc isYAscending*(direction: CompactDir): bool = 
-  (direction.primax == Y and direction.primrev == false) or
-  (direction.secax  == Y and direction.secrev  == false)
+  (direction.primax == Y and direction.primAsc == Ascending) or
+  (direction.secax  == Y and direction.secAsc  == Ascending)
 
 proc rectCmpX(r1, r2: Rect): int = 
   # Sort first by x position, then by id
@@ -76,14 +74,14 @@ proc rectCmpY(r1, r2: Rect): int =
 
 # TODO: change to in-place sorting
 # TODO: change reverse to SortOrder, which probably propagates SortOrder up to the top
-proc sortedRectsIds(rects: seq[Rect], axis: Axis, reverse: bool): seq[RectID] =
+proc sortedRectsIds(rects: seq[Rect], axis: Axis, sortOrder: SortOrder): seq[RectID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
-  let order = if reverse: Descending else: Ascending
+  #let order = if reverse: Descending else: Ascending
   if axis == X:
-    tmpRects.sort(rectCmpX, order)
+    tmpRects.sort(rectCmpX, sortOrder)
   else:
-    tmpRects.sort(rectCmpY, order)
+    tmpRects.sort(rectCmpY, sortOrder)
   result = tmpRects.ids
 
 proc setField[T](line: var ScanLine, field: ScanType, val: T) =
@@ -110,7 +108,7 @@ proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
         result = rectTable[node].wRect.height
 
 proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
-                  axis: Axis, reverse: bool): Graph = 
+                  axis: Axis, sortOrder: SortOrder): Graph = 
   let getDim = MakeDimGetter(rectTable, axis)
   var src: Node
   for line in lines:
@@ -118,13 +116,13 @@ proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
     for dst in line.sorted:
       if dst in line.bot: continue
       if (src, dst) notin result:
-        result[(src, dst)] = if reverse: dst.getDim else: src.getDim
+        result[(src, dst)] = if sortOrder == Descending: dst.getDim else: src.getDim
       src = dst
     src = RootNode
     for dst in line.sorted:
       if dst in line.top: continue
       if (src, dst) notin result:
-        result[(src, dst)] = if reverse: dst.getDim else: src.getDim
+        result[(src, dst)] = if sortOrder == Descending: dst.getDim else: src.getDim
       src = dst
 
 proc PosChooser(ax: MajMin): proc(rect: Rect): int =
@@ -139,7 +137,7 @@ proc SizeChooser(ax: MajMin): proc(rect: Rect): int =
   else:
     proc(rect: Rect): int = rect.wRect.height
 
-proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool, ids: seq[RectID]): seq[ScanLine] =
+proc ScanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
   let 
     minor = if axis==X: Minor else: Major
     SecPos  = PosChooser(minor)
@@ -179,21 +177,21 @@ proc ScanLines(rectTable: RectTable, axis: Axis, reverse: bool, ids: seq[RectID]
 
     line.sorted = concat(line.top, line.mid, line.bot)
     if line.sorted.len > 1:
-      line.sorted = sortedRectsIds(rectTable[line.sorted], axis, reverse)
+      line.sorted = sortedRectsIds(rectTable[line.sorted], axis, sortOrder)
     if line.top.len > 1:
-      line.top = sortedRectsIds(rectTable[line.top], axis, reverse)
+      line.top = sortedRectsIds(rectTable[line.top], axis, sortOrder)
     if line.bot.len > 1:
-      line.bot = sortedRectsIds(rectTable[line.bot], axis, reverse)
+      line.bot = sortedRectsIds(rectTable[line.bot], axis, sortOrder)
     lastpos = edge.pos
   result.add(line)
 
-proc MakeGraph*(rectTable: RectTable, axis: Axis, reverse: bool, ids: seq[RectID]): Graph =
+proc MakeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): Graph =
   # Returns DAG = table((frm,to): weight)
   # rectTable is table of rects
   # axis is X or Y
-  # reverse is left/up or down/right
-  let lines = ScanLines(rectTable, axis, reverse, ids)
-  result = ComposeGraph(lines, rectTable, axis, reverse)
+  # sortOrder == left/up or down/right
+  let lines = ScanLines(rectTable, axis, sortOrder, ids)
+  result = ComposeGraph(lines, rectTable, axis, sortOrder)
 
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: int): Table[RectID, Weight] =
   for node in nodes:
@@ -209,32 +207,30 @@ proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: int): 
 
 proc compact*(rectTable: RectTable, 
               axis: Axis,
-              reverse: bool,
+              sortOrder: SortOrder,
               dstRect: wRect,
               ids: seq[RectID] = @[]) =
   # Top level compact function in one direction
-  let graph = MakeGraph(rectTable, axis, reverse, ids)
+  let graph = MakeGraph(rectTable, axis, sortOrder, ids)
   let nodes = if ids.len == 0: rectTable.keys.toSeq
               else: ids
 
-  if axis == X and not reverse:
+  if axis == X and sortOrder == Ascending:
     let lp = longestPathBellmanFord(graph, nodes, 0)
-    #for id, rect in rectTable:
     for id in nodes:
       rectTable[id].x = dstRect.x + lp[id]
 
-  elif axis == X and reverse:
+  elif axis == X and sortOrder == Descending:
     let lp = longestPathBellmanFord(graph, nodes, 0)
-    #for id, rect in rectTable:
     for id in nodes:
       rectTable[id].x = dstRect.x + dstRect.width - lp[id]
 
-  elif axis == Y and not reverse:
+  elif axis == Y and sortOrder == Ascending:
     let lp = longestPathBellmanFord(graph, nodes, 0)
     for id in nodes:
       rectTable[id].y = dstRect.y + lp[id]
 
-  elif axis == Y and reverse:
+  elif axis == Y and sortOrder == Descending:
     let lp = longestPathBellmanFord(graph, nodes, 0)
     for id in nodes:
       rectTable[id].y = dstRect.y + dstRect.height - lp[id]
@@ -244,8 +240,8 @@ proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: wRect) =
   var pos, lastPos: PosTable
   pos = rectTable.positions
   while pos != lastPos:
-    compact(rectTable, direction.primax, direction.primrev, dstRect)
-    compact(rectTable, direction.secax, direction.secrev, dstRect)
+    compact(rectTable, direction.primax, direction.primAsc, dstRect)
+    compact(rectTable, direction.secax, direction.secAsc, dstRect)
     lastPos = pos
     pos = rectTable.positions
 

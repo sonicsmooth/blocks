@@ -7,6 +7,7 @@ import recttable, compact
 
 proc vertCmp (r1, r2: Rect): int = cmp(r1.size.height, r2.size.height)
 proc horizCmp(r1, r2: Rect): int = cmp(r1.size.width,  r2.size.width )
+
 proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) =
   var dstRect = dstRect
   # Rotate, sort by vertical size, and move to opposite corner
@@ -30,8 +31,8 @@ proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) 
 
   for rect in rects:
     accRects.add(rect.id)
-    compact(table, direction.primax, direction.primrev, dstRect, accRects)
-    compact(table, direction.secax,  direction.secrev,  dstRect, accRects)
+    compact(table, direction.primax, direction.primAsc, dstRect, accRects)
+    compact(table, direction.secax,  direction.secAsc,  dstRect, accRects)
     let bbox = boundingBox(table[accRects])
 
     case compoundDir(direction):
