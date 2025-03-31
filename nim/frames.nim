@@ -65,6 +65,9 @@ type
     CmdSelect
     CmdSelectAll
 
+  #Modifiers = enum Ctrl, Shift, Alt
+  #ModArray = array[Modifiers, bool]
+  #CmdKey = tuple[key: typeof(wKey_None), modifiers: ModArray]
   CmdKey = tuple[key: typeof(wKey_None), ctrl: bool, shift: bool, alt: bool]
   CmdTable = Table[CmdKey, Command]
   
