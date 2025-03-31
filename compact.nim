@@ -73,16 +73,16 @@ proc rectCmpY(r1, r2: Rect): int =
     result = cmp(r1.id, r2.id)
 
 # TODO: change to in-place sorting
-# TODO: change reverse to SortOrder, which probably propagates SortOrder up to the top
 proc sortedRectsIds(rects: seq[Rect], axis: Axis, sortOrder: SortOrder): seq[RectID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
-  #let order = if reverse: Descending else: Ascending
   if axis == X:
     tmpRects.sort(rectCmpX, sortOrder)
   else:
     tmpRects.sort(rectCmpY, sortOrder)
   result = tmpRects.ids
+
+
 
 proc setField[T](line: var ScanLine, field: ScanType, val: T) =
   case field
