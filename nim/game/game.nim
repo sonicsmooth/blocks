@@ -1,4 +1,5 @@
 import strutils
+import times
 import sdl2
 import sdl2/image
 import arraymancer
@@ -7,12 +8,11 @@ import arraymancer
 type
   SDLException = object of Exception
   Input {.pure.} = enum none, left, right, jump, restart, quit
-  #Coord = cint
-  #Vector = Tensor[Coord]
+  PointF = Tensor[float]
   Player = ref object
     texture: TexturePtr
-    pos: Point #Vector
-    vel: Point #Vector
+    pos: PointF
+    vel: PointF
   Map = ref object
     texture: TexturePtr
     width, height: int
@@ -22,17 +22,22 @@ type
     renderer: RendererPtr
     player: Player
     map: Map
-    camera: Point
+    camera: PointF
 
 const
   tilesPerRow = 16
   tileSize: Point = (64, 64)
 
+var
+  startTime = epochTime()
+  lastTick = 0
+
 template sdlFailIf(cond: typed, reason: string) =
   if cond: raise SDLException.newException(
     reason & ", SDL error: " & $getError())
 
-proc renderTee(renderer: RendererPtr, texture: TexturePtr, pos: Point) =
+
+proc renderTee(renderer: RendererPtr, texture: TexturePtr, pos: PointF) =
   let x = pos[0].cint
   let y = pos[1].cint
   var bodyParts: array[8, tuple[src, dst: Rect, flip: cint]] = [
@@ -59,7 +64,7 @@ proc newMap(texture: TexturePtr, file: string): Map =
       if value > uint(uint8.high):
         raise ValueError.newException(
           "Invalid value " & word & " in map " & file)
-      result.tiles.add value.uint8
+      result.tiles.add(value.uint8)
       inc width
     if result.width > 0 and result.width != width:
       raise ValueError.newException(
@@ -67,25 +72,29 @@ proc newMap(texture: TexturePtr, file: string): Map =
     result.width = width
     inc result.height
 
-proc renderMap(renderer: RendererPtr, map: Map, camera: Point) =
+proc renderMap(renderer: RendererPtr, map: Map, camera: PointF) =
   var
     clip = rect(0, 0, tileSize.x, tileSize.y)
     dest = rect(0, 0, tileSize.x, tileSize.y)
-
   for i, tileNr in map.tiles:
     if tileNr == 0: continue
-    clip.x = cint(tileNr mod tilesPerRow) * tileSize[0]
+    clip.x = cint(tileNr mod tilesPerRow) * tileSize.x
+    clip.y = cint(tileNr div tilesPerRow) * tileSize.y
+    dest.x = cint(i mod map.width) * tileSize.x - camera[0].cint
+    dest.y = cint(i div map.width) * tileSize.y - camera[1].cint
+    renderer.copy(map.texture, unsafeAddr clip, unsafeAddr dest)
+
 
 proc render(game: Game) =
   game.renderer.clear()
   game.renderer.renderTee(game.player.texture,
-    (game.player.pos.x - game.camera.x,
-     game.player.pos.y - game.camera.y))
+    (game.player.pos - game.camera))
+  game.renderer.renderMap(game.map, game.camera)
   game.renderer.present()
 
 proc restartPlayer(player: Player) =
-  player.pos = (170, 500)
-  player.vel = (0, 0)
+  player.pos = [170.0, 500.0].toTensor()
+  player.vel = [0.0, 0.0].toTensor()
 
 proc newPlayer(texture: TexturePtr): Player =
   new result
@@ -94,7 +103,7 @@ proc newPlayer(texture: TexturePtr): Player =
 
 proc newGame(renderer: RendererPtr): Game =
   new result
-  result.camera = (0, 0)
+  result.camera = [0.0, 0.0].toTensor()
   result.renderer = renderer
   result.player = newPlayer(renderer.loadTexture("player.png"))
   result.map = newMap(renderer.loadTexture("grass.png"), "default.map")
@@ -117,7 +126,9 @@ proc handleInput(game: Game) =
     of KeyUp:     game.inputs[event.key.keysym.scancode.toInput] = false
     else:         discard
 
-
+proc physics(game: Game) =
+  game.player.vel[1] += 0.75
+  game.player.pos += game.player.vel
 
 proc main =
   sdlFailIf(not sdl2.init(INIT_VIDEO or INIT_TIMER or INIT_EVENTS)):
@@ -147,7 +158,14 @@ proc main =
   var game = newGame(renderer)
   while not game.inputs[Input.quit]:
     game.handleInput()
+    let newTick = int((epochTime() - startTime) * 50)
+    for tick in lastTick+1 .. newTick:
+      game.physics()
+    lastTick = newTick
     game.render()
+    
+
+
 
 
 
