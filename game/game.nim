@@ -1,3 +1,4 @@
+import strutils
 import sdl2
 import sdl2/image
 import arraymancer
@@ -6,45 +7,85 @@ import arraymancer
 type
   SDLException = object of Exception
   Input {.pure.} = enum none, left, right, jump, restart, quit
-  Coord = float
+  #Coord = cint
+  #Vector = Tensor[Coord]
   Player = ref object
     texture: TexturePtr
-    pos: Tensor[Coord]
-    vel: Tensor[Coord]
+    pos: Point #Vector
+    vel: Point #Vector
+  Map = ref object
+    texture: TexturePtr
+    width, height: int
+    tiles: seq[uint8]
   Game = ref object
     inputs: array[Input, bool]
     renderer: RendererPtr
     player: Player
-    camera: Tensor[Coord]
+    map: Map
+    camera: Point
+
+const
+  tilesPerRow = 16
+  tileSize: Point = (64, 64)
 
 template sdlFailIf(cond: typed, reason: string) =
   if cond: raise SDLException.newException(
     reason & ", SDL error: " & $getError())
 
-proc renderTee(renderer: RendererPtr, texture: TexturePtr, pos: Tensor[Coord]) =
+proc renderTee(renderer: RendererPtr, texture: TexturePtr, pos: Point) =
   let x = pos[0].cint
   let y = pos[1].cint
   var bodyParts: array[8, tuple[src, dst: Rect, flip: cint]] = [
-    (rect(192, 64, 64, 32), rect(x-60, y,    96, 48), SDL_FLIP_NONE),
-    (rect( 96,  0, 96, 96), rect(x-48, y-48, 96, 96), SDL_FLIP_NONE),
-    (rect(192, 64, 64, 32), rect(x-36, y,    96, 48), SDL_FLIP_NONE),
-    (rect(192, 32, 64, 32), rect(x-60, y,    96, 48), SDL_FLIP_NONE),
-    (rect(  0,  0, 96, 96), rect(x-48, y-48, 96, 96), SDL_FLIP_NONE),
-    (rect(192, 32, 64, 32), rect(x-36, y,    96, 48), SDL_FLIP_NONE),
-    (rect( 64, 96, 32, 32), rect(x-18, y-21, 96, 36), SDL_FLIP_NONE),
-    (rect( 64, 96, 32, 32), rect(x-6,  y-6,  96, 36), SDL_FLIP_HORIZONTAL)]
+    (rect(192, 64, 64, 32), rect(x - 60, y,      96, 48), SDL_FLIP_NONE),
+    (rect( 96,  0, 96, 96), rect(x - 48, y - 48, 96, 96), SDL_FLIP_NONE),
+    (rect(192, 64, 64, 32), rect(x - 36, y,      96, 48), SDL_FLIP_NONE),
+    (rect(192, 32, 64, 32), rect(x - 60, y,      96, 48), SDL_FLIP_NONE),
+    (rect(  0,  0, 96, 96), rect(x - 48, y - 48, 96, 96), SDL_FLIP_NONE),
+    (rect(192, 32, 64, 32), rect(x - 36, y,      96, 48), SDL_FLIP_NONE),
+    (rect( 64, 96, 32, 32), rect(x - 18, y - 21, 36, 36), SDL_FLIP_NONE),
+    (rect( 64, 96, 32, 32), rect(x - 6,  y - 21, 36, 36), SDL_FLIP_HORIZONTAL)]
   for part in bodyParts.mitems:
     renderer.copyEx(texture, part.src, part.dst, angle=0.0, center=nil, flip=part.flip)
+
+proc newMap(texture: TexturePtr, file: string): Map =
+  new result
+  result.texture = texture
+  result.tiles = @[]
+  for line in file.lines:
+    var width = 0
+    for word in line.split(' '):
+      if word == "": continue
+      let value = parseUInt(word)
+      if value > uint(uint8.high):
+        raise ValueError.newException(
+          "Invalid value " & word & " in map " & file)
+      result.tiles.add value.uint8
+      inc width
+    if result.width > 0 and result.width != width:
+      raise ValueError.newException(
+        "Incompatible line length in map " & file)
+    result.width = width
+    inc result.height
+
+proc renderMap(renderer: RendererPtr, map: Map, camera: Point) =
+  var
+    clip = rect(0, 0, tileSize.x, tileSize.y)
+    dest = rect(0, 0, tileSize.x, tileSize.y)
+
+  for i, tileNr in map.tiles:
+    if tileNr == 0: continue
+    clip.x = cint(tileNr mod tilesPerRow) * tileSize[0]
 
 proc render(game: Game) =
   game.renderer.clear()
   game.renderer.renderTee(game.player.texture,
-    game.player.pos - game.camera)
+    (game.player.pos.x - game.camera.x,
+     game.player.pos.y - game.camera.y))
   game.renderer.present()
 
 proc restartPlayer(player: Player) =
-  player.pos = [Coord(170), 500].toTensor()
-  player.vel = [Coord(0),     0].toTensor()
+  player.pos = (170, 500)
+  player.vel = (0, 0)
 
 proc newPlayer(texture: TexturePtr): Player =
   new result
@@ -53,9 +94,10 @@ proc newPlayer(texture: TexturePtr): Player =
 
 proc newGame(renderer: RendererPtr): Game =
   new result
+  result.camera = (0, 0)
   result.renderer = renderer
   result.player = newPlayer(renderer.loadTexture("player.png"))
-  result.camera = [Coord(0),0].toTensor()
+  result.map = newMap(renderer.loadTexture("grass.png"), "default.map")
 
 proc toInput(key: Scancode): Input =
   case key
