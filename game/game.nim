@@ -127,7 +127,16 @@ proc handleInput(game: Game) =
     else:         discard
 
 proc physics(game: Game) =
+  if game.inputs[Input.restart]:
+    game.player.restartPlayer()
+  if game.inputs[Input.jump]:
+    game.player.vel[1] = -21
+  let direction = float(game.inputs[Input.right].int - 
+                        game.inputs[Input.left].int)
+  
   game.player.vel[1] += 0.75
+  game.player.vel[0] = clamp(
+    0.5 * game.player.vel[0] + 4.0 * direction, -8, 8)
   game.player.pos += game.player.vel
 
 proc main =
