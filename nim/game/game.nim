@@ -1,7 +1,6 @@
-import strutils, times, math
+import strformat, strutils, times, math
 import sdl2
-import sdl2/image
-#import arraymancer
+import sdl2/[image, ttf]
 
 
 type
@@ -9,10 +8,13 @@ type
   Input {.pure.} = enum none, left, right, jump, restart, quit
   Vector2D = tuple[x, y: cint]
   Vector2Df = tuple[x, y: float]
+  Time = ref object
+    begin, finish, best: int
   Player = ref object
     texture: TexturePtr
     pos: Vector2Df
     vel: Vector2Df
+    time: Time
   Map = ref object
     texture: TexturePtr
     width, height: int
@@ -21,6 +23,7 @@ type
   Game = ref object
     inputs: array[Input, bool]
     renderer: RendererPtr
+    font: FontPtr
     player: Player
     map: Map
     camera: Vector2Df
@@ -29,6 +32,7 @@ const
   tilesPerRow = 16
   tileSize: Vector2D = (64, 64)
   playerSize: Vector2D = (64, 64)
+  windowSize: Vector2D = (1280, 720)
   air = 0
   start = 78
   finish = 110
@@ -123,6 +127,24 @@ proc vector2Df(x,y: float): Vector2Df =
 proc diag[T:Vector2D|Vector2Df](v1: T): float =
   sqrt(v1.x.float^2 + v1.y.float^2)
 
+proc renderText(renderer: RendererPtr, font: FontPtr, text: string,
+                x, y: cint, color: Color) =
+  let surface = font.renderUtf8Solid(text.cstring, color)
+  sdlFailIf surface.isNil: "Could not render text surface"
+  discard surface.setSurfaceAlphaMod(color.a)
+  var source = rect(0, 0, surface.w, surface.h)
+  var dest = rect(x, y, surface.w, surface.h)
+  let texture = renderer.createTextureFromSurface(surface)
+  sdlFailIf texture.isNil:
+    "Could not create texture from rendered text"
+  surface.freeSurface()
+  renderer.copyEx(texture, source, dest, angle=0.0, center=nil, flip=SDL_FLIP_NONE)
+  texture.destroy()
+
+proc renderText(game: Game, text: string, x,y: cint, color: Color) =
+  const outlineColor = color(0,0,0,64)
+  game.renderer.renderText(game.font, text, x, y, color)
+
 proc renderTee(renderer: RendererPtr, texture: TexturePtr, pos: Vector2Df) =
   let x = pos.x.cint
   let y = pos.y.cint
@@ -177,6 +199,9 @@ proc getTile(map: Map, x, y: int): uint8 =
     pos = ny * map.width + nx
   map.tiles[pos]
 
+proc getTile(map: Map, pos: Vector2Df): uint8 =
+  map.getTile(pos.x.round.int, pos.y.round.int)
+
 proc isSolid(map: Map, x, y: int): bool =
   map.getTile(x, y) notin {air, start, finish}
 
@@ -227,20 +252,58 @@ proc moveBox(map: Map, pos, vel: var Vector2Df, size: Vector2D): set[Collision] 
         vel = (0.0, 0.0)
     pos = newPos
 
-proc render(game: Game) =
+proc moveCamera(game: Game) =
+  const halfWin = float(windowSize.x div 2)
+  when defined(fluidCamera):
+    let dist = game.camera.x - game.player.pos.x + halfWin
+    game.camera.x -= 0.05 * dist
+  elif defined(innerCamera):
+    let
+      leftArea  = game.player.pos.x - halfWin - 100
+      rightArea = game.player.pos.x - halfWin + 100
+    game.camera.x = clamp(game.camera.x, leftArea, rightArea)
+  else:
+    game.camera.x = game.player.pos.x - halfWin
+
+proc formatTime(ticks: int): string =
+  let
+    mins = (ticks div 50) div 60
+    secs = (ticks div 50) mod 60
+    cents = (ticks mod 50) * 2
+  &"{mins:02}:{secs:02}:{cents:02}"
+
+proc render(game: Game, tick: int) =
   game.renderer.clear()
   game.renderer.renderTee(game.player.texture,
     (game.player.pos - game.camera))
   game.renderer.renderMap(game.map, game.camera)
+
+  let time = game.player.time
+  const white = color(255, 255, 255, 255)
+  if time.begin >= 0:
+    game.renderText(formatTime(tick - time.begin), 50, 100, white)
+  elif time.finish >= 0:
+    game.renderText("Finished in: " & formatTime(time.finish), 50, 100, white)
+  if time.best >= 0:
+    game.renderText("Best time: " & formatTime(time.best), 50, 150, white)
+
   game.renderer.present()
 
 proc restartPlayer(player: Player) =
-  player.pos = (170.0, 500.0)
+  player.pos = (170.0, 300.0)
   player.vel = (  0.0,   0.0)
+  player.time.begin = -1
+  player.time.finish = -1
+
+proc newTime: Time =
+  new result
+  result.finish = -1
+  result.best = -1
 
 proc newPlayer(texture: TexturePtr): Player =
   new result
   result.texture = texture
+  result.time = newTime()
   result.restartPlayer()
 
 proc newGame(renderer: RendererPtr): Game =
@@ -249,6 +312,8 @@ proc newGame(renderer: RendererPtr): Game =
   result.renderer = renderer
   result.player = newPlayer(renderer.loadTexture("player.png"))
   result.map = newMap(renderer.loadTexture("grass.png"), "default.map")
+  result.font = openFont("DejaVuSans.ttf", 28)
+  sdlFailIf result.font.isNil: "Failed to load font"
 
 proc toInput(key: Scancode): Input =
   case key
@@ -268,8 +333,19 @@ proc handleInput(game: Game) =
     of KeyUp:     game.inputs[event.key.keysym.scancode.toInput] = false
     else:         discard
 
-
-
+proc logic(game: Game, tick: int) =
+  template time: untyped = game.player.time
+  case game.map.getTile(game.player.pos):
+  of start:
+    time.begin = tick
+  of finish:
+    if time.begin >= 0:
+      time.finish = tick - time.begin
+      time.begin = -1
+      if time.best < 0 or time.finish < time.best:
+        time.best = time.finish
+      echo "Finished in ", formatTime(time.finish)
+  else: discard
 
 proc physics(game: Game) =
   if game.inputs[Input.restart]:
@@ -289,7 +365,6 @@ proc physics(game: Game) =
   else:
     game.player.vel.x = 0.95 * game.player.vel.x + 2.0 * direction
   game.player.vel.x = clamp(game.player.vel.x, -8, 8)
-  #game.player.pos += game.player.vel
   game.map.moveBox(game.player.pos, game.player.vel, playerSize)
 
 
@@ -321,14 +396,19 @@ proc main =
     "SDL2 Image initialization failed"
   defer: image.quit()
 
+  sdlFailIf(ttfInit() == SdlError): "SDL2 TTF initialization failed"
+  defer: ttfQuit()
+
   var game = newGame(renderer)
   while not game.inputs[Input.quit]:
     game.handleInput()
     let newTick = int((epochTime() - startTime) * 50)
     for tick in lastTick+1 .. newTick:
       game.physics()
+      game.moveCamera()
+      game.logic(tick)
     lastTick = newTick
-    game.render()
+    game.render(lastTick)
     
 
 
