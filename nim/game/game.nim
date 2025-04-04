@@ -27,6 +27,12 @@ type
     player: Player
     map: Map
     camera: Vector2Df
+  CacheLine = object
+    texture: TexturePtr
+    w, h: cint
+  TextCache = ref object
+    text: string
+    cache: array[2, CacheLine]
 
 const
   tilesPerRow = 16
@@ -53,14 +59,6 @@ proc `+`[T:Vector2D|Vector2Df](v1, v2: T): T =
 proc `-`[T:Vector2D|Vector2Df](v1, v2: T): T =
   result.x = v1.x - v2.x
   result.y = v1.y - v2.y
-
-proc `+=`[T:Vector2D|Vector2Df](v1: var T, v2: T) =
-  v1.x = v1.x + v2.x
-  v1.y = v1.y + v2.y
-
-proc `-=`[T:Vector2D|Vector2Df](v1: var T, v2: T) =
-  v1.x = v1.x - v2.x
-  v1.y = v1.y - v2.y
 
 proc `*`[T:Vector2D|Vector2Df](v1: T, m:cint|int|float): T =
   when v1 is Vector2D:
@@ -115,25 +113,23 @@ proc toVector2D(v1:Vector2D|Vector2Df): Vector2D =
   else:
     (v1.x.round.cint, v1.y.round.cint)
 
-proc vector2D(x,y: cint): Vector2D =
-  (x, y)
-
-proc vector2Df(x,y: cint): Vector2Df =
-  (x.float, y.float)
-
-proc vector2Df(x,y: float): Vector2Df =
-  (x, y)
+proc vector2D(x,y: cint):   Vector2D =  (x, y)
+proc vector2D(x,y: float):  Vector2D =  (x.round.cint, y.round.cint)
+proc vector2Df(x,y: cint):  Vector2Df = (x.float, y.float)
+proc vector2Df(x,y: float): Vector2Df = (x, y)
 
 proc diag[T:Vector2D|Vector2Df](v1: T): float =
   sqrt(v1.x.float^2 + v1.y.float^2)
 
+proc newTextCache: TextCache = new result
+
 proc renderText(renderer: RendererPtr, font: FontPtr, text: string,
-                x, y: cint, color: Color) =
-  let surface = font.renderUtf8Solid(text.cstring, color)
+                x, y, outline: cint, color: Color) =
+  let surface = font.renderUtf8Blended(text.cstring, color)
   sdlFailIf surface.isNil: "Could not render text surface"
   discard surface.setSurfaceAlphaMod(color.a)
   var source = rect(0, 0, surface.w, surface.h)
-  var dest = rect(x, y, surface.w, surface.h)
+  var dest   = rect(x - outline, y - outline, surface.w, surface.h)
   let texture = renderer.createTextureFromSurface(surface)
   sdlFailIf texture.isNil:
     "Could not create texture from rendered text"
@@ -143,7 +139,8 @@ proc renderText(renderer: RendererPtr, font: FontPtr, text: string,
 
 proc renderText(game: Game, text: string, x,y: cint, color: Color) =
   const outlineColor = color(0,0,0,64)
-  game.renderer.renderText(game.font, text, x, y, color)
+  game.renderer.renderText(game.font, text, x, y, 2, outlineColor)
+  game.renderer.renderText(game.font, text, x, y, 0, color)
 
 proc renderTee(renderer: RendererPtr, texture: TexturePtr, pos: Vector2Df) =
   let x = pos.x.cint
