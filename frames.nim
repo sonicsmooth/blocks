@@ -844,7 +844,6 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.initBmpCache()
     self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
 
-
     # Connect Events
     self.wEvent_Size     do (event: wEvent): self.onResize(event)
     self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
@@ -855,5 +854,4 @@ wClass(wMainFrame of wFrame):
     self.center()
     self.show()
   
-
 

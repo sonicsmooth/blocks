@@ -20,6 +20,7 @@ when isMainModule:
     var rectTable = RectTable()
     let app = App()
     discard MainFrame(init_size, rectTable)
+    discard SDLFrame(init_size)
     app.mainLoop()
     concurrent.deinit()
     anneal.deinit()
