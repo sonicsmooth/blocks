@@ -279,8 +279,6 @@ proc formatTime(ticks: int): string =
   let
     mins = (ticks div 50) div 60
     secs = (ticks div 50) mod 60
-    #cents = (ticks mod 50) * 2
-  #&"{mins:02}:{secs:02}:{cents:02}"
   &"{mins:02}:{secs:02}"
 
 proc formatTimeExact(ticks: int): string = 
