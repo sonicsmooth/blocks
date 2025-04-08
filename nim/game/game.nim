@@ -50,16 +50,12 @@ var
 template sdlFailIf(cond: typed, reason: string) =
   if cond: raise SDLException.newException(
     reason & ", SDL error: " & $getError())
-
-
 proc `+`[T:Vector2D|Vector2Df](v1, v2: T): T =
   result.x = v1.x + v2.x
   result.y = v1.y + v2.y
-
 proc `-`[T:Vector2D|Vector2Df](v1, v2: T): T =
   result.x = v1.x - v2.x
   result.y = v1.y - v2.y
-
 proc `*`[T:Vector2D|Vector2Df](v1: T, m:cint|int|float): T =
   when v1 is Vector2D:
     when m is cint:
@@ -81,7 +77,6 @@ proc `*`[T:Vector2D|Vector2Df](v1: T, m:cint|int|float): T =
     elif m is float:
       (v1.x * m,
        v1.y * m)
-
 proc `/`[T:Vector2D|Vector2Df](v1: T, m:cint|int|float): T =
   when v1 is Vector2D:
     when m is cint:
@@ -103,44 +98,62 @@ proc `/`[T:Vector2D|Vector2Df](v1: T, m:cint|int|float): T =
     elif m is float:
       (v1.x / m,
        v1.y / m)
-
 proc toVector2Df(v1: Vector2D|Vector2Df): Vector2Df =
   (v1.x.float, v1.y.float)
-
 proc toVector2D(v1:Vector2D|Vector2Df): Vector2D =
   when v1 is Vector2D:
     v1
   else:
     (v1.x.round.cint, v1.y.round.cint)
-
 proc vector2D(x,y: cint):   Vector2D =  (x, y)
 proc vector2D(x,y: float):  Vector2D =  (x.round.cint, y.round.cint)
 proc vector2Df(x,y: cint):  Vector2Df = (x.float, y.float)
 proc vector2Df(x,y: float): Vector2Df = (x, y)
-
 proc diag[T:Vector2D|Vector2Df](v1: T): float =
   sqrt(v1.x.float^2 + v1.y.float^2)
-
 proc newTextCache: TextCache = new result
 
 proc renderText(renderer: RendererPtr, font: FontPtr, text: string,
-                x, y, outline: cint, color: Color) =
+                x, y, outline: cint, color: Color): CacheLine =
+  font.setFontOutline(outline)
   let surface = font.renderUtf8Blended(text.cstring, color)
   sdlFailIf surface.isNil: "Could not render text surface"
   discard surface.setSurfaceAlphaMod(color.a)
-  var source = rect(0, 0, surface.w, surface.h)
-  var dest   = rect(x - outline, y - outline, surface.w, surface.h)
-  let texture = renderer.createTextureFromSurface(surface)
-  sdlFailIf texture.isNil:
+  result.w = surface.w
+  result.h = surface.h
+  result.texture = renderer.createTextureFromSurface(surface)
+  sdlFailIf result.texture.isNil:
     "Could not create texture from rendered text"
   surface.freeSurface()
-  renderer.copyEx(texture, source, dest, angle=0.0, center=nil, flip=SDL_FLIP_NONE)
-  texture.destroy()
+  #renderer.copyEx(texture, source, dest, angle=0.0, center=nil, flip=SDL_FLIP_NONE)
+  #texture.destroy()
 
-proc renderText(game: Game, text: string, x,y: cint, color: Color) =
-  const outlineColor = color(0,0,0,64)
-  game.renderer.renderText(game.font, text, x, y, 2, outlineColor)
-  game.renderer.renderText(game.font, text, x, y, 0, color)
+# proc renderText(game: Game, text: string, x,y: cint, color: Color) =
+#   const outlineColor = color(0,0,0,64)
+#   game.renderer.renderText(game.font, text, x, y, 2, outlineColor)
+#   game.renderer.renderText(game.font, text, x, y, 0, color)
+
+proc renderText(game: Game, text: string, x, y: cint,
+                color: Color, tc: TextCache) =
+  let passes = [(color: color(0,0,0,64), outline: 2.cint),
+                (color: color, outline: 0.cint)]
+  if text != tc.text:
+    for i in 0 .. 1:
+      tc.cache[i].texture.destroy()
+      tc.cache[i] = game.renderer.renderText(
+        game.font, text, x, y, passes[i].outline, passes[i].color)
+      tc.text = text
+  for i in 0 .. 1:
+    var source = rect(0, 0, tc.cache[i].w, tc.cache[i].h)
+    var dest = rect(x - passes[i].outline, y - passes[i].outline,
+                    tc.cache[i].w, tc.cache[i].h)
+    game.renderer.copyEx(tc.cache[i].texture, source, dest,
+                         angle = 0.0, center = nil)
+
+template renderTextCached(game: Game, text: string, x, y: cint, color: Color) =
+  block:
+    var tc {.global.} = newTextCache()
+    game.renderText(text, x, y, color, tc)
 
 proc renderTee(renderer: RendererPtr, texture: TexturePtr, pos: Vector2Df) =
   let x = pos.x.cint
@@ -266,8 +279,13 @@ proc formatTime(ticks: int): string =
   let
     mins = (ticks div 50) div 60
     secs = (ticks div 50) mod 60
-    cents = (ticks mod 50) * 2
-  &"{mins:02}:{secs:02}:{cents:02}"
+    #cents = (ticks mod 50) * 2
+  #&"{mins:02}:{secs:02}:{cents:02}"
+  &"{mins:02}:{secs:02}"
+
+proc formatTimeExact(ticks: int): string = 
+    let cents = (ticks mod 50) * 2
+    &"{formatTime(ticks)}:{cents:02}"
 
 proc render(game: Game, tick: int) =
   game.renderer.clear()
@@ -278,11 +296,11 @@ proc render(game: Game, tick: int) =
   let time = game.player.time
   const white = color(255, 255, 255, 255)
   if time.begin >= 0:
-    game.renderText(formatTime(tick - time.begin), 50, 100, white)
+    game.renderTextCached(formatTimeExact(tick - time.begin), 50, 100, white)
   elif time.finish >= 0:
-    game.renderText("Finished in: " & formatTime(time.finish), 50, 100, white)
+    game.renderTextCached("Finished in: " & formatTimeExact(time.finish), 50, 100, white)
   if time.best >= 0:
-    game.renderText("Best time: " & formatTime(time.best), 50, 150, white)
+    game.renderTextCached("Best time: " & formatTimeExact(time.best), 50, 150, white)
 
   game.renderer.present()
 
