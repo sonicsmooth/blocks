@@ -4,9 +4,11 @@ import sdl2, sdl2/[image, ttf]
 
 type
   SDLException = object of Exception
-  wSDLFrame = ref object of wFrame
+  wSDLPanel = ref object of wPanel
     sdlWindow: WindowPtr
     sdlRenderer: RendererPtr
+  wSDLFrame = ref object of wFrame
+    mPanel: wSDLPanel
 
 
 template sdlFailIf(cond: typed, reason: string) =
@@ -26,9 +28,9 @@ proc initSDL =
     "SDL2 TTF initialization failed"
 
 
-wClass(wSDLFrame of wFrame):
-  proc onResize(self: wSDLFrame, event: wEvent) =
-    let (w,h) = event.size
+wClass(wSDLPanel of wPanel):
+  proc onPaint(self: wSDLPanel, event: wEvent) =
+    let (w,h) = self.clientSize
     self.sdlRenderer.setDrawColor(r=110, g=132, b=174)
     self.sdlRenderer.clear()
     self.sdlRenderer.setDrawColor(r=255, g=0, b=0)
@@ -36,8 +38,8 @@ wClass(wSDLFrame of wFrame):
     self.sdlRenderer.fillRect(rect)
     self.sdlRenderer.present()
 
-  proc init*(self: wSDLFrame, size: wSize) =
-    wFrame(self).init(title="SDL Frame")
+  proc init*(self: wSDLPanel, parent: wWindow) =
+    wPanel(self).init(parent)
     
     self.sdlWindow = createWindowFrom(cast[pointer] (self.mHwnd))
     sdlFailIf self.sdlWindow.isNil: "Window could not be created"
@@ -46,7 +48,12 @@ wClass(wSDLFrame of wFrame):
     self.sdlRenderer = self.sdlWindow.createRenderer(index = -1, flags=flags)
     sdlFailIf self.sdlRenderer.isNil: "Renderer could not be created"
 
-    self.wEvent_Size do (event: wEvent): self.onResize(event)
+    self.wEvent_Paint do (event: wEvent): self.onPaint(event)
+
+wClass(wSDLFrame of wFrame):
+  proc init*(self: wSDLFrame, size: wSize) =
+    wFrame(self).init(title="SDL Frame", size=size)
+    self.mPanel = SDLPanel(self)
 
 
 
