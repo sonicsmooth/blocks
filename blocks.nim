@@ -2,7 +2,7 @@ import std/random
 import std/segfaults
 import wNim/wApp
 import wNim/wUtils
-import frames, rectTable
+import frames, sdlframes, rectTable
 import concurrent, anneal
 
 when compileOption("profiler"):
@@ -14,16 +14,25 @@ when isMainModule:
     randomize()
     wSetSystemDpiAware()
     echo "DPI: ", wAppGetDpi()
+    
+    # Start stuff
     concurrent.init()
     anneal.init()
+    sdlframes.initSDL()
+    
+    # Main data and window
     let init_size = (800, 1200)
     var rectTable = RectTable()
-    let app = App()
     discard MainFrame(init_size, rectTable)
-    discard SDLFrame(init_size)
+    
+    # Go App!
+    let app = App()
     app.mainLoop()
+
+    # Shut down
     concurrent.deinit()
     anneal.deinit()
+    
   except Exception as e:
     echo "Exception!!"
     echo e.msg

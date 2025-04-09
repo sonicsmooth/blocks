@@ -4,8 +4,8 @@ from std/os import sleep
 import wNim
 import winim
 from wNim/private/wHelper import `-`
-import anneal, compact, rects, recttable, stack, userMessages
-import concurrent
+import anneal, compact, concurrent, rects, recttable, sdlframes
+import stack, userMessages
 
 # TODO: copy background before Move
 # TODO: Hover
@@ -19,7 +19,8 @@ import concurrent
 type
   CacheKey = tuple[id:RectID, selected: bool, rot: Rotation]
   FontTable = Table[float, wtypes.wFont]
-  wBlockPanel = ref object of wPanel
+  #wBlockPanel = ref object of wPanel
+  wBlockPanel = ref object of wSDLPanel
     mRectTable: RectTable
     mBmpCache: Table[CacheKey, wtypes.wBitmap]
     mFirmSelection: seq[RectID]
@@ -129,7 +130,7 @@ proc fontSize(size: wSize): float =
   clamp(spix, fp)
 
 
-wClass(wBlockPanel of wPanel):
+wClass(wBlockPanel of wSDLPanel):
   proc rectToBmp(rect: rects.Rect, sel: bool, rot: Rotation): wBitmap = 
     # Draw rect and label onto bitmap; return bitmap.
     # Label gets a shrunk down rectangle so it 
@@ -158,7 +159,6 @@ wClass(wBlockPanel of wPanel):
     else:
       discard
       # Previously was rotated text; look in git history
-
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
@@ -397,13 +397,25 @@ wClass(wBlockPanel of wPanel):
   template towColor(r: untyped, g: untyped, b: untyped): wColor =
         wColor(wColor(r and 0xff) or (wColor(g and 0xff) shl 8) or (wColor(b and 0xff) shl 16))
 
+  template toSDLColor(color: wColor): sdl2.Color =
+    (r: (color.int32.shr 24) and 0xff,
+     g: (color.int32.shr 16) and 0xff,
+     b: (color.int32.shr  8) and 0xff,
+     a: (color.int32       ) and 0xff)
+
   template blendFunc(alpha: untyped): BLENDFUNCTION =
     BLENDFUNCTION(BlendOp: AC_SRC_OVER,
                   SourceConstantAlpha: alpha,
                   AlphaFormat: 0)
 
+  proc onPaint(self: wBlockPanel, event: wEvent) =
+    let size = event.window.clientSize
+    #self.sdlRenderer.setDrawColor(self.backgroundColor.toSDLColor)
+    self.sdlRenderer.setDrawColor(r=110, g=132, b=174)
+    self.sdlRenderer.clear()
+    self.sdlRenderer.present()
 
-  proc onPaint(self: wBlockPanel, event: wEvent) = 
+  proc oldOnPaint(self: wBlockPanel, event: wEvent) = 
     # Do this to make sure we only get called once per event
     var dc = PaintDC(event.window)
     if not tryAcquire(gLock): return
@@ -496,7 +508,8 @@ wClass(wBlockPanel of wPanel):
     discard
 
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
-    wPanel(self).init(parent, style=wBorderSimple)
+    #wPanel(self).init(parent, style=wBorderSimple)
+    wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
     self.mBmpDC  = MemoryDC()
@@ -521,7 +534,6 @@ wClass(wBlockPanel of wPanel):
     self.wEvent_KeyDown              do (event: wEvent): self.processUiEvent(event)
     self.wEvent_KeyUp                do (event: wEvent): self.processUiEvent(event)
     #self.USER_PAINT_DONE             do (): self.onPaintDone()
-
 
 wClass(wMainPanel of wPanel):
   proc layout(self: wMainPanel) =
@@ -853,5 +865,7 @@ wClass(wMainFrame of wFrame):
     # Show!
     self.center()
     self.show()
+    self.mMainPanel.mBlockPanel.forceRedraw()
+
   
 
