@@ -125,13 +125,6 @@ proc renderText(renderer: RendererPtr, font: FontPtr, text: string,
   sdlFailIf result.texture.isNil:
     "Could not create texture from rendered text"
   surface.freeSurface()
-  #renderer.copyEx(texture, source, dest, angle=0.0, center=nil, flip=SDL_FLIP_NONE)
-  #texture.destroy()
-
-# proc renderText(game: Game, text: string, x,y: cint, color: Color) =
-#   const outlineColor = color(0,0,0,64)
-#   game.renderer.renderText(game.font, text, x, y, 2, outlineColor)
-#   game.renderer.renderText(game.font, text, x, y, 0, color)
 
 proc renderText(game: Game, text: string, x, y: cint,
                 color: Color, tc: TextCache) =
