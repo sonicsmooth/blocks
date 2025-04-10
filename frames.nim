@@ -17,19 +17,13 @@ import stack, userMessages
 
 
 type
-  #CacheKey = tuple[id:RectID, selected: bool, rot: Rotation]
   CacheKey = tuple[id:RectID, selected: bool]
   FontTable = Table[float, wtypes.wFont]
-  #wBlockPanel = ref object of wPanel
   wBlockPanel = ref object of wSDLPanel
     mRectTable: RectTable
-    #mBmpCache: Table[CacheKey, wtypes.wBitmap]
     mTextureCache: Table[CacheKey, TexturePtr]
     mFirmSelection: seq[RectID]
     mRatio: float
-    mBigBmp: wBitmap
-    mMemDc: wMemoryDC
-    mBmpDc: wMemoryDC
     mAllBbox: wRect
     mSelectBox: wRect
     mDstRect: wRect
@@ -124,14 +118,12 @@ template rbswap(color: wColor|uint32): uint32 =
     bitor(bb,gg,rr)
 template SDLColor(color: wColor|uint32, alpha: uint8 = 0xff): sdl2.Color =
   (r: color.r, g: color.g, b: color.b, a: alpha)
-
-
-template blendFunc(alpha: untyped): BLENDFUNCTION =
-  BLENDFUNCTION(BlendOp: AC_SRC_OVER,
-                SourceConstantAlpha: alpha,
-                AlphaFormat: 0)
-
-
+template SDLRect(rect: rects.Rect|wRect): sdl2.Rect =
+  # Not sure why I can't label the tuple elements with x:, y:, etc.
+  (rect.x.cint, 
+   rect.y.cint, 
+   rect.width.cint,
+   rect.height.cint)
 
 proc excl[T](s: var seq[T], item: T) =
   # Not order preserving because it uses del
@@ -154,46 +146,30 @@ proc fontSize(size: wSize): float =
 
 
 wClass(wBlockPanel of wSDLPanel):
-  # proc rectToBmp(rect: rects.Rect, sel: bool, rot: Rotation): wBitmap = 
-  #   # Draw rect and label onto bitmap; return bitmap.
-  #   # Label gets a shrunk down rectangle so it 
-  #   # doesn't overwrite the border
-  #   let rotsz = rect.rotateSize(rot)
-  #   let (w,h) = (rotsz.width, rotsz.height)
-  #   result = Bitmap((w,h))
-  #   var memDC = MemoryDC()
-
-  #   # Draw main filled rectangle
-  #   let mainBrush = Brush(rect.brushcolor)
-  #   let zeroRect: wRect = (0,0,w,h)
-  #   memDC.selectObject(result)
-  #   memDc.setBrush(mainBrush)
-  #   memDC.drawRectangle(zeroRect)
-
-  #   # Draw text in rectangle
-  #   let font = fonts[fontSize(rotsz)]
-  #   let selstr = $rect.id & (if sel: "*" else: "")
-  #   let rectstr = if rot == R90 or rot == R270: "(" & selstr & ")"
-  #                 else: selstr
-  #   memDC.setFont(font)
-  #   memDC.setTextBackground(rect.brushcolor)
-  #   when true:
-  #     memDC.drawLabel(rectstr, zeroRect, align=wCenter or wMiddle)
-  #   else:
-  #     discard
-  #     # Previously was rotated text; look in git history
-
   proc rectToTexture(self: wBlockPanel, rect: rects.Rect, sel: bool): TexturePtr = 
     # Draw rect and label onto texture; return texture.
-    # Label gets a shrunk down rectangle so it 
-    # doesn't overwrite the border
-    let (w,h) = (rect.width, rect.height)
-    let sdlRect: sdl2.Rect = (0, 0, w, h)
-    let surface = createRGBSurface(w, h.int32, 32.int32)
+    let (w, h) = (rect.width, rect.height)
+    let sdlRect = rect(0, 0, w, h)
+    result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_RGBA8888,SDL_TEXTUREACCESS_TARGET,w,h)
+    self.sdlRenderer.setRenderTarget(result)
 
-    # Draw main filled rectangle
-    surface.fillRect(addr sdlRect, rect.brushcolor.uint32)
-    result = self.sdlRenderer.createTextureFromSurface(surface)
+    # Draw main filled rectangle with outline
+    self.sdlRenderer.setDrawColor(SDLColor rect.brushcolor.rbswap)
+    self.sdlRenderer.fillRect(addr sdlRect)
+    self.sdlRenderer.setDrawColor(SDLColor rect.pencolor.rbswap)
+    self.sdlRenderer.drawRect(addr sdlRect)
+
+    # Render text to surface, create texture, then copy to output texture
+    let font = openFont("DejaVuSans.ttf", 20)
+    let selstr = $rect.id & (if sel: "*" else: "")
+    let ts = font.renderUtf8Blended(selstr.cstring, SDLColor 0)
+    let tt = self.sdlRenderer.createTextureFromSurface(ts)
+    let dstRect: sdl2.Rect = ((w div 2) - (ts.w div 2),
+                              (h div 2) - (ts.h div 2), ts.w, ts.h)
+    self.sdlRenderer.copy(tt, nil, addr dstRect)
+
+    # Return render target back to screen
+    self.sdlRenderer.setRenderTarget(nil)
 
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
@@ -211,7 +187,6 @@ wClass(wBlockPanel of wSDLPanel):
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
-    echo "wBlockPnael.onResize: ", self.clientSize
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
@@ -440,103 +415,41 @@ wClass(wBlockPanel of wSDLPanel):
 # TODO optimize what gets invalidated during move
   
 
-  var i:int
   proc onPaint(self: wBlockPanel, event: wEvent) =
     let size = event.window.clientSize
-    echo "onPaint: ", size
     self.sdlRenderer.setDrawColor(SDLColor self.backgroundColor.rbswap)
     self.sdlRenderer.clear()
+    self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
 
+    # Blit all rectangles
     for rect in self.mRectTable.values:
-      let cachekey = (rect.id, rect.selected)
-      let texture = self.mTextureCache[cachekey]
-      var srcrect: sdl2.Rect = (0, 0, rect.width, rect.height)
-      var dstrect: sdl2.Rect = (rect.x, rect.y, rect.width, rect.height)
-      let angle = rect.rot.toFloat
-
-      #self.sdlRenderer.copy(texture, nil, addr dstrect)
+      let texture = self.mTextureCache[(rect.id, rect.selected)]
+      let dstrect = SDLRect rect
+      let angle = -rect.rot.toFloat
       self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, nil)
-      #self.sdlRenderer.setDrawColor(color(0,0,0,0))
-      #self.sdlRenderer.drawRect(addr dstrect)
 
+    # Draw bounding box for everything
+    let bbr = SDLRect self.mAllBbox
+    self.sdlRenderer.setDrawColor(SDLColor wBlack.rbswap)
+    self.sdlRenderer.drawRect(addr bbr)
 
+    # Draw CmdSelection box directly to screen
+    let selrect = SDLRect self.mSelectBox
+    self.sdlRenderer.setDrawColor(0, 102, 204, 70)
+    self.sdlRenderer.fillRect(addr selrect)
+    self.sdlRenderer.setDrawColor(0, 120, 215)
+    self.sdlRenderer.drawRect(addr selrect)
+
+    # Draw destination box
+    if self.mDstRect.width > 0:
+      let dstrect = SDLRect self.mDstRect
+      self.sdlRenderer.setDrawColor(SDLColor wRed.rbswap)
+      self.sdlRenderer.drawRect(addr dstrect)
 
 
     self.sdlRenderer.present()
 
   # proc oldonPaint(self: wBlockPanel, event: wEvent) = 
-  #   # Do this to make sure we only get called once per event
-  #   var dc = PaintDC(event.window)
-  #   if not tryAcquire(gLock): return
-  #   var clipRect1: winim.RECT
-  #   GetUpdateRect(self.mHwnd, clipRect1, false)
-  #   var clipRect2: wRect = (x: clipRect1.left - 1, 
-  #                           y: clipRect1.top - 1,
-  #                           width: clipRect1.right - clipRect1.left + 2,
-  #                           height: clipRect1.bottom - clipRect1.top + 2)
-
-  #   # Make sure in-mem bitmap is initialized to correct size
-  #   # Todo: Move this to onsize
-  #   let size = event.window.clientSize
-  #   if isnil(self.mBigBmp) or self.mBigBmp.size != size:
-  #     self.mBigBmp = Bitmap(size)
-  #     self.mMemDc.selectObject(self.mBigBmp)
-
-  #   # Clear mem, erase old position
-  #   var dirtyRects: seq[rects.Rect]
-  #   if mouseData.dirtyIds.len == 0:
-  #     # Draw everything when there is nothing CmdSelected
-  #     dirtyRects = self.mRectTable.values.toSeq
-  #     self.mMemDc.clear()
-  #   else:
-  #     dirtyRects = self.mRectTable[mouseData.dirtyIds]
-  #     self.mMemDc.setPen(Pen(event.window.backgroundColor))
-  #     self.mMemDc.setBrush(Brush(event.window.backgroundColor))
-  #     self.mMemDc.drawRectangle(clipRect2)
-
-  #   # Blend cached bitmaps
-  #   for rect in dirtyRects:
-  #     let cachekey = (rect.id, rect.selected, rect.rot)
-  #     let bmp = self.mBmpCache[cachekey]
-  #     let (dstx, dsty) = (rect.pos.x, rect.pos.y)
-  #     let (rsw, rsh) = (rect.size.width, rect.size.height)
-  #     self.mBmpDc.selectObject(bmp)
-  #     AlphaBlend(self.mMemDc.mHdc, dstx, dsty, 
-  #                rsw, rsh,
-  #                self.mBmpDC.mHdc, 0, 0,
-  #                rsw, rsh, blendFunc(240))
-
-  #   # draw bounding box for everything
-  #   self.mMemDC.setPen(Pen(wBlack))
-  #   self.mMemDc.setBrush(wTransparentBrush)
-  #   self.mMemDc.drawRectangle(self.mAllBbox)
-
-  #   # Draw CmdSelection box
-  #   # Draw solid box to tmpMemDC, then alpha blend to memDc
-  #   # Draw outline to memDc
-  #   if self.mSelectBox.width > 0:
-  #     let x = self.mSelectBox.x
-  #     let y = self.mSelectBox.y
-  #     let w = self.mSelectBox.width
-  #     let h = self.mSelectBox.height
-  #     var tmpMemDc = MemoryDC()
-  #     var tmpBmp = Bitmap(w, h)
-  #     tmpMemDc.selectObject(tmpBmp)
-  #     tmpMemDC.setBrush(Brush(towColor(0, 102, 204)))
-  #     tmpMemDc.drawRectangle(0, 0, w, h)
-  #     AlphaBlend(self.mMemDc.mHdc, x, y, w, h,
-  #                tmpMemDC.mHdc,    0, 0, w, h,
-  #                blendFunc(70))
-  #     self.mMemDc.setPen(Pen(towColor(0, 120, 215), width=1))
-  #     self.mMemDc.setBrush(wTransparentBrush)
-  #     self.mMemDc.drawRectangle(x,y,w,h)
-
-  #   # Draw destination box
-  #   if self.mDstRect.width > 0:
-  #     self.mMemDc.setPen(Pen(wRed, width=1))
-  #     self.mMemDc.setBrush(wTransparentBrush)
-  #     self.mMemDc.drawRectangle(self.mDstRect)
-
 
   #   # draw current text, possibly sent from other thread
   #   let sw = self.mMemDc.charWidth * self.mText.len
@@ -561,9 +474,9 @@ wClass(wBlockPanel of wSDLPanel):
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    self.mBmpDC  = MemoryDC()
-    self.mMemDc = MemoryDC()
-    self.mMemDc.setBackground(self.backgroundColor)
+    # self.mBmpDC  = MemoryDC()
+    # self.mMemDc = MemoryDC()
+    # self.mMemDc.setBackground(self.backgroundColor)
     self.mDstRect = (10, 10, 2300, 1300)
 
     self.wEvent_Size                 do (event: wEvent): self.onResize(event)
@@ -698,7 +611,6 @@ wClass(wMainPanel of wPanel):
 
 
   proc onResize(self: wMainPanel) =
-    echo "wMainpanel.onResize: ", self.clientSize
     self.layout()
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
@@ -866,7 +778,6 @@ wClass(wMainPanel of wPanel):
 
 wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
-    echo "wMainFrame.onResize: ", self.clientSize
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
     let sz: wSize = lParamTuple[int](event)
