@@ -24,7 +24,6 @@ when isMainModule:
     let init_size = (800, 1200)
     var rectTable = RectTable()
     discard MainFrame(init_size, rectTable)
-    
     # Go App!
     let app = App()
     app.mainLoop()
