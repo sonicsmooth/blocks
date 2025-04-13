@@ -160,7 +160,7 @@ wClass(wBlockPanel of wSDLPanel):
     self.sdlRenderer.drawRect(addr sdlRect)
 
     # Render text to surface, create texture, then copy to output texture
-    let font = openFont("DejaVuSans.ttf", 20)
+    let font = openFont("fonts/DejaVuSans.ttf", 20)
     let selstr = $rect.id & (if sel: "*" else: "")
     let ts = font.renderUtf8Blended(selstr.cstring, SDLColor 0)
     let tt = self.sdlRenderer.createTextureFromSurface(ts)
@@ -343,7 +343,9 @@ wClass(wBlockPanel of wSDLPanel):
           mouseData.state = StateLMBDownInRect
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
-      else: discard
+      else:
+        echo self.mRectTable.ptInRects(event.mousePos)
+        discard
     of StateLMBDownInRect:
       let hitid = mouseData.clickHitIds[^1]
       case event.getEventType
@@ -426,7 +428,8 @@ wClass(wBlockPanel of wSDLPanel):
       let texture = self.mTextureCache[(rect.id, rect.selected)]
       let dstrect = SDLRect rect
       let angle = -rect.rot.toFloat
-      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, nil)
+      let pt: sdl2.Point = (0, 0)
+      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, addr pt)
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
