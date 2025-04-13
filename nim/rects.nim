@@ -1,4 +1,4 @@
-import std/[random, sets, sequtils, strutils, tables]
+import std/[random, sets, sequtils, strutils, sugar, tables]
 import wNim/[wTypes]
 import wNim/private/wHelper
 import randrect
@@ -45,11 +45,13 @@ proc `-`*(r1, r2:Rotation): Rotation {.inline.}
 
 
 # Procs for single Rect
+
 proc `$`*(rect: Rect): string =
   var strs: seq[string]
   for k, val in rect[].fieldPairs:
     strs.add(k & ": " & $val)
   result = strs.join(", ")
+
 
 proc pos*(rect: Rect): wPoint {.inline.} =
   (rect.x, rect.y)
@@ -75,15 +77,15 @@ proc upperLeft*(rect: wRect): wPoint =
 proc upperRight*(rect: wRect): wPoint =
   # Should have -1 offset
   # TODO: introduce upperRight< proc with offset
-  (rect.x + rect.width, rect.y)
+  (rect.x + rect.width - 1, rect.y)
 
 proc lowerLeft*(rect: wRect): wPoint =
   # Should have -1 offset
-  (rect.x, rect.y + rect.height)
+  (rect.x, rect.y + rect.height - 1)
 
 proc lowerRight*(rect: wRect): wPoint =
   # Should have -1 offset
-  (rect.x + rect.width, rect.y + rect.height)
+  (rect.x + rect.width - 1, rect.y + rect.height - 1)
 
 proc topEdge*(rect: wRect): TopEdge =
   TopEdge(pt0: rect.upperLeft, pt1: rect.upperRight)
@@ -153,10 +155,22 @@ proc `==`*(edge1, edge2: HorizEdge): bool {.inline.} =
 
 # Procs for hit testing
 proc isPointInRect*(pt: wPoint, rect: wRect): bool {.inline.} = 
-    let lrcorner: wPoint = (rect.x + rect.width,
-                            rect.y + rect.height)
+    let lrcorner: wPoint = (rect.x + rect.width - 1,
+                            rect.y + rect.height - 1)
     pt.x >= rect.x and pt.x <= lrcorner.x and
     pt.y >= rect.y and pt.y <= lrcorner.y
+
+let r1 = Rect(x:5, y:5, width:15, height:5, rot:R90)
+echo r1
+dump isPointInRect((5,5), r1)
+dump isPointInRect((5,6), r1)
+dump isPointInRect((6,6), r1)
+dump isPointInRect((9,9), r1)
+dump isPointInRect((9,19), r1)
+dump isPointInRect((10,19), r1)
+dump isPointInRect((9,20), r1)
+dump isPointInRect((10,20), r1)
+
 proc isEdgeInRect(edge: VertEdge, rect: wRect): bool {.inline.} =
   let edgeInside = (edge >= rect.leftEdge and edge <= rect.rightEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
