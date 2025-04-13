@@ -318,7 +318,7 @@ proc newGame(renderer: RendererPtr): Game =
   result.renderer = renderer
   result.player = newPlayer(renderer.loadTexture("player.png"))
   result.map = newMap(renderer.loadTexture("grass.png"), "default.map")
-  result.font = openFont("DejaVuSans.ttf", 28)
+  result.font = openFont("../fonts/DejaVuSans.ttf", 28)
   sdlFailIf result.font.isNil: "Failed to load font"
 
 proc toInput(key: Scancode): Input =

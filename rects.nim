@@ -64,10 +64,16 @@ proc size*(rect: Rect): wSize {.inline.} =
 
 converter wRect*(rect: Rect): wRect =
   # Implicit conversion
-  if rect.rot == R0 or rect.rot == R180:
-    result = (rect.x, rect.y, rect.width, rect.height)
-  else:
-    result = (rect.x, rect.y, rect.height, rect.width)
+  # Returns barebones rectangle x,y,w,h without any rotation
+  let
+    (w, h)   = (rect.width,    rect.height  )
+    (x, y)   = (rect.x,        rect.y       )
+    (ox, oy) = (rect.origin.x, rect.origin.y)
+  case rect.rot:
+  of R0:   (x - ox,     y - oy,     w, h)
+  of R90:  (x - oy,     y - ox,     h, w)
+  of R180: (x + ox - w, y + oy - h, w, h)
+  of R270: (x + oy - h, y - ox,     h, w)
 
 
 # Procs for single wRect
@@ -160,16 +166,37 @@ proc isPointInRect*(pt: wPoint, rect: wRect): bool {.inline.} =
     pt.x >= rect.x and pt.x <= lrcorner.x and
     pt.y >= rect.y and pt.y <= lrcorner.y
 
-let r1 = Rect(x:5, y:5, width:15, height:5, rot:R90)
-echo r1
-dump isPointInRect((5,5), r1)
-dump isPointInRect((5,6), r1)
-dump isPointInRect((6,6), r1)
-dump isPointInRect((9,9), r1)
-dump isPointInRect((9,19), r1)
-dump isPointInRect((10,19), r1)
-dump isPointInRect((9,20), r1)
-dump isPointInRect((10,20), r1)
+let r1 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R0)
+let r2 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R90)
+let r3 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R180)
+let r4 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R270)
+
+dump r1
+dump r1.upperLeft
+dump r1.upperRight
+dump r1.lowerLeft
+dump r1.lowerRight
+echo ""
+
+dump r2
+dump r2.upperLeft
+dump r2.upperRight
+dump r2.lowerLeft
+dump r2.lowerRight
+echo ""
+
+dump r3
+dump r3.upperLeft
+dump r3.upperRight
+dump r3.lowerLeft
+dump r3.lowerRight
+echo ""
+
+dump r4
+dump r4.upperLeft
+dump r4.upperRight
+dump r4.lowerLeft
+dump r4.lowerRight
 
 proc isEdgeInRect(edge: VertEdge, rect: wRect): bool {.inline.} =
   let edgeInside = (edge >= rect.leftEdge and edge <= rect.rightEdge)
