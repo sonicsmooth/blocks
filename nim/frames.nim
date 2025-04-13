@@ -428,8 +428,8 @@ wClass(wBlockPanel of wSDLPanel):
       let texture = self.mTextureCache[(rect.id, rect.selected)]
       let dstrect = SDLRect rect
       let angle = -rect.rot.toFloat
-      let pt: sdl2.Point = (0, 0)
-      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, addr pt)
+      let ptaddr = cast[ptr sdl2.Point] (addr rect.origin)
+      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, ptaddr)
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
