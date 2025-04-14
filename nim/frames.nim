@@ -417,15 +417,22 @@ wClass(wBlockPanel of wSDLPanel):
     self.sdlRenderer.setDrawColor(SDLColor self.backgroundColor.rbswap)
     self.sdlRenderer.clear()
     self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
+    
 
     # Blit all rectangles
-    for rect in self.mRectTable.values:
-      let texture = self.mTextureCache[(rect.id, rect.selected)]
-      var dstrect1: wRect = rect.towRect(false)
+    for drect in self.mRectTable.values:
+      let texture = self.mTextureCache[(drect.id, drect.selected)]
+
+      let jrect = drect.wRect
+      self.sdlRenderer.setDrawColor(color(255,0,0,255))
+      self.sdlRenderer.fillRect(addr jrect)
+
+      var dstrect1: wRect = drect.towRect(false)
       let dstrect2 = SDLRect dstrect1
-      let angle = -rect.rot.toFloat
-      let ptaddr = cast[ptr sdl2.Point] (addr rect.origin)
-      self.sdlRenderer.copyEx(texture, nil, addr dstrect2, angle, ptaddr)
+      let angle = -drect.rot.toFloat
+      let ptaddr = cast[ptr sdl2.Point] (addr drect.origin)
+      #self.sdlRenderer.copyEx(texture, nil, addr dstrect2, angle, ptaddr)
+      self.sdlRenderer.copyEx(texture, nil, addr jrect, 0, nil)
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
