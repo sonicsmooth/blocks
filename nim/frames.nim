@@ -101,8 +101,6 @@ var
   fonts: FontTable = collect(
                        for sz in fontPts: 
                          (sz, Font(sz, wFontFamilyRoman))).toTable
-  #fonts: array[fontPts, wFont] = collect(for sz in fontPts: Font(sz.float, wFontFamilyRoman))
-
 
 template towColor(r: untyped, g: untyped, b: untyped): wColor =
       wColor(wColor(r and 0xff) or (wColor(g and 0xff) shl 8) or (wColor(b and 0xff) shl 16))
@@ -288,20 +286,16 @@ wClass(wBlockPanel of wSDLPanel):
     of CmdRotateCCW:
       if mouseData.state == StateDraggingRect or 
          mouseData.state == StateLMBDownInRect:
-        echo "Rotate CCW"
         self.rotateRects(@[mouseData.clickHitIds[^1]], R90)
       else:
-        echo "Rotate CCW"
         self.rotateRects(sel, R90)
         resetBox()
         mouseData.state = StateNone
     of CmdRotateCW:
       if mouseData.state == StateDraggingRect or 
          mouseData.state == StateLMBDownInRect:
-        echo "Rotate CW"
         self.rotateRects(@[mouseData.clickHitIds[^1]], R270)
       else:
-        echo "Rotate CW"
         self.rotateRects(sel, R270)
         resetBox()
         mouseData.state = StateNone
@@ -344,7 +338,9 @@ wClass(wBlockPanel of wSDLPanel):
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
       else:
-        echo self.mRectTable.ptInRects(event.mousePos)
+        # let ptir = self.mRectTable.ptInRects(event.mousePos)
+        # if ptir.len > 0:
+        #   echo ptir
         discard
     of StateLMBDownInRect:
       let hitid = mouseData.clickHitIds[^1]
@@ -415,7 +411,6 @@ wClass(wBlockPanel of wSDLPanel):
 
 # Todo: hovering over
 # TODO optimize what gets invalidated during move
-  
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
     let size = event.window.clientSize
@@ -426,10 +421,13 @@ wClass(wBlockPanel of wSDLPanel):
     # Blit all rectangles
     for rect in self.mRectTable.values:
       let texture = self.mTextureCache[(rect.id, rect.selected)]
-      let dstrect = SDLRect rect
+      var dstrect1: wRect = (rect.x - rect.origin.x, rect.y - rect.origin.y, rect.width, rect.height)
+      let dstrect2 = SDLRect dstrect1
+      dump rect
+      dump dstrect1
       let angle = -rect.rot.toFloat
       let ptaddr = cast[ptr sdl2.Point] (addr rect.origin)
-      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, ptaddr)
+      self.sdlRenderer.copyEx(texture, nil, addr dstrect2, angle, ptaddr)
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
@@ -448,7 +446,6 @@ wClass(wBlockPanel of wSDLPanel):
       let dstrect = SDLRect self.mDstRect
       self.sdlRenderer.setDrawColor(SDLColor wRed.rbswap)
       self.sdlRenderer.drawRect(addr dstrect)
-
 
     self.sdlRenderer.present()
 
@@ -473,13 +470,9 @@ wClass(wBlockPanel of wSDLPanel):
     discard
 
   proc init(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
-    #wPanel(self).init(parent, style=wBorderSimple)
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    # self.mBmpDC  = MemoryDC()
-    # self.mMemDc = MemoryDC()
-    # self.mMemDc.setBackground(self.backgroundColor)
     self.mDstRect = (10, 10, 2300, 1300)
 
     self.wEvent_Size                 do (event: wEvent): self.onResize(event)
@@ -702,7 +695,7 @@ wClass(wMainPanel of wPanel):
       self.mBlockPanel.forceRedraw(0)
       gAnnealComms[idx].ackChan.send(ackCnt)
     inc ackCnt
-    
+
   proc init(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
     wPanel(self).init(parent)
 
@@ -719,12 +712,6 @@ wClass(wMainPanel of wPanel):
     self.mAStratRb3 = RadioButton(self, label="Wiggle", style=wRbGroup)
     self.mAStratRb4 = RadioButton(self, label="Swap"  )
 
-
-    # self.mRad1  = RadioButton(self, label="Strat1", style=wRbGroup) # Reset to random after each compact
-    # self.mRad2  = RadioButton(self, label="Strat2 ") # Reset to prev. compact after each compact
-    # self.mRad3  = RadioButton(self, label="Strat3") # Slide in order from largest to smallest
-    # self.mRad4  = RadioButton(self, label="Wiggle", style=wRbGroup)
-    # self.mRad5  = RadioButton(self, label="Swap")
     self.mSldr  = Slider(self)
     self.mButtons[ 0] = Button(self, label = "randomize All"     )
     self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
@@ -778,7 +765,6 @@ wClass(wMainPanel of wPanel):
     self.mAStratRb1.click()
     self.mAStratRb3.click()
 
-
 wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
@@ -830,6 +816,7 @@ wClass(wMainFrame of wFrame):
     # Show!
     self.center()
     self.show()
+    self.mMainPanel.mBlockPanel.forceRedraw()
     self.mMainPanel.mBlockPanel.forceRedraw()
 
   
