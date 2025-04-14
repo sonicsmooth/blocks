@@ -421,10 +421,8 @@ wClass(wBlockPanel of wSDLPanel):
     # Blit all rectangles
     for rect in self.mRectTable.values:
       let texture = self.mTextureCache[(rect.id, rect.selected)]
-      var dstrect1: wRect = (rect.x - rect.origin.x, rect.y - rect.origin.y, rect.width, rect.height)
+      var dstrect1: wRect = rect.towRect(false)
       let dstrect2 = SDLRect dstrect1
-      dump rect
-      dump dstrect1
       let angle = -rect.rot.toFloat
       let ptaddr = cast[ptr sdl2.Point] (addr rect.origin)
       self.sdlRenderer.copyEx(texture, nil, addr dstrect2, angle, ptaddr)
