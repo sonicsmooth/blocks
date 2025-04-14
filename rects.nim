@@ -62,36 +62,40 @@ proc size*(rect: Rect): wSize {.inline.} =
   else:
     (rect.height, rect.width)
 
-converter wRect*(rect: Rect): wRect =
-  # Implicit conversion
-  # Returns barebones rectangle x,y,w,h without any rotation
+proc towRect*(rect: Rect, dorot: bool=true): wRect =
+  # Explicit conversion.  do rotation is optional
   let
     (w, h)   = (rect.width,    rect.height  )
     (x, y)   = (rect.x,        rect.y       )
     (ox, oy) = (rect.origin.x, rect.origin.y)
-  case rect.rot:
-  of R0:   (x - ox,     y - oy,     w, h)
-  of R90:  (x - oy,     y - ox,     h, w)
-  of R180: (x + ox - w, y + oy - h, w, h)
-  of R270: (x + oy - h, y - ox,     h, w)
+  if dorot:
+    case rect.rot:
+    of R0:   (x - ox,     y - oy,     w, h)
+    of R90:  (x - oy,     y - ox,     h, w)
+    of R180: (x + ox - w, y + oy - h, w, h)
+    of R270: (x + oy - h, y - ox,     h, w)
+  else:
+    (x - ox, y - oy, w, h)
 
+converter wRect*(rect: Rect): wRect =
+  # Implicit conversion
+  # Returns barebones rectangle x,y,w,h after rotation
+  towRect(rect, true)
 
 # Procs for single wRect
+# Not including -1, etc., because right = x + width.
+# eg for width=2 rect at 0, right edge = 2, not 1+1
 proc upperLeft*(rect: wRect): wPoint =
   (rect.x, rect.y)
 
 proc upperRight*(rect: wRect): wPoint =
-  # Should have -1 offset
-  # TODO: introduce upperRight< proc with offset
-  (rect.x + rect.width - 1, rect.y)
+  (rect.x + rect.width, rect.y)
 
 proc lowerLeft*(rect: wRect): wPoint =
-  # Should have -1 offset
-  (rect.x, rect.y + rect.height - 1)
+  (rect.x, rect.y + rect.height)
 
 proc lowerRight*(rect: wRect): wPoint =
-  # Should have -1 offset
-  (rect.x + rect.width - 1, rect.y + rect.height - 1)
+  (rect.x + rect.width, rect.y + rect.height)
 
 proc topEdge*(rect: wRect): TopEdge =
   TopEdge(pt0: rect.upperLeft, pt1: rect.upperRight)
@@ -137,6 +141,7 @@ proc ids*(rects: seq[Rect]): seq[RectID] =
 # Procs for edges
 # Comparators assume edges are truly vertical or horizontal
 # So we only look at pt0
+# TODO: remove .pt0
 proc `<`*(edge1, edge2: VertEdge): bool {.inline.} =
   edge1.pt0.x < edge2.pt0.x
 proc `<=`*(edge1, edge2: VertEdge): bool {.inline.} =
@@ -161,22 +166,11 @@ proc `==`*(edge1, edge2: HorizEdge): bool {.inline.} =
 
 # Procs for hit testing
 proc isPointInRect*(pt: wPoint, rect: wRect): bool {.inline.} = 
-    let lrcorner: wPoint = (rect.x + rect.width - 1,
-                            rect.y + rect.height - 1)
+    let lrcorner = rect.lowerRight
     pt.x >= rect.x and pt.x <= lrcorner.x and
     pt.y >= rect.y and pt.y <= lrcorner.y
 
-let r1 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R0)
-let r2 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R90)
-let r3 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R180)
-let r4 = Rect(x:5, y:5, width:10, height:20, origin: (5, 5), rot:R270)
-
-dump r1
-dump r1.upperLeft
-dump r1.upperRight
-dump r1.lowerLeft
-dump r1.lowerRight
-echo ""
+let r2 = Rect(x:100, y:100, width:100, height:200, origin: (50, 50), rot:R90)
 
 dump r2
 dump r2.upperLeft
@@ -184,19 +178,6 @@ dump r2.upperRight
 dump r2.lowerLeft
 dump r2.lowerRight
 echo ""
-
-dump r3
-dump r3.upperLeft
-dump r3.upperRight
-dump r3.lowerLeft
-dump r3.lowerRight
-echo ""
-
-dump r4
-dump r4.upperLeft
-dump r4.upperRight
-dump r4.lowerLeft
-dump r4.lowerRight
 
 proc isEdgeInRect(edge: VertEdge, rect: wRect): bool {.inline.} =
   let edgeInside = (edge >= rect.leftEdge and edge <= rect.rightEdge)
