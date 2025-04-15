@@ -21,7 +21,7 @@ when isMainModule:
     sdlframes.initSDL()
     
     # Main data and window
-    let init_size = (800, 1200)
+    let init_size = (800, 800)
     var rectTable = RectTable()
     discard MainFrame(init_size, rectTable)
     # Go App!
