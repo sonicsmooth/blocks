@@ -95,12 +95,12 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 
 proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: bool=false) = 
   table.clear()
-  when true: #defined(testRects):
+  when false: #defined(testRects):
     echo "testRects"
-    table[1] = Rect(id: 1, x: 100, y: 100, width: 100, height: 200, origin: (50, 50), rot: R90,
+    table[1] = Rect(id: 1, x: 200, y: 200, width: 100, height: 200, origin: (30, 20), rot: R0,
                     selected: false, pencolor: wColor(0x7f_00_00), brushcolor: wColor(0xff_00_00))
-    # table[2] = Rect(id: 2, x: 600, y: 300, width: 200, height: 80, origin: (30,0), rot: R90,
-    #                 selected: false, pencolor: wColor(0x00_7f_00), brushcolor: wColor(0x00_ff_00))
+    table[2] = Rect(id: 2, x: 600, y: 300, width: 200, height: 80, origin: (100,40), rot: R90,
+                    selected: false, pencolor: wColor(0x00_7f_00), brushcolor: wColor(0x00_ff_00))
   else:
     for i in 1..qty:
       let rid = i.RectID

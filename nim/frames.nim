@@ -146,7 +146,12 @@ proc fontSize(size: wSize): float =
 wClass(wBlockPanel of wSDLPanel):
   proc rectToTexture(self: wBlockPanel, rect: rects.Rect, sel: bool): TexturePtr = 
     # Draw rect and label onto texture; return texture.
+    # Todo: optimize by either doing a bunch or pulling fonts out 
+    # Todo: of inner loop
+    # Todo: Or just keep pixie Images around then re-copy to texture
+    # Todo: when resize, or blit onpaint, etc.
     let (w, h) = (rect.width, rect.height)
+    let (ox, oy) = (rect.origin.x, rect.origin.y)
     let sdlRect = rect(0, 0, w, h)
     result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_RGBA8888,SDL_TEXTUREACCESS_TARGET,w,h)
     self.sdlRenderer.setRenderTarget(result)
@@ -156,6 +161,9 @@ wClass(wBlockPanel of wSDLPanel):
     self.sdlRenderer.fillRect(addr sdlRect)
     self.sdlRenderer.setDrawColor(SDLColor rect.pencolor.rbswap)
     self.sdlRenderer.drawRect(addr sdlRect)
+    self.sdlRenderer.setDrawColor(SDLColor wBlack.rbswap)
+    self.sdlRenderer.drawLine(ox-10, oy, ox+10, oy)
+    self.sdlRenderer.drawLine(ox, oy-10, ox, oy+10)
 
     # Render text to surface, create texture, then copy to output texture
     let font = openFont("fonts/DejaVuSans.ttf", 20)
@@ -186,6 +194,7 @@ wClass(wBlockPanel of wSDLPanel):
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
+    self.initTextureCache() # Todo check whether new renderer onresize
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   proc updateRatio(self: wBlockPanel) =
@@ -209,15 +218,9 @@ wClass(wBlockPanel of wSDLPanel):
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
     self.updateRatio()
     self.refresh(false)
-  # proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
-  #   for id in rectIds:
-  #     self.mRectTable.del(id)
-  #     for sel in [true, false]:
-  #       for rot in Rotation:
-  #         self.mBmpCache.del((id, sel, rot))
   proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
-      self.mRectTable.del(id)
+      self.mRectTable.del(id) # Todo: check whether this deletes rect
       for sel in [true, false]:
         self.mTextureCache[(id, sel)].destroy()
         self.mTextureCache.del((id, sel))
@@ -412,6 +415,7 @@ wClass(wBlockPanel of wSDLPanel):
 # Todo: hovering over
 # TODO optimize what gets invalidated during move
 
+  #var angle: float = 0
   proc onPaint(self: wBlockPanel, event: wEvent) =
     let size = event.window.clientSize
     self.sdlRenderer.setDrawColor(SDLColor self.backgroundColor.rbswap)
@@ -423,16 +427,12 @@ wClass(wBlockPanel of wSDLPanel):
     for drect in self.mRectTable.values:
       let texture = self.mTextureCache[(drect.id, drect.selected)]
 
-      let jrect = drect.wRect
-      self.sdlRenderer.setDrawColor(color(255,0,0,255))
-      self.sdlRenderer.fillRect(addr jrect)
-
-      var dstrect1: wRect = drect.towRect(false)
-      let dstrect2 = SDLRect dstrect1
+      let dstrect = SDLRect drect.towRect(false)
       let angle = -drect.rot.toFloat
-      let ptaddr = cast[ptr sdl2.Point] (addr drect.origin)
-      #self.sdlRenderer.copyEx(texture, nil, addr dstrect2, angle, ptaddr)
-      self.sdlRenderer.copyEx(texture, nil, addr jrect, 0, nil)
+      let pt:sdl2.Point = (drect.origin.x.cint, drect.origin.y.cint)
+      let ptaddr = cast[ptr sdl2.Point] (addr pt)
+      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, ptaddr)
+      #angle -= 5.0
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox

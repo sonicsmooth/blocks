@@ -63,7 +63,10 @@ proc size*(rect: Rect): wSize {.inline.} =
     (rect.height, rect.width)
 
 proc towRect*(rect: Rect, dorot: bool=true): wRect =
-  # Explicit conversion.  do rotation is optional
+  # Explicit conversion to wRect.
+  # Bounds are corrected for origin
+  # If dorot is true, then bounds are also corrected for rotation
+  # If dorot is false, then bounds are not corrected for rotation
   let
     (w, h)   = (rect.width,    rect.height  )
     (x, y)   = (rect.x,        rect.y       )
@@ -71,7 +74,7 @@ proc towRect*(rect: Rect, dorot: bool=true): wRect =
   if dorot:
     case rect.rot:
     of R0:   (x - ox,     y - oy,     w, h)
-    of R90:  (x - oy,     y - ox,     h, w)
+    of R90:  (x - oy,     y + ox - w, h, w)
     of R180: (x + ox - w, y + oy - h, w, h)
     of R270: (x + oy - h, y - ox,     h, w)
   else:
