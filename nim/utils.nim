@@ -27,3 +27,5 @@ template rbswap*(color: wColor|uint32): uint32 =
 template SDLColor*(color: wColor|uint32, alpha: uint8 = 0xff): sdl2.Color =
   (r: color.red, g: color.green, b: color.blue, a: alpha)
 
+
+
