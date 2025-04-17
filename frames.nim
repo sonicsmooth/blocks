@@ -184,7 +184,8 @@ wClass(wBlockPanel of wSDLPanel):
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
-    self.initTextureCache() # Todo check whether new renderer onresize
+    # self.initTextureCache() # Todo check whether new renderer onresize
+    #flushEvents(uint32.low, uint32.high)
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   proc updateRatio(self: wBlockPanel) =
@@ -468,22 +469,22 @@ wClass(wBlockPanel of wSDLPanel):
     self.mRectTable = rectTable
     self.mDstRect = (10, 10, 780, 780)
 
-    self.wEvent_Size                 do (event: wEvent): self.onResize(event)
-    self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
-    self.wEvent_MouseMove            do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_LeftDown             do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_LeftUp               do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_LeftDoubleClick      do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_MiddleDown           do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_MiddleUp             do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_MiddleDoubleClick    do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_RightDown            do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_RightUp              do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_RightDoubleClick     do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_MouseWheel           do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_MouseHorizontalWheel do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_KeyDown              do (event: wEvent): self.processUiEvent(event)
-    self.wEvent_KeyUp                do (event: wEvent): self.processUiEvent(event)
+    self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
+    self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
+    self.wEvent_MouseMove            do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_LeftDown             do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_LeftUp               do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_LeftDoubleClick      do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_MiddleDown           do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_MiddleUp             do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_MiddleDoubleClick    do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_RightDown            do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_RightUp              do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_RightDoubleClick     do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_MouseWheel           do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_MouseHorizontalWheel do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_KeyDown              do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_KeyUp                do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
     #self.USER_PAINT_DONE             do (): self.onPaintDone()
 
 wClass(wMainPanel of wPanel):
