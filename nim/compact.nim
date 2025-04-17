@@ -62,13 +62,15 @@ proc isYAscending*(direction: CompactDir): bool =
 
 proc rectCmpX(r1, r2: Rect): int = 
   # Sort first by x position, then by id
-  result = cmp(r1.x, r2.x)
+  let rot = true
+  result = cmp(r1.towRect(rot).x, r2.towRect(rot).x)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
 proc rectCmpY(r1, r2: Rect): int = 
   # Sort first by y position, then by id
-  result = cmp(r1.y, r2.y)
+  let rot = true
+  result = cmp(r1.towRect(rot).y, r2.towRect(rot).y)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
@@ -126,16 +128,18 @@ proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
       src = dst
 
 proc PosChooser(ax: MajMin): proc(rect: Rect): int =
+  let rot = true
   if ax == Major:
-    proc(rect: Rect): int =  rect.x
+    proc(rect: Rect): int =  rect.towRect(rot).x
   else:
-    proc(rect: Rect): int =  rect.y
+    proc(rect: Rect): int =  rect.towRect(rot).y
 
 proc SizeChooser(ax: MajMin): proc(rect: Rect): int =
+  let rot = true
   if ax == Major:
-    proc(rect: Rect): int = rect.wRect.width
+    proc(rect: Rect): int = rect.towRect(rot).width # converter with rotation
   else:
-    proc(rect: Rect): int = rect.wRect.height
+    proc(rect: Rect): int = rect.towRect(rot).height
 
 proc ScanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
   let 
@@ -143,7 +147,7 @@ proc ScanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     SecPos  = PosChooser(minor)
     SecSz   = SizeChooser(minor)
     colids  = if ids.len == 0: rectTable.keys.toSeq
-             else:             ids
+              else:            ids
     topEdges: seq[ScanEdge] = 
         collect(for id in colids:
           (id: id, pos: rectTable[id].SecPos, etype: Top))
@@ -214,26 +218,23 @@ proc compact*(rectTable: RectTable,
   let graph = MakeGraph(rectTable, axis, sortOrder, ids)
   let nodes = if ids.len == 0: rectTable.keys.toSeq
               else: ids
+  let lp = longestPathBellmanFord(graph, nodes, 0)
 
   if axis == X and sortOrder == Ascending:
-    let lp = longestPathBellmanFord(graph, nodes, 0)
     for id in nodes:
-      rectTable[id].x = dstRect.x + lp[id]
+      rectTable[id].x = dstRect.x + lp[id] + rectTable[id].originXLeft
 
   elif axis == X and sortOrder == Descending:
-    let lp = longestPathBellmanFord(graph, nodes, 0)
     for id in nodes:
-      rectTable[id].x = dstRect.x + dstRect.width - lp[id]
+      rectTable[id].x = dstRect.x + dstRect.width - lp[id] + rectTable[id].originXLeft
 
   elif axis == Y and sortOrder == Ascending:
-    let lp = longestPathBellmanFord(graph, nodes, 0)
     for id in nodes:
-      rectTable[id].y = dstRect.y + lp[id]
+      rectTable[id].y = dstRect.y + lp[id] + rectTable[id].originYUp
 
   elif axis == Y and sortOrder == Descending:
-    let lp = longestPathBellmanFord(graph, nodes, 0)
     for id in nodes:
-      rectTable[id].y = dstRect.y + dstRect.height - lp[id]
+      rectTable[id].y = dstRect.y + dstRect.height - lp[id] + rectTable[id].originYUp
 
 proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: wRect) =
   # Run compact function until rectTable doesn't change

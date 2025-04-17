@@ -1,11 +1,11 @@
-import std/[algorithm, bitops, locks, math, segfaults, sets, sugar, strformat, tables ]
+import std/[algorithm, locks, math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq, foldl
 from std/os import sleep
 import wNim
 import winim
 from wNim/private/wHelper import `-`
 import anneal, compact, concurrent, rects, recttable, sdlframes
-import stack, userMessages
+import stack, userMessages, utils
 
 # TODO: copy background before Move
 # TODO: Hover
@@ -102,26 +102,16 @@ var
                        for sz in fontPts: 
                          (sz, Font(sz, wFontFamilyRoman))).toTable
 
-template towColor(r: untyped, g: untyped, b: untyped): wColor =
-      wColor(wColor(r and 0xff) or (wColor(g and 0xff) shl 8) or (wColor(b and 0xff) shl 16))
-
-template r(color: wColor|uint32): uint8 = color.shr(16).bitand(0xff).uint8
-template g(color: wColor|uint32): uint8 = color.shr( 8).bitand(0xff).uint8
-template b(color: wColor|uint32): uint8 = color.shr( 0).bitand(0xff).uint8
-template rbswap(color: wColor|uint32): uint32 =
-  block:
-    let rr = color.r.uint32.shl(0)
-    let gg = color.g.uint32.shl(8)
-    let bb = color.b.uint32.shl(16)
-    bitor(bb,gg,rr)
-template SDLColor(color: wColor|uint32, alpha: uint8 = 0xff): sdl2.Color =
-  (r: color.r, g: color.g, b: color.b, a: alpha)
 template SDLRect(rect: rects.Rect|wRect): sdl2.Rect =
   # Not sure why I can't label the tuple elements with x:, y:, etc.
   (rect.x.cint, 
    rect.y.cint, 
    rect.width.cint,
    rect.height.cint)
+
+template SDLPoint(pt: wPoint): sdl2.Point =
+  #(pt.x.cint, pt.y.cint)
+  (pt.x.cint, pt.y.cint)
 
 proc excl[T](s: var seq[T], item: T) =
   # Not order preserving because it uses del
@@ -429,10 +419,8 @@ wClass(wBlockPanel of wSDLPanel):
 
       let dstrect = SDLRect drect.towRect(false)
       let angle = -drect.rot.toFloat
-      let pt:sdl2.Point = (drect.origin.x.cint, drect.origin.y.cint)
-      let ptaddr = cast[ptr sdl2.Point] (addr pt)
-      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, ptaddr)
-      #angle -= 5.0
+      let pt = SDLPoint drect.origin
+      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, addr pt)
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
@@ -478,7 +466,7 @@ wClass(wBlockPanel of wSDLPanel):
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mRectTable = rectTable
-    self.mDstRect = (10, 10, 2300, 1300)
+    self.mDstRect = (10, 10, 780, 780)
 
     self.wEvent_Size                 do (event: wEvent): self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
@@ -663,6 +651,10 @@ wClass(wMainPanel of wPanel):
   proc onButtonTest(self: wMainPanel) =
     for rect in self.mRectTable.values:
       echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.width, rect.height)}, rot: {rect.rot}"
+  # Left  arrow = stack to the left,   which is x ascending
+  # Right arrow = stack to the right,  which is x descending
+  # Up    arrow = stack to the top,    which is y ascending
+  # Down  arrow = stack to the bottom, which is y descending
   proc onButtonCompact←(self: wMainPanel) =
     self.delegate1DButtonCompact(X, Ascending)
   proc onButtonCompact→(self: wMainPanel) =

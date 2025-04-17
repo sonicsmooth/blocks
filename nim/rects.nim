@@ -1,7 +1,7 @@
 import std/[random, sets, sequtils, strutils, sugar, tables]
-import wNim/[wTypes]
+import wNim/wTypes
 import wNim/private/wHelper
-import randrect
+import randrect, utils
 
 type 
   RectID* = uint
@@ -32,7 +32,6 @@ const
   scale = 3
   WRANGE* = (5*scale) .. (75*scale)
   HRANGE* = (5*scale) .. (75*scale)
-  QTY* = 50
 
 
 # Declarations
@@ -62,7 +61,7 @@ proc size*(rect: Rect): wSize {.inline.} =
   else:
     (rect.height, rect.width)
 
-proc towRect*(rect: Rect, dorot: bool=true): wRect =
+proc towRect*(rect: Rect, dorot: bool=false): wRect =
   # Explicit conversion to wRect.
   # Bounds are corrected for origin
   # If dorot is true, then bounds are also corrected for rotation
@@ -84,6 +83,22 @@ converter wRect*(rect: Rect): wRect =
   # Implicit conversion
   # Returns barebones rectangle x,y,w,h after rotation
   towRect(rect, true)
+
+proc originXLeft*(rect: Rect): int =
+  # Horizontal distance from left edge to origin after rotation
+  case rect.rot:
+  of R0:   rect.origin.x
+  of R90:  rect.origin.y
+  of R180: rect.width  - rect.origin.x
+  of R270: rect.height - rect.origin.y
+
+proc originYUp*(rect: Rect): int =
+  # Vertical distance from top edge to origin after rotation
+  case rect.rot:
+  of R0:   rect.origin.y
+  of R90:  rect.width  - rect.origin.x
+  of R180: rect.height - rect.origin.y
+  of R270: rect.origin.x
 
 # Procs for single wRect
 # Not including -1, etc., because right = x + width.
@@ -173,14 +188,17 @@ proc isPointInRect*(pt: wPoint, rect: wRect): bool {.inline.} =
     pt.x >= rect.x and pt.x <= lrcorner.x and
     pt.y >= rect.y and pt.y <= lrcorner.y
 
-let r2 = Rect(x:100, y:100, width:100, height:200, origin: (50, 50), rot:R90)
-
-dump r2
-dump r2.upperLeft
-dump r2.upperRight
-dump r2.lowerLeft
-dump r2.lowerRight
-echo ""
+# let r2 = Rect(x:100, y:100, width:100, height:200, origin: (0, 0), rot:R0)
+# dump r2
+# dump r2.upperLeft
+# dump r2.upperRight
+# dump r2.lowerLeft
+# dump r2.lowerRight
+# dump r2.leftEdge
+# dump r2.rightEdge
+# dump r2.topEdge
+# dump r2.bottomEdge
+# echo ""
 
 proc isEdgeInRect(edge: VertEdge, rect: wRect): bool {.inline.} =
   let edgeInside = (edge >= rect.leftEdge and edge <= rect.rightEdge)
@@ -221,6 +239,13 @@ proc randColor: wColor =
     g: int = rand(255) shl 8
     r: int = rand(255)
   wColor(b or g or r) # 00bbggrr
+
+proc colordiv*(color: wColor, num: SomeInteger): wColor =
+  let r = color.shr(16).uint8.div(num.uint8).int32.shl(16)
+  let g = color.shr( 8).uint8.div(num.uint8).int32.shl( 8)
+  let b = color.shr( 0).uint8.div(num.uint8).int32.shl( 0)
+  result = r or g or b
+
 proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect = 
   var rw: int
   var rh: int
@@ -239,6 +264,8 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
     rw = rand(WRANGE)
     rh = rand(HRANGE)
 
+  let brushcolor: wColor = randColor()
+  let pencolor = colordiv(brushcolor, 2)
   result = Rect(id: id, 
                 x: rectPosX,
                 y: rectPosY,
@@ -247,8 +274,8 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
                 origin: (0,0),
                 rot: rand(Rotation),
                 selected: false,
-                pencolor: randColor(), 
-                brushcolor: randColor())
+                pencolor: pencolor,
+                brushcolor: brushcolor)
 
 
 proc moveRectBy*(rect: Rect, delta: wPoint) =
