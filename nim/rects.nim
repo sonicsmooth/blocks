@@ -70,14 +70,12 @@ proc towRectNoRot*(rect: Rect): wRect {.inline.} =
    rect.width, 
    rect.height)
 
-
 converter wRect*(rect: Rect): wRect {.inline} =
   # Implicit conversion
   # Returns barebones rectangle x,y,w,h after rotation
   # Explicit conversion to wRect.
   # Bounds are corrected for origin
-  # If dorot is true, then bounds are also corrected for rotation
-  # If dorot is false, then bounds are not corrected for rotation
+  # Bounds are also corrected for rotation
   let
     (w, h)   = (rect.width,    rect.height  )
     (x, y)   = (rect.x,        rect.y       )
