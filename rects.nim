@@ -61,7 +61,19 @@ proc size*(rect: Rect): wSize {.inline.} =
   else:
     (rect.height, rect.width)
 
-proc towRect*(rect: Rect, dorot: bool=false): wRect =
+proc towRectNoRot*(rect: Rect): wRect {.inline.} =
+  # Explicit conversion to wRect.
+  # Bounds are corrected for origin
+  # Bounds are not corrected for rotation
+  (rect.x - rect.origin.x, 
+   rect.y - rect.origin.y, 
+   rect.width, 
+   rect.height)
+
+
+converter wRect*(rect: Rect): wRect {.inline} =
+  # Implicit conversion
+  # Returns barebones rectangle x,y,w,h after rotation
   # Explicit conversion to wRect.
   # Bounds are corrected for origin
   # If dorot is true, then bounds are also corrected for rotation
@@ -70,19 +82,11 @@ proc towRect*(rect: Rect, dorot: bool=false): wRect =
     (w, h)   = (rect.width,    rect.height  )
     (x, y)   = (rect.x,        rect.y       )
     (ox, oy) = (rect.origin.x, rect.origin.y)
-  if dorot:
-    case rect.rot:
-    of R0:   (x - ox,     y - oy,     w, h)
-    of R90:  (x - oy,     y + ox - w, h, w)
-    of R180: (x + ox - w, y + oy - h, w, h)
-    of R270: (x + oy - h, y - ox,     h, w)
-  else:
-    (x - ox, y - oy, w, h)
-
-converter wRect*(rect: Rect): wRect =
-  # Implicit conversion
-  # Returns barebones rectangle x,y,w,h after rotation
-  towRect(rect, true)
+  case rect.rot:
+  of R0:   (x - ox,     y - oy,     w, h)
+  of R90:  (x - oy,     y + ox - w, h, w)
+  of R180: (x + ox - w, y + oy - h, w, h)
+  of R270: (x + oy - h, y - ox,     h, w)
 
 proc originXLeft*(rect: Rect): int =
   # Horizontal distance from left edge to origin after rotation
@@ -277,16 +281,17 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
                 pencolor: pencolor,
                 brushcolor: brushcolor)
 
-
 proc moveRectBy*(rect: Rect, delta: wPoint) =
   rect.x += delta.x
   rect.y += delta.y
+
 proc moveRectTo*(rect: Rect, oldpos, newpos: wPoint) = 
   echo "moveRectTo"
   assert false
   rect.x = newpos.x
   rect.y = newpos.y
-proc boundingBox*(rects: seq[wRect|Rect]): wRect =
+
+proc boundingBox*(rects: seq[wRect|Rect]): wRect {.inline.} =
   var left, right, top, bottom: int
   left = int.high
   right = int.low
@@ -298,6 +303,7 @@ proc boundingBox*(rects: seq[wRect|Rect]): wRect =
     right  = max(right,  r.rightEdge.x)
     bottom = max(bottom, r.bottomEdge.y)
   (x: left, y: top, width: right - left, height: bottom - top)
+
 proc rotateSize*(rect: wRect|Rect, amt: Rotation): wSize =
   # Return size of rect if rotated by amt.
   # When rect.typeof is Rect, ignore current rotation
@@ -322,6 +328,7 @@ proc rotate*(rect: Rect, orient: Orientation) =
 
 proc area*(rect: wRect|Rect): int =
   rect.width * rect.height
+
 proc aspectRatio*(rect: wRect|Rect): float =
   when typeof(rect) is Rect:
     if rect.rot == R90 or rect.rot == R180:
@@ -330,8 +337,10 @@ proc aspectRatio*(rect: wRect|Rect): float =
       rect.height.float / rect.width.float
   else:
     rect.width.float / rect.height.float
+
 proc aspectRatio*(rects: seq[wRect|Rect]): float =
   rects.boundingBox.aspectRatio
+
 proc fillRatio*(rects: seq[wRect|Rect]): float =
   # Find ratio of total area to filled area
   var filledArea: int
@@ -339,6 +348,7 @@ proc fillRatio*(rects: seq[wRect|Rect]): float =
     filledArea += r.area
   let totalArea = rects.boundingBox.area
   filledArea / totalArea
+
 proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
   # make sure that rect.x,y is always upper left
   let (sx,sy) = startPos
