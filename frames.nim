@@ -268,10 +268,10 @@ wClass(wBlockPanel of wSDLPanel):
     self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
-    discard setRectSelect(self.mRectTable)
+    setRectSelect(self.mRectTable)
     self.refresh()
   proc selectNone(self: wBlockPanel) =
-    discard clearRectSelect(self.mRectTable)
+    clearRectSelect(self.mRectTable)
     self.refresh()
   proc modifierText(event: wEvent): string = 
     if event.ctrlDown: result &= "Ctrl"
@@ -298,7 +298,7 @@ wClass(wBlockPanel of wSDLPanel):
       resetBox()
       if mouseData.state == StateDraggingSelect:
         let clrsel = (self.mRectTable.selected.toHashSet - self.mFirmSelection.toHashSet).toSeq
-        discard self.mRectTable.clearRectSelect(clrsel)
+        self.mRectTable.clearRectSelect(clrsel)
         self.refresh(false)
       mouseData.state = StateNone
 
@@ -375,9 +375,6 @@ wClass(wBlockPanel of wSDLPanel):
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
       else:
-        # let ptir = self.mRectTable.ptInRects(event.mousePos)
-        # if ptir.len > 0:
-        #   echo ptir
         discard
     of StateLMBDownInRect:
       let hitid = mouseData.clickHitIds[^1]
@@ -389,7 +386,7 @@ wClass(wBlockPanel of wSDLPanel):
           var oldsel = self.mRectTable.selected
           if not event.ctrlDown: # clear existing except this one
             oldsel.excl(hitid)
-            discard self.mRectTable.clearRectSelect(oldsel)
+            self.mRectTable.clearRectSelect(oldsel)
           self.mRectTable.toggleRectSelect(hitid) 
           mouseData.dirtyIds = oldsel & hitid
           self.refresh(false)
@@ -418,6 +415,7 @@ wClass(wBlockPanel of wSDLPanel):
           self.mFirmSelection = self.mRectTable.selected
         else:
           self.mFirmSelection.setLen(0)
+          self.mRectTable.clearRectSelect()
       of wEvent_LeftUp:
         let oldsel = self.mRectTable.clearRectSelect()
         mouseData.dirtyIds = oldsel
@@ -430,9 +428,8 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
         let newsel = self.mRectTable.rectInRects(self.mSelectBox)
-        #let oldsel = self.mRectTable.clearRectSelect()
-        discard self.mRectTable.setRectSelect(self.mFirmSelection)
-        discard self.mRectTable.setRectSelect(newsel)
+        self.mRectTable.setRectSelect(self.mFirmSelection)
+        self.mRectTable.setRectSelect(newsel)
         self.refresh(false)
       of wEvent_LeftUp:
         self.mSelectBox = (0,0,0,0)

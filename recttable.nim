@@ -33,7 +33,7 @@ type
   PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
 const
-  QTY* = 5
+  QTY* = 50
 
 
 proc newRectTable*(): RectTable =
@@ -125,15 +125,15 @@ proc fillRatio*(rtable: RectTable): float =
 
 
 # Forward decls
-proc toggleRectSelect*(table: RectTable, id: RectID) 
-proc toggleRectSelect*(table: RectTable, ids: seq[RectId])
-proc toggleRectSelect*(table: RectTable)
-proc clearRectSelect*(table: RectTable): seq[RectId]
-proc clearRectSelect*(table: RectTable, id: RectID): bool
-proc clearRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId]
-proc setRectSelect*(table: RectTable): seq[RectId]
-proc setRectSelect*(table: RectTable, id: RectID): bool
-proc setRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId]
+proc toggleRectSelect*(table: RectTable, id: RectID)
+proc toggleRectSelect*(table: RectTable, ids: seq[RectId]) {.discardable.}
+proc toggleRectSelect*(table: RectTable) {.discardable.}
+proc clearRectSelect*(table: RectTable): seq[RectId] {.discardable.}
+proc clearRectSelect*(table: RectTable, id: RectID): bool {.discardable.}
+proc clearRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] {.discardable.}
+proc setRectSelect*(table: RectTable): seq[RectId] {.discardable.}
+proc setRectSelect*(table: RectTable, id: RectID): bool {.discardable.}
+proc setRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] {.discardable.}
 
 proc toggleRectSelect*(table: RectTable, id: RectID) = 
   table[id].selected = not table[id].selected
