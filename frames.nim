@@ -6,6 +6,7 @@ import winim
 from wNim/private/wHelper import `-`
 import anneal, compact, concurrent, rects, recttable, sdlframes
 import stack, userMessages, utils
+import timeit
 
 # TODO: copy background before Move
 # TODO: Hover
@@ -21,6 +22,7 @@ type
   FontTable = Table[float, wtypes.wFont]
   wBlockPanel = ref object of wSDLPanel
     mRectTable: RectTable
+    mSurfaceCache: Table[CacheKey, SurfacePtr]
     mTextureCache: Table[CacheKey, TexturePtr]
     mFirmSelection: seq[RectID]
     mRatio: float
@@ -134,12 +136,9 @@ proc fontSize(size: wSize): float =
 
 
 wClass(wBlockPanel of wSDLPanel):
-  proc rectToTexture(self: wBlockPanel, rect: rects.Rect, sel: bool): TexturePtr = 
+  proc rectToTexture(self: wBlockPanel, rect: rects.Rect, sel: bool,
+                     font: FontPtr): TexturePtr = 
     # Draw rect and label onto texture; return texture.
-    # Todo: optimize by either doing a bunch or pulling fonts out 
-    # Todo: of inner loop
-    # Todo: Or just keep pixie Images around then re-copy to texture
-    # Todo: when resize, or blit onpaint, etc.
     let (w, h) = (rect.width, rect.height)
     let (ox, oy) = (rect.origin.x, rect.origin.y)
     let sdlRect = rect(0, 0, w, h)
@@ -156,7 +155,6 @@ wClass(wBlockPanel of wSDLPanel):
     self.sdlRenderer.drawLine(ox, oy-10, ox, oy+10)
 
     # Render text to surface, create texture, then copy to output texture
-    let font = openFont("fonts/DejaVuSans.ttf", 20)
     let selstr = $rect.id & (if sel: "*" else: "")
     let ts = font.renderUtf8Blended(selstr.cstring, SDLColor 0)
     let tt = self.sdlRenderer.createTextureFromSurface(ts)
@@ -167,25 +165,68 @@ wClass(wBlockPanel of wSDLPanel):
     # Return render target back to screen
     self.sdlRenderer.setRenderTarget(nil)
 
+  proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool,
+                     font: FontPtr): SurfacePtr = 
+    # Draw rect and label onto surface; return surface.
+    let (w, h) = (rect.width, rect.height)
+    let (ox, oy) = (rect.origin.x, rect.origin.y)
+    let sdlRect = rect(0, 0, w, h)
+    const 
+      rmask = 0x000000ff'u32
+      gmask = 0x0000ff00'u32
+      bmask = 0x00ff0000'u32
+      amask = 0xff000000'u32
+    result = createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
+    var renderer = createSoftwareRenderer(result)
+    # Draw main filled rectangle with outline
+    renderer.setDrawColor(SDLColor rect.brushcolor.rbswap)
+    renderer.fillRect(addr sdlRect)
+    renderer.setDrawColor(SDLColor rect.pencolor.rbswap)
+    renderer.drawRect(addr sdlRect)
+    renderer.setDrawColor(SDLColor wBlack.rbswap)
+    renderer.drawLine(ox-10, oy, ox+10, oy)
+    renderer.drawLine(ox, oy-10, ox, oy+10)
+    renderer.destroy()
+
+    # Render text to surface, create texture, then copy to output texture
+    let selstr = $rect.id & (if sel: "*" else: "")
+    let textSurface = font.renderUtf8Blended(selstr.cstring, SDLColor 0)
+    let (tsw, tsh) = (textSurface.w, textSurface.h)
+    let dstRect: sdl2.Rect = ((w div 2) - (tsw div 2),
+                              (h div 2) - (tsh div 2), tsw, tsh)
+    textSurface.blitSurface(nil, result, addr dstRect)
+    textSurface.destroy()
+    
+
   proc forceRedraw(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
     if wait > 0: sleep(wait)
+
+  proc initSurfaceCache(self: wBlockPanel) =
+    # Creates all new surfaces
+    for surface in self.mSurfaceCache.values:
+      surface.destroy()
+    self.mSurfaceCache.clear()
+    let font = openFont("fonts/DejaVuSans.ttf", 20)
+    for id, rect in self.mRectTable:
+      for sel in [false, true]:
+        self.mSurfaceCache[(id, sel)] = self.rectToSurface(rect, sel, font)
+
   proc initTextureCache(self: wBlockPanel) =
-    # Creates all new bitmaps
+    # Copies surfaces from surfaceCache to textures
     for texture in self.mTextureCache.values:
       texture.destroy()
     self.mTextureCache.clear()
-    for id, rect in self.mRectTable:
-      for sel in [false, true]:
-        for rot in Rotation:
-          self.mTextureCache[(id, sel)] = self.rectToTexture(rect, sel)
+    for key, surface in self.mSurfaceCache:
+      self.mTextureCache[key] = 
+        self.sdlRenderer.createTextureFromSurface(surface)
+
   proc boundingBox(self: wBlockPanel) = 
     self.mAllBbox = boundingBox(self.mRectTable.values.toSeq)
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
-    # self.initTextureCache() # Todo check whether new renderer onresize
-    #flushEvents(uint32.low, uint32.high)
+    self.initTextureCache() # Todo check whether new renderer onresize
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   proc updateRatio(self: wBlockPanel) =
@@ -543,6 +584,7 @@ wClass(wMainPanel of wPanel):
 
   proc randomizeRectsAll(self: wMainPanel, qty: int) = 
     rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty, logRandomize)
+    self.mBlockPanel.initSurfaceCache()
     self.mBlockPanel.initTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
@@ -802,6 +844,7 @@ wClass(wMainFrame of wFrame):
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
     rectTable.randomizeRectsAll(newBlockSz, self.mMainPanel.mSpnr.value, logRandomize)
+    self.mMainPanel.mBlockPanel.initSurfaceCache()
     self.mMainPanel.mBlockPanel.initTextureCache()
     self.mMainPanel.mBlockPanel.mAllBbox = boundingBox(self.mMainPanel.mRectTable.values.toSeq)
 
