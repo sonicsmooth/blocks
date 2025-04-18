@@ -229,12 +229,14 @@ wClass(wBlockPanel of wSDLPanel):
     self.initTextureCache() # Todo check whether new renderer onresize
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+  
   proc updateRatio(self: wBlockPanel) =
     let ratio = self.mRectTable.fillRatio
     if ratio != self.mRatio:
       echo ratio
       self.mText = $ratio
       self.mRatio = ratio
+  
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
@@ -459,7 +461,7 @@ wClass(wBlockPanel of wSDLPanel):
     for drect in self.mRectTable.values:
       let texture = self.mTextureCache[(drect.id, drect.selected)]
 
-      let dstrect = SDLRect drect.towRect(false)
+      let dstrect = SDLRect drect.towRectNoRot
       let angle = -drect.rot.toFloat
       let pt = SDLPoint drect.origin
       self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, addr pt)
