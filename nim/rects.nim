@@ -1,7 +1,7 @@
-import std/[random, sets, sequtils, strutils, sugar, tables]
+import std/[random, sets, sequtils, strutils, tables]
 import wNim/wTypes
 import wNim/private/wHelper
-import randrect, utils
+import randrect
 
 type 
   RectID* = uint
@@ -30,8 +30,8 @@ type
 
 const
   scale = 3
-  WRANGE* = (5*scale) .. (75*scale)
-  HRANGE* = (5*scale) .. (75*scale)
+  WRANGE* = (5*scale) .. (15*scale)
+  HRANGE* = (5*scale) .. (15*scale)
 
 
 # Declarations
