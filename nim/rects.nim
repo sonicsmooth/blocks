@@ -331,6 +331,7 @@ proc area*(rect: wRect|Rect): int =
 
 proc aspectRatio*(rect: wRect|Rect): float =
   when typeof(rect) is Rect:
+    #Todo: rect.wrect
     if rect.rot == R90 or rect.rot == R180:
       rect.width.float / rect.height.float
     else:
