@@ -446,22 +446,48 @@ wClass(wBlockPanel of wSDLPanel):
 # Todo: hovering over
 # TODO optimize what gets invalidated during move
 
-  #var angle: float = 0
+
+#[
+Rendering options for pure SDL
+1. Blitting to window renderer...
+  A. ...from sdl Texture cache (copied from sdl surface cache on init and resize)
+  B. ...from sdl surface cache
+2. Rendering in real time directly to sdl surface
+
+Rendering options for SDL and pixie
+1. Blitting to window renderer...
+  A. ...from sdl Texture cache (copied from pixie image cache on init and resize)
+  C. ...from pixie image cache
+2. Rendering in real time  
+  B. Render to pixie image then blit to sdl surface
+
+
+
+]# 
+
+
   proc onPaint(self: wBlockPanel, event: wEvent) =
     let size = event.window.clientSize
     self.sdlRenderer.setDrawColor(SDLColor self.backgroundColor.rbswap)
     self.sdlRenderer.clear()
     self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
     
+    # Try a few methods to draw rectangles
+    when true:
+      # Blit to surface from mTextureCache
+      for rect in self.mRectTable.values:
+        let texture = self.mTextureCache[(rect.id, rect.selected)]
+        let dstrect = SDLRect rect.towRectNoRot
+        let pt = SDLPoint rect.origin
+        self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
+    elif false:
+      # Blit to surface from mSurfaceCache
+      discard
+    else:
+      # Draw directly to surface
+      discard
 
-    # Blit all rectangles
-    for drect in self.mRectTable.values:
-      let texture = self.mTextureCache[(drect.id, drect.selected)]
 
-      let dstrect = SDLRect drect.towRectNoRot
-      let angle = -drect.rot.toFloat
-      let pt = SDLPoint drect.origin
-      self.sdlRenderer.copyEx(texture, nil, addr dstrect, angle, addr pt)
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
