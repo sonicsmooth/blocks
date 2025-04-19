@@ -62,15 +62,14 @@ proc isYAscending*(direction: CompactDir): bool =
 
 proc rectCmpX(r1, r2: Rect): int = 
   # Sort first by x position, then by id
-  let rot = true
-  result = cmp(r1.towRect(rot).x, r2.towRect(rot).x)
+  # Can't inline because it's passed as arg to sort
+  result = cmp(r1.wRect.x, r2.wRect.x)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
 proc rectCmpY(r1, r2: Rect): int = 
   # Sort first by y position, then by id
-  let rot = true
-  result = cmp(r1.towRect(rot).y, r2.towRect(rot).y)
+  result = cmp(r1.wRect.y, r2.wRect.y)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
@@ -128,18 +127,16 @@ proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
       src = dst
 
 proc PosChooser(ax: MajMin): proc(rect: Rect): int =
-  let rot = true
   if ax == Major:
-    proc(rect: Rect): int =  rect.towRect(rot).x
+    proc(rect: Rect): int =  rect.wRect.x
   else:
-    proc(rect: Rect): int =  rect.towRect(rot).y
+    proc(rect: Rect): int =  rect.wRect.y
 
 proc SizeChooser(ax: MajMin): proc(rect: Rect): int =
-  let rot = true
   if ax == Major:
-    proc(rect: Rect): int = rect.towRect(rot).width # converter with rotation
+    proc(rect: Rect): int = rect.wRect.width # converter with rotation
   else:
-    proc(rect: Rect): int = rect.towRect(rot).height
+    proc(rect: Rect): int = rect.wRect.height
 
 proc ScanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
   let 
