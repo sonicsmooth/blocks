@@ -24,10 +24,12 @@ when isMainModule:
     
     # Main data and window
     let init_size = (800, 800)
-    var rectTable = RectTable()
-    discard MainFrame(init_size)
+    let mainFrame = MainFrame(init_size)
+    echo typeof(mainFrame)
     
     # Go App!
+    #mainFrame.center()
+    #mainFrame.show()
     let app = App()
     app.mainLoop()
 
