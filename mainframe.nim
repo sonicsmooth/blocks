@@ -6,7 +6,7 @@ from db import QTY
 
 type
 
-  wMainFrame = ref object of wFrame
+  wMainFrame* = ref object of wFrame
     mMainPanel: wMainPanel
     #mMenuBar:   wMenuBar # already defined by wNim
     mMenuFile:  wMenu
