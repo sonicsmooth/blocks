@@ -1,6 +1,7 @@
 import bitops
 import wnim/wTypes
 import sdl2
+import rects
 
 proc colordiv*(color: Color, num: uint8): Color =
   # Div only the RGB.
@@ -27,5 +28,24 @@ template rbswap*(color: wColor|uint32): uint32 =
 template SDLColor*(color: wColor|uint32, alpha: uint8 = 0xff): sdl2.Color =
   (r: color.red, g: color.green, b: color.blue, a: alpha)
 
+template lParamTuple*[T](event: wEvent): auto =
+  (LOWORD(event.getlParam).T,
+   HIWORD(event.getlParam).T)
 
+
+template SDLRect*(rect: rects.Rect|wRect): sdl2.Rect =
+  # Not sure why I can't label the tuple elements with x:, y:, etc.
+  (rect.x.cint, 
+   rect.y.cint, 
+   rect.width.cint,
+   rect.height.cint)
+
+template SDLPoint*(pt: wPoint): sdl2.Point =
+  (pt.x.cint, pt.y.cint)
+
+proc excl*[T](s: var seq[T], item: T) =
+  # Not order preserving because it uses del
+  # Use delete to preserve order
+  while item in s:
+    s.del(s.find(item))
 

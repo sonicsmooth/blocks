@@ -115,10 +115,15 @@ proc randomizeRectsPos*(table: RectTable, panelSize: wSize) =
     rect.y = rand(panelSize.height - rect.height - 1)
 
 proc boundingBox*(rectTable: RectTable): wRect =
-  boundingBox(rectTable.values.toSeq)
+  rectTable.values.toSeq.boundingBox
 
 proc aspectRatio*(rtable: RectTable): float =
   rtable.values.toSeq.aspectRatio
+
+proc fillArea*(rtable: RectTable): int = 
+  # Just the rectangle area
+  echo "fillarea"
+  rtable.values.toSeq.fillArea
 
 proc fillRatio*(rtable: RectTable): float =
   rtable.values.toSeq.fillRatio

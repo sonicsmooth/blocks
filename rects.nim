@@ -29,7 +29,7 @@ type
   RightEdge*  = object of VertEdge
 
 const
-  scale = 3
+  scale = 15
   WRANGE* = (5*scale) .. (15*scale)
   HRANGE* = (5*scale) .. (15*scale)
 
@@ -324,7 +324,7 @@ proc rotate*(rect: Rect, orient: Orientation) =
     else: rect.rot = R0
     
 
-proc area*(rect: wRect|Rect): int =
+proc area*(rect: wRect|Rect): int {.inline.} =
   rect.width * rect.height
 
 proc aspectRatio*(rect: wRect|Rect): float =
@@ -340,13 +340,17 @@ proc aspectRatio*(rect: wRect|Rect): float =
 proc aspectRatio*(rects: seq[wRect|Rect]): float =
   rects.boundingBox.aspectRatio
 
+proc fillArea*(rects: seq[wRect|Rect]): int =
+  for r in rects:
+    result += r.area
+
 proc fillRatio*(rects: seq[wRect|Rect]): float =
   # Find ratio of total area to filled area
-  var filledArea: int
-  for r in rects: 
-    filledArea += r.area
-  let totalArea = rects.boundingBox.area
-  filledArea / totalArea
+  # var filledArea: int
+  # for r in rects: 
+  #   filledArea += r.area
+  #let totalArea = rects.boundingBox.area
+  rects.fillArea.float / rects.boundingBox.area.float
 
 proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
   # make sure that rect.x,y is always upper left
