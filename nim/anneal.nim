@@ -169,12 +169,12 @@ proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: wSize): seq
     item.rot = initState[id].rot + amt.rot
     result.add(id)
 
-proc copyPositions[S,pT](initState: S, pTable: pT) = 
-  # Just copy the positions
-  for id, item in pTable[]:
-    item.x   = initState[id].x
-    item.y   = initState[id].y
-    item.rot = initState[id].rot
+# proc copyPositions[S,pT](initState: S, pTable: pT) = 
+#   # Just copy the positions
+#   for id, item in pTable[]:
+#     item.x   = initState[id].x
+#     item.y   = initState[id].y
+#     item.rot = initState[id].rot
 
 proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
   # Just forward the call, but tag with .closure., if that helps at all

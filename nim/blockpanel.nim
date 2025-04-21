@@ -1,10 +1,9 @@
 import std/[math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq, foldl
-#from std/os import sleep
 import wNim
 import winim
 from wNim/private/wHelper import `-`
-import rects, recttable, sdlframes
+import rects, recttable, sdlframes, db
 import userMessages, utils
 import timeit
 
@@ -21,7 +20,6 @@ type
   CacheKey = tuple[id:RectID, selected: bool]
   FontTable = Table[float, wtypes.wFont]
   wBlockPanel* = ref object of wSDLPanel
-    mRectTable: RectTable
     mSurfaceCache: Table[CacheKey, SurfacePtr]
     mTextureCache: Table[CacheKey, TexturePtr]
     mFirmSelection*: seq[RectID]
@@ -164,7 +162,7 @@ wClass(wBlockPanel of wSDLPanel):
       surface.destroy()
     self.mSurfaceCache.clear()
     let font = openFont("fonts/DejaVuSans.ttf", 20)
-    for id, rect in self.mRectTable:
+    for id, rect in gDb:
       for sel in [false, true]:
         self.mSurfaceCache[(id, sel)] = self.rectToSurface(rect, sel, font)
 
@@ -184,7 +182,7 @@ wClass(wBlockPanel of wSDLPanel):
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   
   proc updateRatio*(self: wBlockPanel) =
-    self.mAllBbox = self.mRectTable.boundingBox()
+    self.mAllBbox = gDb.boundingBox()
     let ratio = self.mFillArea.float / self.mAllBbox.area.float
     if ratio != self.mRatio:
       echo ratio
@@ -194,35 +192,35 @@ wClass(wBlockPanel of wSDLPanel):
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
-    let rects = self.mRectTable[rectIDs]
+    let rects = gDb[rectIDs]
     for rect in rects:
       moveRectBy(rect, delta)
     self.updateRatio()
     self.refresh(false)
   proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
-    moveRectBy(self.mRectTable[rectId], delta)
+    moveRectBy(gDb[rectId], delta)
     self.updateRatio()
     self.refresh(false)
   proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
-      self.mRectTable.del(id) # Todo: check whether this deletes rect
+      gDb.del(id) # Todo: check whether this deletes rect
       for sel in [true, false]:
         self.mTextureCache[(id, sel)].destroy()
         self.mTextureCache.del((id, sel))
-    self.mFillArea = self.mRectTable.fillArea()
+    self.mFillArea = gDb.fillArea()
     self.updateRatio()
     self.refresh(false)
   proc rotateRects(self: wBlockPanel, rectIds: seq[RectId], amt: Rotation) =
     for id in rectIds:
-      self.mRectTable[id].rotate(amt)
+      gDb[id].rotate(amt)
     self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
-    setRectSelect(self.mRectTable)
+    gDb.setRectSelect()
     self.refresh()
   proc selectNone(self: wBlockPanel) =
-    clearRectSelect(self.mRectTable)
+    gDb.clearRectSelect()
     self.refresh()
   proc modifierText(event: wEvent): string = 
     if event.ctrlDown: result &= "Ctrl"
@@ -248,8 +246,8 @@ wClass(wBlockPanel of wSDLPanel):
       resetMouseData()
       resetBox()
       if mouseData.state == StateDraggingSelect:
-        let clrsel = (self.mRectTable.selected.toHashSet - self.mFirmSelection.toHashSet).toSeq
-        self.mRectTable.clearRectSelect(clrsel)
+        let clrsel = (gDb.selected.toHashSet - self.mFirmSelection.toHashSet).toSeq
+        gDb.clearRectSelect(clrsel)
         self.refresh(false)
       mouseData.state = StateNone
 
@@ -259,7 +257,7 @@ wClass(wBlockPanel of wSDLPanel):
       escape()
       return
 
-    let sel = self.mRectTable.selected
+    let sel = gDb.selected()
     case cmdTable[k]:
     of CmdEscape:
       escape()
@@ -319,9 +317,9 @@ wClass(wBlockPanel of wSDLPanel):
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         mouseData.clickPos = event.mousePos
         mouseData.lastPos  = event.mousePos
-        mouseData.clickHitIds = self.mRectTable.ptInRects(event.mousePos)
+        mouseData.clickHitIds = gDb.ptInRects(event.mousePos)
         if mouseData.clickHitIds.len > 0: # Click in rect
-          mouseData.dirtyIds = self.mRectTable.rectInRects(mouseData.clickHitIds[^1])
+          mouseData.dirtyIds = gDb.rectInRects(mouseData.clickHitIds[^1])
           mouseData.state = StateLMBDownInRect
         else: # Click in clear area
           mouseData.state = StateLMBDownInSpace
@@ -334,11 +332,11 @@ wClass(wBlockPanel of wSDLPanel):
         mouseData.state = StateDraggingRect
       of wEvent_LeftUp:
         if event.mousePos == mouseData.clickPos: # click and release in rect
-          var oldsel = self.mRectTable.selected
+          var oldsel = gDb.selected()
           if not event.ctrlDown: # clear existing except this one
             oldsel.excl(hitid)
-            self.mRectTable.clearRectSelect(oldsel)
-          self.mRectTable.toggleRectSelect(hitid) 
+            gDb.clearRectSelect(oldsel)
+          gDb.toggleRectSelect(hitid) 
           mouseData.dirtyIds = oldsel & hitid
           self.refresh(false)
         mouseData.state = StateNone
@@ -346,7 +344,7 @@ wClass(wBlockPanel of wSDLPanel):
         mouseData.state = StateNone
     of StateDraggingRect:
       let hitid = mouseData.clickHitIds[^1]
-      let sel = self.mRectTable.selected
+      let sel = gdb.selected()
       case event.getEventType
       of wEvent_MouseMove:
         let delta = event.mousePos - mouseData.lastPos
@@ -363,12 +361,12 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         mouseData.state = StateDraggingSelect
         if event.ctrlDown:
-          self.mFirmSelection = self.mRectTable.selected
+          self.mFirmSelection = gDb.selected()
         else:
           self.mFirmSelection.setLen(0)
-          self.mRectTable.clearRectSelect()
+          gDb.clearRectSelect()
       of wEvent_LeftUp:
-        let oldsel = self.mRectTable.clearRectSelect()
+        let oldsel = gDb.clearRectSelect()
         mouseData.dirtyIds = oldsel
         mouseData.state = StateNone
         self.refresh(false)
@@ -378,9 +376,9 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
-        let newsel = self.mRectTable.rectInRects(self.mSelectBox)
-        self.mRectTable.setRectSelect(self.mFirmSelection)
-        self.mRectTable.setRectSelect(newsel)
+        let newsel = gDb.rectInRects(self.mSelectBox)
+        gDb.setRectSelect(self.mFirmSelection)
+        gDb.setRectSelect(newsel)
         self.refresh(false)
       of wEvent_LeftUp:
         self.mSelectBox = (0,0,0,0)
@@ -426,7 +424,7 @@ Rendering options for SDL and pixie
     # Try a few methods to draw rectangles
     when true:
       # Blit to surface from mTextureCache
-      for rect in self.mRectTable.values:
+      for rect in gDb.values:
         let texture = self.mTextureCache[(rect.id, rect.selected)]
         let dstrect = SDLRect rect.towRectNoRot
         let pt = SDLPoint rect.origin
@@ -476,10 +474,9 @@ Rendering options for SDL and pixie
   #   mouseData.dirtyIds.setLen(0)
   #   release(gLock)
   
-  proc init*(self: wBlockPanel, parent: wWindow, rectTable: RectTable) = 
+  proc init*(self: wBlockPanel, parent: wWindow) = 
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.mRectTable = rectTable
     self.mDstRect = (10, 10, 780, 780)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)

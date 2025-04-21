@@ -2,16 +2,9 @@ import std/random
 import std/segfaults
 import wNim/wApp
 import wNim/wUtils
-import frames, sdlframes, rectTable
+import mainframe, sdlframes, rectTable, db
 import concurrent, anneal
 
-var
-  userdata: pointer
-
-proc EventFilter(userdata: pointer, event: ptr Event): Bool32 {.cdecl.} =
-  echo event.kind
-  #return False32
-  return True32
 
 when compileOption("profiler"):
   echo "profiling"
@@ -27,12 +20,12 @@ when isMainModule:
     concurrent.init()
     anneal.init()
     sdlframes.initSDL()
-    #setEventFilter(EventFilter, userdata)
+    db.initDb()
     
     # Main data and window
     let init_size = (800, 800)
     var rectTable = RectTable()
-    discard MainFrame(init_size, rectTable)
+    discard MainFrame(init_size)
     
     # Go App!
     let app = App()
@@ -45,4 +38,5 @@ when isMainModule:
   except Exception as e:
     echo "Exception!!"
     echo e.msg
+    echo getStackTrace(e)
   
