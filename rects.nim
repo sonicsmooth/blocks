@@ -346,10 +346,6 @@ proc fillArea*(rects: seq[wRect|Rect]): int =
 
 proc fillRatio*(rects: seq[wRect|Rect]): float =
   # Find ratio of total area to filled area
-  # var filledArea: int
-  # for r in rects: 
-  #   filledArea += r.area
-  #let totalArea = rects.boundingBox.area
   rects.fillArea.float / rects.boundingBox.area.float
 
 proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =

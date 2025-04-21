@@ -3,13 +3,12 @@ from std/sequtils import toSeq, foldl
 import wNim
 import winim
 #from wNim/private/wHelper import `-`
-import anneal, compact, concurrent, recttable
+import anneal, compact, concurrent, db
 import stack, userMessages, utils, blockpanel
 
 type
   wMainPanel* = ref object of wPanel
     mBlockPanel*: wBlockPanel
-    mRectTable: RectTable
     mSpnr: wSpinCtrl
     mTxt:  wStaticText
     mChk:  wCheckBox
@@ -84,16 +83,16 @@ wClass(wMainPanel of wPanel):
       yPosAcc += bh
 
   proc randomizeRectsAll*(self: wMainPanel, qty: int=self.mSpnr.value) = 
-    rectTable.randomizeRectsAll(self.mRectTable, self.mBlockPanel.clientSize, qty, logRandomize)
-    self.mBlockPanel.mFillArea = self.mRectTable.fillArea()
+    gDb.randomizeRectsAll(self.mBlockPanel.clientSize, qty, logRandomize)
+    self.mBlockPanel.mFillArea = gDb.fillArea()
+    self.mBlockPanel.updateRatio()
     self.mBlockPanel.initSurfaceCache()
     self.mBlockPanel.initTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
     #echo GC_getStatistics()
     withLock(gLock):
-      compact(self.mRectTable, axis, sortOrder, self.mBlockPanel.mDstRect)
-    #self.mBlockPanel.boundingBox()
+      compact(gDb, axis, sortOrder, self.mBlockPanel.mDstRect)
     self.mBlockPanel.updateRatio()
     self.refresh(false)
     GC_fullCollect()
@@ -104,11 +103,10 @@ wClass(wMainPanel of wPanel):
     for i in gAnnealComms.low .. gAnnealComms.high:
       if gAnnealComms[i].thread.running: return
 
-    #let sz = self.mBlockPanel.clientSize
     let dstRect = self.mBlockPanel.mDstRect
     
     if self.mCtrb1.value: # Not anneal, just normal 2d compact
-      let arg: CompactArg = (pRectTable: self.mRectTable.addr, 
+      let arg: CompactArg = (pRectTable:  gDb.addr,
                              direction:   direction,
                              window:      self,
                              dstRect:     dstRect)
@@ -118,13 +116,13 @@ wClass(wMainPanel of wPanel):
     
     elif self.mCTRb2.value: # Do anneal
       proc compactfn() {.closure.} = 
-        iterCompact(self.mRectTable, direction, dstRect)
+        iterCompact(gDb, direction, dstRect)
       let strat = if self.mAStratRb1.value: Strat1
                   else:                     Strat2
       let perturbFn = if self.mAStratRb3.value: makeWiggler[PosTable, ptr RectTable](dstRect)
                       else:                     makeSwapper[PosTable, ptr RectTable]()
       for i in gAnnealComms.low .. gAnnealComms.high:
-        let arg: AnnealArg = (pRectTable: self.mRectTable.addr,
+        let arg: AnnealArg = (pRectTable: gDb.addr,
                               strategy:   strat,
                               initTemp:   self.mSldr.value.float,
                               perturbFn:  perturbFn,
@@ -138,8 +136,7 @@ wClass(wMainPanel of wPanel):
     
     elif self.mCTRb3.value: # Do stack
       withLock(gLock):
-        stackCompact(self.mRectTable, dstRect, direction)
-      #self.mBlockPanel.boundingBox()
+        stackCompact(gDb, dstRect, direction)
       self.mBlockPanel.updateRatio()
       self.refresh(false)
 
@@ -149,13 +146,11 @@ wClass(wMainPanel of wPanel):
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
     self.randomizeRectsAll(qty)
-    #self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onSpinTextEnter(self: wMainPanel) =
     if self.mSpnr.value > 0:
       self.randomizeRectsAll(self.mSpnr.value)
-      #self.mBlockPanel.boundingBox()
       self.mBlockPanel.updateRatio()
       self.refresh(false)
   proc onStrategyRadioButton(self: wMainPanel, event: wEvent) =
@@ -184,17 +179,15 @@ wClass(wMainPanel of wPanel):
     SendMessage(hwnd, USER_SLIDER, pos, pos)
   proc onButtonrandomizeAll(self: wMainPanel) =
     self.randomizeRectsAll(self.mSpnr.value)
-    # self.mBlockPanel.boundingBox()
     self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onButtonrandomizePos(self: wMainPanel) =
     let sz = self.mBlockPanel.clientSize
-    rectTable.randomizeRectsPos(self.mRectTable, sz)
-    # self.mBlockPanel.boundingBox()
+    gDb.randomizeRectsPos(sz)
     self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onButtonTest(self: wMainPanel) =
-    for rect in self.mRectTable.values:
+    for rect in gDb.values:
       echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.width, rect.height)}, rot: {rect.rot}"
   # Left  arrow = stack to the left,   which is x ascending
   # Right arrow = stack to the right,  which is x descending
@@ -238,7 +231,7 @@ wClass(wMainPanel of wPanel):
       gAnnealComms[idx].ackChan.send(ackCnt)
     inc ackCnt
 
-  proc init*(self: wMainPanel, parent: wWindow, rectTable: RectTable, initialRectQty: int) =
+  proc init*(self: wMainPanel, parent: wWindow, initialRectQty: int) =
     wPanel(self).init(parent)
 
     # Create controls
@@ -299,8 +292,7 @@ wClass(wMainPanel of wPanel):
     self.USER_ALG_UPDATE                do (event: wEvent): self.onAlgUpdate(event)
 
     # Set up stuff
-    self.mRectTable = rectTable
-    self.mBlockPanel = BlockPanel(self, rectTable)
+    self.mBlockPanel = BlockPanel(self)
     self.mSpnr.setRange(1, 10000)
     self.mSldr.setValue(20)
     self.mCTRb1.click()

@@ -1,6 +1,7 @@
 import std/strformat
 import wNim, winim
-import mainpanel, blockpanel, recttable, userMessages, utils
+import mainpanel, blockpanel, userMessages, utils
+from db import QTY
 
 
 type
@@ -30,11 +31,11 @@ wClass(wMainFrame of wFrame):
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
 
-  proc init*(self: wMainFrame, newBlockSz: wSize, rectTable: var RectTable) = 
+  proc init*(self: wMainFrame, newBlockSz: wSize) = 
     wFrame(self).init(title="Blocks Frame")
     
     # Create controls
-    self.mMainPanel   = MainPanel(self, rectTable, QTY)
+    self.mMainPanel   = MainPanel(self, QTY)
     self.mMenuBar     = MenuBar(self)
     self.mMenuFile    = Menu(self.mMenuBar, "&File")
     self.mStatusBar   = StatusBar(self)
@@ -56,17 +57,7 @@ wClass(wMainFrame of wFrame):
     let sldrVal = self.mMainPanel.mSldr.value
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-    
-    when false:
-      discard
-      # rectTable.randomizeRectsAll(newBlockSz, self.mMainPanel.mSpnr.value, logRandomize)
-      # self.mBlockPanel.mFillArea = self.mRectTable.fillArea()
-      # self.mBlockPanel.updateRatio()
-      # self.mMainPanel.mBlockPanel.initSurfaceCache()
-      # self.mMainPanel.mBlockPanel.initTextureCache()
-    else:
-      #self.mMainPanel.randomizeRectsAll(self.mMainPanel.mSpnr.value)
-      self.mMainPanel.randomizeRectsAll()
+    self.mMainPanel.randomizeRectsAll()
 
     # Connect Events
     self.wEvent_Size     do (event: wEvent): self.onResize(event)
