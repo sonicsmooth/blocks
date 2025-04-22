@@ -2,9 +2,9 @@ import std/[algorithm, locks, math, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
 import wNim
 import winim
-#from wNim/private/wHelper import `-`
 import anneal, compact, concurrent, db
 import stack, userMessages, utils, blockpanel
+export blockpanel
 
 type
   wMainPanel* = ref object of wPanel
