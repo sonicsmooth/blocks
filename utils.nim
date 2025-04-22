@@ -1,5 +1,6 @@
 import bitops
 import wnim/wTypes
+from winim import LOWORD, HIWORD
 import sdl2
 import rects
 

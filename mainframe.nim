@@ -1,13 +1,13 @@
 import std/strformat
-import wNim, winim
-import mainpanel, blockpanel, userMessages, utils
+import wNim
+import mainpanel, userMessages, utils
 from db import QTY
+export mainpanel
 
 
 type
-
   wMainFrame* = ref object of wFrame
-    mMainPanel: wMainPanel
+    mMainPanel*: wMainPanel
     #mMenuBar:   wMenuBar # already defined by wNim
     mMenuFile:  wMenu
     #mStatusBar: wStatusBar # already defined by wNim
@@ -30,6 +30,11 @@ wClass(wMainFrame of wFrame):
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
+
+  proc show*(self: wMainFrame) =
+    wFrame.show(self)
+    self.mMainPanel.mBlockPanel.forceRedraw()
+    self.mMainPanel.mBlockPanel.forceRedraw()
 
   proc init*(self: wMainFrame, newBlockSz: wSize) = 
     wFrame(self).init(title="Blocks Frame")
@@ -64,12 +69,5 @@ wClass(wMainFrame of wFrame):
     self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
     self.USER_MOUSE_MOVE do (event: wEvent): self.onUserMouseNotify(event)
     self.USER_SLIDER     do (event: wEvent): self.onUserSliderNotify(event)
-
-    # Show!
-    self.center()
-    self.show()
-    self.mMainPanel.mBlockPanel.forceRedraw()
-    self.mMainPanel.mBlockPanel.forceRedraw()
-
   
 
