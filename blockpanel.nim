@@ -20,8 +20,21 @@ import timeit
 
 
 type
+  MouseState = enum
+    StateNone
+    StateLMBDownInRect
+    StateLMBDownInSpace
+    StateDraggingRect
+    StateDraggingSelect
+  MouseData = tuple
+    clickHitIds: seq[RectID]
+    dirtyIds:    seq[RectID]
+    clickPos:    wPoint
+    lastPos:     wPoint
+    state:       MouseState
   CacheKey = tuple[id:RectID, selected: bool]
   wBlockPanel* = ref object of wSDLPanel
+    mMouseData: MouseData
     mSurfaceCache: Table[CacheKey, SurfacePtr]
     mTextureCache: Table[CacheKey, TexturePtr]
     mFirmSelection*: seq[RectID]
@@ -44,19 +57,7 @@ type
   CmdKey = tuple[key: typeof(wKey_None), ctrl: bool, shift: bool, alt: bool]
   CmdTable = Table[CmdKey, Command]
   
-  MouseState = enum
-    StateNone
-    StateLMBDownInRect
-    StateLMBDownInSpace
-    StateDraggingRect
-    StateDraggingSelect
 
-  MouseData = tuple
-    clickHitIds: seq[RectID]
-    dirtyIds:    seq[RectID]
-    clickPos:    wPoint
-    lastPos:     wPoint
-    state:       MouseState
 
 
 const 
@@ -77,8 +78,8 @@ const
   bmask = 0x00ff0000'u32
   amask = 0xff000000'u32
 
-var 
-  mouseData: MouseData
+# var 
+#   mouseData: MouseData
 
 
 
@@ -175,18 +176,18 @@ wClass(wBlockPanel of wSDLPanel):
       self.mSelectBox = (0,0,0,0)
       self.refresh(false)
     proc resetMouseData() = 
-      mouseData.clickHitIds.setLen(0)
-      mouseData.dirtyIds.setLen(0)
-      mouseData.clickPos = (0,0)
-      mouseData.lastPos = (0,0)
+      self.mMouseData.clickHitIds.setLen(0)
+      self.mMouseData.dirtyIds.setLen(0)
+      self.mMouseData.clickPos = (0,0)
+      self.mMouseData.lastPos = (0,0)
     proc escape() =
       resetMouseData()
       resetBox()
-      if mouseData.state == StateDraggingSelect:
+      if self.mMouseData.state == StateDraggingSelect:
         let clrsel = (gDb.selected.toHashSet - self.mFirmSelection.toHashSet).toSeq
         gDb.clearRectSelect(clrsel)
         self.refresh(false)
-      mouseData.state = StateNone
+      self.mMouseData.state = StateNone
 
     # Stay only if we have a legitimate key combination
     let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
@@ -201,33 +202,33 @@ wClass(wBlockPanel of wSDLPanel):
     of CmdMove:
       self.moveRectsBy(sel, moveTable[event.keyCode])
       resetBox()
-      mouseData.state = StateNone
+      self.mMouseData.state = StateNone
     of CmdDelete:
       self.deleteRects(sel)
       resetBox()
-      mouseData.state = StateNone
+      self.mMouseData.state = StateNone
     of CmdRotateCCW:
-      if mouseData.state == StateDraggingRect or 
-         mouseData.state == StateLMBDownInRect:
-        self.rotateRects(@[mouseData.clickHitIds[^1]], R90)
+      if self.mMouseData.state == StateDraggingRect or 
+         self.mMouseData.state == StateLMBDownInRect:
+        self.rotateRects(@[self.mMouseData.clickHitIds[^1]], R90)
       else:
         self.rotateRects(sel, R90)
         resetBox()
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
     of CmdRotateCW:
-      if mouseData.state == StateDraggingRect or 
-         mouseData.state == StateLMBDownInRect:
-        self.rotateRects(@[mouseData.clickHitIds[^1]], R270)
+      if self.mMouseData.state == StateDraggingRect or 
+         self.mMouseData.state == StateLMBDownInRect:
+        self.rotateRects(@[self.mMouseData.clickHitIds[^1]], R270)
       else:
         self.rotateRects(sel, R270)
         resetBox()
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
     of CmdSelect:
       discard
     of CmdSelectAll:
       self.selectAll()
       self.mSelectBox = (0,0,0,0)
-      mouseData.state = StateNone
+      self.mMouseData.state = StateNone
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     # Unified event processing
 
@@ -247,56 +248,56 @@ wClass(wBlockPanel of wSDLPanel):
       let hWnd = GetAncestor(self.handle, GA_ROOT)
       SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
 
-    case mouseData.state
+    case self.mMouseData.state
     of StateNone:
       case event.getEventType
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
-        mouseData.clickPos = event.mousePos
-        mouseData.lastPos  = event.mousePos
-        mouseData.clickHitIds = gDb.ptInRects(event.mousePos)
-        if mouseData.clickHitIds.len > 0: # Click in rect
-          mouseData.dirtyIds = gDb.rectInRects(mouseData.clickHitIds[^1])
-          mouseData.state = StateLMBDownInRect
+        self.mMouseData.clickPos = event.mousePos
+        self.mMouseData.lastPos  = event.mousePos
+        self.mMouseData.clickHitIds = gDb.ptInRects(event.mousePos)
+        if self.mMouseData.clickHitIds.len > 0: # Click in rect
+          self.mMouseData.dirtyIds = gDb.rectInRects(self.mMouseData.clickHitIds[^1])
+          self.mMouseData.state = StateLMBDownInRect
         else: # Click in clear area
-          mouseData.state = StateLMBDownInSpace
+          self.mMouseData.state = StateLMBDownInSpace
       else:
         discard
     of StateLMBDownInRect:
-      let hitid = mouseData.clickHitIds[^1]
+      let hitid = self.mMouseData.clickHitIds[^1]
       case event.getEventType
       of wEvent_MouseMove:
-        mouseData.state = StateDraggingRect
+        self.mMouseData.state = StateDraggingRect
       of wEvent_LeftUp:
-        if event.mousePos == mouseData.clickPos: # click and release in rect
+        if event.mousePos == self.mMouseData.clickPos: # click and release in rect
           var oldsel = gDb.selected()
           if not event.ctrlDown: # clear existing except this one
             oldsel.excl(hitid)
             gDb.clearRectSelect(oldsel)
           gDb.toggleRectSelect(hitid) 
-          mouseData.dirtyIds = oldsel & hitid
+          self.mMouseData.dirtyIds = oldsel & hitid
           self.refresh(false)
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
       else:
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
     of StateDraggingRect:
-      let hitid = mouseData.clickHitIds[^1]
+      let hitid = self.mMouseData.clickHitIds[^1]
       let sel = gdb.selected()
       case event.getEventType
       of wEvent_MouseMove:
-        let delta = event.mousePos - mouseData.lastPos
+        let delta = event.mousePos - self.mMouseData.lastPos
         if event.ctrlDown and hitid in sel:
           self.moveRectsBy(sel, delta)
         else:
           self.moveRectBy(hitid, delta)
-        mouseData.lastPos = event.mousePos
+        self.mMouseData.lastPos = event.mousePos
         self.refresh(false)
       else:
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
     of StateLMBDownInSpace:
       case event.getEventType
       of wEvent_MouseMove:
-        mouseData.state = StateDraggingSelect
+        self.mMouseData.state = StateDraggingSelect
         if event.ctrlDown:
           self.mFirmSelection = gDb.selected()
         else:
@@ -304,29 +305,29 @@ wClass(wBlockPanel of wSDLPanel):
           gDb.clearRectSelect()
       of wEvent_LeftUp:
         let oldsel = gDb.clearRectSelect()
-        mouseData.dirtyIds = oldsel
-        mouseData.state = StateNone
+        self.mMouseData.dirtyIds = oldsel
+        self.mMouseData.state = StateNone
         self.refresh(false)
       else:
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
     of StateDraggingSelect:
       case event.getEventType
       of wEvent_MouseMove:
-        self.mSelectBox = normalizeRectCoords(mouseData.clickPos, event.mousePos)
+        self.mSelectBox = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
         let newsel = gDb.rectInRects(self.mSelectBox)
         gDb.setRectSelect(self.mFirmSelection)
         gDb.setRectSelect(newsel)
         self.refresh(false)
       of wEvent_LeftUp:
         self.mSelectBox = (0,0,0,0)
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
         self.refresh(false)
       else:
-        mouseData.state = StateNone
+        self.mMouseData.state = StateNone
 
     self.mText.setLen(0)
     self.mText &= modifierText(event)
-    self.mText &= &"State: {mouseData.state}"
+    self.mText &= &"State: {self.mMouseData.state}"
 
 
 # Todo: hovering over

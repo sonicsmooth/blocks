@@ -10,27 +10,20 @@ type
 
 const
   fontRange: Slice[int] = 6..24
+  fontScale = 0.25
 
 var
-  fonts: FontTable
+  fontCache: FontTable # Filled in as needed
 
-echo fonts.keys.toSeq
-for f in fonts.values:
-  echo cast[int](f)
 
-proc fontSize(size: wSize): int =
-  # Return font size based on rect size
-  # round to int
-  let scale = 0.25
-  let px = min(size.width, size.height)
-  let spix:int = (px.float * scale).round.int
-  clamp(spix, fontRange)
-
-proc fontCache(rect: rects.Rect): FontPtr =
-  let size = fontSize(rect.size)
-  if size notin fonts:
-    fonts[size] = openFont("fonts/DejaVuSans.ttf", size)
-  fonts[size]
+proc font(rect: rects.Rect): FontPtr =
+  # Return properly sized font ptr
+  let px = min(rect.size.width, rect.size.height)
+  let scaledSize = (px.float * fontScale).round.int
+  let size = clamp(scaledSize, fontRange)
+  if size notin fontCache:
+    fontCache[size] = openFont("fonts/DejaVuSans.ttf", size)
+  fontCache[size]
 
 proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
   # Draw rectangle on SDL2 renderer
@@ -48,7 +41,7 @@ proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
 
   # Text to texture, then texture to renderer
   let selstr = $rect.id & (if sel: "*" else: "")
-  let font = fontCache(rect)
+  let font = rect.font()
   let textSurface = font.renderUtf8Blended(selstr.cstring, SDLColor 0)
   let (tsw, tsh) = (textSurface.w, textSurface.h)
   let dstRect: sdl2.Rect = ((w div 2) - (tsw div 2),
