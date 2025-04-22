@@ -1,9 +1,10 @@
 import wnim
 import sdl2, sdl2/[image, ttf]
+import utils
 export sdl2, image, ttf
 
+
 type
-  SDLException = object of CatchableError
   wSDLPanel* = ref object of wPanel
     sdlWindow*: WindowPtr
     sdlRenderer*: RendererPtr
@@ -12,9 +13,6 @@ type
     mPanel: wTestPanel
 
 
-template sdlFailIf*(cond: typed, reason: string) =
-  if cond: raise SDLException.newException(
-    reason & ", SDL error: " & $getError())
 
 
 proc initSDL* =

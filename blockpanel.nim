@@ -3,8 +3,11 @@ from std/sequtils import toSeq, foldl
 import wNim
 import winim
 from wNim/private/wHelper import `-`
+import sdl2
+import sdl2/ttf
 import rects, recttable, sdlframes, db
 import userMessages, utils
+import render
 import timeit
 
 # TODO: copy background before Move
@@ -18,7 +21,6 @@ import timeit
 
 type
   CacheKey = tuple[id:RectID, selected: bool]
-  FontTable = Table[float, wtypes.wFont]
   wBlockPanel* = ref object of wSDLPanel
     mSurfaceCache: Table[CacheKey, SurfacePtr]
     mTextureCache: Table[CacheKey, TexturePtr]
@@ -70,87 +72,23 @@ const
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
   moveTable: array[wKey_Left .. wKey_Down, wPoint] =
     [(-1,0), (0, -1), (1, 0), (0, 1)]
+  rmask = 0x000000ff'u32
+  gmask = 0x0000ff00'u32
+  bmask = 0x00ff0000'u32
+  amask = 0xff000000'u32
 
 var 
   mouseData: MouseData
-  fontPts: seq[float] = collect(for x in 6..24: x.float)
-  fonts: FontTable = collect(
-                       for sz in fontPts: 
-                         (sz, Font(sz, wFontFamilyRoman))).toTable
 
-
-
-proc fontSize(size: wSize): float =
-  # Return font size based on rect size
-  # round to int
-  let px = min(size.width, size.height)
-  let scale = 0.25
-  let spix:float  = (px.float * scale).round.float
-  let fp = fontPts[fontPts.low] .. fontPts[fontPts.high]
-  clamp(spix, fp)
 
 
 wClass(wBlockPanel of wSDLPanel):
-  proc rectToTexture(self: wBlockPanel, rect: rects.Rect, sel: bool,
-                     font: FontPtr): TexturePtr = 
-    # Draw rect and label onto texture; return texture.
-    let (w, h) = (rect.width, rect.height)
-    let (ox, oy) = (rect.origin.x, rect.origin.y)
-    let sdlRect = rect(0, 0, w, h)
-    result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_RGBA8888,SDL_TEXTUREACCESS_TARGET,w,h)
-    self.sdlRenderer.setRenderTarget(result)
-
-    # Draw main filled rectangle with outline
-    self.sdlRenderer.setDrawColor(SDLColor rect.brushcolor.rbswap)
-    self.sdlRenderer.fillRect(addr sdlRect)
-    self.sdlRenderer.setDrawColor(SDLColor rect.pencolor.rbswap)
-    self.sdlRenderer.drawRect(addr sdlRect)
-    self.sdlRenderer.setDrawColor(SDLColor wBlack.rbswap)
-    self.sdlRenderer.drawLine(ox-10, oy, ox+10, oy)
-    self.sdlRenderer.drawLine(ox, oy-10, ox, oy+10)
-
-    # Render text to surface, create texture, then copy to output texture
-    let selstr = $rect.id & (if sel: "*" else: "")
-    let ts = font.renderUtf8Blended(selstr.cstring, SDLColor 0)
-    let tt = self.sdlRenderer.createTextureFromSurface(ts)
-    let dstRect: sdl2.Rect = ((w div 2) - (ts.w div 2),
-                              (h div 2) - (ts.h div 2), ts.w, ts.h)
-    self.sdlRenderer.copy(tt, nil, addr dstRect)
-
-    # Return render target back to screen
-    self.sdlRenderer.setRenderTarget(nil)
-
-  proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool,
-                     font: FontPtr): SurfacePtr = 
+  proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool): SurfacePtr = 
     # Draw rect and label onto surface; return surface.
-    let (w, h) = (rect.width, rect.height)
-    let (ox, oy) = (rect.origin.x, rect.origin.y)
-    let sdlRect = rect(0, 0, w, h)
-    const 
-      rmask = 0x000000ff'u32
-      gmask = 0x0000ff00'u32
-      bmask = 0x00ff0000'u32
-      amask = 0xff000000'u32
-    result = createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
+    result = createRGBSurface(0, rect.width, rect.height, 32, rmask, gmask, bmask, amask)
     var renderer = createSoftwareRenderer(result)
-    # Draw main filled rectangle with outline
-    renderer.setDrawColor(SDLColor rect.brushcolor.rbswap)
-    renderer.fillRect(addr sdlRect)
-    renderer.setDrawColor(SDLColor rect.pencolor.rbswap)
-    renderer.drawRect(addr sdlRect)
-    renderer.setDrawColor(SDLColor wBlack.rbswap)
-    renderer.drawLine(ox-10, oy, ox+10, oy)
-    renderer.drawLine(ox, oy-10, ox, oy+10)
+    renderer.renderRect(rect, sel)
     renderer.destroy()
-
-    # Render text to surface, create texture, then copy to output texture
-    let selstr = $rect.id & (if sel: "*" else: "")
-    let textSurface = font.renderUtf8Blended(selstr.cstring, SDLColor 0)
-    let (tsw, tsh) = (textSurface.w, textSurface.h)
-    let dstRect: sdl2.Rect = ((w div 2) - (tsw div 2),
-                              (h div 2) - (tsh div 2), tsw, tsh)
-    textSurface.blitSurface(nil, result, addr dstRect)
-    textSurface.destroy()
     
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
@@ -161,10 +99,9 @@ wClass(wBlockPanel of wSDLPanel):
     for surface in self.mSurfaceCache.values:
       surface.destroy()
     self.mSurfaceCache.clear()
-    let font = openFont("fonts/DejaVuSans.ttf", 20)
     for id, rect in gDb:
       for sel in [false, true]:
-        self.mSurfaceCache[(id, sel)] = self.rectToSurface(rect, sel, font)
+        self.mSurfaceCache[(id, sel)] = self.rectToSurface(rect, sel)
 
   proc initTextureCache*(self: wBlockPanel) =
     # Copies surfaces from surfaceCache to textures
