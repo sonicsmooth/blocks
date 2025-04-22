@@ -4,6 +4,10 @@ from winim import LOWORD, HIWORD
 import sdl2
 import rects
 
+type
+  SDLException = object of CatchableError
+
+
 proc colordiv*(color: Color, num: uint8): Color =
   # Div only the RGB.
   result.r = color.r div num
@@ -50,3 +54,6 @@ proc excl*[T](s: var seq[T], item: T) =
   while item in s:
     s.del(s.find(item))
 
+template sdlFailIf*(cond: typed, reason: string) =
+  if cond: raise SDLException.newException(
+    reason & ", SDL error: " & $getError())

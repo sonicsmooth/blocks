@@ -29,9 +29,9 @@ type
   RightEdge*  = object of VertEdge
 
 const
-  scale = 15
-  WRANGE* = (5*scale) .. (15*scale)
-  HRANGE* = (5*scale) .. (15*scale)
+  scale = 10
+  WRANGE* = (5*scale) .. (25*scale)
+  HRANGE* = (5*scale) .. (25*scale)
 
 
 # Declarations

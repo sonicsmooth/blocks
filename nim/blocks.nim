@@ -27,7 +27,6 @@ try:
   # Go App!
   frame.center()
   frame.show()
-
   app.mainLoop()
 
   # Shut down

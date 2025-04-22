@@ -32,6 +32,8 @@ wClass(wMainFrame of wFrame):
     self.mStatusBar.setStatusText(tmpStr, index=0)
 
   proc show*(self: wMainFrame) =
+    # Need to call forcredraw a couple times after show
+    # So we're just hiding it in an overloaded show()
     wFrame.show(self)
     self.mMainPanel.mBlockPanel.forceRedraw()
     self.mMainPanel.mBlockPanel.forceRedraw()
