@@ -20,6 +20,30 @@ template towColor*(r: untyped, g: untyped, b: untyped): wColor =
             (wColor(g and 0xff) shl  8) or
             (wColor(b and 0xff) shl 16))
 
+proc toRGBA*(color: sdl2.Color): uint32 =
+  bitor(color.r.shl(24),
+        color.g.shl(16),
+        color.b.shl( 8),
+        color.a.shl( 0))
+
+proc toBGRA*(color: sdl2.Color): uint32 =
+  bitor(color.b.shl(24),
+        color.g.shl(16),
+        color.r.shl( 8),
+        color.a.shl( 0))
+
+proc toARGB*(color: sdl2.Color): uint32 =
+  bitor(color.a.shl(24),
+        color.r.shl(16),
+        color.g.shl( 8),
+        color.b.shl( 0))
+
+proc toABGR*(color: sdl2.Color): uint32 =
+  bitor(color.a.shl(24),
+        color.b.shl(16),
+        color.g.shl( 8),
+        color.r.shl( 0))
+
 # Todo: remove and(0xff)
 template alpha(color: wColor|uint32): uint8 = color.shr(24).and(0xff).uint8
 template red(color: wColor|uint32): uint8 = color.shr(16).and(0xff).uint8
