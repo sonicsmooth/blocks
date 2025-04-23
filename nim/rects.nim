@@ -1,9 +1,10 @@
-import std/[random, sets, sequtils, strutils, tables]
+import std/[bitops, random, sets, sequtils, strutils, tables]
 import wNim/wTypes
 import wNim/private/wHelper
 import randrect
 
 type 
+  Color = uint32 # RGBA
   RectID* = uint
   Rotation* = enum R0, R90, R180, R270
   Orientation* = enum Vertical, Horizontal
@@ -15,8 +16,8 @@ type
     height*: int
     origin*: wPoint
     rot*: Rotation
-    pencolor*: wColor
-    brushcolor*: wColor
+    penColor*: Color
+    brushColor*: Color
     selected*: bool
   Edge* = object of RootObj
     pt0*: wPoint
@@ -32,6 +33,24 @@ const
   scale = 10
   WRANGE* = (5*scale) .. (25*scale)
   HRANGE* = (5*scale) .. (25*scale)
+
+when true: # ARGB
+  const
+    ASH = 24
+    RSH = 16
+    GSH =  8
+    BSH =  0
+else: # RGBA
+  const
+    RSH = 24
+    GSH = 16
+    BSH =  8
+    ASH =  0
+const
+  rmask* = 0xff.shl(RSH).uint32
+  gmask* = 0xff.shl(GSH).uint32
+  bmask* = 0xff.shl(BSH).uint32
+  amask* = 0xff.shl(ASH).uint32
 
 
 # Declarations
@@ -56,6 +75,7 @@ proc pos*(rect: Rect): wPoint {.inline.} =
   (rect.x, rect.y)
 
 proc size*(rect: Rect): wSize {.inline.} =
+  # Returns width and height after accounting for rotation
   if rect.rot == R0 or rect.rot == R180:
     (rect.width, rect.height)
   else:
@@ -235,18 +255,21 @@ proc isRectOverRect*(rect1, rect2: wRect): bool =
 
 
 # Misc Procs
-proc randColor: wColor = 
-  let 
-    b: int = rand(255) shl 16
-    g: int = rand(255) shl 8
-    r: int = rand(255)
-  wColor(b or g or r) # 00bbggrr
+proc randColor: Color = 
+  let
+    r = (rand(255) shl RSH).Color
+    g = (rand(255) shl GSH).Color
+    b = (rand(255) shl BSH).Color
+    a = (     127  shl ASH).Color
+  bitor(r,g,b,a) # rrggbbaa
 
-proc colordiv*(color: wColor, num: SomeInteger): wColor =
-  let r = color.shr(16).uint8.div(num.uint8).int32.shl(16)
-  let g = color.shr( 8).uint8.div(num.uint8).int32.shl( 8)
-  let b = color.shr( 0).uint8.div(num.uint8).int32.shl( 0)
-  result = r or g or b
+proc colordiv*(color: Color, num: SomeInteger): Color =
+  let
+    r = color.shr(RSH).uint8.div(num.uint8).int32.shl(RSH)
+    g = color.shr(GSH).uint8.div(num.uint8).int32.shl(GSH)
+    b = color.shr(BSH).uint8.div(num.uint8).int32.shl(BSH)
+    a = color.shr(ASH).uint8.div(num.uint8).int32.shl(ASH)
+  bitor(r,g,b,a)
 
 proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect = 
   var rw: int
@@ -266,8 +289,8 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
     rw = rand(WRANGE)
     rh = rand(HRANGE)
 
-  let brushcolor: wColor = randColor()
-  let pencolor = colordiv(brushcolor, 2)
+  let brushColor = Color 0x7f_ff_00_00 # half red
+  let penColor   = Color 0x7f_00_00_ff # half blue
   result = Rect(id: id, 
                 x: rectPosX,
                 y: rectPosY,
@@ -276,8 +299,8 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
                 origin: (0,0),
                 rot: rand(Rotation),
                 selected: false,
-                pencolor: pencolor,
-                brushcolor: brushcolor)
+                penColor: penColor,
+                brushColor: brushColor)
 
 proc moveRectBy*(rect: Rect, delta: wPoint) =
   rect.x += delta.x

@@ -1,4 +1,4 @@
-import std/[tables, math, sequtils, sugar]
+import std/[tables, math, sequtils, strformat, sugar, macros]
 from wNim/wTypes import wSize
 import sdl2
 import sdl2/ttf
@@ -31,9 +31,9 @@ proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
   let (w, h) = (rect.width, rect.height)
   let (ox, oy) = (rect.origin.x, rect.origin.y)
   let sdlRect = rect(0, 0, w, h)
-  renderer.setDrawColor(SDLColor rect.brushcolor.rbswap)
+  renderer.setDrawColor(SDLColor rect.brushColor)
   renderer.fillRect(addr sdlRect)
-  renderer.setDrawColor(SDLColor rect.pencolor.rbswap)
+  renderer.setDrawColor(SDLColor rect.penColor)
   renderer.drawRect(addr sdlRect)
   renderer.setDrawColor(SDLColor 0)
   renderer.drawLine(ox-10, oy, ox+10, oy)

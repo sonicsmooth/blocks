@@ -4,7 +4,6 @@ import wNim
 import winim
 from wNim/private/wHelper import `-`
 import sdl2
-import sdl2/ttf
 import rects, recttable, sdlframes, db
 import userMessages, utils
 import render
@@ -58,8 +57,6 @@ type
   CmdTable = Table[CmdKey, Command]
   
 
-
-
 const 
   cmdTable: CmdTable = 
     {(key: wKey_Esc,    ctrl: false, shift: false, alt: false): CmdEscape,
@@ -73,23 +70,26 @@ const
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
   moveTable: array[wKey_Left .. wKey_Down, wPoint] =
     [(-1,0), (0, -1), (1, 0), (0, 1)]
-  rmask = 0x000000ff'u32
-  gmask = 0x0000ff00'u32
-  bmask = 0x00ff0000'u32
-  amask = 0xff000000'u32
-
-# var 
-#   mouseData: MouseData
 
 
 
 wClass(wBlockPanel of wSDLPanel):
   proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool): SurfacePtr = 
     # Draw rect and label onto surface; return surface.
-    result = createRGBSurface(0, rect.width, rect.height, 32, rmask, gmask, bmask, amask)
-    var renderer = createSoftwareRenderer(result)
+    let surface = createRGBSurface(0, rect.width, rect.height, 32, rmask, gmask, bmask, amask)
+    var renderer = createSoftwareRenderer(surface)
+    renderer.setDrawBlendMode(BlendMode_Blend)
     renderer.renderRect(rect, sel)
+
+    let junkTexture1 = renderer.createTextureFromSurface(surface)
+    let junkTexture2 = self.sdlRenderer.createTextureFromSurface(surface)
+    echo "JunkTexture 1 query:"
+    echo textureInfo(junkTexture1)
+    echo "JunkTexture 2 query:"
+    echo textureInfo(junkTexture2)
+
     renderer.destroy()
+    return surface
     
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
@@ -113,12 +113,13 @@ wClass(wBlockPanel of wSDLPanel):
       self.mTextureCache[key] = 
         self.sdlRenderer.createTextureFromSurface(surface)
 
+
+
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
-    self.initTextureCache() # Todo check whether new renderer onresize
+    self.initTextureCache()
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
-  
   proc updateRatio*(self: wBlockPanel) =
     self.mAllBbox = gDb.boundingBox()
     let ratio = self.mFillArea.float / self.mAllBbox.area.float
@@ -126,7 +127,6 @@ wClass(wBlockPanel of wSDLPanel):
       echo ratio
       self.mText = $ratio
       self.mRatio = ratio
-  
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
@@ -354,11 +354,10 @@ Rendering options for SDL and pixie
 
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
-    let size = event.window.clientSize
     self.sdlRenderer.setDrawColor(SDLColor self.backgroundColor.rbswap)
     self.sdlRenderer.clear()
-    self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
     
+
     # Try a few methods to draw rectangles
     when true:
       # Blit to surface from mTextureCache
@@ -373,8 +372,6 @@ Rendering options for SDL and pixie
     else:
       # Draw directly to surface
       discard
-
-
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
