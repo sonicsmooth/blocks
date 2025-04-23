@@ -1,14 +1,14 @@
 import pixie
 import sdl2
 import std/os
-import sdlframes
+import ../sdlframes
 
 proc createTextureFromImage(renderer: RendererPtr, image: Image): TexturePtr =
-  const 
-    rmask = 0x000000ff'u32
-    gmask = 0x0000ff00'u32
-    bmask = 0x00ff0000'u32
+  const # ABGR
     amask = 0xff000000'u32
+    bmask = 0x00ff0000'u32
+    gmask = 0x0000ff00'u32
+    rmask = 0x000000ff'u32
   let
     (w,h) = (image.width, image.height)
     d = 32    # depth
@@ -51,6 +51,10 @@ proc heart(): Image =
 
 
 initSDL()
+type
+  XDirection = enum RIGHT, LEFT
+  YDirection = enum UP, DOWN
+
 let 
   (w,h) = (800, 600)
   window = createWindow(
@@ -66,6 +70,9 @@ var
   frect1 = rect(30,30, 100, 100)
   dstrect = rect(55, 55, hart.width, hart.height)
   frect2 = rect(50, 70, 100, 100)
+  xdir: XDirection
+  ydir: YDirection
+  
 
 renderer.setDrawBlendMode(BlendMode_Blend)
 while true:
@@ -81,6 +88,20 @@ while true:
   renderer.fillRect(addr frect2)
 
   renderer.present()
-  dstrect.x += 2 
+  if xdir == RIGHT: dstrect.x += 2
+  else:             dstrect.x -= 3
+  if ydir == DOWN: dstrect.y += 3
+  else:            dstrect.y -= 2
+
+  if xdir == RIGHT and (dstrect.x + hart.width > w):
+    xdir = LEFT
+  if xdir == LEFT and dstrect.x <= 0:
+    xdir = RIGHT
+
+  if ydir == DOWN and (dstrect.y + hart.height > h):
+    ydir = UP
+  if ydir == UP and dstrect.y <= 0:
+    ydir = DOWN
+    
 
 heartTexture.destroy()

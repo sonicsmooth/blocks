@@ -1,4 +1,4 @@
-import bitops
+import std/[strformat, bitops]
 import wnim/wTypes
 from winim import LOWORD, HIWORD
 import sdl2
@@ -20,6 +20,8 @@ template towColor*(r: untyped, g: untyped, b: untyped): wColor =
             (wColor(g and 0xff) shl  8) or
             (wColor(b and 0xff) shl 16))
 
+# Todo: remove and(0xff)
+template alpha(color: wColor|uint32): uint8 = color.shr(24).and(0xff).uint8
 template red(color: wColor|uint32): uint8 = color.shr(16).and(0xff).uint8
 template green(color: wColor|uint32): uint8 = color.shr( 8).and(0xff).uint8
 template blue(color: wColor|uint32): uint8 = color.shr( 0).and(0xff).uint8
@@ -57,3 +59,18 @@ proc excl*[T](s: var seq[T], item: T) =
 template sdlFailIf*(cond: typed, reason: string) =
   if cond: raise SDLException.newException(
     reason & ", SDL error: " & $getError())
+
+proc textureInfo*(texture: TexturePtr): string =
+  var pxfmt, rmaskx,gmaskx,bmaskx,amaskx: uint32
+  var access, w, h, bpp: cint
+  queryTexture(texture, addr pxfmt, addr access, addr w, addr h)
+  discard pixelFormatEnumToMasks(pxfmt,bpp,rmaskx,gmaskx,bmaskx,amaskx)
+  result &= &"format: {getPixelFormatName(pxfmt)}\n"
+  result &= &"rmask : {rects.rmask:08x}\n"
+  result &= &"rmaskx: {rmaskx:08x}\n"
+  result &= &"gmask : {rects.gmask:08x}\n"
+  result &= &"gmaskx: {gmaskx:08x}\n"
+  result &= &"bmask : {rects.bmask:08x}\n"
+  result &= &"bmaskx: {bmaskx:08x}\n"
+  result &= &"amask : {rects.amask:08x}\n"
+  result &= &"amaskx: {amaskx:08x}"

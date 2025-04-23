@@ -33,7 +33,7 @@ type
   PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
 const
-  QTY* = 50
+  QTY* = 5
 
 
 proc newRectTable*(): RectTable =
@@ -101,9 +101,9 @@ proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: b
   when false: #if defined(testRects):
     echo "testRects"
     table[1] = Rect(id: 1, x: 200, y: 200, width: 100, height: 200, origin: (30, 50), rot: R0,
-                    selected: false, pencolor: wColor(0x7f_00_00), brushcolor: wColor(0xff_00_00))
+                    selected: false, penColor: wColor(0x7f_00_00), brushColor: wColor(0xff_00_00))
     table[2] = Rect(id: 2, x: 600, y: 300, width: 100, height: 200, origin: (90,20), rot: R0,
-                    selected: false, pencolor: wColor(0x00_7f_00), brushcolor: wColor(0x00_ff_00))
+                    selected: false, penColor: wColor(0x00_7f_00), brushColor: wColor(0x00_ff_00))
   else:
     for i in 1..qty:
       let rid = i.RectID
@@ -115,18 +115,17 @@ proc randomizeRectsPos*(table: RectTable, panelSize: wSize) =
     rect.y = rand(panelSize.height - rect.height - 1)
 
 proc boundingBox*(rectTable: RectTable): wRect =
-  rectTable.values.toSeq.boundingBox
+  rectTable.values.toSeq.boundingBox()
 
 proc aspectRatio*(rtable: RectTable): float =
-  rtable.values.toSeq.aspectRatio
+  rtable.values.toSeq.aspectRatio()
 
 proc fillArea*(rtable: RectTable): int = 
   # Just the rectangle area
-  echo "fillarea"
-  rtable.values.toSeq.fillArea
+  rtable.values.toSeq.fillArea()
 
 proc fillRatio*(rtable: RectTable): float =
-  rtable.values.toSeq.fillRatio
+  rtable.values.toSeq.fillRatio()
 
 
 # Forward decls
