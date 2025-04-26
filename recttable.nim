@@ -1,7 +1,7 @@
 import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
-import rects
+import rects, colors
 export rects, tables
 
 # TODO: Find a way to partition blocks into different regions
@@ -98,12 +98,12 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 
 proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: bool=false) = 
   table.clear()
-  when false: #if defined(testRects):
+  when defined(testRects):
     echo "testRects"
     table[1] = Rect(id: 1, x: 200, y: 200, width: 100, height: 200, origin: (30, 50), rot: R0,
-                    selected: false, penColor: wColor(0x7f_00_00), brushColor: wColor(0xff_00_00))
+                    selected: false, penColor: 0x7f0000ff.toColorU32, brushColor: 0x7f00007f.toColorU32)
     table[2] = Rect(id: 2, x: 600, y: 300, width: 100, height: 200, origin: (90,20), rot: R0,
-                    selected: false, penColor: wColor(0x00_7f_00), brushColor: wColor(0x00_ff_00))
+                    selected: false, penColor: 0xffff0000.toColorU32, brushColor: 0x7fff0000.toColorU32)
   else:
     for i in 1..qty:
       let rid = i.RectID

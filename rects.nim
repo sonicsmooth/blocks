@@ -1,10 +1,10 @@
-import std/[bitops, random, sets, sequtils, strutils, tables]
+import std/[random, sets, sequtils, strutils, tables]
 import wNim/wTypes
 import wNim/private/wHelper
 import randrect
+import colors
 
 type 
-  Color = uint32 # RGBA
   RectID* = uint
   Rotation* = enum R0, R90, R180, R270
   Orientation* = enum Vertical, Horizontal
@@ -16,8 +16,8 @@ type
     height*: int
     origin*: wPoint
     rot*: Rotation
-    penColor*: Color
-    brushColor*: Color
+    penColor*: ColorU32
+    brushColor*: ColorU32
     selected*: bool
   Edge* = object of RootObj
     pt0*: wPoint
@@ -34,23 +34,6 @@ const
   WRANGE* = (5*scale) .. (25*scale)
   HRANGE* = (5*scale) .. (25*scale)
 
-when true: # ARGB
-  const
-    ASH = 24
-    RSH = 16
-    GSH =  8
-    BSH =  0
-else: # RGBA
-  const
-    RSH = 24
-    GSH = 16
-    BSH =  8
-    ASH =  0
-const
-  rmask* = 0xff.shl(RSH).uint32
-  gmask* = 0xff.shl(GSH).uint32
-  bmask* = 0xff.shl(BSH).uint32
-  amask* = 0xff.shl(ASH).uint32
 
 
 # Declarations
@@ -127,35 +110,24 @@ proc originYUp*(rect: Rect): int =
 # eg for width=2 rect at 0, right edge = 2, not 1+1
 proc upperLeft*(rect: wRect): wPoint =
   (rect.x, rect.y)
-
 proc upperRight*(rect: wRect): wPoint =
   (rect.x + rect.width, rect.y)
-
 proc lowerLeft*(rect: wRect): wPoint =
   (rect.x, rect.y + rect.height)
-
 proc lowerRight*(rect: wRect): wPoint =
   (rect.x + rect.width, rect.y + rect.height)
-
 proc topEdge*(rect: wRect): TopEdge =
   TopEdge(pt0: rect.upperLeft, pt1: rect.upperRight)
-
 proc leftEdge*(rect: wRect): LeftEdge =
   LeftEdge(pt0: rect.upperLeft, pt1: rect.lowerLeft)
-
 proc bottomEdge*(rect: wRect): BottomEdge =
   BottomEdge(pt0: rect.lowerLeft, pt1: rect.lowerRight)
-
 proc rightEdge*(rect: wRect): RightEdge =
   RightEdge(pt0: rect.upperRight, pt1: rect.lowerRight)
-
 proc x*(edge: VertEdge): int {.inline.} =
   edge.pt0.x
-
 proc y*(edge: HorizEdge): int {.inline.} =
   edge.pt0.y
-
-
 proc expand*(rect: wRect, amt: int): wRect =
   # Returns expanded wRect from given wRect
   # if amt > 0 then returned wRect is bigger than rect
@@ -165,13 +137,11 @@ proc expand*(rect: wRect, amt: int): wRect =
    width: rect.width + 2*amt,
    height: rect.height + 2*amt)
 
-
 # Procs for multiple Rects
 proc wRects*(rects: seq[Rect]): seq[wRect] =
   # Convert to wRects.  Use converter instead?
   for rect in rects:
     result.add(rect.wRect)
-
 proc ids*(rects: seq[Rect]): seq[RectID] =
   # Get all RectIDs
   for rect in rects:
@@ -209,19 +179,6 @@ proc isPointInRect*(pt: wPoint, rect: wRect): bool {.inline.} =
     let lrcorner = rect.lowerRight
     pt.x >= rect.x and pt.x <= lrcorner.x and
     pt.y >= rect.y and pt.y <= lrcorner.y
-
-# let r2 = Rect(x:100, y:100, width:100, height:200, origin: (0, 0), rot:R0)
-# dump r2
-# dump r2.upperLeft
-# dump r2.upperRight
-# dump r2.lowerLeft
-# dump r2.lowerRight
-# dump r2.leftEdge
-# dump r2.rightEdge
-# dump r2.topEdge
-# dump r2.bottomEdge
-# echo ""
-
 proc isEdgeInRect(edge: VertEdge, rect: wRect): bool {.inline.} =
   let edgeInside = (edge >= rect.leftEdge and edge <= rect.rightEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
@@ -255,22 +212,6 @@ proc isRectOverRect*(rect1, rect2: wRect): bool =
 
 
 # Misc Procs
-proc randColor: Color = 
-  let
-    r = (rand(255) shl RSH).Color
-    g = (rand(255) shl GSH).Color
-    b = (rand(255) shl BSH).Color
-    a = (     127  shl ASH).Color
-  bitor(r,g,b,a) # rrggbbaa
-
-proc colordiv*(color: Color, num: SomeInteger): Color =
-  let
-    r = color.shr(RSH).uint8.div(num.uint8).int32.shl(RSH)
-    g = color.shr(GSH).uint8.div(num.uint8).int32.shl(GSH)
-    b = color.shr(BSH).uint8.div(num.uint8).int32.shl(BSH)
-    a = color.shr(ASH).uint8.div(num.uint8).int32.shl(ASH)
-  bitor(r,g,b,a)
-
 proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect = 
   var rw: int
   var rh: int
@@ -289,8 +230,8 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
     rw = rand(WRANGE)
     rh = rand(HRANGE)
 
-  let brushColor = Color 0x7f_ff_00_00 # half red
-  let penColor   = Color 0x7f_00_00_ff # half blue
+  let brushColor = randColor() #ColorU32 0x7f_ff_00_00 # half red
+  let penColor   = randColor() #ColorU32 0x7f_00_00_ff # half blue
   result = Rect(id: id, 
                 x: rectPosX,
                 y: rectPosY,

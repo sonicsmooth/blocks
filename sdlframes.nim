@@ -1,6 +1,8 @@
 import wnim
 import sdl2, sdl2/[image, ttf]
 import utils
+
+
 export sdl2, image, ttf
 
 
@@ -20,26 +22,9 @@ type
     pixelFormatName: string
   wTestPanel = ref object of wSDLPanel
     rects: seq[Rect]
+    rectTextures: seq[TexturePtr]
   wSDLFrame = ref object of wFrame
     mPanel: wTestPanel
-
-when false: # ARGB
-  const
-    ASH = 24
-    RSH = 16
-    GSH =  8
-    BSH =  0
-else: # RGBA
-  const
-    RSH = 24
-    GSH = 16
-    BSH =  8
-    ASH =  0
-const
-  rmask = 0xff.shl(RSH).uint32
-  gmask = 0xff.shl(GSH).uint32
-  bmask = 0xff.shl(BSH).uint32
-  amask = 0xff.shl(ASH).uint32
 
 
 proc rect(x,y,w,h: cint, color: Color, dir: Direction): Rect =
@@ -62,8 +47,8 @@ proc initSDL*() =
     "SDL2 TTF initialization failed"
 
 wClass(wSDLPanel of wPanel):
-  proc init*(self: wSDLPanel, parent: wWindow) =
-    wPanel(self).init(parent)
+  proc init*(self: wSDLPanel, parent: wWindow, style: wStyle) =
+    wPanel(self).init(parent, style=style)
 
     self.sdlWindow = createWindowFrom(cast[pointer] (self.mHwnd))
     sdlFailIf self.sdlWindow.isNil: "Window could not be created"
@@ -89,15 +74,17 @@ wClass(wTestPanel of wSDLPanel):
     self.sdlRenderer.setDrawColor(rect.color)
     self.sdlRenderer.fillRect(cast[ptr sdl2.Rect](addr rect))
 
-  proc textRect(self: wTestPanel, rect: Rect) = 
+  proc drawRect(self: wTestPanel, rect: Rect, texture: TexturePtr) =
+    let dstrect = cast[ptr sdl2.Rect](addr rect)
+    self.sdlRenderer.copy(texture, nil, dstrect)
+
+  proc toTexture(self: wTestPanel, rect: Rect): TexturePtr =
     let surface = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
-    discard surface.setSurfaceBlendMode(BlendMode_Blend)
-    surface.fillRect(nil, rect.color.toRGBA())
-    let texture = self.sdlRenderer.createTextureFromSurface(surface)
-    #texture.setTextureBlendMode(BlendMode_Blend)
-    let prect = cast[ptr sdl2.Rect](addr rect)
-    self.sdlRenderer.copy(texture, nil, prect)
+    surface.fillRect(nil, rect.color.toUint32())
+    result = self.sdlRenderer.createTextureFromSurface(surface)
+    #echo textureInfo(result)
+  
     
 
   proc updateRect(self: wTestPanel, rect: ptr Rect) =
@@ -117,23 +104,38 @@ wClass(wTestPanel of wSDLPanel):
   proc onPaint(self: wTestPanel, event: wEvent) =
     self.sdlRenderer.setDrawColor(r=110, g=132, b=174)
     self.sdlRenderer.clear()
+
     for r in self.rects:
       self.updateRect(addr r)
-    for r in self.rects[0..2]:
+
+    for r in self.rects[0..5]:
       self.drawRect(r)
-    for r in self.rects[3..5]:
-      self.textRect(r)
+
+    for i in 6..11:
+      self.drawRect(self.rects[i], self.rectTextures[i])
+
     self.sdlRenderer.present()
     self.refresh()
 
   proc init*(self: wTestPanel, parent: wWindow) =
     wSDLPanel(self).init(parent)
-    self.rects.add(rect( 10,  20, 100, 100, color(255,0,0,127), (Right, Down)))
-    self.rects.add(rect( 30,  40, 100, 100, color(0,255,0,127), (Right, Down)))
-    self.rects.add(rect( 50,  60, 100, 100, color(0,0,255,127), (Right, Down)))
-    self.rects.add(rect( 70,  80, 100, 100, color(0,255,255,17), (Right, Down)))
-    self.rects.add(rect( 90, 100, 100, 100, color(255,0,255,127), (Right, Down)))
-    self.rects.add(rect(110, 120, 100, 100, color(255,255,0,127), (Right, Down)))
+    self.rects.add(rect( 10,  20, 100, 100, toSDLColor(colRed,     127), (Right, Down)))
+    self.rects.add(rect( 30,  40, 100, 100, toSDLColor(colGreen,   127), (Right, Down)))
+    self.rects.add(rect( 50,  60, 100, 100, toSDLColor(colBlue,    127), (Right, Down)))
+    self.rects.add(rect( 70,  80, 100, 100, toSDLColor(colCyan,    127), (Right, Down)))
+    self.rects.add(rect( 90, 100, 100, 100, toSDLColor(colMagenta, 127), (Right, Down)))
+    self.rects.add(rect(110, 120, 100, 100, toSDLColor(colYellow,  127), (Right, Down)))
+
+    self.rects.add(rect(110, 120, 100, 100, toSDLColor(colTomato,          200), (Left, Down)))
+    self.rects.add(rect(130, 140, 100, 100, toSDLColor(colLawnGreen,       200), (Left, Down)))
+    self.rects.add(rect(150, 160, 100, 100, toSDLColor(colLightCoral,      200), (Left, Down)))
+    self.rects.add(rect(170, 180, 100, 100, toSDLColor(colRoyalBlue,       200), (Left, Down)))
+    self.rects.add(rect(190, 200, 100, 100, toSDLColor(colMaroon,          200), (Left, Down)))
+    self.rects.add(rect(210, 220, 100, 100, toSDLColor(colMediumTurquoise, 200), (Left, Down)))
+
+    for r in self.rects:
+      self.rectTextures.add(self.toTexture(r))
+
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
 
