@@ -74,26 +74,14 @@ const
 
 
 wClass(wBlockPanel of wSDLPanel):
-  proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool): SurfacePtr = 
-    # Draw rect and label onto surface; return surface.
-    let surface = createRGBSurface(0, rect.width, rect.height, 32, rmask, gmask, bmask, amask)
-    var renderer = createSoftwareRenderer(surface)
-    renderer.setDrawBlendMode(BlendMode_Blend)
-    renderer.renderRect(rect, sel)
-
-    let junkTexture1 = renderer.createTextureFromSurface(surface)
-    let junkTexture2 = self.sdlRenderer.createTextureFromSurface(surface)
-    echo "JunkTexture 1 query:"
-    echo textureInfo(junkTexture1)
-    echo "JunkTexture 2 query:"
-    echo textureInfo(junkTexture2)
-
-    renderer.destroy()
-    return surface
-    
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
+
+  proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool): SurfacePtr =
+    result = createRGBSurface(0, rect.width, rect.height, 32, 
+      rmask, gmask, bmask, amask)
+    result.renderRect(rect, sel)
 
   proc initSurfaceCache*(self: wBlockPanel) =
     # Creates all new surfaces
@@ -352,20 +340,22 @@ Rendering options for SDL and pixie
 
 ]# 
 
+  proc blitFromTextureCache(self: wBlockPanel) =
+    for rect in gDb.values:
+      let texture = self.mTextureCache[(rect.id, rect.selected)]
+      let dstrect = SDLRect rect.towRectNoRot
+      let pt = SDLPoint rect.origin
+      self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
+
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
-    self.sdlRenderer.setDrawColor(SDLColor self.backgroundColor.rbswap)
+    self.sdlRenderer.setDrawColor(self.backgroundColor.toSDLColor())
     self.sdlRenderer.clear()
     
 
     # Try a few methods to draw rectangles
     when true:
-      # Blit to surface from mTextureCache
-      for rect in gDb.values:
-        let texture = self.mTextureCache[(rect.id, rect.selected)]
-        let dstrect = SDLRect rect.towRectNoRot
-        let pt = SDLPoint rect.origin
-        self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
+      self.blitFromTextureCache()
     elif false:
       # Blit to surface from mSurfaceCache
       discard
@@ -375,7 +365,7 @@ Rendering options for SDL and pixie
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
-    self.sdlRenderer.setDrawColor(SDLColor wBlack.rbswap)
+    self.sdlRenderer.setDrawColor(colBlack.toSDLColor())
     self.sdlRenderer.drawRect(addr bbr)
 
     # Draw CmdSelection box directly to screen
@@ -388,7 +378,7 @@ Rendering options for SDL and pixie
     # Draw destination box
     if self.mDstRect.width > 0:
       let dstrect = SDLRect self.mDstRect
-      self.sdlRenderer.setDrawColor(SDLColor wRed.rbswap)
+      self.sdlRenderer.setDrawColor(colRed.toSDLColor())
       self.sdlRenderer.drawRect(addr dstrect)
 
     self.sdlRenderer.present()
