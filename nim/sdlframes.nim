@@ -45,9 +45,9 @@ proc initSDL*() =
     "SDL2 TTF initialization failed"
 
 wClass(wSDLPanel of wPanel):
-  proc init*(self: wSDLPanel, parent: wWindow) =
+  proc init*(self: wSDLPanel, parent: wWindow, style: wStyle=0) =
     echo "wSDLPanel.init()"
-    wPanel(self).init(parent)
+    wPanel(self).init(parent, style=style)
 
     self.sdlWindow = createWindowFrom(cast[pointer] (self.mHwnd))
     sdlFailIf self.sdlWindow.isNil: "Window could not be created"
@@ -110,7 +110,7 @@ wClass(wTestPanel of wSDLPanel):
     self.refresh()
   proc init*(self: wTestPanel, parent: wWindow) =
     echo "wTestPanel.init()"
-    wSDLPanel(self).init(parent)
+    wSDLPanel(self).init(parent) #, style=wBorderSimple)
     self.rects.add(rect( 10,  20, 100, 100, toColor(colRed,     127), (Right, Down)))
     self.rects.add(rect( 30,  40, 100, 100, toColor(colGreen,   127), (Right, Down)))
     self.rects.add(rect( 50,  60, 100, 100, toColor(colBlue,    127), (Right, Down)))

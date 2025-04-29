@@ -1,4 +1,4 @@
-import std/strformat
+import std/[strformat, sugar]
 import wNim
 import mainpanel, userMessages, utils
 from db import QTY
@@ -66,7 +66,7 @@ wClass(wMainFrame of wFrame):
     self.mStatusBar.setStatusText(tmpStr, index=0)
     self.mMainPanel.randomizeRectsAll()
 
-    # Connect Events
+    # # Connect Events
     self.wEvent_Size     do (event: wEvent): self.onResize(event)
     self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
     self.USER_MOUSE_MOVE do (event: wEvent): self.onUserMouseNotify(event)
