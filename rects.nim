@@ -1,4 +1,4 @@
-import std/[random, sets, sequtils, strutils, tables]
+import std/[sugar, random, sets, sequtils, strutils, tables]
 import wNim/wTypes
 import wNim/private/wHelper
 import randrect
@@ -33,6 +33,8 @@ const
   scale = 10
   WRANGE* = (5*scale) .. (25*scale)
   HRANGE* = (5*scale) .. (25*scale)
+  WRNGby2 = WRANGE.a + (WRANGE.b - WRANGE.a) div 2
+  HRNGby2 = HRANGE.a + (HRANGE.b - HRANGE.a) div 2
 
 
 
@@ -215,6 +217,8 @@ proc isRectOverRect*(rect1, rect2: wRect): bool =
 proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect = 
   var rw: int
   var rh: int
+  dump panelSize.width
+  dump panelSize.height
   let rectPosX:  int = rand(panelSize.width  - rw  - 1)
   let rectPosY:  int = rand(panelSize.height - rh - 1)
 
@@ -230,14 +234,16 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
     rw = rand(WRANGE)
     rh = rand(HRANGE)
 
-  let brushColor = randColor() #ColorU32 0x7f_ff_00_00 # half red
-  let penColor   = randColor() #ColorU32 0x7f_00_00_ff # half blue
+  let brushColor = colRed #randColor() #ColorU32 0x7f_ff_00_00 # half red
+  let penColor   = brushColor.colordiv(2)
+  dump brushColor
+  dump penColor
   result = Rect(id: id, 
                 x: rectPosX,
                 y: rectPosY,
                 width: rw,
                 height: rh,
-                origin: (0,0),
+                origin: (WRNGby2, HRNGby2),
                 rot: rand(Rotation),
                 selected: false,
                 penColor: penColor,

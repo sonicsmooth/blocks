@@ -33,7 +33,7 @@ type
   PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
 const
-  QTY* = 5
+  QTY* = 1
 
 
 proc newRectTable*(): RectTable =

@@ -120,26 +120,26 @@ template toColor*(color: SomeColor  ): Color =
 
 proc colordiv*(color: ColorU32, num: SomeInteger): ColorU32 =
   let
-    r = (color.red   div num).uint32
-    g = (color.green div num).uint32
-    b = (color.blue  div num).uint32
-    a = color.a.uint32
+    r = color.red.uint32   div num.uint32
+    g = color.green.uint32 div num.uint32
+    b = color.blue.uint32  div num.uint32
+    a = color.alpha.uint32
   assembleBits(r,g,b,a)
 
 proc colordiv*(color: Color, num: SomeInteger): Color =
   let
-    r = (color.red   div num).uint8
-    g = (color.green div num).uint8
-    b = (color.blue  div num).uint8
-    a = color.a.uint8
+    r = color.red   div num.uint8
+    g = color.green div num.uint8
+    b = color.blue  div num.uint8
+    a = color.alpha.uint8
   (r: color.red, g: color.green, b: color.blue, a: alpha).Color
 
 proc colordiv*(color: wColor, num: SomeInteger): wColor =
   let
-    r = (color.red   div num).uint32.shl( 0)
-    g = (color.green div num).uint32.shl( 8)
-    b = (color.blue  div num).uint32.shl(16)
-    a = color.a.uint32.shl(24)
+    r = (color.red.uint32   div num.uint32).shl( 0)
+    g = (color.green.uint32 div num.uint32).shl( 8)
+    b = (color.blue.uint32  div num.uint32).shl(16)
+    a = color.alpha.uint32.shl(24)
   bitor(r,g,b,a).wColor
 
 
@@ -367,6 +367,12 @@ when isMainModule:
     assert colRed.toColorU32(127)              == 0xff00007f'u32
     assert colLime.toColorU32(127)             == 0x00ff007f'u32
     assert colBlue.toColorU32(127)             == 0x0000ff7f'u32
+    assert colRed.toColorU32.div(2)            == 0x7f0000ff'u32
+    assert colLime.toColorU32.div(2)           == 0x007f00ff'u32
+    assert colBlue.toColorU32.div(2)           == 0x00007fff'u32
+    assert colRed.toColorU32(127).div(2)       == 0x7f00007f'u32
+    assert colLime.toColorU32(127).div(2)      == 0x007f007f'u32
+    assert colBlue.toColorU32(127).div(2)      == 0x00007f7f'u32
 
     assert 0xff0000.toColorU32                 == 0xff0000ff'u32 
     assert 0x00ff00.toColorU32                 == 0x00ff00ff'u32 
@@ -391,17 +397,23 @@ when isMainModule:
     assert wGreen.toColorU32                   == 0xff00ff00'u32
     assert wBlue.toColorU32                    == 0xff0000ff'u32
     assert colRed.toColorU32                   == 0xffff0000'u32
-    assert colLime.toColorU32                 == 0xff00ff00'u32
+    assert colLime.toColorU32                  == 0xff00ff00'u32
     assert colBlue.toColorU32                  == 0xff0000ff'u32
     assert colRed                              == 0xffff0000'u32
-    assert colLime                            == 0xff00ff00'u32
+    assert colLime                             == 0xff00ff00'u32
     assert colBlue                             == 0xff0000ff'u32
     assert wRed.toColorU32(127)                == 0x7fff0000'u32
     assert wGreen.toColorU32(127)              == 0x7f00ff00'u32
     assert wBlue.toColorU32(127)               == 0x7f0000ff'u32
     assert colRed.toColorU32(127)              == 0x7fff0000'u32
-    assert colLime.toColorU32(127)            == 0x7f00ff00'u32
+    assert colLime.toColorU32(127)             == 0x7f00ff00'u32
     assert colBlue.toColorU32(127)             == 0x7f0000ff'u32
+    assert colRed.toColorU32.div(2)            == 0xff7f0000'u32
+    assert colLime.toColorU32.div(2)           == 0xff007f00'u32
+    assert colBlue.toColorU32.div(2)           == 0xff00007f'u32
+    assert colRed.toColorU32(127).div(2)       == 0x7f7f0000'u32
+    assert colLime.toColorU32(127).div(2)      == 0x7f007f00'u32
+    assert colBlue.toColorU32(127).div(2)      == 0x7f00007f'u32
     assert 0xff0000.toColorU32                 == 0xffff0000'u32
     assert 0x00ff00.toColorU32                 == 0xff00ff00'u32
     assert 0x0000ff.toColorU32                 == 0xff0000ff'u32

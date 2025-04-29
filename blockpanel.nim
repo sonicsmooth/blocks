@@ -109,12 +109,16 @@ wClass(wBlockPanel of wSDLPanel):
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   proc updateRatio*(self: wBlockPanel) =
-    self.mAllBbox = gDb.boundingBox()
-    let ratio = self.mFillArea.float / self.mAllBbox.area.float
-    if ratio != self.mRatio:
-      echo ratio
-      self.mText = $ratio
-      self.mRatio = ratio
+    if gDb.len == 0:
+      self.mText = $0.0
+      self.mRatio = 0.0
+    else:
+      self.mAllBbox = gDb.boundingBox()
+      let ratio = self.mFillArea.float / self.mAllBbox.area.float
+      if ratio != self.mRatio:
+        echo ratio
+        self.mText = $ratio
+        self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
@@ -349,7 +353,7 @@ Rendering options for SDL and pixie
 
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
-    self.sdlRenderer.setDrawColor(self.backgroundColor.toSDLColor())
+    self.sdlRenderer.setDrawColor(self.backgroundColor.toColor())
     self.sdlRenderer.clear()
     
 
@@ -365,7 +369,7 @@ Rendering options for SDL and pixie
 
     # Draw bounding box for everything
     let bbr = SDLRect self.mAllBbox
-    self.sdlRenderer.setDrawColor(colBlack.toSDLColor())
+    self.sdlRenderer.setDrawColor(colBlack.toColor())
     self.sdlRenderer.drawRect(addr bbr)
 
     # Draw CmdSelection box directly to screen
@@ -378,7 +382,7 @@ Rendering options for SDL and pixie
     # Draw destination box
     if self.mDstRect.width > 0:
       let dstrect = SDLRect self.mDstRect
-      self.sdlRenderer.setDrawColor(colRed.toSDLColor())
+      self.sdlRenderer.setDrawColor(colRed.toColor())
       self.sdlRenderer.drawRect(addr dstrect)
 
     self.sdlRenderer.present()
@@ -400,6 +404,7 @@ Rendering options for SDL and pixie
   #   release(gLock)
   
   proc init*(self: wBlockPanel, parent: wWindow) = 
+    discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mDstRect = (10, 10, 780, 780)
