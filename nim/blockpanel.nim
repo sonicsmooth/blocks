@@ -370,20 +370,12 @@ Rendering options for SDL and pixie
       # Draw directly to surface
       discard
 
-    # Draw bounding box for everything
-    self.sdlRenderer.renderBoundingBox(self.mAllBbox, colBlack.toColor())
-
-    # Draw CmdSelection box directly to screen
-    self.sdlRenderer.renderSelectionBox(self.mSelectBox)
-
-    # Draw destination box
+    # Draw various boxes and text, then done
     if self.mDstRect.w > 0:
       self.sdlRenderer.renderDestinationBox(self.mDstRect)
-
-    # Draw text
+    self.sdlRenderer.renderBoundingBox(self.mAllBbox)
+    self.sdlRenderer.renderSelectionBox(self.mSelectBox)
     self.sdlRenderer.renderText(self.sdlWindow, self.mText)
-
-    # Done
     self.sdlRenderer.present()
 
     # release(gLock)
