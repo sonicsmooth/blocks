@@ -1,14 +1,14 @@
 import std/[algorithm, sequtils]
-import wnim/wtypes
+from sdl2 import Rect
 import recttable, compact
 
 
 # Compact from largest to smallest into the given rectangle
 
-proc vertCmp (r1, r2: Rect): int = cmp(r1.size.height, r2.size.height)
-proc horizCmp(r1, r2: Rect): int = cmp(r1.size.width,  r2.size.width )
+proc vertCmp (r1, r2: rects.Rect): int = cmp(r1.size.h, r2.size.h)
+proc horizCmp(r1, r2: rects.Rect): int = cmp(r1.size.w, r2.size.w)
 
-proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) =
+proc stackCompact*(table: var RectTable, dstRect: sdl2.Rect, direction: CompactDir) =
   var dstRect = dstRect
   # Rotate, sort by vertical size, and move to opposite corner
   var rects = table.values.toSeq
@@ -46,11 +46,11 @@ proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) 
         accRects = @[rect.id]
     of DownLeft:
       if bbox.rightEdge.x > dstRect.rightEdge.x:
-        dstRect.y -= bbox.height
+        dstRect.y -= bbox.h
         accRects = @[rect.id]
     of DownRight:
       if bbox.leftEdge.x < dstRect.leftEdge.x:
-        dstRect.y -= bbox.height
+        dstRect.y -= bbox.h
         accRects = @[rect.id]
     of LeftUp:
       if bbox.bottomEdge.y > dstRect.bottomEdge.y:
@@ -62,11 +62,11 @@ proc stackCompact*(table: var RectTable, dstRect: wRect, direction: CompactDir) 
         accRects = @[rect.id]
     of RightUp:
       if bbox.bottomEdge.y > dstRect.bottomEdge.y:
-        dstRect.x -= bbox.width
+        dstRect.x -= bbox.w
         accRects = @[rect.id]
     of RightDown:
       if bbox.topEdge.y < dstRect.topEdge.y:
-        dstRect.x -= bbox.width
+        dstRect.x -= bbox.w
         accRects = @[rect.id]
 
 

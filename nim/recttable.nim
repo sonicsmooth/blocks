@@ -2,6 +2,7 @@ import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
 import rects, colors
+from sdl2 import Rect, Point
 export rects, tables
 
 # TODO: Find a way to partition blocks into different regions
@@ -28,7 +29,7 @@ export rects, tables
 # TODO: example rotate, move, id, position, assign field value, etc.
 
 type 
-  RectTable* = ref Table[RectID, Rect]   # meant to be shared
+  RectTable* = ref Table[RectID, rects.Rect]   # meant to be shared
   PosRot = tuple[x: int, y: int, rot: Rotation]
   PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
@@ -37,7 +38,7 @@ const
 
 
 proc newRectTable*(): RectTable =
-  newTable[RectID, Rect]()
+  newTable[RectID, rects.Rect]()
 
 proc newPosTable*(): ref PosTable = 
   newTable[RectID, PosRot]()
@@ -46,11 +47,11 @@ proc `$`*(table: RectTable): string =
   for k,v in table:
     result.add(&"{k}: {v}\n")
 
-proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[Rect] =
+proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[rects.Rect] =
   for idx in idxs:
     result.add(table[idx])
 
-proc add*(table: RectTable, rect: Rect) =
+proc add*(table: RectTable, rect: rects.Rect) =
   table[rect.id] = rect
 
 
@@ -74,47 +75,47 @@ proc setPositions*[T:Table](table: var RectTable, pos: T) =
     rect.x = pos[id].x
     rect.y = pos[id].y
 
-proc ptInRects*(table: RectTable, pt: wPoint): seq[RectID] = 
+proc ptInRects*(table: RectTable, pt: Point): seq[RectID] = 
   # Returns seq of Rect IDs from table whose rect 
   # surrounds or contacts pt
   # Optimization? -- return after first one
   for id, rect in table:
-    if isPointInRect(pt, rect.wRect):
+    if isPointInRect(pt, rect):
       result.add(id)
 
-proc rectInRects*(table: RectTable, rect: wRect): seq[RectID] = 
+proc rectInRects*(table: RectTable, rect: sdl2.Rect|rects.Rect): seq[RectID] = 
   # Return seq of Rect IDs from table that intersect rect
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
   # Or rect is a bounding box and we're looking for where 
   # it touches other blocks
   for id, tabRect in table:
-    if isRectInRect(rect, tabRect.wRect) or 
-       isRectOverRect(rect, tabRect.wRect):
+    if isRectInRect(rect, tabRect) or 
+       isRectOverRect(rect, tabRect):
       result.add(id)
 
 proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] = 
-  table.rectInRects(table[rectId].wRect)
+  table.rectInRects(table[rectId])
 
 proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
     echo "testRects"
-    table[1] = Rect(id: 1, x: 200, y: 200, width: 100, height: 200, origin: (30, 50), rot: R0,
+    table[1] = Rect(id: 1, x: 200, y: 200, w: 100, h: 200, origin: (30, 50), rot: R0,
                     selected: false, penColor: 0x7f0000ff.toColorU32, brushColor: 0x7f00007f.toColorU32)
-    table[2] = Rect(id: 2, x: 600, y: 300, width: 100, height: 200, origin: (90,20), rot: R0,
+    table[2] = Rect(id: 2, x: 600, y: 300, w: 100, h: 200, origin: (90,20), rot: R0,
                     selected: false, penColor: 0xffff0000.toColorU32, brushColor: 0x7fff0000.toColorU32)
   else:
     for i in 1..qty:
       let rid = i.RectID
       table[rid] = randRect(rid, panelSize, log)
 
-proc randomizeRectsPos*(table: RectTable, panelSize: wSize) =
+proc randomizeRectsPos*(table: RectTable, panelSize: Size) =
   for id, rect in table:
-    rect.x = rand(panelSize.width  - rect.width  - 1)
-    rect.y = rand(panelSize.height - rect.height - 1)
+    rect.x = rand(panelSize.w - rect.w  - 1)
+    rect.y = rand(panelSize.h - rect.h - 1)
 
-proc boundingBox*(rectTable: RectTable): wRect =
+proc boundingBox*(rectTable: RectTable): sdl2.Rect =
   rectTable.values.toSeq.boundingBox()
 
 proc aspectRatio*(rtable: RectTable): float =

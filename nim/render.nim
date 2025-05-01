@@ -26,7 +26,7 @@ proc font(size: int): FontPtr =
 
 proc font(rect: rects.Rect): FontPtr =
   # Return properly sized font ptr from cache based on rect size
-  let px = min(rect.size.width, rect.size.height)
+  let px = min(rect.size.w, rect.size.h)
   let scaledSize = (px.float * fontScale).round.int
   font(scaledSize)
 
@@ -34,7 +34,7 @@ proc font(rect: rects.Rect): FontPtr =
 proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
   # Draw rectangle on SDL2 renderer
   # Draw main filled rectangle with outline
-  let (w, h) = (rect.width, rect.height)
+  let (w, h) = (rect.w, rect.h)
   let (ox, oy) = (rect.origin.x, rect.origin.y)
   let sdlRect = rect(0, 0, w, h)
 
