@@ -86,10 +86,10 @@ proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   txtTexture.destroy()
   txtSurface.destroy()
 
-proc renderBoundingBox*(renderer: RendererPtr, rect: sdl2.Rect, color: Color) = 
+proc renderBoundingBox*(renderer: RendererPtr, rect: sdl2.Rect) = 
   # Assumes wRect and sdl2.Rect have same memory layout
   # Doesn't set drawcolor back to what it was
-  renderer.setDrawColor(color)
+  renderer.setDrawColor(colBlack.toColor())
   renderer.drawRect(cast [ptr sdl2.Rect](addr rect))
 
 proc renderSelectionBox*(renderer: RendererPtr, rect: sdl2.Rect) =
@@ -98,8 +98,6 @@ proc renderSelectionBox*(renderer: RendererPtr, rect: sdl2.Rect) =
   renderer.setDrawColor(0, 120, 215)
   renderer.drawRect(addr rect)
 
-
 proc renderDestinationBox*(renderer: RendererPtr, rect: sdl2.Rect) =
-  #let dstrect = SDLRect self.mDstRect
   renderer.setDrawColor(colRed.toColor())
   renderer.drawRect(addr rect)
