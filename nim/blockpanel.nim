@@ -39,9 +39,9 @@ type
     mFirmSelection*: seq[RectID]
     mFillArea*: int
     mRatio*: float
-    mAllBbox*: wRect
-    mSelectBox*: wRect
-    mDstRect*: wRect
+    mAllBbox*: sdl2.Rect
+    mSelectBox*: sdl2.Rect
+    mDstRect*: sdl2.Rect
     mText*: string
  
   Command = enum
@@ -113,7 +113,8 @@ wClass(wBlockPanel of wSDLPanel):
       self.mText = $0.0
       self.mRatio = 0.0
     else:
-      self.mAllBbox = gDb.boundingBox()
+      let bbox = gDb.boundingBox()
+      self.mAllBbox = bbox # implicitly calls converter in utils.nim
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
         echo ratio
@@ -306,7 +307,9 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
-        let newsel = gDb.rectInRects(self.mSelectBox)
+        let smsbtemp:wRect = self.mSelectBox # implicit conversion
+        #let newsel = gDb.rectInRects(self.mSelectBox)
+        let newsel = gDb.rectInRects(smsbtemp)
         gDb.setRectSelect(self.mFirmSelection)
         gDb.setRectSelect(newsel)
         self.refresh(false)
@@ -368,40 +371,22 @@ Rendering options for SDL and pixie
       discard
 
     # Draw bounding box for everything
-    let bbr = SDLRect self.mAllBbox
-    self.sdlRenderer.setDrawColor(colBlack.toColor())
-    self.sdlRenderer.drawRect(addr bbr)
+    self.sdlRenderer.renderBoundingBox(self.mAllBbox, colBlack.toColor())
 
     # Draw CmdSelection box directly to screen
-    let selrect = SDLRect self.mSelectBox
-    self.sdlRenderer.setDrawColor(0, 102, 204, 70)
-    self.sdlRenderer.fillRect(addr selrect)
-    self.sdlRenderer.setDrawColor(0, 120, 215)
-    self.sdlRenderer.drawRect(addr selrect)
+    self.sdlRenderer.renderSelectionBox(self.mSelectBox)
 
     # Draw destination box
-    if self.mDstRect.width > 0:
-      let dstrect = SDLRect self.mDstRect
-      self.sdlRenderer.setDrawColor(colRed.toColor())
-      self.sdlRenderer.drawRect(addr dstrect)
+    if self.mDstRect.w > 0:
+      self.sdlRenderer.renderDestinationBox(self.mDstRect)
 
+    # Draw text
+    self.sdlRenderer.renderText(self.sdlWindow, self.mText)
+
+    # Done
     self.sdlRenderer.present()
 
-  # proc oldonPaint(self: wBlockPanel, event: wEvent) = 
-
-  #   # draw current text, possibly sent from other thread
-  #   let sw = self.mMemDc.charWidth * self.mText.len
-  #   let ch = self.mMemDc.charHeight
-  #   let textRect = (self.clientSize.width-sw, self.clientSize.height-ch, sw, ch)
-  #   self.mMemDc.setBrush(Brush(wBlack))
-  #   self.mMemDC.setTextBackground(self.backgroundColor)
-  #   self.mMemDC.setFont(Font(pointSize=16, wFontFamilyRoman))
-  #   self.mMemDC.drawLabel(self.mText, textRect, wMiddle)
-
-  #   # Finally do last blit to main dc
-  #   dc.blit(0, 0, dc.size.width, dc.size.height, self.mMemDc)
-  #   mouseData.dirtyIds.setLen(0)
-  #   release(gLock)
+    # release(gLock)
   
   proc init*(self: wBlockPanel, parent: wWindow) = 
     discard

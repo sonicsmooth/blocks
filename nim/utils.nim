@@ -49,3 +49,4 @@ proc textureInfo*(texture: TexturePtr): string =
   result &= &"bmaskx: {bmaskx:08x}\n"
   result &= &"amask : {colors.amask:08x}\n"
   result &= &"amaskx: {amaskx:08x}"
+
