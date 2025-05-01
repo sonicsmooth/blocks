@@ -1,6 +1,7 @@
 import std/[sugar, random, sets, sequtils, strutils, tables]
 import wNim/wTypes
 import wNim/private/wHelper
+from sdl2 import Rect
 import randrect
 import colors
 
@@ -36,7 +37,7 @@ const
   WRNGby2 = WRANGE.a + (WRANGE.b - WRANGE.a) div 2
   HRNGby2 = HRANGE.a + (HRANGE.b - HRANGE.a) div 2
 
-
+# TODO: Change all domain wRects to sdl2.Rect
 
 # Declarations
 proc toFloat*(rot: Rotation): float {.inline.}
@@ -75,8 +76,18 @@ proc towRectNoRot*(rect: Rect): wRect {.inline.} =
    rect.width, 
    rect.height)
 
-converter wRect*(rect: Rect): wRect {.inline} =
-  # Implicit conversion
+converter toRect*(rect: wRect): sdl2.Rect =
+  (rect.x, 
+   rect.y, 
+   rect.width, 
+   rect.height)
+converter towRect*(rect: sdl2.Rect): wRect =
+  (rect.x, 
+   rect.y, 
+   rect.w, 
+   rect.h)
+
+converter wRect*(rect: rects.Rect): wRect {.inline} =
   # Returns barebones rectangle x,y,w,h after rotation
   # Explicit conversion to wRect.
   # Bounds are corrected for origin
@@ -90,6 +101,8 @@ converter wRect*(rect: Rect): wRect {.inline} =
   of R90:  (x - oy,     y + ox - w, h, w)
   of R180: (x + ox - w, y + oy - h, w, h)
   of R270: (x + oy - h, y - ox,     h, w)
+
+# Todo: Add converter Rect
 
 proc originXLeft*(rect: Rect): int =
   # Horizontal distance from left edge to origin after rotation
@@ -290,8 +303,11 @@ proc rotate*(rect: Rect, orient: Orientation) =
     else: rect.rot = R0
     
 
-proc area*(rect: wRect|Rect): int {.inline.} =
+proc area*(rect: rects.Rect): int {.inline.} =
   rect.width * rect.height
+
+proc area*(rect: sdl2.Rect): int {.inline.} =
+  rect.w * rect.h
 
 proc aspectRatio*(rect: wRect|Rect): float =
   when typeof(rect) is Rect:
@@ -314,14 +330,14 @@ proc fillRatio*(rects: seq[wRect|Rect]): float =
   # Find ratio of total area to filled area
   rects.fillArea.float / rects.boundingBox.area.float
 
-proc normalizeRectCoords*(startPos, endPos: wPoint): wRect =
+proc normalizeRectCoords*(startPos, endPos: wPoint): sdl2.Rect =
   # make sure that rect.x,y is always upper left
   let (sx,sy) = startPos
   let (ex,ey) = endPos
   result.x = min(sx, ex)
   result.y = min(sy, ey)
-  result.width = abs(ex - sx)
-  result.height = abs(ey - sy)
+  result.w = abs(ex - sx)
+  result.h = abs(ey - sy)
 
 proc toFloat*(rot: Rotation): float =
   case rot:
