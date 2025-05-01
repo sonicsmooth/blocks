@@ -217,8 +217,6 @@ proc isRectOverRect*(rect1, rect2: wRect): bool =
 proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect = 
   var rw: int
   var rh: int
-  dump panelSize.width
-  dump panelSize.height
   let rectPosX:  int = rand(panelSize.width  - rw  - 1)
   let rectPosY:  int = rand(panelSize.height - rh - 1)
 
@@ -234,16 +232,14 @@ proc randRect*(id: RectID, panelSize: wSize, log: bool=false): Rect =
     rw = rand(WRANGE)
     rh = rand(HRANGE)
 
-  let brushColor = colRed #randColor() #ColorU32 0x7f_ff_00_00 # half red
+  let brushColor = randColor() #ColorU32 0x7f_ff_00_00 # half red
   let penColor   = brushColor.colordiv(2)
-  dump brushColor
-  dump penColor
   result = Rect(id: id, 
                 x: rectPosX,
                 y: rectPosY,
-                width: rw,
-                height: rh,
-                origin: (WRNGby2, HRNGby2),
+                width: rw div 2,
+                height: rh div 2,
+                origin: (10, 20),
                 rot: rand(Rotation),
                 selected: false,
                 penColor: penColor,

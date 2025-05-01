@@ -1,9 +1,9 @@
 import std/[tables, math, sequtils, strformat, sugar, macros]
+import timeit
 from wNim/wTypes import wSize
 import sdl2
 import sdl2/ttf
-import rects
-import utils
+import rects, utils
 
 
 type
@@ -11,7 +11,7 @@ type
 
 const
   fontRange: Slice[int] = 6..24
-  fontScale = 0.25
+  fontScale = 0.45
 
 var
   fontCache: FontTable # Filled in as needed
@@ -32,13 +32,17 @@ proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
   let (w, h) = (rect.width, rect.height)
   let (ox, oy) = (rect.origin.x, rect.origin.y)
   let sdlRect = rect(0, 0, w, h)
+
+  # Main rectangle
   renderer.setDrawColor(rect.brushColor.toColor())
-  echo rect.brushColor.toColor()
-  echo rect.penColor.toColor()
   renderer.fillRect(addr sdlRect)
+
+  # Outline
   renderer.setDrawColor(rect.penColor.toColor())
   renderer.drawRect(addr sdlRect)
-  renderer.setDrawColor(rect.penColor.toColor())
+
+  # Origin
+  renderer.setDrawColor(colBlack.toColor())
   renderer.drawLine(ox-10, oy, ox+10, oy)
   renderer.drawLine(ox, oy-10, ox, oy+10)
 

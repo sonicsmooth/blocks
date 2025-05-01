@@ -149,7 +149,7 @@ proc randColor*(): ColorU32 =
     r = (rand(255) shl RSH)
     g = (rand(255) shl GSH)
     b = (rand(255) shl BSH)
-    a = (     127  shl ASH)
+    a = (     200  shl ASH)
   bitor(r,g,b,a).ColorU32 # rrggbbaa
 
 const
