@@ -17,22 +17,19 @@ const
 var
   fontCache: FontTable # Filled in as needed
 
+proc font(size: int): FontPtr =
+  # Return properly sized font ptr from cache based on size
+  let clampSize = clamp(size, fontRange)
+  if clampSize notin fontCache:
+    fontCache[clampSize] = openFont("fonts/DejaVuSans.ttf", clampSize)
+  fontCache[clampSize]
 
 proc font(rect: rects.Rect): FontPtr =
-  # Return properly sized font ptr
+  # Return properly sized font ptr from cache based on rect size
   let px = min(rect.size.width, rect.size.height)
   let scaledSize = (px.float * fontScale).round.int
-  let size = clamp(scaledSize, fontRange)
-  if size notin fontCache:
-    fontCache[size] = openFont("fonts/DejaVuSans.ttf", size)
-  fontCache[size]
+  font(scaledSize)
 
-proc font(size: int): FontPtr =
-  # Return properly sized font ptr
-  let size = clamp(size, fontRange)
-  if size notin fontCache:
-    fontCache[size] = openFont("fonts/DejaVuSans.ttf", size)
-  fontCache[size]
 
 proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
   # Draw rectangle on SDL2 renderer
