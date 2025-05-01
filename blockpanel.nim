@@ -68,7 +68,7 @@ const
      (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotateCCW,
      (key: wKey_Space,  ctrl: false, shift: true,  alt: false): CmdRotateCW,
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
-  moveTable: array[wKey_Left .. wKey_Down, wPoint] =
+  moveTable: array[wKey_Left .. wKey_Down, sdl2.Point] =
     [(-1,0), (0, -1), (1, 0), (0, 1)]
 
 
@@ -79,7 +79,7 @@ wClass(wBlockPanel of wSDLPanel):
     UpdateWindow(self.mHwnd)
 
   proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool): SurfacePtr =
-    result = createRGBSurface(0, rect.width, rect.height, 32, 
+    result = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
     result.renderRect(rect, sel)
 
@@ -120,7 +120,7 @@ wClass(wBlockPanel of wSDLPanel):
         echo ratio
         self.mText = $ratio
         self.mRatio = ratio
-  proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: wPoint) =
+  proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: sdl2.Point) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
     let rects = gDb[rectIDs]
@@ -128,7 +128,7 @@ wClass(wBlockPanel of wSDLPanel):
       moveRectBy(rect, delta)
     self.updateRatio()
     self.refresh(false)
-  proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: wPoint) =
+  proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: sdl2.Point) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     moveRectBy(gDb[rectId], delta)
     self.updateRatio()
@@ -307,7 +307,7 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
-        let smsbtemp:wRect = self.mSelectBox # implicit conversion
+        let smsbtemp: sdl2.Rect = self.mSelectBox # implicit conversion
         #let newsel = gDb.rectInRects(self.mSelectBox)
         let newsel = gDb.rectInRects(smsbtemp)
         gDb.setRectSelect(self.mFirmSelection)
@@ -350,8 +350,8 @@ Rendering options for SDL and pixie
   proc blitFromTextureCache(self: wBlockPanel) =
     for rect in gDb.values:
       let texture = self.mTextureCache[(rect.id, rect.selected)]
-      let dstrect = SDLRect rect.towRectNoRot
-      let pt = SDLPoint rect.origin
+      let dstrect = rect.toRectNoRot
+      let pt = rect.origin
       self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
 
 

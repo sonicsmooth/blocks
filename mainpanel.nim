@@ -188,7 +188,7 @@ wClass(wMainPanel of wPanel):
     self.refresh(false)
   proc onButtonTest(self: wMainPanel) =
     for rect in gDb.values:
-      echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.width, rect.height)}, rot: {rect.rot}"
+      echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.w, rect.h)}, rot: {rect.rot}"
   # Left  arrow = stack to the left,   which is x ascending
   # Right arrow = stack to the right,  which is x descending
   # Up    arrow = stack to the top,    which is y ascending
