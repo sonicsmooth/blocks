@@ -7,7 +7,7 @@ import colors
 
 # Generally,
 #  rects.Rect is a domain rectangle in the database
-#  sdl2.Rect is a grahpical rectangle
+#  sdl2.Rect is a graphical rectangle
 
 type 
   RectID* = uint
@@ -26,6 +26,7 @@ type
     penColor*: ColorU32
     brushColor*: ColorU32
     selected*: bool
+  SomeRect = Rect | sdl2.Rect
   Edge* = object of RootObj
     pt0*: Point
     pt1*: Point
@@ -43,19 +44,70 @@ const
   WRNGby2 = WRANGE.a + (WRANGE.b - WRANGE.a) div 2
   HRNGby2 = HRANGE.a + (HRANGE.b - HRANGE.a) div 2
 
-# TODO: Test!
+
+
 
 # Declarations
+proc `$`*(rect: Rect): string
+proc `$`*(rect: sdl2.Rect): string
+proc pos*(rect: SomeRect): Point {.inline.}
+proc size*(rect: SomeRect): Size {.inline.}
+proc toRectNoRot*(rect: Rect): sdl2.Rect {.inline.}
+converter toRect*(rect: Rect): sdl2.Rect {.inline.}
+converter toRect*(rect: sdl2.Rect): sdl2.Rect {.inline.}
+proc originXLeft*(rect: Rect): int
+proc originYUp*(rect: Rect): int
+proc upperLeft*(rect: SomeRect):  Point
+proc upperRight*(rect: SomeRect): Point
+proc lowerLeft*(rect: SomeRect):  Point
+proc lowerRight*(rect: SomeRect): Point
+proc topEdge*(rect: SomeRect):    TopEdge
+proc leftEdge*(rect: SomeRect):   LeftEdge
+proc bottomEdge*(rect: SomeRect): BottomEdge
+proc rightEdge*(rect: SomeRect):  RightEdge
+proc x*(edge: VertEdge ): int {.inline.}
+proc y*(edge: HorizEdge): int {.inline.}
+proc ids*[T:SomeRect](rects: seq[T]): seq[RectID]
+proc `<`* (edge1, edge2: VertEdge):  bool {.inline.}
+proc `<=`*(edge1, edge2: VertEdge):  bool {.inline.}
+proc `>`* (edge1, edge2: VertEdge):  bool {.inline.}
+proc `>=`*(edge1, edge2: VertEdge):  bool {.inline.}
+proc `==`*(edge1, edge2: VertEdge):  bool {.inline.}
+proc `<`* (edge1, edge2: HorizEdge): bool {.inline.}
+proc `<=`*(edge1, edge2: HorizEdge): bool {.inline.}
+proc `>`* (edge1, edge2: HorizEdge): bool {.inline.}
+proc `>=`*(edge1, edge2: HorizEdge): bool {.inline.}
+proc `==`*(edge1, edge2: HorizEdge): bool {.inline.}
+proc isPointInRect*[T:sdl2.Rect](pt: Point, rect: T): bool {.inline.}
+proc isEdgeInRect[T:sdl2.Rect](edge: VertEdge, rect: T): bool {.inline.}
+proc isEdgeInRect[T:sdl2.Rect](edge: HorizEdge, rect: T): bool {.inline.}
+proc isRectInRect*[T:sdl2.Rect](rect1, rect2: T): bool 
+proc isRectOverRect*[T:sdl2.Rect](rect1, rect2: T): bool
+proc randRect*(id: RectID, panelSize: Size, log: bool=false): Rect 
+proc moveRectBy*[T:SomeRect](rect: T, delta: Point)
+proc moveRectTo*[T:SomeRect](rect: T, oldpos, newpos: Point) 
+proc boundingBox*[T:SomeRect](rects: seq[T]): sdl2.Rect {.inline.}
+proc rotateSize*[T:sdl2.Rect](rect: T, amt: Rotation): Size
+proc rotate*(rect: Rect, amt: Rotation)
+proc rotate*(rect: Rect, orient: Orientation)
+proc area*(rect: SomeRect): int {.inline.}
+proc aspectRatio*(rect: SomeRect): float
+proc aspectRatio*[T:SomeRect](rects: seq[T]): float
+proc fillArea*[T:SomeRect](rects: seq[T]): int
+proc fillRatio*[T:SomeRect](rects: seq[T]): float
+proc normalizeRectCoords*(startPos, endPos: Point): sdl2.Rect
 proc toFloat*(rot: Rotation): float {.inline.}
 proc inc*(r: var Rotation) {.inline.}
 proc dec*(r: var Rotation) {.inline.}
 proc `+`*(r1, r2:Rotation): Rotation {.inline.}
 proc `-`*(r1, r2:Rotation): Rotation {.inline.}
+converter toSize*(size: wSize): Size
+converter toPoint*(pt: wPoint): Point {.inline.}
+
 
 
 
 # Procs for single Rect
-
 proc `$`*(rect: Rect): string =
   var strs: seq[string]
   for k, val in rect[].fieldPairs:
@@ -68,34 +120,17 @@ proc `$`*(rect: sdl2.Rect): string =
     strs.add(k & ": " & $val)
   result = strs.join(", ")
 
-# proc pos*(rect: Rect): wPoint {.inline.} =
-#   (rect.x, rect.y)
-
-proc pos*[T:Rect|sdl2.Rect](rect: T): Point {.inline.} =
+proc pos*(rect: SomeRect): Point {.inline.} =
   (rect.x, rect.y)
-
-# TODO: is there an auto conversion that happens here?
-# TODO: should complain about ambiguity
-proc size*(rect: Rect): Size {.inline.} =
+proc size*(rect: SomeRect): Size {.inline.} =
   # Returns width and height after accounting for rotation
-  if rect.rot == R0 or rect.rot == R180:
-    (rect.w, rect.h)
-  else:
+  when typeof(rect) is rects.Rect:
+    if rect.rot == R0 or rect.rot == R180:
+      (rect.w, rect.h)
+    else:
+      (rect.h, rect.w)
+  elif typeof(rect) is sdl2.Rect:
     (rect.h, rect.w)
-
-converter toSize*(size: wSize): Size =
-  result.w = size.width
-  result.h = size.height
-
-# proc towRectNoRot*(rect: Rect): wRect {.inline.} =
-#   # Explicit conversion to wRect.
-#   # Bounds are corrected for origin
-#   # Bounds are not corrected for rotation
-#   (rect.x - rect.origin.x, 
-#    rect.y - rect.origin.y, 
-#    rect.w, 
-#    rect.h)
-
 proc toRectNoRot*(rect: Rect): sdl2.Rect {.inline.} =
   # Explicit conversion from rects.Rect to sdl2.Rect.
   # Bounds are corrected for origin
@@ -104,54 +139,23 @@ proc toRectNoRot*(rect: Rect): sdl2.Rect {.inline.} =
    rect.y - rect.origin.y, 
    rect.w, 
    rect.h)
-
-# converter toRect*(rect: wRect): sdl2.Rect =
-#   (rect.x, 
-#    rect.y, 
-#    rect.w, 
-#    rect.h)
-
-# converter towRect*(rect: sdl2.Rect): wRect =
-#   (rect.x, 
-#    rect.y, 
-#    rect.w, 
-#    rect.h)
-
-# converter wRect*(rect: rects.Rect): wRect {.inline} =
-#   # Returns barebones rectangle x,y,w,h after rotation
-#   # Explicit conversion to wRect.
-#   # Bounds are corrected for origin
-#   # Bounds are also corrected for rotation
-#   let
-#     (w, h)   = (rect.w,    rect.h  )
-#     (x, y)   = (rect.x,        rect.y       )
-#     (ox, oy) = (rect.origin.x, rect.origin.y)
-#   case rect.rot:
-#   of R0:   (x - ox,     y - oy,     w, h)
-#   of R90:  (x - oy,     y + ox - w, h, w)
-#   of R180: (x + ox - w, y + oy - h, w, h)
-#   of R270: (x + oy - h, y - ox,     h, w)
-
-converter toRect*(rect: Rect): sdl2.Rect {.inline} =
+converter toRect*(rect: Rect): sdl2.Rect =
   # Implicit conversion from rects.Rect to sdl2.Rect.
   # Returns barebones rectangle x,y,w,h after rotation
   # Explicit conversion to wRect.
   # Bounds are corrected for origin
   # Bounds are also corrected for rotation
   let
-    (w, h)   = (rect.w,        rect.h  )
-    (x, y)   = (rect.x,        rect.y       )
-    (ox, oy) = (rect.origin.x, rect.origin.y)
+    (w, h)   = (rect.w.cint,        rect.h.cint  )
+    (x, y)   = (rect.x.cint,        rect.y.cint  )
+    (ox, oy) = (rect.origin.x.cint, rect.origin.y.cint)
   case rect.rot:
-  of R0:   (x - ox,     y - oy,     w, h)
-  of R90:  (x - oy,     y + ox - w, h, w)
-  of R180: (x + ox - w, y + oy - h, w, h)
-  of R270: (x + oy - h, y - ox,     h, w)
-
-converter toPoint*(pt: wPoint): Point {.inline.} =
-  result.x = pt.x
-  result.y = pt.y
-
+  of R0:   return (x - ox,     y - oy,     w, h)
+  of R90:  return (x - oy,     y + ox - w, h, w)
+  of R180: return (x + ox - w, y + oy - h, w, h)
+  of R270: return (x + oy - h, y - ox,     h, w)
+converter toRect*(rect: sdl2.Rect): sdl2.Rect =
+  rect
 proc originXLeft*(rect: Rect): int =
   # Horizontal distance from left edge to origin after rotation
   case rect.rot:
@@ -159,7 +163,6 @@ proc originXLeft*(rect: Rect): int =
   of R90:  rect.origin.y
   of R180: rect.w - rect.origin.x
   of R270: rect.h - rect.origin.y
-
 proc originYUp*(rect: Rect): int =
   # Vertical distance from top edge to origin after rotation
   case rect.rot:
@@ -169,33 +172,35 @@ proc originYUp*(rect: Rect): int =
   of R270: rect.origin.x
 
 # Procs for single Rect
-# Not including -1, etc., because right = x + width.
-# eg for width=2 rect at 0, right edge = 2, not 1+1
-proc x*(edge: VertEdge ): int {.inline.} =  edge.pt0.x
-proc y*(edge: HorizEdge): int {.inline.} =  edge.pt0.y
 # TODO: update for rotation
 # TODO: probably currently broken
-proc upperLeft*[T:Rect|sdl2.Rect](rect: T):  Point = (rect.x, rect.y)
-proc upperRight*[T:Rect|sdl2.Rect](rect: T): Point = (rect.x + rect.w, rect.y)
-proc lowerLeft*[T:Rect|sdl2.Rect](rect: T):  Point = (rect.x, rect.y + rect.h)
-proc lowerRight*[T:Rect|sdl2.Rect](rect: T): Point = (rect.x + rect.w, rect.y + rect.h)
-proc topEdge*[T:Rect|sdl2.Rect](rect: T):    TopEdge =
+proc upperLeft*(rect: SomeRect):  Point = 
+  let r = rect.toRect
+  (r.x, r.y)
+proc upperRight*(rect: SomeRect): Point = 
+  let r = rect.toRect
+  (r.x + r.w, r.y)
+proc lowerLeft*(rect: SomeRect):  Point = 
+  let r = rect.toRect
+  (r.x, r.y + r.h)
+proc lowerRight*(rect: SomeRect): Point = 
+  let r = rect.toRect
+  (r.x + r.w, r.y + r.h)
+proc topEdge*(rect: SomeRect):    TopEdge =
   TopEdge(pt0: rect.upperLeft, pt1: rect.upperRight)
-proc leftEdge*[T:Rect|sdl2.Rect](rect: T):   LeftEdge =
+proc leftEdge*(rect: SomeRect):   LeftEdge =
   LeftEdge(pt0: rect.upperLeft, pt1: rect.lowerLeft)
-proc bottomEdge*[T:Rect|sdl2.Rect](rect: T): BottomEdge =
+proc bottomEdge*(rect: SomeRect): BottomEdge =
   BottomEdge(pt0: rect.lowerLeft, pt1: rect.lowerRight)
-proc rightEdge*[T:Rect|sdl2.Rect](rect: T):  RightEdge =
+proc rightEdge*(rect: SomeRect):  RightEdge =
   RightEdge(pt0: rect.upperRight, pt1: rect.lowerRight)
+proc x*(edge: VertEdge ): int {.inline.} = edge.pt0.x
+proc y*(edge: HorizEdge): int {.inline.} = edge.pt0.y
 
 
-# # Procs for multiple Rects
-# proc wRects*(rects: seq[Rect]): seq[wRect] =
-#   # Convert to wRects.  Use converter instead?
-#   for rect in rects:
-#     result.add(rect.wRect)
+# Procs for multiple Rects
 
-proc ids*[T:Rect|sdl2.Rect](rects: seq[T]): seq[RectID] =
+proc ids*[T:SomeRect](rects: seq[T]): seq[RectID] =
   # Get all RectIDs
   for rect in rects:
     result.add(rect.id)
@@ -288,17 +293,17 @@ proc randRect*(id: RectID, panelSize: Size, log: bool=false): Rect =
                        penColor: penColor,
                        brushColor: brushColor)
 
-proc moveRectBy*[T:Rect|sdl2.Rect](rect: T, delta: Point) =
+proc moveRectBy*[T:SomeRect](rect: T, delta: Point) =
   rect.x += delta.x
   rect.y += delta.y
 
-proc moveRectTo*[T:Rect|sdl2.Rect](rect: T, oldpos, newpos: Point) = 
+proc moveRectTo*[T:SomeRect](rect: T, oldpos, newpos: Point) = 
   echo "moveRectTo"
   assert false
   rect.x = newpos.x
   rect.y = newpos.y
 
-proc boundingBox*[T:Rect|sdl2.Rect](rects: seq[T]): sdl2.Rect {.inline.} =
+proc boundingBox*[T:SomeRect](rects: seq[T]): sdl2.Rect {.inline.} =
   var left, right, top, bottom: int
   left = int.high
   right = int.low
@@ -336,10 +341,10 @@ proc rotate*(rect: Rect, orient: Orientation) =
     else: rect.rot = R0
     
 
-proc area*[T:Rect|sdl2.Rect](rect: T): int {.inline.} =
+proc area*(rect: SomeRect): int {.inline.} =
   rect.w * rect.h
 
-proc aspectRatio*[T:Rect|sdl2.Rect](rect: T): float =
+proc aspectRatio*(rect: SomeRect): float =
   when typeof(rect) is rects.Rect:
     if rect.rot == R90 or rect.rot == R180:
       rect.w.float / rect.h.float
@@ -348,14 +353,14 @@ proc aspectRatio*[T:Rect|sdl2.Rect](rect: T): float =
   else:
     rect.w.float / rect.h.float
 
-proc aspectRatio*[T:Rect|sdl2.Rect](rects: seq[T]): float =
+proc aspectRatio*[T:SomeRect](rects: seq[T]): float =
   rects.boundingBox.aspectRatio
 
-proc fillArea*[T:Rect|sdl2.Rect](rects: seq[T]): int =
+proc fillArea*[T:SomeRect](rects: seq[T]): int =
   for r in rects:
     result += r.area
 
-proc fillRatio*[T:Rect|sdl2.Rect](rects: seq[T]): float =
+proc fillRatio*[T:SomeRect](rects: seq[T]): float =
   # Find ratio of total area to filled area
   rects.fillArea.float / rects.boundingBox.area.float
 
@@ -433,4 +438,149 @@ proc `-`*(r1, r2:Rotation): Rotation =
     of R90: R180
     of R180: R90
     of R270: R0
-    
+
+converter toSize*(size: wSize): Size =
+  result.w = size.width
+  result.h = size.height
+converter toPoint*(pt: wPoint): Point {.inline.} =
+  result.x = pt.x
+  result.y = pt.y
+
+
+proc testRots() =
+  var rot: Rotation
+  assert R0.toFloat == 0.0
+  assert R90.toFloat == 90.0
+  assert R180.toFloat == 180.0
+  assert R270.toFloat == 270.0
+  rot.inc; assert rot == R90
+  rot.inc; assert rot == R180
+  rot.inc; assert rot == R270
+  rot.inc; assert rot == R0
+  rot.dec; assert rot == R270
+  rot.dec; assert rot == R180
+  rot.dec; assert rot == R90
+  rot.dec; assert rot == R0
+  assert R0   + R0   == R0
+  assert R0   + R90  == R90
+  assert R0   + R180 == R180
+  assert R0   + R270 == R270
+  assert R90  + R0   == R90
+  assert R90  + R90  == R180
+  assert R90  + R180 == R270
+  assert R90  + R270 == R0
+  assert R180 + R0   == R180
+  assert R180 + R90  == R270
+  assert R180 + R180 == R0
+  assert R180 + R270 == R90
+  assert R270 + R0   == R270
+  assert R270 + R90  == R0
+  assert R270 + R180 == R90
+  assert R270 + R270 == R180
+  assert R90  + R0   == R90
+  assert R180 + R0   == R180
+  assert R270 + R0   == R270
+  assert R0   + R90  == R90
+  assert R90  + R90  == R180
+  assert R180 + R90  == R270
+  assert R270 + R90  == R0
+  assert R0   + R180 == R180
+  assert R90  + R180 == R270
+  assert R180 + R180 == R0
+  assert R270 + R180 == R90
+  assert R0   + R270 == R270
+  assert R90  + R270 == R0
+  assert R180 + R270 == R90
+  assert R270 + R270 == R180
+proc testRectsRects() =
+  var
+    r1 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10))
+    r2 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R90)
+    r3 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R180)
+    r4 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R270)
+  assert r1.pos == (10,20)
+  assert r2.pos == (10,20)
+  assert r3.pos == (10,20)
+  assert r4.pos == (10,20)
+  assert r1.size == (50, 60)
+  assert r2.size == (60, 50)
+  assert r3.size == (50, 60)
+  assert r4.size == (60, 50)
+  assert r1.toRectNoRot == (0.cint, 10.cint, 50.cint, 60.cint)
+  assert r2.toRectNoRot == (0.cint, 10.cint, 50.cint, 60.cint)
+  assert r3.toRectNoRot == (0.cint, 10.cint, 50.cint, 60.cint)
+  assert r4.toRectNoRot == (0.cint, 10.cint, 50.cint, 60.cint)
+  assert r1.toRect == (  0.cint,  10.cint, 50.cint, 60.cint)
+  assert r2.toRect == (  0.cint, -20.cint, 60.cint, 50.cint)
+  assert r3.toRect == (-30.cint, -30.cint, 50.cint, 60.cint)
+  assert r4.toRect == (-40.cint,  10.cint, 60.cint, 50.cint)
+  assert r1.originXLeft == 10
+  assert r2.originXLeft == 10
+  assert r3.originXLeft == 40
+  assert r4.originXLeft == 50
+  assert r1.originYUp == 10
+  assert r2.originYUp == 40
+  assert r3.originYUp == 50
+  assert r4.originYUp == 10
+  assert r1.upperLeft  == (  0,  10)
+  assert r1.upperRight == ( 50,  10)
+  assert r1.lowerLeft  == (  0,  70)
+  assert r1.lowerRight == ( 50,  70)
+
+  assert r2.upperLeft  == (  0, -20)
+  assert r2.upperRight == ( 60, -20)
+  assert r2.lowerLeft  == (  0,  30)
+  assert r2.lowerRight == ( 60,  30)
+
+  assert r3.upperLeft  == (-30, -30)
+  assert r3.upperRight == ( 20, -30)
+  assert r3.lowerLeft  == (-30,  30)
+  assert r3.lowerRight == ( 20,  30)
+
+  assert r4.upperLeft  == (-40,  10)
+  assert r4.upperRight == ( 20,  10)
+  assert r4.lowerLeft  == (-40,  60)
+  assert r4.lowerRight == ( 20,  60)
+
+  assert r1.topEdge    ==    TopEdge(pt0: ( 0, 10), pt1: (50, 10))
+  assert r1.bottomEdge == BottomEdge(pt0: ( 0, 70), pt1: (50, 70))
+  assert r1.leftEdge   ==   LeftEdge(pt0: ( 0, 10), pt1: ( 0, 70))
+  assert r1.rightEdge  ==  RightEdge(pt0: (50, 10), pt1: (50, 70))
+
+  assert r2.topEdge    ==    TopEdge(pt0: ( 0, -20), pt1: (60, -20))
+  assert r2.bottomEdge == BottomEdge(pt0: ( 0,  30), pt1: (60,  30))
+  assert r2.leftEdge   ==   LeftEdge(pt0: ( 0, -20), pt1: ( 0,  30))
+  assert r2.rightEdge  ==  RightEdge(pt0: (60, -20), pt1: (60,  30))
+
+  assert r3.topEdge    ==    TopEdge(pt0: (-30,- 30), pt1: ( 20, -30))
+  assert r3.bottomEdge == BottomEdge(pt0: (-30,  30), pt1: ( 20,  30))
+  assert r3.leftEdge   ==   LeftEdge(pt0: (-30, -30), pt1: (-30,  30))
+  assert r3.rightEdge  ==  RightEdge(pt0: ( 20, -30), pt1: ( 20,  30))
+
+  assert r4.topEdge    ==    TopEdge(pt0: (-40, 10), pt1: ( 20, 10))
+  assert r4.bottomEdge == BottomEdge(pt0: (-40, 60), pt1: ( 20, 60))
+  assert r4.leftEdge   ==   LeftEdge(pt0: (-40, 10), pt1: (-40, 60))
+  assert r4.rightEdge  ==  RightEdge(pt0: ( 20, 10), pt1: ( 20, 60))
+
+  assert r1.leftEdge.x   ==  0
+  assert r1.rightEdge.x  == 50
+  assert r1.topEdge.y    == 10
+  assert r1.bottomEdge.y == 70
+
+  assert r2.leftEdge.x   ==   0
+  assert r2.rightEdge.x  ==  60
+  assert r2.topEdge.y    == -20
+  assert r2.bottomEdge.y ==  30
+
+  echo r3
+  echo r3.toRect
+  echo r3.leftEdge
+  echo r3.leftEdge.x
+  assert r3.leftEdge.x   == -40
+  assert r3.rightEdge.x  ==  20
+  assert r3.topEdge.y    == -30
+  assert r3.bottomEdge.y ==  30
+
+when isMainModule:
+  testRots()
+  testRectsRects()
