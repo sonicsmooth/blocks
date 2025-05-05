@@ -56,7 +56,7 @@ proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
   let font = rect.font()
   let textSurface = font.renderUtf8Blended(selstr.cstring, colBlack.toColor())
   let (tsw, tsh) = (textSurface.w, textSurface.h)
-  let dstRect: sdl2.Rect = ((w div 2) - (tsw div 2),
+  let dstRect: PRect = ((w div 2) - (tsw div 2),
                             (h div 2) - (tsh div 2), tsw, tsh)
   let textTexture = renderer.createTextureFromSurface(textSurface)
   renderer.copy(textTexture, nil, addr dstRect)
@@ -74,7 +74,7 @@ proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   let marg = 10
   
   discard sizeText(fnt, txt, addr txtSzW, addr txtSzH)
-  let dstRect: sdl2.Rect = (sz.x - txtSzW - marg, 
+  let dstRect: PRect = (sz.x - txtSzW - marg, 
                             sz.y - txtSzH - marg, 
                             txtSzW, txtSzH)
   let txtSurface = renderTextBlended(fnt, txt, colBlack.toColor())
@@ -83,18 +83,18 @@ proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   txtTexture.destroy()
   txtSurface.destroy()
 
-proc renderBoundingBox*(renderer: RendererPtr, rect: sdl2.Rect) = 
-  # Assumes wRect and sdl2.Rect have same memory layout
+proc renderBoundingBox*(renderer: RendererPtr, rect: PRect) = 
+  # Assumes wRect and PRect have same memory layout
   # Doesn't set drawcolor back to what it was
   renderer.setDrawColor(colBlack.toColor())
-  renderer.drawRect(cast [ptr sdl2.Rect](addr rect))
+  renderer.drawRect(cast [ptr PRect](addr rect))
 
-proc renderSelectionBox*(renderer: RendererPtr, rect: sdl2.Rect) =
+proc renderSelectionBox*(renderer: RendererPtr, rect: PRect) =
   renderer.setDrawColor(0, 102, 204, 70)
   renderer.fillRect(addr rect)
   renderer.setDrawColor(0, 120, 215)
   renderer.drawRect(addr rect)
 
-proc renderDestinationBox*(renderer: RendererPtr, rect: sdl2.Rect) =
+proc renderDestinationBox*(renderer: RendererPtr, rect: PRect) =
   renderer.setDrawColor(colRed.toColor())
   renderer.drawRect(addr rect)

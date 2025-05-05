@@ -8,7 +8,7 @@ import recttable, compact
 proc vertCmp (r1, r2: rects.Rect): int = cmp(r1.size.h, r2.size.h)
 proc horizCmp(r1, r2: rects.Rect): int = cmp(r1.size.w, r2.size.w)
 
-proc stackCompact*(table: var RectTable, dstRect: sdl2.Rect, direction: CompactDir) =
+proc stackCompact*(table: var RectTable, dstRect: PRect, direction: CompactDir) =
   var dstRect = dstRect
   # Rotate, sort by vertical size, and move to opposite corner
   var rects = table.values.toSeq

@@ -2,7 +2,6 @@ import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
 import rects, colors
-from sdl2 import Rect, Point
 export rects, tables
 
 # TODO: Find a way to partition blocks into different regions
@@ -83,7 +82,7 @@ proc ptInRects*(table: RectTable, pt: Point): seq[RectID] =
     if isPointInRect(pt, rect):
       result.add(id)
 
-proc rectInRects*(table: RectTable, rect: sdl2.Rect|rects.Rect): seq[RectID] = 
+proc rectInRects*(table: RectTable, rect: PRect|rects.Rect): seq[RectID] = 
   # Return seq of Rect IDs from table that intersect rect
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
@@ -115,7 +114,7 @@ proc randomizeRectsPos*(table: RectTable, panelSize: Size) =
     rect.x = rand(panelSize.w - rect.w  - 1)
     rect.y = rand(panelSize.h - rect.h - 1)
 
-proc boundingBox*(rectTable: RectTable): sdl2.Rect =
+proc boundingBox*(rectTable: RectTable): PRect =
   rectTable.values.toSeq.boundingBox()
 
 proc aspectRatio*(rtable: RectTable): float =
