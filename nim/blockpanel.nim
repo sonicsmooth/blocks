@@ -39,9 +39,9 @@ type
     mFirmSelection*: seq[RectID]
     mFillArea*: int
     mRatio*: float
-    mAllBbox*: sdl2.Rect
-    mSelectBox*: sdl2.Rect
-    mDstRect*: sdl2.Rect
+    mAllBbox*: PRect
+    mSelectBox*: PRect
+    mDstRect*: PRect
     mText*: string
  
   Command = enum
@@ -307,7 +307,7 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
-        let smsbtemp: sdl2.Rect = self.mSelectBox # implicit conversion
+        let smsbtemp: PRect = self.mSelectBox # implicit conversion
         #let newsel = gDb.rectInRects(self.mSelectBox)
         let newsel = gDb.rectInRects(smsbtemp)
         gDb.setRectSelect(self.mFirmSelection)

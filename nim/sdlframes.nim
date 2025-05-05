@@ -1,7 +1,6 @@
 import wnim
 import sdl2, sdl2/[image, ttf]
 import utils, colors
-
 export sdl2, image, ttf, colors
 
 
@@ -69,9 +68,9 @@ wClass(wSDLPanel of wPanel):
 wClass(wTestPanel of wSDLPanel):
   proc drawRect(self: wTestPanel, rect: Rect) =
     self.sdlRenderer.setDrawColor(rect.color)
-    self.sdlRenderer.fillRect(cast[ptr sdl2.Rect](addr rect))
+    self.sdlRenderer.fillRect(cast[ptr PRect](addr rect))
   proc drawRect(self: wTestPanel, rect: Rect, texture: TexturePtr) =
-    let dstrect = cast[ptr sdl2.Rect](addr rect)
+    let dstrect = cast[ptr PRect](addr rect)
     self.sdlRenderer.copy(texture, nil, dstrect)
   proc toTexture(self: wTestPanel, rect: Rect): TexturePtr =
     let surface = createRGBSurface(0, rect.w, rect.h, 32, 

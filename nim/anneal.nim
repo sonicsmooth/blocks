@@ -2,8 +2,8 @@
 import std/[algorithm, locks, math, os, random, sets, strformat, tables]
 import sequtils
 import wnim
-import winim/inc/[windef,winuser]
-from sdl2 import Rect, Point
+import winim/inc/windef except PRECT
+import winim/inc/winuser
 import userMessages
 import randrect, arange, recttable
 import concurrent
@@ -54,7 +54,7 @@ type
     perturbFn:  PerturbFn[PosTable, ptr RectTable]
     compactFn:  proc() {.closure.}
     window:     wWindow
-    dstRect:    sdl2.Rect
+    dstRect:    PRect
     comm:       AnnealComm
   RandomArg* = tuple
     pRectTable: ptr RectTable
@@ -183,7 +183,7 @@ proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
   result = proc(initState: S, pTable: pT, temp: float): seq[RectID] {.closure.} =
     calcSwap[S,pT](initState, pTable, temp)
 
-proc makeWiggler*[S,pT](dstRect: sdl2.Rect): PerturbFn[S,pT] =
+proc makeWiggler*[S,pT](dstRect: PRect): PerturbFn[S,pT] =
   let moveScale = 0.5
   let maxAmt: wSize = ((dstRect.w.float * moveScale).int,
                        (dstRect.h.float * moveScale).int)

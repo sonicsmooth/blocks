@@ -15,16 +15,6 @@ template lParamTuple*[T](event: wEvent): auto =
   (LOWORD(event.getlParam).T,
    HIWORD(event.getlParam).T)
 
-# template SDLRect*(rect: rects.Rect|wRect): sdl2.Rect =
-#   # Not sure why I can't label the tuple elements with x:, y:, etc.
-#   (rect.x.cint, 
-#    rect.y.cint, 
-#    rect.width.cint,
-#    rect.height.cint)
-
-# template SDLPoint*(pt: wPoint): sdl2.Point =
-#   (pt.x.cint, pt.y.cint)
-
 proc excl*[T](s: var seq[T], item: T) =
   # Not order preserving because it uses del
   # Use delete to preserve order

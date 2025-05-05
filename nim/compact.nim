@@ -3,7 +3,6 @@ import sequtils
 import wnim
 import wnim/wTypes
 import winim/inc/winuser
-from sdl2 import Rect, Point
 import concurrent
 import recttable, userMessages
 
@@ -33,7 +32,7 @@ type
     pRectTable: ptr RectTable
     direction:  CompactDir
     window:     wWindow
-    dstRect:    sdl2.Rect
+    dstRect:    PRect
 
 
 const
@@ -210,7 +209,7 @@ proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: int): 
 proc compact*(rectTable: RectTable, 
               axis: Axis,
               sortOrder: SortOrder,
-              dstRect: sdl2.Rect,
+              dstRect: PRect,
               ids: seq[RectID] = @[]) =
   # Top level compact function in one direction
   let graph = MakeGraph(rectTable, axis, sortOrder, ids)
@@ -234,7 +233,7 @@ proc compact*(rectTable: RectTable,
     for id in nodes:
       rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originYUp
 
-proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: sdl2.Rect) =
+proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: PRect) =
   # Run compact function until rectTable doesn't change
   var pos, lastPos: PosTable
   pos = rectTable.positions
