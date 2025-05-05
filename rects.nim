@@ -9,6 +9,24 @@ import colors
 #  rects.Rect is a domain rectangle in the database
 #  PRect is a graphical rectangle
 
+#[
+
+Each box is a pixel.
+Box origin is (5,12)
+Box width and height are 3
+Edges (x) are *in* the box
+     5 6 7
+    ┌─┬─┬─┐
+ 12 │x│x│x│
+    ├─┼─┼─┤
+ 13 │x│ │x│
+    ├─┼─┼─┤
+ 14 │x│x│x│
+    └─┴─┴─┘  
+  
+]#
+
+
 type 
   RectID* = uint
   Rotation* = enum R0, R90, R180, R270
@@ -188,6 +206,8 @@ proc lowerLeft*(rect: SomeRect):  Point =
 proc lowerRight*(rect: SomeRect): Point = 
   let r = rect.toRect
   (r.x + r.w, r.y + r.h)
+# TODO: make these converters toTopEdge and use .TopEdge 
+# TODO: instead of topEdge
 proc topEdge*(rect: SomeRect):    TopEdge =
   TopEdge(pt0: rect.upperLeft, pt1: rect.upperRight)
 proc leftEdge*(rect: SomeRect):   LeftEdge =
@@ -500,61 +520,117 @@ proc testRectsRects() =
     r3 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R180, id: 7.RectID)
     r4 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R270, id: 11.RectID)
     fourRects: seq[Rect] = @[r1, r2, r3, r4]
-    r1l =   0
-    r1r =  50
-    r1t =  10
-    r1b =  70
+    lefts   = [ 0,   0, -30, -40]
+    rights  = [50,  60,  20,  20]
+    tops    = [10, -20, -30,  10]
+    bottoms = [70,  30,  30,  60]
+    outerLefts   = [ -1,  -1, -31, -41]
+    outerRights  = [ 51,  61,  21,  21]
+    outerTops    = [  9, -21, -31,   9]
+    outerBottoms = [ 71,  31,  31,  61]
+    r1l =  lefts[0]
+    r1r =  rights[0]
+    r1t =  tops[0]
+    r1b =  bottoms[0]
+    r1ol = outerLefts[0]
+    r1or = outerRights[0]
+    r1ot = outerTops[0]
+    r1ob = outerBottoms[0]
     
-    r2l =   0
-    r2r =  60
-    r2t = -20
-    r2b =  30
+    r2l =  lefts[1]
+    r2r =  rights[1]
+    r2t =  tops[1]
+    r2b =  bottoms[1]
+    r2ol = outerLefts[1]
+    r2or = outerRights[1]
+    r2ot = outerTops[1]
+    r2ob = outerBottoms[1]
     
-    r3l = -30
-    r3r =  20
-    r3t = -30
-    r3b =  30
+    r3l =  lefts[2]
+    r3r =  rights[2]
+    r3t =  tops[2]
+    r3b =  bottoms[2]
+    r3ol = outerLefts[2]
+    r3or = outerRights[2]
+    r3ot = outerTops[2]
+    r3ob = outerBottoms[2]
     
-    r4l = -40
-    r4r =  20
-    r4t =  10
-    r4b =  60
+    r4l =  lefts[3]
+    r4r =  rights[3]
+    r4t =  tops[3]
+    r4b =  bottoms[3]
+    r4ol = outerLefts[3]
+    r4or = outerRights[3]
+    r4ot = outerTops[3]
+    r4ob = outerBottoms[3]
     
     r1p1: Point = (r1l, r1t)
     r1p2: Point = (r1r, r1t)
     r1p3: Point = (r1l, r1b)
     r1p4: Point = (r1r, r1b)
+    r1op1: Point = (r1ol, r1ot)
+    r1op2: Point = (r1or, r1ot)
+    r1op3: Point = (r1ol, r1ob)
+    r1op4: Point = (r1or, r1ob)
     r1te =    TopEdge(pt0: r1p1, pt1: r1p2)
     r1be = BottomEdge(pt0: r1p3, pt1: r1p4)
     r1le =   LeftEdge(pt0: r1p1, pt1: r1p3)
     r1re =  RightEdge(pt0: r1p2, pt1: r1p4)
+    r1ote =    TopEdge(pt0: r1op1, pt1: r1op2)
+    r1obe = BottomEdge(pt0: r1op3, pt1: r1op4)
+    r1ole =   LeftEdge(pt0: r1op1, pt1: r1op3)
+    r1ore =  RightEdge(pt0: r1op2, pt1: r1op4)
   
     r2p1: Point = (r2l, r2t)
     r2p2: Point = (r2r, r2t)
     r2p3: Point = (r2l, r2b)
     r2p4: Point = (r2r, r2b)
+    r2op1: Point = (r2ol, r2ot)
+    r2op2: Point = (r2or, r2ot)
+    r2op3: Point = (r2ol, r2ob)
+    r2op4: Point = (r2or, r2ob)
     r2te =    TopEdge(pt0: r2p1, pt1: r2p2)
     r2be = BottomEdge(pt0: r2p3, pt1: r2p4)
     r2le =   LeftEdge(pt0: r2p1, pt1: r2p3)
     r2re =  RightEdge(pt0: r2p2, pt1: r2p4)
+    r2ote =    TopEdge(pt0: r2op1, pt1: r2op2)
+    r2obe = BottomEdge(pt0: r2op3, pt1: r2op4)
+    r2ole =   LeftEdge(pt0: r2op1, pt1: r2op3)
+    r2ore =  RightEdge(pt0: r2op2, pt1: r2op4)
   
     r3p1: Point = (r3l, r3t)
     r3p2: Point = (r3r, r3t)
     r3p3: Point = (r3l, r3b)
     r3p4: Point = (r3r, r3b)
+    r3op1: Point = (r3ol, r3ot)
+    r3op2: Point = (r3or, r3ot)
+    r3op3: Point = (r3ol, r3ob)
+    r3op4: Point = (r3or, r3ob)
     r3te =    TopEdge(pt0: r3p1, pt1: r3p2)
     r3be = BottomEdge(pt0: r3p3, pt1: r3p4)
     r3le =   LeftEdge(pt0: r3p1, pt1: r3p3)
     r3re =  RightEdge(pt0: r3p2, pt1: r3p4)
+    r3ote =    TopEdge(pt0: r3op1, pt1: r3op2)
+    r3obe = BottomEdge(pt0: r3op3, pt1: r3op4)
+    r3ole =   LeftEdge(pt0: r3op1, pt1: r3op3)
+    r3ore =  RightEdge(pt0: r3op2, pt1: r3op4)
   
     r4p1: Point = (r4l, r4t)
     r4p2: Point = (r4r, r4t)
     r4p3: Point = (r4l, r4b)
     r4p4: Point = (r4r, r4b)
+    r4op1: Point = (r4ol, r4ot)
+    r4op2: Point = (r4or, r4ot)
+    r4op3: Point = (r4ol, r4ob)
+    r4op4: Point = (r4or, r4ob)
     r4te =    TopEdge(pt0: r4p1, pt1: r4p2)
     r4be = BottomEdge(pt0: r4p3, pt1: r4p4)
     r4le =   LeftEdge(pt0: r4p1, pt1: r4p3)
     r4re =  RightEdge(pt0: r4p2, pt1: r4p4)
+    r4ote =    TopEdge(pt0: r4op1, pt1: r4op2)
+    r4obe = BottomEdge(pt0: r4op3, pt1: r4op4)
+    r4ole =   LeftEdge(pt0: r4op1, pt1: r4op3)
+    r4ore =  RightEdge(pt0: r4op2, pt1: r4op4)
   
   assert r1.pos  == (10, 20)
   assert r2.pos  == (10, 20)
@@ -686,8 +762,45 @@ proc testRectsRects() =
   assert not isPointInRect(( 21,  60), r4)
   assert not isPointInRect(( 20,  61), r4)
 
-  
+  assert isEdgeInRect(r1.leftEdge,   r1)
+  assert isEdgeInRect(r1.rightEdge,  r1)
+  assert isEdgeInRect(r1.topEdge,    r1)
+  assert isEdgeInRect(r1.bottomEdge, r1)
 
+  assert isEdgeInRect(r2.leftEdge,   r2)
+  assert isEdgeInRect(r2.rightEdge,  r2)
+  assert isEdgeInRect(r2.topEdge,    r2)
+  assert isEdgeInRect(r2.bottomEdge, r2)
+
+  assert isEdgeInRect(r3.leftEdge,   r3)
+  assert isEdgeInRect(r3.rightEdge,  r3)
+  assert isEdgeInRect(r3.topEdge,    r3)
+  assert isEdgeInRect(r3.bottomEdge, r3)
+
+  assert isEdgeInRect(r4.leftEdge,   r4)
+  assert isEdgeInRect(r4.rightEdge,  r4)
+  assert isEdgeInRect(r4.topEdge,    r4)
+  assert isEdgeInRect(r4.bottomEdge, r4)
+
+  assert not isEdgeInRect(r1ote, r1)
+  assert not isEdgeInRect(r1obe, r1)
+  assert not isEdgeInRect(r1ole, r1)
+  assert not isEdgeInRect(r1ore, r1)
+
+  assert not isEdgeInRect(r2ote, r2)
+  assert not isEdgeInRect(r2obe, r2)
+  assert not isEdgeInRect(r2ole, r2)
+  assert not isEdgeInRect(r2ore, r2)
+
+  assert not isEdgeInRect(r3ote, r3)
+  assert not isEdgeInRect(r3obe, r3)
+  assert not isEdgeInRect(r3ole, r3)
+  assert not isEdgeInRect(r3ore, r3)
+
+  assert not isEdgeInRect(r4ote, r4)
+  assert not isEdgeInRect(r4obe, r4)
+  assert not isEdgeInRect(r4ole, r4)
+  assert not isEdgeInRect(r4ore, r4)
 
 when isMainModule:
   testRots()
