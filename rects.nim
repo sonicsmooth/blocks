@@ -564,22 +564,23 @@ proc testRectsRects() =
     r4ot = outerTops[3]
     r4ob = outerBottoms[3]
     
-    r1p1: Point = (r1l, r1t)
-    r1p2: Point = (r1r, r1t)
-    r1p3: Point = (r1l, r1b)
-    r1p4: Point = (r1r, r1b)
+    r1p1:  Point = (r1l, r1t)
+    r1p2:  Point = (r1r, r1t)
+    r1p3:  Point = (r1l, r1b)
+    r1p4:  Point = (r1r, r1b)
     r1op1: Point = (r1ol, r1ot)
     r1op2: Point = (r1or, r1ot)
     r1op3: Point = (r1ol, r1ob)
     r1op4: Point = (r1or, r1ob)
-    r1te =    TopEdge(pt0: r1p1, pt1: r1p2)
-    r1be = BottomEdge(pt0: r1p3, pt1: r1p4)
-    r1le =   LeftEdge(pt0: r1p1, pt1: r1p3)
-    r1re =  RightEdge(pt0: r1p2, pt1: r1p4)
+    r1te =     TopEdge(pt0: r1p1, pt1: r1p2)
+    r1be =  BottomEdge(pt0: r1p3, pt1: r1p4)
+    r1le =    LeftEdge(pt0: r1p1, pt1: r1p3)
+    r1re =   RightEdge(pt0: r1p2, pt1: r1p4)
     r1ote =    TopEdge(pt0: r1op1, pt1: r1op2)
     r1obe = BottomEdge(pt0: r1op3, pt1: r1op4)
     r1ole =   LeftEdge(pt0: r1op1, pt1: r1op3)
     r1ore =  RightEdge(pt0: r1op2, pt1: r1op4)
+    r1Outer = Rect(x: r1ol, y: r1ot, w: 52, h:62, origin: (11,11))
   
     r2p1: Point = (r2l, r2t)
     r2p2: Point = (r2r, r2t)
@@ -589,10 +590,10 @@ proc testRectsRects() =
     r2op2: Point = (r2or, r2ot)
     r2op3: Point = (r2ol, r2ob)
     r2op4: Point = (r2or, r2ob)
-    r2te =    TopEdge(pt0: r2p1, pt1: r2p2)
-    r2be = BottomEdge(pt0: r2p3, pt1: r2p4)
-    r2le =   LeftEdge(pt0: r2p1, pt1: r2p3)
-    r2re =  RightEdge(pt0: r2p2, pt1: r2p4)
+    r2te =     TopEdge(pt0: r2p1, pt1: r2p2)
+    r2be =  BottomEdge(pt0: r2p3, pt1: r2p4)
+    r2le =    LeftEdge(pt0: r2p1, pt1: r2p3)
+    r2re =   RightEdge(pt0: r2p2, pt1: r2p4)
     r2ote =    TopEdge(pt0: r2op1, pt1: r2op2)
     r2obe = BottomEdge(pt0: r2op3, pt1: r2op4)
     r2ole =   LeftEdge(pt0: r2op1, pt1: r2op3)
@@ -606,10 +607,10 @@ proc testRectsRects() =
     r3op2: Point = (r3or, r3ot)
     r3op3: Point = (r3ol, r3ob)
     r3op4: Point = (r3or, r3ob)
-    r3te =    TopEdge(pt0: r3p1, pt1: r3p2)
-    r3be = BottomEdge(pt0: r3p3, pt1: r3p4)
-    r3le =   LeftEdge(pt0: r3p1, pt1: r3p3)
-    r3re =  RightEdge(pt0: r3p2, pt1: r3p4)
+    r3te =     TopEdge(pt0: r3p1, pt1: r3p2)
+    r3be =  BottomEdge(pt0: r3p3, pt1: r3p4)
+    r3le =    LeftEdge(pt0: r3p1, pt1: r3p3)
+    r3re =   RightEdge(pt0: r3p2, pt1: r3p4)
     r3ote =    TopEdge(pt0: r3op1, pt1: r3op2)
     r3obe = BottomEdge(pt0: r3op3, pt1: r3op4)
     r3ole =   LeftEdge(pt0: r3op1, pt1: r3op3)
@@ -623,10 +624,10 @@ proc testRectsRects() =
     r4op2: Point = (r4or, r4ot)
     r4op3: Point = (r4ol, r4ob)
     r4op4: Point = (r4or, r4ob)
-    r4te =    TopEdge(pt0: r4p1, pt1: r4p2)
-    r4be = BottomEdge(pt0: r4p3, pt1: r4p4)
-    r4le =   LeftEdge(pt0: r4p1, pt1: r4p3)
-    r4re =  RightEdge(pt0: r4p2, pt1: r4p4)
+    r4te =     TopEdge(pt0: r4p1, pt1: r4p2)
+    r4be =  BottomEdge(pt0: r4p3, pt1: r4p4)
+    r4le =    LeftEdge(pt0: r4p1, pt1: r4p3)
+    r4re =   RightEdge(pt0: r4p2, pt1: r4p4)
     r4ote =    TopEdge(pt0: r4op1, pt1: r4op2)
     r4obe = BottomEdge(pt0: r4op3, pt1: r4op4)
     r4ole =   LeftEdge(pt0: r4op1, pt1: r4op3)
@@ -688,6 +689,22 @@ proc testRectsRects() =
   assert r4.bottomEdge == BottomEdge(pt0: (-40,  60), pt1: ( 20,  60))
   assert r4.leftEdge   ==   LeftEdge(pt0: (-40,  10), pt1: (-40,  60))
   assert r4.rightEdge  ==  RightEdge(pt0: ( 20,  10), pt1: ( 20,  60))
+  assert r1te          == r1.topEdge
+  assert r1be          == r1.bottomEdge
+  assert r1le          == r1.leftEdge
+  assert r1re          == r1.rightEdge
+  assert r2te          == r2.topEdge
+  assert r2be          == r2.bottomEdge
+  assert r2le          == r2.leftEdge
+  assert r2re          == r2.rightEdge
+  assert r3te          == r3.topEdge
+  assert r3be          == r3.bottomEdge
+  assert r3le          == r3.leftEdge
+  assert r3re          == r3.rightEdge
+  assert r4te          == r4.topEdge
+  assert r4be          == r4.bottomEdge
+  assert r4le          == r4.leftEdge
+  assert r4re          == r4.rightEdge
   assert r1.leftEdge.x   ==   0
   assert r1.rightEdge.x  ==  50
   assert r1.topEdge.y    ==  10
@@ -801,6 +818,8 @@ proc testRectsRects() =
   assert not isEdgeInRect(r4obe, r4)
   assert not isEdgeInRect(r4ole, r4)
   assert not isEdgeInRect(r4ore, r4)
+
+  assert isRectOverRect
 
 when isMainModule:
   testRots()
