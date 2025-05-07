@@ -580,7 +580,11 @@ proc testRectsRects() =
     r1obe = BottomEdge(pt0: r1op3, pt1: r1op4)
     r1ole =   LeftEdge(pt0: r1op1, pt1: r1op3)
     r1ore =  RightEdge(pt0: r1op2, pt1: r1op4)
-    r1Outer = Rect(x: r1ol, y: r1ot, w: 52, h:62, origin: (11,11))
+
+    r1Outer = Rect(x: r1ol, y: r1ot, w: 52, h:62, origin: (11,11), rot: R0, id: 13.RectID)
+    r2Outer = Rect(x: r1ol, y: r1ot, w: 52, h:62, origin: (11,11), rot: R90, id: 15.RectID)
+    r3Outer = Rect(x: r1ol, y: r1ot, w: 52, h:62, origin: (11,11), rot: R180, id: 17.RectID)
+    r4Outer = Rect(x: r1ol, y: r1ot, w: 52, h:62, origin: (11,11), rot: R270, id: 19.RectID)
   
     r2p1: Point = (r2l, r2t)
     r2p2: Point = (r2r, r2t)
@@ -633,6 +637,9 @@ proc testRectsRects() =
     r4ole =   LeftEdge(pt0: r4op1, pt1: r4op3)
     r4ore =  RightEdge(pt0: r4op2, pt1: r4op4)
   
+
+  echo r1ol
+
   assert r1.pos  == (10, 20)
   assert r2.pos  == (10, 20)
   assert r3.pos  == (10, 20)
@@ -819,7 +826,10 @@ proc testRectsRects() =
   assert not isEdgeInRect(r4ole, r4)
   assert not isEdgeInRect(r4ore, r4)
 
-  assert isRectOverRect
+  
+  echo r1
+  echo r1Outer
+  assert isRectOverRect(r1Outer, r1)
 
 when isMainModule:
   testRots()
