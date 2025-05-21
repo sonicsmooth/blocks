@@ -75,8 +75,8 @@ const
   scale = 10
   WRANGE* = (5*scale) .. (25*scale)
   HRANGE* = (5*scale) .. (25*scale)
-  WRNGby2 = WRANGE.a + (WRANGE.b - WRANGE.a) div 2
-  HRNGby2 = HRANGE.a + (HRANGE.b - HRANGE.a) div 2
+  # WRNGby2 = WRANGE.a + (WRANGE.b - WRANGE.a) div 2
+  # HRNGby2 = HRANGE.a + (HRANGE.b - HRANGE.a) div 2
 
 
 
@@ -126,7 +126,7 @@ proc randRect*(id: RectID, panelSize: Size, log: bool=false): Rect
 proc moveRectBy*[T:SomeRect](rect: T, delta: Point)
 proc moveRectTo*[T:SomeRect](rect: T, pos: Point) 
 proc boundingBox*[T:SomeRect](rects: openArray[T]): PRect {.inline.}
-proc rotateSize*[T:PRect](rect: T, amt: Rotation): Size
+#proc rotateSize*[T:PRect](rect: T, amt: Rotation): Size
 proc rotate*(rect: Rect, amt: Rotation)
 proc rotate*(rect: Rect, orient: Orientation)
 proc area*(rect: SomeRect): int {.inline.}
@@ -375,20 +375,23 @@ proc boundingBox*[T:SomeRect](rects: openArray[T]): PRect {.inline.} =
    w: right - left, 
    h: bottom - top)
 
-proc rotateSize*[T:PRect](rect: T, amt: Rotation): Size =
-  # Return size of rect if rotated by amt.
-  # When rect.typeof is Rect, ignore current rotation
-  # Basically swap the width, height if amt is 90 or 270
-  case amt
-  of R0:   (rect.w,  rect.h)
-  of R90:  (rect.h, rect.w )
-  of R180: (rect.w,  rect.h)
-  of R270: (rect.h, rect.w )
+# proc rotateSize*[T:PRect](rect: T, amt: Rotation): Size =
+#   # Return size of rect if rotated by amt.
+#   # When rect.typeof is Rect, ignore current rotation
+#   # Basically swap the width, height if amt is 90 or 270
+#   case amt
+#   of R0:   (rect.w, rect.h)
+#   of R90:  (rect.h, rect.w )
+#   of R180: (rect.w, rect.h)
+#   of R270: (rect.h, rect.w )
 
 proc rotate*(rect: Rect, amt: Rotation) =
+  # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
 
 proc rotate*(rect: Rect, orient: Orientation) =
+  # Rotate to either 0 or 90 based on aspect ratio and 
+  # given orientation
   if rect.w >= rect.h:
     if orient == Horizontal: rect.rot = R0
     else: rect.rot = R90
@@ -402,10 +405,10 @@ proc area*(rect: SomeRect): int {.inline.} =
 
 proc aspectRatio*(rect: SomeRect): float =
   when typeof(rect) is rects.Rect:
-    if rect.rot == R90 or rect.rot == R180:
-      rect.w.float / rect.h.float
-    else:
+    if rect.rot == R90 or rect.rot == R270:
       rect.h.float / rect.w.float
+    else:
+      rect.w.float / rect.h.float
   else:
     rect.w.float / rect.h.float
 
@@ -472,9 +475,9 @@ proc `-`*(r1, r2:Rotation): Rotation =
   case r1:
   of R0:
     case r2:
-    of R0: R180
+    of R0: R0
     of R90: R270
-    of R180: R0
+    of R180: R180
     of R270: R90
   of R90:
     case r2:
@@ -548,6 +551,42 @@ proc testRots() =
   assert R90  + R270 == R0
   assert R180 + R270 == R90
   assert R270 + R270 == R180
+  assert R0   - R0   == R0
+  assert R0   - R90  == R270
+  assert R0   - R180 == R180
+  assert R0   - R270 == R90
+  assert R90  - R0   == R90
+  assert R90  - R90  == R0
+  assert R90  - R180 == R270
+  assert R90  - R270 == R180
+  assert R180 - R0   == R180
+  assert R180 - R90  == R90
+  assert R180 - R180 == R0
+  assert R180 - R270 == R270
+  assert R270 - R0   == R270
+  assert R270 - R90  == R180
+  assert R270 - R180 == R90
+  assert R270 - R270 == R0
+  assert R90  - R0   == R90
+  assert R180 - R0   == R180
+  assert R270 - R0   == R270
+  assert R0   - R90  == R270
+  assert R90  - R90  == R0
+  assert R180 - R90  == R90
+  assert R270 - R90  == R180
+  assert R0   - R180 == R180
+  assert R90  - R180 == R270
+  assert R180 - R180 == R0
+  assert R270 - R180 == R90
+  assert R0   - R270 == R90
+  assert R90  - R270 == R180
+  assert R180 - R270 == R270
+  assert R270 - R270 == R0
+
+
+
+
+
 proc testRectsRects() =
   var
     r1 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10),            id: 3.RectID)
@@ -902,6 +941,75 @@ proc testRectsRects() =
   assert boundingBox([r2]) == (x:r2.left.cint, y:r2.top.cint, w:r2.h.cint, h:r2.w.cint)
   assert boundingBox([r3]) == (x:r3.left.cint, y:r3.top.cint, w:r3.w.cint, h:r3.h.cint)
   assert boundingBox([r4]) == (x:r4.left.cint, y:r4.top.cint, w:r4.h.cint, h:r4.w.cint)
+
+  rotate(r1, R0);
+  rotate(r2, R0);
+  rotate(r3, R0);
+  rotate(r4, R0);
+  assert r1 == Rect(x:2, y:3, w:50, h:60, origin: (10,10))
+  assert r2 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+  assert r3 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R180)
+  assert r4 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R270)
+
+  rotate(r1, R90);
+  rotate(r2, R90);
+  rotate(r3, R90);
+  rotate(r4, R90);
+  assert r1 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+  assert r2 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R180)
+  assert r3 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R270)
+  assert r4 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R0)
+
+  rotate(r1, R180);
+  rotate(r2, R180);
+  rotate(r3, R180);
+  rotate(r4, R180);
+  assert r1 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R270)
+  assert r2 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R0)
+  assert r3 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+  assert r4 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R180)
+
+  rotate(r1, R270);
+  rotate(r2, R270);
+  rotate(r3, R270);
+  rotate(r4, R270);
+  assert r1 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R180)
+  assert r2 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R270)
+  assert r3 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R0)
+  assert r4 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+
+  rotate(r1, Horizontal);
+  rotate(r2, Horizontal);
+  rotate(r3, Horizontal);
+  rotate(r4, Horizontal);
+  assert r1 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+  assert r2 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+  assert r3 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+  assert r4 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R90)
+
+  rotate(r1, Vertical);
+  rotate(r2, Vertical);
+  rotate(r3, Vertical);
+  rotate(r4, Vertical);
+  assert r1 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R0)
+  assert r2 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R0)
+  assert r3 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R0)
+  assert r4 == Rect(x:2, y:3, w:50, h:60, origin: (10,10), rot: R0)
+
+  assert area(r1) == 3000
+  assert area(r2) == 3000
+  assert area(r3) == 3000
+  assert area(r4) == 3000
+
+  r1 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10),            id: 3.RectID)
+  r2 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R90,  id: 5.RectID)
+  r3 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R180, id: 7.RectID)
+  r4 = Rect(x:10, y:20, w:50, h:60, origin: (10, 10), rot: R270, id: 11.RectID)
+
+  assert aspectRatio(r1) == float(50) / float(60)
+  assert aspectRatio(r2) == float(60) / float(50)
+  assert aspectRatio(r3) == float(50) / float(60)
+  assert aspectRatio(r4) == float(60) / float(50)
 
 when isMainModule:
   testRots()
