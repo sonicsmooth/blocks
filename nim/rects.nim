@@ -123,17 +123,17 @@ proc isEdgeInRect[T:PRect](edge: HorizEdge, rect: T): bool {.inline.}
 proc isRectInRect*[T:PRect](rect1, rect2: T): bool 
 proc isRectOverRect*[T:PRect](rect1, rect2: T): bool
 proc randRect*(id: RectID, panelSize: Size, log: bool=false): Rect 
-proc moveRectBy*[T:SomeRect](rect: T, delta: Point)
-proc moveRectTo*[T:SomeRect](rect: T, pos: Point) 
-proc boundingBox*[T:SomeRect](rects: openArray[T]): PRect {.inline.}
+proc moveRectBy*(rect: SomeRect, delta: Point)
+proc moveRectTo*(rect: SomeRect, pos: Point) 
+proc boundingBox*(rects: openArray[SomeRect]): PRect {.inline.}
 #proc rotateSize*[T:PRect](rect: T, amt: Rotation): Size
 proc rotate*(rect: Rect, amt: Rotation)
 proc rotate*(rect: Rect, orient: Orientation)
 proc area*(rect: SomeRect): int {.inline.}
 proc aspectRatio*(rect: SomeRect): float
-proc aspectRatio*[T:SomeRect](rects: seq[T]): float
-proc fillArea*[T:SomeRect](rects: seq[T]): int
-proc fillRatio*[T:SomeRect](rects: seq[T]): float
+proc aspectRatio*[T:SomeRect](rects: openArray[T]): float
+proc fillArea*[T:SomeRect](rects: openArray[T]): int
+proc fillRatio*[T:SomeRect](rects: openArray[T]): float
 proc normalizeRectCoords*(startPos, endPos: Point): PRect
 proc toFloat*(rot: Rotation): float {.inline.}
 proc inc*(r: var Rotation) {.inline.}
@@ -351,15 +351,15 @@ proc randRect*(id: RectID, panelSize: Size, log: bool=false): Rect =
                        penColor: penColor,
                        brushColor: brushColor)
 
-proc moveRectBy*[T:SomeRect](rect: T, delta: Point) =
+proc moveRectBy*(rect: SomeRect, delta: Point) =
   rect.x += delta.x
   rect.y += delta.y
 
-proc moveRectTo*[T:SomeRect](rect: T, pos: Point) = 
+proc moveRectTo*(rect: SomeRect, pos: Point) = 
   rect.x = pos.x
   rect.y = pos.y
 
-proc boundingBox*[T:SomeRect](rects: openArray[T]): PRect {.inline.} =
+proc boundingBox*(rects: openArray[SomeRect]): PRect {.inline.} =
   var left, right, top, bottom: int
   left = int.high
   right = int.low
@@ -412,15 +412,17 @@ proc aspectRatio*(rect: SomeRect): float =
   else:
     rect.w.float / rect.h.float
 
-proc aspectRatio*[T:SomeRect](rects: seq[T]): float =
+proc aspectRatio*[T:SomeRect](rects: openArray[T]): float =
   rects.boundingBox.aspectRatio
 
-proc fillArea*[T:SomeRect](rects: seq[T]): int =
+proc fillArea*[T:SomeRect](rects: openArray[T]): int =
+  # Total area of all rectangles.  Does not account for overlap.
   for r in rects:
     result += r.area
 
-proc fillRatio*[T:SomeRect](rects: seq[T]): float =
-  # Find ratio of total area to filled area
+proc fillRatio*[T:SomeRect](rects: openArray[T]): float =
+  # Find ratio of total area to filled area. Does not account
+  # for overlap, so value can be > 1.0.
   rects.fillArea.float / rects.boundingBox.area.float
 
 proc normalizeRectCoords*(startPos, endPos: Point): PRect =
@@ -942,6 +944,8 @@ proc testRectsRects() =
   assert boundingBox([r3]) == (x:r3.left.cint, y:r3.top.cint, w:r3.w.cint, h:r3.h.cint)
   assert boundingBox([r4]) == (x:r4.left.cint, y:r4.top.cint, w:r4.h.cint, h:r4.w.cint)
 
+  assert boundingBox([r1, r2]) == (x: -8.cint, y: -37.cint, w: 60.cint, h: 90.cint)
+
   rotate(r1, R0);
   rotate(r2, R0);
   rotate(r3, R0);
@@ -1010,6 +1014,17 @@ proc testRectsRects() =
   assert aspectRatio(r2) == float(60) / float(50)
   assert aspectRatio(r3) == float(50) / float(60)
   assert aspectRatio(r4) == float(60) / float(50)
+
+  assert fillArea([r1])             == 1 * (50 * 60)
+  assert fillArea([r1, r2])         == 2 * (50 * 60)
+  assert fillArea([r1, r2, r3])     == 3 * (50 * 60)
+  assert fillArea([r1, r2, r3, r4]) == 4 * (50 * 60)
+
+  assert fillRatio([r1])     == 1.0
+  assert fillRatio([r1, r2]) == 2.0 * (50.0 * 60.0) / 5400.0
+
+  assert normalizeRectCoords((10, 10), (50, 50)) == (x: 10.cint, y:10.cint, w: 40.cint, h: 40.cint)
+  assert normalizeRectCoords((50, 50), (10, 10)) == (x: 10.cint, y:10.cint, w: 40.cint, h: 40.cint)
 
 when isMainModule:
   testRots()
