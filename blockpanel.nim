@@ -11,11 +11,8 @@ import timeit
 
 # TODO: copy background before Move
 # TODO: Hover
-# TODO: Figure out invalidate region
 # TODO: update qty when spinner text loses focus
-# TODO: checkbox for show intermediate steps
 # TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
-# TODO: Separate options panel for packing
 
 
 type
@@ -307,9 +304,8 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         self.mSelectBox = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
-        let smsbtemp: PRect = self.mSelectBox # implicit conversion
-        #let newsel = gDb.rectInRects(self.mSelectBox)
-        let newsel = gDb.rectInRects(smsbtemp)
+        let newsel = gDb.rectInRects(self.mSelectBox)
+        gDb.clearRectSelect()
         gDb.setRectSelect(self.mFirmSelection)
         gDb.setRectSelect(newsel)
         self.refresh(false)
