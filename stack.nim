@@ -37,35 +37,35 @@ proc stackCompact*(table: var RectTable, dstRect: PRect, direction: CompactDir) 
 
     case compoundDir(direction):
     of UpLeft:
-      if bbox.rightEdge.x > dstRect.rightEdge.x:
-        dstRect.y = bbox.bottomEdge.y
+      if bbox.RightEdge.x > dstRect.RightEdge.x:
+        dstRect.y = bbox.BottomEdge.y
         accRects = @[rect.id]
     of UpRight:
-      if bbox.leftEdge.x < dstRect.leftEdge.x:
-        dstRect.y = bbox.bottomEdge.y
+      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
+        dstRect.y = bbox.BottomEdge.y
         accRects = @[rect.id]
     of DownLeft:
-      if bbox.rightEdge.x > dstRect.rightEdge.x:
+      if bbox.RightEdge.x > dstRect.RightEdge.x:
         dstRect.y -= bbox.h
         accRects = @[rect.id]
     of DownRight:
-      if bbox.leftEdge.x < dstRect.leftEdge.x:
+      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
         dstRect.y -= bbox.h
         accRects = @[rect.id]
     of LeftUp:
-      if bbox.bottomEdge.y > dstRect.bottomEdge.y:
-        dstRect.x = bbox.rightEdge.x
+      if bbox.BottomEdge.y > dstRect.BottomEdge.y:
+        dstRect.x = bbox.RightEdge.x
         accRects = @[rect.id]
     of LeftDown:
-      if bbox.topEdge.y < dstRect.topEdge.y:
-        dstRect.x = bbox.rightEdge.x
+      if bbox.TopEdge.y < dstRect.TopEdge.y:
+        dstRect.x = bbox.RightEdge.x
         accRects = @[rect.id]
     of RightUp:
-      if bbox.bottomEdge.y > dstRect.bottomEdge.y:
+      if bbox.BottomEdge.y > dstRect.BottomEdge.y:
         dstRect.x -= bbox.w
         accRects = @[rect.id]
     of RightDown:
-      if bbox.topEdge.y < dstRect.topEdge.y:
+      if bbox.TopEdge.y < dstRect.TopEdge.y:
         dstRect.x -= bbox.w
         accRects = @[rect.id]
 

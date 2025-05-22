@@ -8,7 +8,7 @@ type
   XDirection = enum Right, Left
   YDirection = enum Up, Down
   Direction = tuple[x: XDirection, y: YDirection]
-  Rect = tuple
+  TestRect = tuple
     x, y: cint
     w, h: cint
     color: Color
@@ -19,12 +19,12 @@ type
     pixelFormat: uint32
     pixelFormatName: string
   wTestPanel = ref object of wSDLPanel
-    rects: seq[Rect]
+    rects: seq[TestRect]
     rectTextures: seq[TexturePtr]
   wSDLFrame = ref object of wFrame
     mPanel: wTestPanel
 
-proc rect(x,y,w,h: cint, color: Color, dir: Direction): Rect =
+proc rect(x,y,w,h: cint, color: Color, dir: Direction): TestRect =
   result.x = x
   result.y = y
   result.w = w
@@ -66,18 +66,18 @@ wClass(wSDLPanel of wPanel):
     echo "formatName: ", self.pixelFormatName
 
 wClass(wTestPanel of wSDLPanel):
-  proc drawRect(self: wTestPanel, rect: Rect) =
+  proc drawRect(self: wTestPanel, rect: TestRect) =
     self.sdlRenderer.setDrawColor(rect.color)
-    self.sdlRenderer.fillRect(cast[ptr PRect](addr rect))
-  proc drawRect(self: wTestPanel, rect: Rect, texture: TexturePtr) =
-    let dstrect = cast[ptr PRect](addr rect)
+    self.sdlRenderer.fillRect(cast[ptr sdl2.Rect](addr rect))
+  proc drawRect(self: wTestPanel, rect: TestRect, texture: TexturePtr) =
+    let dstrect = cast[ptr sdl2.Rect](addr rect)
     self.sdlRenderer.copy(texture, nil, dstrect)
-  proc toTexture(self: wTestPanel, rect: Rect): TexturePtr =
+  proc toTexture(self: wTestPanel, rect: TestRect): TexturePtr =
     let surface = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
     surface.fillRect(nil, rect.color.toColorU32().uint32)
     result = self.sdlRenderer.createTextureFromSurface(surface)
-  proc updateRect(self: wTestPanel, rect: ptr Rect) =
+  proc updateRect(self: wTestPanel, rect: ptr TestRect) =
     let step = 2
     if rect.dir.x == Right and rect.x >= self.size.width - rect.w:
       rect.dir.x = Left

@@ -1,7 +1,7 @@
 import std/[math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq, foldl
 import wNim
-import winim
+import winim except PRECT
 from wNim/private/wHelper import `-`
 import sdl2
 import rects, recttable, sdlframes, db
