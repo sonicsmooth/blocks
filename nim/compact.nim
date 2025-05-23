@@ -108,7 +108,7 @@ proc MakeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
       if node != RootNode:
         result = rectTable[node].toRect.h
 
-proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
+proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
                   axis: Axis, sortOrder: SortOrder): Graph = 
   let getDim = MakeDimGetter(rectTable, axis)
   var src: Node
@@ -126,32 +126,34 @@ proc ComposeGraph(lines: seq[ScanLine], rectTable: RectTable,
         result[(src, dst)] = if sortOrder == Descending: dst.getDim else: src.getDim
       src = dst
 
-proc PosChooser(ax: MajMin): proc(rect: rects.Rect): int =
+proc posChooser(ax: MajMin): proc(rect: Rect): int =
   if ax == Major:
-    proc(rect: rects.Rect): int =  rect.toRect.x
+    echo "here pc1"
+    proc(rect: Rect): int =  rect.PRect.x
   else:
-    proc(rect: rects.Rect): int =  rect.toRect.y
+    echo "here pc2"
+    proc(rect: Rect): int =  rect.PRect.y
 
-proc SizeChooser(ax: MajMin): proc(rect: rects.Rect): int =
+proc sizeChooser(ax: MajMin): proc(rect: rects.Rect): int =
   if ax == Major:
-    proc(rect: rects.Rect): int = rect.toRect.w # converter with rotation
+    proc(rect: Rect): int = rect.toRect.w # converter with rotation
   else:
-    proc(rect: rects.Rect): int = rect.toRect.h
+    proc(rect: Rect): int = rect.toRect.h
 
-proc ScanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
+proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
   let 
     minor = if axis==X: Minor else: Major
-    SecPos  = PosChooser(minor)
-    SecSz   = SizeChooser(minor)
+    secPos  = posChooser(minor)
+    secSz   = sizeChooser(minor)
     colids  = if ids.len == 0: rectTable.keys.toSeq
               else:            ids
     topEdges: seq[ScanEdge] = 
         collect(for id in colids:
-          (id: id, pos: rectTable[id].SecPos, etype: Top))
+          (id: id, pos: rectTable[id].secPos, etype: Top))
     botEdges: seq[ScanEdge] = 
         collect (for id in colids:
           let rect = rectTable[id]
-          (id: id, pos: rect.SecPos + rect.SecSz, etype: Bot))
+          (id: id, pos: rect.secPos + rect.secSz, etype: Bot))
     edges: seq[ScanEdge] = concat(topEdges, botEdges).sortedByIt(it.pos)
   
   # Prime everything with first edge
@@ -186,13 +188,16 @@ proc ScanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     lastpos = edge.pos
   result.add(line)
 
-proc MakeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): Graph =
+proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): Graph =
   # Returns DAG = table((frm,to): weight)
   # rectTable is table of rects
   # axis is X or Y
   # sortOrder == left/up or down/right
-  let lines = ScanLines(rectTable, axis, sortOrder, ids)
-  result = ComposeGraph(lines, rectTable, axis, sortOrder)
+  echo "here mg1"
+  let lines = scanLines(rectTable, axis, sortOrder, ids)
+  echo "here mg2"
+  result = composeGraph(lines, rectTable, axis, sortOrder)
+
 
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: int): Table[RectID, Weight] =
   for node in nodes:
@@ -212,24 +217,32 @@ proc compact*(rectTable: RectTable,
               dstRect: PRect,
               ids: seq[RectID] = @[]) =
   # Top level compact function in one direction
-  let graph = MakeGraph(rectTable, axis, sortOrder, ids)
+  echo "here c1"
+  let graph = makeGraph(rectTable, axis, sortOrder, ids)
+  echo "here c2"
   let nodes = if ids.len == 0: rectTable.keys.toSeq
               else: ids
+  echo "here c3"
   let lp = longestPathBellmanFord(graph, nodes, 0)
 
+  echo "here c4"
   if axis == X and sortOrder == Ascending:
+    echo "here c5"
     for id in nodes:
       rectTable[id].x = dstRect.x + lp[id] + rectTable[id].originXLeft
 
   elif axis == X and sortOrder == Descending:
+    echo "here c6"
     for id in nodes:
       rectTable[id].x = dstRect.x + dstRect.w - lp[id] + rectTable[id].originXLeft
 
   elif axis == Y and sortOrder == Ascending:
+    echo "here c7"
     for id in nodes:
       rectTable[id].y = dstRect.y + lp[id] + rectTable[id].originYUp
 
   elif axis == Y and sortOrder == Descending:
+    echo "here c8"
     for id in nodes:
       rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originYUp
 

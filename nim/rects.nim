@@ -88,8 +88,8 @@ proc `==`*(a, b: Rect): bool
 proc pos*(rect: SomeRect): Point {.inline.}
 proc size*(rect: SomeRect): Size {.inline.}
 proc toRectNoRot*(rect: Rect): PRect {.inline.}
-converter toRect*(rect: Rect): PRect {.inline.}
-converter toRect*(rect: PRect): PRect {.inline.}
+converter toPRect*(rect: Rect): PRect {.inline.}
+converter toPRect*(rect: PRect): PRect {.inline.}
 proc originXLeft*(rect: Rect): int
 proc originYUp*(rect: Rect): int
 proc left*(rect: SomeRect): int
@@ -190,7 +190,7 @@ proc toRectNoRot*(rect: Rect): PRect {.inline.} =
    rect.y - rect.origin.y, 
    rect.w, 
    rect.h)
-converter toRect*(rect: Rect): PRect =
+converter toPRect*(rect: Rect): PRect =
   # Implicit conversion from rects.Rect to PRect.
   # Returns barebones rectangle x,y,w,h after rotation
   # Explicit conversion to wRect.
@@ -205,7 +205,7 @@ converter toRect*(rect: Rect): PRect =
   of R90:  return (x - oy,     y + ox - w, h, w)
   of R180: return (x + ox - w, y + oy - h, w, h)
   of R270: return (x + oy - h, y - ox,     h, w)
-converter toRect*(rect: PRect): PRect =
+converter toPRect*(rect: PRect): PRect =
   rect
 proc originXLeft*(rect: Rect): int =
   # Horizontal distance from left edge to origin after rotation
@@ -232,16 +232,16 @@ proc top*(rect: SomeRect): int =
 proc bottom*(rect: SomeRect): int =
   rect.BottomEdge.y
 proc upperLeft*(rect: SomeRect):  Point = 
-  let r = rect.toRect
+  let r = rect.Rect
   (r.x, r.y)
 proc upperRight*(rect: SomeRect): Point = 
-  let r = rect.toRect
+  let r = rect.Rect
   (r.x + r.w, r.y)
 proc lowerLeft*(rect: SomeRect):  Point = 
-  let r = rect.toRect
+  let r = rect.Rect
   (r.x, r.y + r.h)
 proc lowerRight*(rect: SomeRect): Point = 
-  let r = rect.toRect
+  let r = rect.Rect
   (r.x + r.w, r.y + r.h)
 converter toTopEdge*(rect: SomeRect):    TopEdge =
   result.pt0 = rect.upperLeft
@@ -722,14 +722,15 @@ proc testRectsRects() =
   assert r2.size == (60, 50)
   assert r3.size == (50, 60)
   assert r4.size == (60, 50)
+  # TODO: add test for int.high convert to cint.high, etc.
   assert r1.toRectNoRot == (  0.cint,  10.cint, 50.cint, 60.cint)
   assert r2.toRectNoRot == (  0.cint,  10.cint, 50.cint, 60.cint)
   assert r3.toRectNoRot == (  0.cint,  10.cint, 50.cint, 60.cint)
   assert r4.toRectNoRot == (  0.cint,  10.cint, 50.cint, 60.cint)
-  assert r1.toRect      == (  0.cint,  10.cint, 50.cint, 60.cint)
-  assert r2.toRect      == (  0.cint, -20.cint, 60.cint, 50.cint)
-  assert r3.toRect      == (-30.cint, -30.cint, 50.cint, 60.cint)
-  assert r4.toRect      == (-40.cint,  10.cint, 60.cint, 50.cint)
+  assert r1.Rect        == (  0.cint,  10.cint, 50.cint, 60.cint)
+  assert r2.Rect        == (  0.cint, -20.cint, 60.cint, 50.cint)
+  assert r3.Rect        == (-30.cint, -30.cint, 50.cint, 60.cint)
+  assert r4.Rect        == (-40.cint,  10.cint, 60.cint, 50.cint)
   assert r1.originXLeft == 10
   assert r2.originXLeft == 10
   assert r3.originXLeft == 40
