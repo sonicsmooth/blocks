@@ -196,15 +196,34 @@ converter toPRect*(rect: Rect): PRect =
   # Explicit conversion to wRect.
   # Bounds are corrected for origin
   # Bounds are also corrected for rotation
+  # Values are clipped to cint high/low
   let
-    (w, h)   = (rect.w.cint,        rect.h.cint  )
-    (x, y)   = (rect.x.cint,        rect.y.cint  )
-    (ox, oy) = (rect.origin.x.cint, rect.origin.y.cint)
+    (w, h)   = (rect.w,        rect.h  )
+    (x, y)   = (rect.x,        rect.y  )
+    (ox, oy) = (rect.origin.x, rect.origin.y)
+  var outx, outy, outw, outh: cint
   case rect.rot:
-  of R0:   return (x - ox,     y - oy,     w, h)
-  of R90:  return (x - oy,     y + ox - w, h, w)
-  of R180: return (x + ox - w, y + oy - h, w, h)
-  of R270: return (x + oy - h, y - ox,     h, w)
+  of R0:   
+    outx = clamp(x - ox, cint.low, cint.high).cint
+    outy = clamp(y - oy, cint.low, cint.high).cint
+    outw = clamp(w,      cint.low, cint.high).cint
+    outh = clamp(h,      cint.low, cint.high).cint
+  of R90:
+    outx = clamp(x - oy,     cint.low, cint.high).cint
+    outy = clamp(y + ox - w, cint.low, cint.high).cint
+    outw = clamp(h,          cint.low, cint.high).cint
+    outh = clamp(w,          cint.low, cint.high).cint
+  of R180:
+    outx = clamp(x + ox - w, cint.low, cint.high).cint
+    outy = clamp(y + oy - h, cint.low, cint.high).cint
+    outw = clamp(w,          cint.low, cint.high).cint
+    outh = clamp(h,          cint.low, cint.high).cint
+  of R270:
+    outx = clamp(x + oy - h, cint.low, cint.high).cint
+    outy = clamp(y - ox,     cint.low, cint.high).cint
+    outw = clamp(h,          cint.low, cint.high).cint
+    outh = clamp(w,          cint.low, cint.high).cint
+  return (outx, outy, outw, outh)
 converter toPRect*(rect: PRect): PRect =
   rect
 proc originXLeft*(rect: Rect): int =
@@ -232,16 +251,16 @@ proc top*(rect: SomeRect): int =
 proc bottom*(rect: SomeRect): int =
   rect.BottomEdge.y
 proc upperLeft*(rect: SomeRect):  Point = 
-  let r = rect.Rect
+  let r = rect.PRect
   (r.x, r.y)
 proc upperRight*(rect: SomeRect): Point = 
-  let r = rect.Rect
+  let r = rect.PRect
   (r.x + r.w, r.y)
 proc lowerLeft*(rect: SomeRect):  Point = 
-  let r = rect.Rect
+  let r = rect.PRect
   (r.x, r.y + r.h)
 proc lowerRight*(rect: SomeRect): Point = 
-  let r = rect.Rect
+  let r = rect.PRect
   (r.x + r.w, r.y + r.h)
 converter toTopEdge*(rect: SomeRect):    TopEdge =
   result.pt0 = rect.upperLeft
