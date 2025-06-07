@@ -3,8 +3,22 @@ from sdl2 import Rect
 import recttable, compact
 
 
-# Compact from largest to smallest into the given rectangle
+#[
+Compact from largest to smallest into dstRect
+For upper left stacking:
+Sort by size and move to bottom right
+For rect in rects:
+  add rect to accumulator
+  stack accumulator rects up then left into dstRect
+  if right overflow then
+    move dstRect down to bottom of bbox
+    clear accumulator except for current rect
+]#
 
+
+
+
+# Comparison procs
 proc vertCmp (r1, r2: rects.Rect): int = cmp(r1.size.h, r2.size.h)
 proc horizCmp(r1, r2: rects.Rect): int = cmp(r1.size.w, r2.size.w)
 
@@ -53,8 +67,9 @@ proc stackCompactSub(table: var RectTable, rects: seq[RectID], dstRect: var PRec
 
 
 proc stackCompact*(table: var RectTable, dstRect: PRect, direction: CompactDir) =
+  # Rotate, sort by vertical or horizontal size, and move to opposite corner
+  # Then launch stacking routine.
   var dstRect = dstRect
-  # Rotate, sort by vertical size, and move to opposite corner
   var rects = table.values.toSeq
   
   if direction.primax == X:

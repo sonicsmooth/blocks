@@ -25,7 +25,7 @@ type
     mButtons: array[17, wButton]
 
 const 
-  logRandomize = true
+  logRandomize = false
 
 
 wClass(wMainPanel of wPanel):
