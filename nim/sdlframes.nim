@@ -107,6 +107,7 @@ wClass(wTestPanel of wSDLPanel):
 
     self.sdlRenderer.present()
     self.refresh()
+
   proc init*(self: wTestPanel, parent: wWindow) =
     echo "wTestPanel.init()"
     wSDLPanel(self).init(parent) #, style=wBorderSimple)

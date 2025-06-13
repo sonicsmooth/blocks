@@ -226,6 +226,9 @@ converter toPRect*(rect: Rect): PRect =
   return (outx, outy, outw, outh)
 converter toPRect*(rect: PRect): PRect =
   rect
+converter toPRect*(tup: tuple[x, y, w, h: SomeInteger]): PRect =
+  (tup.x.cint, tup.y.cint, tup.w.cint, tup.h.cint)
+
 proc originXLeft*(rect: Rect): int =
   # Horizontal distance from left edge to origin after rotation
   case rect.rot:
