@@ -344,11 +344,43 @@ Rendering options for SDL and pixie
 ]# 
 
   proc blitFromTextureCache(self: wBlockPanel) =
+    # Copy from texture cache to screen via sdlrenderer
     for rect in gDb.values:
       let texture = self.mTextureCache[(rect.id, rect.selected)]
       let dstrect = rect.toRectNoRot
       let pt = rect.origin
       self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
+
+
+  proc blitFromSurfaceCache(self: wBlockPanel) = 
+    # Copy from surface cache to screen via surface ptr
+    let dstsurface = self.sdlWindow.getSurface()
+    for rect in gDb.values:
+      dstsurface.renderRect(rect, rect.selected)
+
+
+      # let dstrect = rect.PRect
+      # let pdr = cast[ptr sdl2.Rect](addr dstrect)
+      # #echo ""
+      # #dump dstrect
+      # #dump (cast[int] (addr dstrect))
+
+      # #let srcsurface = self.mSurfaceCache[(rect.id, rect.selected)]
+      # let srcsurface = self.rectToSurface(rect, false)
+      # let srcrect: sdl2.Rect = (0, 0, dstrect.w, dstrect.h)
+      # let psr = cast[ptr sdl2.Rect](addr srcrect)
+      
+      # blitSurface(srcsurface, nil, dstsurface, nil)
+      
+      # #dump (cast [int] (addr srcrect))
+      
+      # #echo "src: ", srcsurface.w, ", ", srcsurface.h
+      # #echo "srcrect: ", srcrect
+
+      # # Problems with rotation
+      # #discard lowerBlit(srcsurface, psr, dstsurface, pdr)
+      # #discard lowerBlit(srcsurface, nil, dstsurface, pdr)
+
 
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
@@ -357,11 +389,11 @@ Rendering options for SDL and pixie
     
 
     # Try a few methods to draw rectangles
-    when true:
+    #timeOnce("test-once"):
+    when false:
       self.blitFromTextureCache()
-    elif false:
-      # Blit to surface from mSurfaceCache
-      discard
+    elif true:
+      self.blitFromSurfaceCache()
     else:
       # Draw directly to surface
       discard
