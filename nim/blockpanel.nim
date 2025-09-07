@@ -390,9 +390,9 @@ Rendering options for SDL and pixie
 
     # Try a few methods to draw rectangles
     #timeOnce("test-once"):
-    when false:
+    when true:
       self.blitFromTextureCache()
-    elif true:
+    elif false:
       self.blitFromSurfaceCache()
     else:
       # Draw directly to surface
