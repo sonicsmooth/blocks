@@ -28,6 +28,8 @@ type
     clickPos:    wPoint
     lastPos:     wPoint
     state:       MouseState
+  ModelUnit = float
+  ScreenUnit = float # should this be int to represent pixels?
   CacheKey = tuple[id:RectID, selected: bool]
   wBlockPanel* = ref object of wSDLPanel
     mMouseData: MouseData
@@ -40,6 +42,9 @@ type
     mSelectBox*: PRect
     mDstRect*: PRect
     mText*: string
+    panX: ScreenUnit
+    panY: ScreenUnit
+    zoom: float
  
   Command = enum
     CmdEscape
@@ -408,6 +413,9 @@ Rendering options for SDL and pixie
 
     # release(gLock)
   
+  proc ModelToScreen(mx, my: ModelUnit): sdl2.Point =
+    (0.cint, 0.cint)
+
   proc init*(self: wBlockPanel, parent: wWindow) = 
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
