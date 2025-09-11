@@ -111,19 +111,19 @@ wClass(wTestPanel of wSDLPanel):
   proc init*(self: wTestPanel, parent: wWindow) =
     echo "wTestPanel.init()"
     wSDLPanel(self).init(parent) #, style=wBorderSimple)
-    self.rects.add(rect( 10,  20, 100, 100, toColor(colRed,     127), (Right, Down)))
-    self.rects.add(rect( 30,  40, 100, 100, toColor(colGreen,   127), (Right, Down)))
-    self.rects.add(rect( 50,  60, 100, 100, toColor(colBlue,    127), (Right, Down)))
-    self.rects.add(rect( 70,  80, 100, 100, toColor(colCyan,    127), (Right, Down)))
-    self.rects.add(rect( 90, 100, 100, 100, toColor(colMagenta, 127), (Right, Down)))
-    self.rects.add(rect(110, 120, 100, 100, toColor(colYellow,  127), (Right, Down)))
+    self.rects.add(rect( 10,  20, 100, 100, toColor(Red,     127), (Right, Down)))
+    self.rects.add(rect( 30,  40, 100, 100, toColor(Green,   127), (Right, Down)))
+    self.rects.add(rect( 50,  60, 100, 100, toColor(Blue,    127), (Right, Down)))
+    self.rects.add(rect( 70,  80, 100, 100, toColor(Cyan,    127), (Right, Down)))
+    self.rects.add(rect( 90, 100, 100, 100, toColor(Magenta, 127), (Right, Down)))
+    self.rects.add(rect(110, 120, 100, 100, toColor(Yellow,  127), (Right, Down)))
 
-    self.rects.add(rect(110, 120, 100, 100, toColor(colTomato,          200), (Left, Down)))
-    self.rects.add(rect(130, 140, 100, 100, toColor(colLawnGreen,       200), (Left, Down)))
-    self.rects.add(rect(150, 160, 100, 100, toColor(colLightCoral,      200), (Left, Down)))
-    self.rects.add(rect(170, 180, 100, 100, toColor(colRoyalBlue,       200), (Left, Down)))
-    self.rects.add(rect(190, 200, 100, 100, toColor(colMaroon,          200), (Left, Down)))
-    self.rects.add(rect(210, 220, 100, 100, toColor(colMediumTurquoise, 200), (Left, Down)))
+    self.rects.add(rect(110, 120, 100, 100, toColor(Tomato,          200), (Left, Down)))
+    self.rects.add(rect(130, 140, 100, 100, toColor(LawnGreen,       200), (Left, Down)))
+    self.rects.add(rect(150, 160, 100, 100, toColor(LightCoral,      200), (Left, Down)))
+    self.rects.add(rect(170, 180, 100, 100, toColor(RoyalBlue,       200), (Left, Down)))
+    self.rects.add(rect(190, 200, 100, 100, toColor(Maroon,          200), (Left, Down)))
+    self.rects.add(rect(210, 220, 100, 100, toColor(MediumTurquoise, 200), (Left, Down)))
 
     for r in self.rects:
       self.rectTextures.add(self.toTexture(r))
