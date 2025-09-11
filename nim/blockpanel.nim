@@ -4,7 +4,7 @@ import wNim
 import winim except PRECT
 from wNim/private/wHelper import `-`
 import sdl2
-import rects, recttable, sdlframes, db
+import rects, recttable, sdlframes, db, viewport
 import userMessages, utils
 import render
 import timeit
@@ -22,13 +22,23 @@ type
     StateLMBDownInSpace
     StateDraggingRect
     StateDraggingSelect
+  PanZoomState = enum
+    PZStateNone
+    PZStateRMBDown
+    PZStateRMBMoving
   MouseData = tuple
     clickHitIds: seq[RectID]
     dirtyIds:    seq[RectID]
     clickPos:    wPoint
     lastPos:     wPoint
     state:       MouseState
-  CacheKey = tuple[id:RectID, selected: bool]
+    pzState:     PanZoomState
+  CacheKey = tuple[id: RectID, selected: bool]
+  Grid* = object
+    xSpace*: int
+    ySpace*: int
+    visible*: bool
+
   wBlockPanel* = ref object of wSDLPanel
     mMouseData: MouseData
     mSurfaceCache: Table[CacheKey, SurfacePtr]
@@ -40,6 +50,8 @@ type
     mSelectBox*: PRect
     mDstRect*: PRect
     mText*: string
+    mGrid*: Grid
+    mViewPort*: ViewPort
  
   Command = enum
     CmdEscape
@@ -221,6 +233,13 @@ wClass(wBlockPanel of wSDLPanel):
       self.mMouseData.state = StateNone
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     # Unified event processing
+    # Trying to implement roughly a 3d grid
+    # events: move, lmb up, lmb dn, rmb up, rmb dn, mmb up, mmb dn
+    # states: MouseState, PZState
+    # modifiers: ctrl, alt, shift.
+    # Cross product of these is 7 * 5 * 3 * 3! = 35*3*6 = 35*18 = 630 conditions
+    # Most of these are probably no-op
+
 
     # We don't deal with modifier keys directly
     if isModifierEvent(event):
@@ -237,6 +256,20 @@ wClass(wBlockPanel of wSDLPanel):
     if event.getEventType == wEvent_MouseMove:
       let hWnd = GetAncestor(self.handle, GA_ROOT)
       SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+
+    case self.mMouseData.pzState:
+    of PZStateNone:
+      case event.getEventType
+      of wEvent_RightDown:
+        echo "pzright down"
+      of wEvent_RightUp:
+        echo "pzright Up"
+      of wEvent_MouseMove:
+        echo "pzmove"
+      else:
+        discard
+    else:
+      discard
 
     case self.mMouseData.state
     of StateNone:
@@ -387,6 +420,13 @@ Rendering options for SDL and pixie
     self.sdlRenderer.setDrawColor(self.backgroundColor.toColor())
     self.sdlRenderer.clear()
     
+    # Draw grid
+    if self.mGrid.visible:
+      self.sdlRenderer.setDrawColor(colors.colLightSlateGray.toColor())
+      for x in countup(0, self.size.width, self.mGrid.xSpace):
+        self.sdlRenderer.drawLine(x, 0, x, self.size.height)
+      for y in countup(0, self.size.height, self.mGrid.ySpace):
+        self.sdlRenderer.drawLine(0, y, self.size.width, y)
 
     # Try a few methods to draw rectangles
     #timeOnce("test-once"):
@@ -413,6 +453,9 @@ Rendering options for SDL and pixie
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mDstRect = (10, 10, 780, 780)
+    self.mGrid.xSpace = 25
+    self.mGrid.ySpace = 25
+    self.mGrid.visible = true
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
