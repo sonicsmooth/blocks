@@ -32,9 +32,14 @@ type
     clickPos:    wPoint
     lastPos:     wPoint
     state:       MouseState
+    pzState:     PanZoomState
   ModelUnit = float
   ScreenUnit = float # should this be int to represent pixels?
   CacheKey = tuple[id:RectID, selected: bool]
+  Grid* = object
+    xSpace*: int
+    ySpace*: int
+    visible*: bool
   wBlockPanel* = ref object of wSDLPanel
     mMouseData: MouseData
     mSurfaceCache: Table[CacheKey, SurfacePtr]
@@ -46,6 +51,8 @@ type
     mSelectBox*: PRect
     mDstRect*: PRect
     mText*: string
+    mGrid*: Grid
+    mViewPort*: ViewPort
  
   Command = enum
     CmdEscape
@@ -255,11 +262,21 @@ wClass(wBlockPanel of wSDLPanel):
     of PZStateNone:
       case event.getEventType
       of wEvent_RightDown:
-        echo "pzright down"
+        self.mMouseData.clickPos = event.mousePos
+        self.mMouseData.lastPos  = event.mousePos
+        self.mMouseData.pzState = PZStateRMBDown
       of wEvent_RightUp:
-        echo "pzright Up"
+        self.mMouseData.pzState = PZStateNone
+      else:
+        discard
+    of PZStateRMBDown:
+      case event.getEventType
       of wEvent_MouseMove:
-        echo "pzmove"
+        let delta = event.mousePos - self.mMouseData.lastPos
+        self.mViewPort.pan = delta
+        echo self.mViewPort.pan
+      of wEvent_RightUp:
+        self.mMouseData.pzState = PZStateNone
       else:
         discard
     else:
@@ -386,37 +403,13 @@ Rendering options for SDL and pixie
       dstsurface.renderRect(rect, rect.selected)
 
 
-      # let dstrect = rect.PRect
-      # let pdr = cast[ptr sdl2.Rect](addr dstrect)
-      # #echo ""
-      # #dump dstrect
-      # #dump (cast[int] (addr dstrect))
-
-      # #let srcsurface = self.mSurfaceCache[(rect.id, rect.selected)]
-      # let srcsurface = self.rectToSurface(rect, false)
-      # let srcrect: sdl2.Rect = (0, 0, dstrect.w, dstrect.h)
-      # let psr = cast[ptr sdl2.Rect](addr srcrect)
-      
-      # blitSurface(srcsurface, nil, dstsurface, nil)
-      
-      # #dump (cast [int] (addr srcrect))
-      
-      # #echo "src: ", srcsurface.w, ", ", srcsurface.h
-      # #echo "srcrect: ", srcrect
-
-      # # Problems with rotation
-      # #discard lowerBlit(srcsurface, psr, dstsurface, pdr)
-      # #discard lowerBlit(srcsurface, nil, dstsurface, pdr)
-
-
-
   proc onPaint(self: wBlockPanel, event: wEvent) =
     self.sdlRenderer.setDrawColor(self.backgroundColor.toColor())
     self.sdlRenderer.clear()
     
     # Draw grid
     if self.mGrid.visible:
-      self.sdlRenderer.setDrawColor(colors.colLightSlateGray.toColor())
+      self.sdlRenderer.setDrawColor(colors.LightSlateGray.toColor())
       for x in countup(0, self.size.width, self.mGrid.xSpace):
         self.sdlRenderer.drawLine(x, 0, x, self.size.height)
       for y in countup(0, self.size.height, self.mGrid.ySpace):
