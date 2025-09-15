@@ -4,13 +4,13 @@ import world
 
 type
   ViewPort* = object
-    pan*: sdl2.Point
-    zoom*: float
+    pan*: sdl2.Point = (0, 0)
+    zoom*: float = 1.0
 
 # pixel = world * zoom + pan.  Flip zoom for y
-proc toPixelX*(vp: ViewPort, x: world.CoordT): cint =
+proc toPixelX*(vp: ViewPort, x: world.WCoordT): cint =
   (x.float * vp.zoom + vp.pan.x.float).round.cint
-proc toPixelY*(vp: ViewPort, y: world.CoordT): cint =
+proc toPixelY*(vp: ViewPort, y: world.WCoordT): cint =
   (y.float * (-vp.zoom) + vp.pan.y.float).round.cint
 proc toPixel*(vp: ViewPort, pt: world.Point): sdl2.Point =
   let
@@ -22,7 +22,8 @@ proc toPixel*(vp: ViewPort, pt: world.Point): sdl2.Point =
 
 
 # world = (pixel - pan) / zoom.  Flip zoom for y
-proc toWorld*(vp: ViewPort, pt: sdl2.Point): world.Point =
+# pixels are always integers
+proc toWorld*(vp: ViewPort, pt: tuple[x, y: SomeInteger]): world.Point =
   let
     newpt = pt.toWorldPoint
     newpan = vp.pan.toWorldPoint
@@ -30,17 +31,19 @@ proc toWorld*(vp: ViewPort, pt: sdl2.Point): world.Point =
     newyf = (newpt.y - newpan.y).float / (-vp.zoom)
   result = world.Point((newxf, newyf))
 
-proc toWorldX*(vp: ViewPort, x: cint): world.CoordT =
+proc toWorldX*(vp: ViewPort, x: SomeInteger): world.WCoordT =
   let
     newptX = x.toWorldCoord
     newpanX = vp.pan.x.toWorldCoord
     newxf = (newptX - newpanX).float / vp.zoom
-  result = world.CoordT(newxf)
+  result = world.WCoordT(newxf)
 
-proc toWorldY*(vp: ViewPort, y: cint): world.CoordT =
+proc toWorldY*(vp: ViewPort, y: SomeInteger): world.WCoordT =
   let
     newptY = y.toWorldCoord
     newpanY = vp.pan.y.toWorldCoord
     newyf = (newptY - newpanY).float / (-vp.zoom)
-  result = world.CoordT(newyf)
+  result = world.WCoordT(newyf)
 
+when isMainModule:
+  echo ViewPort()

@@ -1,14 +1,12 @@
 
 import std/[bitops, strformat]
 from std/random import rand
-import sugar
 from wnim/private/wtypes import wColor
-import wnim/private/consts/wColors
 from sdl2 import Color
 
 type
   ColorFormat = enum RGBA, ARGB, BGRA, ABGR
-  ColorU32* = distinct uint32
+  ColorU32* = distinct uint32 # previously distinct uint32
   SomeColor = Color|ColorU32|wColor|SomeInteger
 
 const
@@ -17,7 +15,6 @@ const
       ARGB
     else:
       RGBA
-
 
 when ColorFmt == ARGB:
   const
@@ -109,7 +106,7 @@ proc toColorU32*(color: SomeColor): ColorU32 {.inline.} =
 template toColor*(color: SomeColor, alpha: range[0..255]): Color =
   (r: color.red, g: color.green, b: color.blue, a: alpha.uint8).Color
 
-template toColor*(color: SomeColor  ): Color =
+template toColor*(color: SomeColor): Color =
   block:
     when typeof(color) is Color:
       color
@@ -304,6 +301,8 @@ const
 
 when isMainModule:
   import sugar
+  import wnim/private/consts/wColors
+
   echo "Main Module"
   let sdlRed  : sdl2.Color = (r: 255, g: 0,   b: 0,   a: 127)
   let sdlGreen: sdl2.Color = (r: 0,   g: 255, b: 0,   a: 127)
@@ -344,35 +343,38 @@ when isMainModule:
   assert wRed.toColor              == (r: 255'u8, g:   0'u8, b:   0'u8, a: 255'u8).Color
   assert wGreen.toColor            == (r:   0'u8, g: 255'u8, b:   0'u8, a: 255'u8).Color
   assert wBlue.toColor             == (r:   0'u8, g:   0'u8, b: 255'u8, a: 255'u8).Color
-  assert colRed.toColor            == (r: 255'u8, g:   0'u8, b:   0'u8, a: 255'u8).Color
-  assert colLime.toColor           == (r:   0'u8, g: 255'u8, b:   0'u8, a: 255'u8).Color
-  assert colBlue.toColor           == (r:   0'u8, g:   0'u8, b: 255'u8, a: 255'u8).Color
+  assert Red.toColor               == (r: 255'u8, g:   0'u8, b:   0'u8, a: 255'u8).Color
+  assert Lime.toColor              == (r:   0'u8, g: 255'u8, b:   0'u8, a: 255'u8).Color
+  assert Blue.toColor              == (r:   0'u8, g:   0'u8, b: 255'u8, a: 255'u8).Color
 
   when ColorFmt == RGBA:
-    assert sdlRed.toColorU32                   == 0xff00007f'u32
-    assert sdlGreen.toColorU32                 == 0x00ff007f'u32
-    assert sdlBlue.toColorU32                  == 0x0000ff7f'u32
-    assert wRed.toColorU32                     == 0xff0000ff'u32
-    assert wGreen.toColorU32                   == 0x00ff00ff'u32
-    assert wBlue.toColorU32                    == 0x0000ffff'u32
-    assert colRed.toColorU32                   == 0xff0000ff'u32
-    assert colLime.toColorU32                  == 0x00ff00ff'u32
-    assert colBlue.toColorU32                  == 0x0000ffff'u32
-    assert colRed                              == 0xff0000ff'u32
-    assert colLime                             == 0x00ff00ff'u32
-    assert colBlue                             == 0x0000ffff'u32
-    assert wRed.toColorU32(127)                == 0xff00007f'u32
-    assert wGreen.toColorU32(127)              == 0x00ff007f'u32
-    assert wBlue.toColorU32(127)               == 0x0000ff7f'u32
-    assert colRed.toColorU32(127)              == 0xff00007f'u32
-    assert colLime.toColorU32(127)             == 0x00ff007f'u32
-    assert colBlue.toColorU32(127)             == 0x0000ff7f'u32
-    assert colRed.toColorU32.div(2)            == 0x7f0000ff'u32
-    assert colLime.toColorU32.div(2)           == 0x007f00ff'u32
-    assert colBlue.toColorU32.div(2)           == 0x00007fff'u32
-    assert colRed.toColorU32(127).div(2)       == 0x7f00007f'u32
-    assert colLime.toColorU32(127).div(2)      == 0x007f007f'u32
-    assert colBlue.toColorU32(127).div(2)      == 0x00007f7f'u32
+    assert sdlRed.toColorU32                == 0xff00007f'u32
+    assert sdlGreen.toColorU32              == 0x00ff007f'u32
+    assert sdlBlue.toColorU32               == 0x0000ff7f'u32
+    assert wRed.toColorU32                  == 0xff0000ff'u32
+    assert wGreen.toColorU32                == 0x00ff00ff'u32
+    assert wBlue.toColorU32                 == 0x0000ffff'u32
+    assert Red.toColorU32                   == 0xff0000ff'u32
+    assert Lime.toColorU32                  == 0x00ff00ff'u32
+    assert Blue.toColorU32                  == 0x0000ffff'u32
+    assert Red                              == 0xff0000ff'u32
+    assert Lime                             == 0x00ff00ff'u32
+    assert Blue                             == 0x0000ffff'u32
+    assert wRed.toColorU32(127)             == 0xff00007f'u32
+    assert wGreen.toColorU32(127)           == 0x00ff007f'u32
+    assert wBlue.toColorU32(127)            == 0x0000ff7f'u32
+    assert Red.toColorU32(127)              == 0xff00007f'u32
+    assert Lime.toColorU32(127)             == 0x00ff007f'u32
+    assert Blue.toColorU32(127)             == 0x0000ff7f'u32
+    assert Red.toColorU32.colordiv(2)       == 0x7f0000ff'u32
+    assert Lime.toColorU32.colordiv(2)      == 0x007f00ff'u32
+    assert Blue.toColorU32.colordiv(2)      == 0x00007fff'u32
+    assert Red.colordiv(2)                  == 0x7f0000ff'u32
+    assert Lime.colordiv(2)                 == 0x007f00ff'u32
+    assert Blue.colordiv(2)                 == 0x00007fff'u32
+    assert Red.toColorU32(127).colordiv(2)  == 0x7f00007f'u32
+    assert Lime.toColorU32(127).colordiv(2) == 0x007f007f'u32
+    assert Blue.toColorU32(127).colordiv(2) == 0x00007f7f'u32
 
     assert 0xff0000.toColorU32                 == 0xff0000ff'u32 
     assert 0x00ff00.toColorU32                 == 0x00ff00ff'u32 
@@ -396,12 +398,12 @@ when isMainModule:
     assert wRed.toColorU32                     == 0xffff0000'u32
     assert wGreen.toColorU32                   == 0xff00ff00'u32
     assert wBlue.toColorU32                    == 0xff0000ff'u32
-    assert colRed.toColorU32                   == 0xffff0000'u32
-    assert colLime.toColorU32                  == 0xff00ff00'u32
-    assert colBlue.toColorU32                  == 0xff0000ff'u32
-    assert colRed                              == 0xffff0000'u32
-    assert colLime                             == 0xff00ff00'u32
-    assert colBlue                             == 0xff0000ff'u32
+    assert Red.toColorU32                   == 0xffff0000'u32
+    assert Lime.toColorU32                  == 0xff00ff00'u32
+    assert Blue.toColorU32                  == 0xff0000ff'u32
+    assert Red                              == 0xffff0000'u32
+    assert Lime                             == 0xff00ff00'u32
+    assert Blue                             == 0xff0000ff'u32
     assert wRed.toColorU32(127)                == 0x7fff0000'u32
     assert wGreen.toColorU32(127)              == 0x7f00ff00'u32
     assert wBlue.toColorU32(127)               == 0x7f0000ff'u32
