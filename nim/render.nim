@@ -1,6 +1,5 @@
-import std/[tables, math, sequtils, strformat, sugar, macros]
-import timeit
-from wNim/wTypes import wSize
+import std/[tables, math]
+#from wNim/wTypes import wSize
 import sdl2
 import sdl2/ttf
 import rects, utils

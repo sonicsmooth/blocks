@@ -1,4 +1,5 @@
 import std/math
+import sequtils
 
 iterator arange*[A:SomeNumber](slice: HSlice[A,A], step: A ): A =
   # Return range from slice with step A.
