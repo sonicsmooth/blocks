@@ -4,7 +4,7 @@ import wNim
 import winim except PRECT
 from wNim/private/wHelper import `-`
 import sdl2
-import rects, recttable, sdlframes, db, viewport
+import rects, recttable, sdlframes, db, viewport, grid
 import userMessages, utils
 import render
 import timeit
@@ -92,7 +92,6 @@ wClass(wBlockPanel of wSDLPanel):
     result = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
     result.renderRect(rect, sel)
-
   proc initSurfaceCache*(self: wBlockPanel) =
     # Creates all new surfaces
     for surface in self.mSurfaceCache.values:
@@ -101,7 +100,6 @@ wClass(wBlockPanel of wSDLPanel):
     for id, rect in gDb:
       for sel in [false, true]:
         self.mSurfaceCache[(id, sel)] = self.rectToSurface(rect, sel)
-
   proc initTextureCache*(self: wBlockPanel) =
     # Copies surfaces from surfaceCache to textures
     for texture in self.mTextureCache.values:
@@ -110,8 +108,6 @@ wClass(wBlockPanel of wSDLPanel):
     for key, surface in self.mSurfaceCache:
       self.mTextureCache[key] = 
         self.sdlRenderer.createTextureFromSurface(surface)
-
-
 
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
@@ -395,13 +391,11 @@ Rendering options for SDL and pixie
       let pt = rect.origin
       self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
 
-
   proc blitFromSurfaceCache(self: wBlockPanel) = 
     # Copy from surface cache to screen via surface ptr
     let dstsurface = self.sdlWindow.getSurface()
     for rect in gDb.values:
       dstsurface.renderRect(rect, rect.selected)
-
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
     self.sdlRenderer.setDrawColor(self.backgroundColor.toColor())
@@ -435,9 +429,6 @@ Rendering options for SDL and pixie
 
     # release(gLock)
   
-  proc ModelToScreen(mx, my: ModelUnit): sdl2.Point =
-    (0.cint, 0.cint)
-
   proc init*(self: wBlockPanel, parent: wWindow) = 
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
