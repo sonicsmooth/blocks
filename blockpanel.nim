@@ -33,13 +33,7 @@ type
     lastPos:     wPoint
     state:       MouseState
     pzState:     PanZoomState
-  ModelUnit = float
-  ScreenUnit = float # should this be int to represent pixels?
   CacheKey = tuple[id:RectID, selected: bool]
-  Grid* = object
-    xSpace*: int
-    ySpace*: int
-    visible*: bool
   wBlockPanel* = ref object of wSDLPanel
     mMouseData: MouseData
     mSurfaceCache: Table[CacheKey, SurfacePtr]
@@ -116,7 +110,7 @@ wClass(wBlockPanel of wSDLPanel):
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   proc updateRatio*(self: wBlockPanel) =
     if gDb.len == 0:
-      self.mText = $0.0
+      self.mText = "0.0" #$0.0
       self.mRatio = 0.0
     else:
       let bbox = gDb.boundingBox()
@@ -270,7 +264,8 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         let delta = event.mousePos - self.mMouseData.lastPos
         self.mViewPort.pan = delta
-        echo self.mViewPort.pan
+        #echo self.mViewPort.pan
+        self.refresh(false)
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
       else:
@@ -403,11 +398,7 @@ Rendering options for SDL and pixie
     
     # Draw grid
     if self.mGrid.visible:
-      self.sdlRenderer.setDrawColor(colors.LightSlateGray.toColor())
-      for x in countup(0, self.size.width, self.mGrid.xSpace):
-        self.sdlRenderer.drawLine(x, 0, x, self.size.height)
-      for y in countup(0, self.size.height, self.mGrid.ySpace):
-        self.sdlRenderer.drawLine(0, y, self.size.width, y)
+      self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
     #timeOnce("test-once"):
@@ -437,6 +428,8 @@ Rendering options for SDL and pixie
     self.mGrid.xSpace = 25
     self.mGrid.ySpace = 25
     self.mGrid.visible = true
+    self.mViewPort.pan = (0, 0)
+    self.mViewPort.zoom = 1
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
