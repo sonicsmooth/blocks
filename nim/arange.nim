@@ -1,5 +1,4 @@
 import std/math
-import sequtils
 
 iterator arange*[A:SomeNumber](slice: HSlice[A,A], step: A ): A =
   # Return range from slice with step A.
@@ -33,6 +32,7 @@ iterator arange*[A:SomeNumber](slice: HSlice[A,A], step: A ): A =
 
 
 when isMainModule:
+  import sequtils
   echo arange(1..5, 1).toSeq
   echo arange(1..5, 2).toSeq
   echo arange(1..5, 3).toSeq

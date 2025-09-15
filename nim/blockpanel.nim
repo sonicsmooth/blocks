@@ -4,7 +4,7 @@ import wNim
 import winim except PRECT
 from wNim/private/wHelper import `-`
 import sdl2
-import rects, recttable, sdlframes, db, viewport, grid
+import rects, recttable, sdlframes, db, viewport, grid, pointmath
 import userMessages, utils
 import render
 import timeit
@@ -262,9 +262,9 @@ wClass(wBlockPanel of wSDLPanel):
     of PZStateRMBDown:
       case event.getEventType
       of wEvent_MouseMove:
-        let delta = event.mousePos - self.mMouseData.lastPos
-        self.mViewPort.pan = delta
-        #echo self.mViewPort.pan
+        let delta: wPoint = event.mousePos - self.mMouseData.lastPos
+        self.mMouseData.lastPos = event.mousePos
+        self.mViewPort.pan += delta
         self.refresh(false)
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
@@ -310,7 +310,7 @@ wClass(wBlockPanel of wSDLPanel):
       let sel = gdb.selected()
       case event.getEventType
       of wEvent_MouseMove:
-        let delta = event.mousePos - self.mMouseData.lastPos
+        let delta: wPoint = event.mousePos - self.mMouseData.lastPos
         if event.ctrlDown and hitid in sel:
           self.moveRectsBy(sel, delta)
         else:
@@ -427,9 +427,7 @@ Rendering options for SDL and pixie
     self.mDstRect = (10, 10, 780, 780)
     self.mGrid.xSpace = 25
     self.mGrid.ySpace = 25
-    self.mGrid.visible = true
-    self.mViewPort.pan = (0, 0)
-    self.mViewPort.zoom = 1
+    self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
