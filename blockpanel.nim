@@ -1,5 +1,5 @@
 import std/[math, segfaults, sets, sugar, strformat, tables ]
-from std/sequtils import toSeq, foldl
+from std/sequtils import toSeq
 import wNim
 import winim except PRECT
 from wNim/private/wHelper import `-`
@@ -41,9 +41,9 @@ type
     mFirmSelection*: seq[RectID]
     mFillArea*: int
     mRatio*: float
-    mAllBbox*: PRect
-    mSelectBox*: PRect
-    mDstRect*: PRect
+    mAllBbox*: WRect
+    mSelectBox*: WRect
+    mDstRect*: WRect
     mText*: string
     mGrid*: Grid
     mViewPort*: ViewPort
@@ -82,7 +82,7 @@ wClass(wBlockPanel of wSDLPanel):
     self.refresh(false)
     UpdateWindow(self.mHwnd)
 
-  proc rectToSurface(self: wBlockPanel, rect: rects.Rect, sel: bool): SurfacePtr =
+  proc rectToSurface(self: wBlockPanel, rect: rects.DBRect, sel: bool): SurfacePtr =
     result = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
     result.renderRect(rect, sel)
@@ -113,8 +113,8 @@ wClass(wBlockPanel of wSDLPanel):
       self.mText = "0.0" #$0.0
       self.mRatio = 0.0
     else:
-      let bbox = gDb.boundingBox()
-      self.mAllBbox = bbox # implicitly calls converter in utils.nim
+      let bbox: WRect = gDb.boundingBox()
+      self.mAllBbox = bbox #bbox.toWRect
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
         echo ratio
@@ -338,7 +338,8 @@ wClass(wBlockPanel of wSDLPanel):
     of StateDraggingSelect:
       case event.getEventType
       of wEvent_MouseMove:
-        self.mSelectBox = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
+        let pbox = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
+        self.mSelectBox = pbox.toWRect(self.mViewPort)
         let newsel = gDb.rectInRects(self.mSelectBox)
         gDb.clearRectSelect()
         gDb.setRectSelect(self.mFirmSelection)
@@ -380,11 +381,22 @@ Rendering options for SDL and pixie
 
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
+    # for rect in gDb.values:
+    #   let texture = self.mTextureCache[(rect.id, rect.selected)]
+    #   let dstrect = rect.toRectNoRot
+    #   let pt = rect.origin
+    #   self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
+    let vp = self.mViewPort
     for rect in gDb.values:
       let texture = self.mTextureCache[(rect.id, rect.selected)]
-      let dstrect = rect.toRectNoRot
-      let pt = rect.origin
-      self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
+      let dstrectWorld = rect.toWRectNoRot
+      dump dstRectWorld
+      let dstPt1 = vp.toPixel((dstrectWorld.x, dstrectWorld.y))
+      let dstwh: wSize = ((dstrectWorld.x.float * vp.zoom).round.int, 
+                          (dstrectWorld.y.float * vp.zoom).round.int)
+      let dstrectPx: PRect = (dstPt1.x, dstPt1.y, dstwh.width, dstwh.height)
+      let pt = self.mViewPort.toPixel(rect.origin)
+      self.sdlRenderer.copyEx(texture, nil, addr dstrectPx, -rect.rot.toFloat, addr pt)
 
   proc blitFromSurfaceCache(self: wBlockPanel) = 
     # Copy from surface cache to screen via surface ptr
@@ -401,7 +413,6 @@ Rendering options for SDL and pixie
       self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
-    #timeOnce("test-once"):
     when true:
       self.blitFromTextureCache()
     elif false:
@@ -411,10 +422,10 @@ Rendering options for SDL and pixie
       discard
 
     # Draw various boxes and text, then done
-    if self.mDstRect.w > 0:
-      self.sdlRenderer.renderDestinationBox(self.mDstRect)
-    self.sdlRenderer.renderBoundingBox(self.mAllBbox)
-    self.sdlRenderer.renderSelectionBox(self.mSelectBox)
+    # if self.mDstRect.w > 0:
+    #   self.sdlRenderer.renderDestinationBox(self.mDstRect)
+    # self.sdlRenderer.renderBoundingBox(self.mAllBbox)
+    # self.sdlRenderer.renderSelectionBox(self.mSelectBox)
     self.sdlRenderer.renderText(self.sdlWindow, self.mText)
     self.sdlRenderer.present()
 

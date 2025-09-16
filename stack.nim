@@ -1,5 +1,5 @@
 import std/[algorithm, sugar, sequtils]
-from sdl2 import Rect
+from rects import DBRect
 import recttable, compact
 
 
@@ -19,10 +19,10 @@ For rect in rects:
 
 
 # Comparison procs
-proc vertCmp (r1, r2: rects.Rect): int = cmp(r1.size.h, r2.size.h)
-proc horizCmp(r1, r2: rects.Rect): int = cmp(r1.size.w, r2.size.w)
+proc vertCmp (r1, r2: DBRect): int = cmp(r1.size.h, r2.size.h)
+proc horizCmp(r1, r2: DBRect): int = cmp(r1.size.w, r2.size.w)
 
-proc stackCompactSub(table: var RectTable, rects: seq[RectID], dstRect: var PRect, direction: CompactDir) =
+proc stackCompactSub(table: var RectTable, rects: seq[RectID], dstRect: var WRect, direction: CompactDir) =
   # Compact given IDs into given rect
   var accRects: seq[RectID]
   for rect in table[rects]:
@@ -66,7 +66,7 @@ proc stackCompactSub(table: var RectTable, rects: seq[RectID], dstRect: var PRec
         accRects = @[rect.id]
 
 
-proc stackCompact*(table: var RectTable, dstRect: PRect, direction: CompactDir) =
+proc stackCompact*(table: var RectTable, dstRect: WRect, direction: CompactDir) =
   # Rotate, sort by vertical or horizontal size, and move to opposite corner
   # Then launch stacking routine.
   var dstRect = dstRect

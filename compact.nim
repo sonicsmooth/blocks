@@ -32,7 +32,7 @@ type
     pRectTable: ptr RectTable
     direction:  CompactDir
     window:     wWindow
-    dstRect:    PRect
+    dstRect:    WRect
 
 
 const
@@ -60,21 +60,21 @@ proc isYAscending*(direction: CompactDir): bool =
   (direction.primax == Y and direction.primAsc == Ascending) or
   (direction.secax  == Y and direction.secAsc  == Ascending)
 
-proc rectCmpX(r1, r2: rects.Rect): int = 
+proc rectCmpX(r1, r2: rects.DBRect): int = 
   # Sort first by x position, then by id
   # Can't inline because it's passed as arg to sort
-  result = cmp(r1.PRect.x, r2.PRect.x)
+  result = cmp(r1.WRect.x, r2.WRect.x)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
-proc rectCmpY(r1, r2: rects.Rect): int = 
+proc rectCmpY(r1, r2: rects.DBRect): int = 
   # Sort first by y position, then by id
-  result = cmp(r1.PRect.y, r2.PRect.y)
+  result = cmp(r1.WRect.y, r2.WRect.y)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
 # TODO: change to in-place sorting
-proc sortedRectsIds(rects: seq[rects.Rect], axis: Axis, sortOrder: SortOrder): seq[RectID] =
+proc sortedRectsIds(rects: seq[rects.DBRect], axis: Axis, sortOrder: SortOrder): seq[RectID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
   if axis == X:
@@ -103,11 +103,11 @@ proc makeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
   if axis == X:
     proc(node: Node): int =
       if node != RootNode:
-        result = rectTable[node].PRect.w
+        result = rectTable[node].WRect.w
   else: # axis == Y:
     proc(node: Node): int =
       if node != RootNode:
-        result = rectTable[node].PRect.h
+        result = rectTable[node].WRect.h
 
 proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
                   axis: Axis, sortOrder: SortOrder): Graph = 
@@ -127,17 +127,17 @@ proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
         result[(src, dst)] = if sortOrder == Descending: dst.getDim() else: src.getDim()
       src = dst
 
-proc posChooser(ax: MajMin): proc(rect: Rect): int =
+proc posChooser(ax: MajMin): proc(rect: DBRect): int =
   if ax == Major:
-    proc(rect: Rect): int =  rect.PRect.x
+    proc(rect: DBRect): int =  rect.WRect.x
   else:
-    proc(rect: Rect): int =  rect.PRect.y
+    proc(rect: DBRect): int =  rect.WRect.y
 
-proc sizeChooser(ax: MajMin): proc(rect: Rect): int =
+proc sizeChooser(ax: MajMin): proc(rect: DBRect): int =
   if ax == Major:
-    proc(rect: Rect): int = rect.PRect.w # converter with rotation
+    proc(rect: DBRect): int = rect.WRect.w # converter with rotation
   else:
-    proc(rect: Rect): int = rect.PRect.h
+    proc(rect: DBRect): int = rect.WRect.h
 
 proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
   let
@@ -211,7 +211,7 @@ proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: int): 
 proc compact*(rectTable: RectTable, 
               axis: Axis,
               sortOrder: SortOrder,
-              dstRect: PRect,
+              dstRect: WRect,
               ids: seq[RectID] = @[]) =
   # Top level compact function in one direction
   let graph = makeGraph(rectTable, axis, sortOrder, ids)
@@ -235,7 +235,7 @@ proc compact*(rectTable: RectTable,
     for id in nodes:
       rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originYUp
 
-proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: PRect) =
+proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
   # Run compact function until rectTable doesn't change
   var pos, lastPos: PosTable
   pos = rectTable.positions

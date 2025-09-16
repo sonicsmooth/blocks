@@ -5,7 +5,6 @@ from arange import arange
 import viewport
 import world
 import wNim/wTypes
-import sugar
 
 type
   Grid* = object
@@ -47,7 +46,7 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
   
   if grid.originVisible:
     var pt1, pt2: sdl2.Point
-    let extent = 30.0
+    let extent = 25.0
     let offset = 1.0
     let perps = [-offset, 0.0, offset]
     rp.setDrawColor(colors.DarkRed.toColor())

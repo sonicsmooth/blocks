@@ -28,7 +28,7 @@ export rects, tables
 # TODO: example rotate, move, id, position, assign field value, etc.
 
 type 
-  RectTable* = ref Table[RectID, rects.Rect]   # meant to be shared
+  RectTable* = ref Table[RectID, DBRect]   # meant to be shared
   PosRot = tuple[x: int, y: int, rot: Rotation]
   PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
@@ -37,7 +37,7 @@ const
 
 
 proc newRectTable*(): RectTable =
-  newTable[RectID, rects.Rect]()
+  newTable[RectID, rects.DBRect]()
 
 proc newPosTable*(): ref PosTable = 
   newTable[RectID, PosRot]()
@@ -46,11 +46,11 @@ proc `$`*(table: RectTable): string =
   for k,v in table:
     result.add(&"{k}: {v}\n")
 
-proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[rects.Rect] =
+proc `[]`*(table: RectTable, idxs: openArray[RectID]): seq[rects.DBRect] =
   for idx in idxs:
     result.add(table[idx])
 
-proc add*(table: RectTable, rect: rects.Rect) =
+proc add*(table: RectTable, rect: rects.DBRect) =
   table[rect.id] = rect
 
 
@@ -74,16 +74,16 @@ proc setPositions*[T:Table](table: var RectTable, pos: T) =
     rect.x = pos[id].x
     rect.y = pos[id].y
 
-proc ptInRects*(table: RectTable, pt: Point): seq[RectID] = 
-  # Returns seq of Rect IDs from table whose rect 
+proc ptInRects*(table: RectTable, pt: WPoint): seq[RectID] = 
+  # Returns seq of DBRect IDs from table whose rect 
   # surrounds or contacts pt
   # Optimization? -- return after first one
   for id, rect in table:
     if isPointInRect(pt, rect):
       result.add(id)
 
-proc rectInRects*(table: RectTable, rect: PRect|rects.Rect): seq[RectID] = 
-  # Return seq of Rect IDs from table that intersect rect
+proc rectInRects*(table: RectTable, rect: WRect|DBRect): seq[RectID] = 
+  # Return seq of DBRect IDs from table that intersect rect
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
   # Or rect is a bounding box and we're looking for where 
@@ -100,10 +100,12 @@ proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: b
   table.clear()
   when defined(testRects):
     echo "testRects"
-    table[1] = Rect(id: 1, x: 200, y: 200, w: 100, h: 200, origin: (30, 50), rot: R0,
-                    selected: false, penColor: 0x7f0000ff.toColorU32, brushColor: 0x7f00007f.toColorU32)
-    table[2] = Rect(id: 2, x: 600, y: 300, w: 100, h: 200, origin: (90,20), rot: R0,
-                    selected: false, penColor: 0xffff0000.toColorU32, brushColor: 0x7fff0000.toColorU32)
+    table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 100, origin: (0, 0), rot: R0,
+                    selected: false, penColor: Blue, brushColor: Blue.colordiv(2).toColorU32(127))
+    #table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 100, origin: (0, 0), rot: R0,
+    #                selected: false, penColor: 0x7f0000ff.toColorU32, brushColor: 0x7f00007f.toColorU32)
+    # table[2] = DBRect(id: 2, x: 100, y: 100, w: 100, h: 100, origin: (0,0), rot: R0,
+    #                 selected: false, penColor: 0xffff0000.toColorU32, brushColor: 0x7fff0000.toColorU32)
   else:
     for i in 1..qty:
       let rid = i.RectID
@@ -114,7 +116,7 @@ proc randomizeRectsPos*(table: RectTable, panelSize: Size) =
     rect.x = rand(panelSize.w - rect.w  - 1)
     rect.y = rand(panelSize.h - rect.h - 1)
 
-proc boundingBox*(rectTable: RectTable): PRect =
+proc boundingBox*(rectTable: RectTable): WRect =
   rectTable.values.toSeq.boundingBox()
 
 proc aspectRatio*(rtable: RectTable): float =
