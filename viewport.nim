@@ -44,16 +44,10 @@ proc toWorld*(vp: ViewPort, pt: tuple[x, y: SomeInteger]): world.Point =
     newyf = (newpt.y - newpan.y).float / (-vp.zoom)
   result = world.Point((newxf, newyf))
 proc toWorld*(pt: tuple[x, y: SomeInteger], vp: ViewPort): world.Point =
-  let
-    newpt = pt.toWorldPoint
-    newpan = vp.pan.toWorldPoint
-    newxf = (newpt.x - newpan.x).float /   vp.zoom
-    newyf = (newpt.y - newpan.y).float / (-vp.zoom)
-  dump newpt
-  dump vp.pan
-  dump newpan
-  dump newxf
-  dump newyf
+  let newpt = pt.toWorldPoint
+  let newpan = vp.pan.toWorldPoint
+  let newxf = (newpt.x - newpan.x).float /   vp.zoom
+  let newyf = (newpt.y - newpan.y).float / (-vp.zoom)
   result = world.Point((newxf, newyf))
 
 proc toWorldX*(vp: ViewPort, x: SomeInteger): world.WCoordT =

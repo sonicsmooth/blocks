@@ -1,5 +1,4 @@
-import std/[tables, math]
-#from wNim/wTypes import wSize
+import std/[tables, math, sugar]
 import sdl2
 import sdl2/ttf
 import rects, utils
@@ -23,47 +22,49 @@ proc font(size: int): FontPtr =
     fontCache[clampSize] = openFont("fonts/DejaVuSans.ttf", clampSize)
   fontCache[clampSize]
 
-proc font(rect: rects.DBRect): FontPtr =
+proc font(rect: DBRect): FontPtr =
   # Return properly sized font ptr from cache based on rect size
   let px = min(rect.size.w, rect.size.h)
   let scaledSize = (px.float * fontScale).round.int
   font(scaledSize)
 
 
-proc renderRect*(renderer: RendererPtr, rect: rects.DBRect, sel: bool) =
+proc renderRect*(renderer: RendererPtr, rect: DBRect, vp: ViewPort, sel: bool) =
   # Draw rectangle on SDL2 renderer
   # Draw main filled rectangle with outline
-  let (w, h) = (rect.w, rect.h)
-  let (ox, oy) = (rect.origin.x, rect.origin.y)
-  let sdlRect = rect(0, 0, w, h)
+  let 
+    z = vp.zoom
+    sdlRect: Rect = (x:0, y:0, w:rect.w * z, h:rect.h * z)
+    (w, h) = (sdlRect.w, sdlRect.h)
+    (ox, oy) = (rect.origin.x * z, rect.origin.y * (-z))
 
   # Main rectangle
-  renderer.setDrawColor(rect.brushColor.toColor())
+  renderer.setDrawColor(rect.brushColor.toColor)
   renderer.fillRect(addr sdlRect)
 
   # Outline
-  renderer.setDrawColor(rect.penColor.toColor())
+  renderer.setDrawColor(rect.penColor.toColor)
   renderer.drawRect(addr sdlRect)
 
   # Origin
-  renderer.setDrawColor(Black.toColor())
+  renderer.setDrawColor(Black.toColor)
   renderer.drawLine(ox-10, oy, ox+10, oy)
   renderer.drawLine(ox, oy-10, ox, oy+10)
 
   # Text to texture, then texture to renderer
   let selstr = $rect.id & (if sel: "*" else: "")
   let font = rect.font()
-  let textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor())
+  let textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
   let (tsw, tsh) = (textSurface.w, textSurface.h)
   let dstRect: PRect = ((w div 2) - (tsw div 2),
-                            (h div 2) - (tsh div 2), tsw, tsh)
+                        (h div 2) - (tsh div 2), tsw, tsh)
   let textTexture = renderer.createTextureFromSurface(textSurface)
   renderer.copy(textTexture, nil, addr dstRect)
   textTexture.destroy()
 
-proc renderRect*(surface: SurfacePtr, rect: rects.DBRect, sel: bool) =
+proc renderRect*(surface: SurfacePtr, rect: DBRect, vp: ViewPort, sel: bool) =
   let renderer = createSoftwareRenderer(surface)
-  renderer.renderRect(rect, sel)
+  renderer.renderRect(rect, vp, sel)
 
 proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   # Draws text at bottom right corner
