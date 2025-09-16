@@ -23,14 +23,14 @@ proc font(size: int): FontPtr =
     fontCache[clampSize] = openFont("fonts/DejaVuSans.ttf", clampSize)
   fontCache[clampSize]
 
-proc font(rect: rects.Rect): FontPtr =
+proc font(rect: rects.DBRect): FontPtr =
   # Return properly sized font ptr from cache based on rect size
   let px = min(rect.size.w, rect.size.h)
   let scaledSize = (px.float * fontScale).round.int
   font(scaledSize)
 
 
-proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
+proc renderRect*(renderer: RendererPtr, rect: rects.DBRect, sel: bool) =
   # Draw rectangle on SDL2 renderer
   # Draw main filled rectangle with outline
   let (w, h) = (rect.w, rect.h)
@@ -61,7 +61,7 @@ proc renderRect*(renderer: RendererPtr, rect: rects.Rect, sel: bool) =
   renderer.copy(textTexture, nil, addr dstRect)
   textTexture.destroy()
 
-proc renderRect*(surface: SurfacePtr, rect: rects.Rect, sel: bool) =
+proc renderRect*(surface: SurfacePtr, rect: rects.DBRect, sel: bool) =
   let renderer = createSoftwareRenderer(surface)
   renderer.renderRect(rect, sel)
 

@@ -54,7 +54,7 @@ type
     perturbFn:  PerturbFn[PosTable, ptr RectTable]
     compactFn:  proc() {.closure.}
     window:     wWindow
-    dstRect:    PRect
+    dstRect:    WRect
     comm:       AnnealComm
   RandomArg* = tuple
     pRectTable: ptr RectTable
@@ -183,7 +183,7 @@ proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
   result = proc(initState: S, pTable: pT, temp: float): seq[RectID] {.closure.} =
     calcSwap[S,pT](initState, pTable, temp)
 
-proc makeWiggler*[S,pT](dstRect: PRect): PerturbFn[S,pT] =
+proc makeWiggler*[S,pT](dstRect: WRect): PerturbFn[S,pT] =
   let moveScale = 0.5
   let maxAmt: wSize = ((dstRect.w.float * moveScale).int,
                        (dstRect.h.float * moveScale).int)
