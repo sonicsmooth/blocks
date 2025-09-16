@@ -12,35 +12,23 @@ type
 
 # Single dimension converting any type of number to a world coordinate
 converter toWorldCoord*[T:SomeNumber](a: T): WCoordT =
-  when T is WCoordT:
-    echo "here1: ", a
-    a
-  elif WCoordT is SomeInteger and T is SomeFloat:
-    echo "here2: ", a
+  when T is SomeInteger and WCoordT is SomeInteger:
+    a.WCoordT
+  elif T is SomeFloat and WCoordT is SomeInteger:
     a.round.WCoordT
   elif WCoordT is SomeFloat:
-    echo "here3: ", a
     a.WCoordT
+  else:
+    echo "Weird condition"
+    echo getStackTrace()
 
 # Two dimensions converting any type of tuple with x, y to a world point
 converter toWorldPoint*(pt: tuple[x, y: SomeNumber]): Point =
   (pt[0].toWorldCoord, pt[1].toWorldCoord) 
-  # when T is WCoordT:
-  #   result = pt
-  # elif WCoordT is SomeInteger and T is SomeFloat:
-  #   result = (pt[0].round.WCoordT, pt[1].round.WCoordT)
-  # elif WCoordT is SomeFloat:
-  #   result = (pt[0].WCoordT, pt[1].WCoordT)
   
 # Two dimensions converting any type of tuple with width, height to a world size
 converter toWorldSize*(pt: tuple[width, height: SomeNumber]): Point =
   (pt[0].toWorldCoord, pt[1].toWorldCoord) 
-  # when T is WCoordT:
-  #   result = pt
-  # elif WCoordT is SomeInteger and T is SomeFloat:
-  #   result = (pt[0].round.WCoordT, pt[1].round.WCoordT)
-  # elif WCoordT is SomeFloat:
-  #   result = (pt[0].WCoordT, pt[1].WCoordT)
   
 
 

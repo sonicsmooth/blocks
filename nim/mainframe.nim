@@ -27,10 +27,6 @@ wClass(wMainFrame of wFrame):
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
     let mousePxPos = lParamTuple[int](event)
     let mouseWPos = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewPort)
-    dump self.mMainPanel.mBlockPanel.mViewPort
-    dump mousePxPos
-    dump mouseWPos
-    #self.mStatusBar.setStatusText($mousePxPos, index=2)
     self.mStatusBar.setStatusText($mouseWPos, index=2)
 
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =

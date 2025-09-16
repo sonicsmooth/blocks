@@ -29,7 +29,7 @@ export rects, tables
 
 type 
   RectTable* = ref Table[RectID, DBRect]   # meant to be shared
-  PosRot = tuple[x: int, y: int, rot: Rotation]
+  PosRot = tuple[x: WCoordT, y: WCoordT, rot: Rotation]
   PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
 const
@@ -122,7 +122,7 @@ proc boundingBox*(rectTable: RectTable): WRect =
 proc aspectRatio*(rtable: RectTable): float =
   rtable.values.toSeq.aspectRatio()
 
-proc fillArea*(rtable: RectTable): int = 
+proc fillArea*(rtable: RectTable): WCoordT = 
   # Just the rectangle area
   rtable.values.toSeq.fillArea()
 

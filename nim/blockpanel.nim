@@ -84,10 +84,11 @@ wClass(wBlockPanel of wSDLPanel):
     self.refresh(false)
     UpdateWindow(self.mHwnd)
 
-  proc rectToSurface(self: wBlockPanel, rect: rects.DBRect, sel: bool): SurfacePtr =
+  proc rectToSurface(self: wBlockPanel, rect: DBRect, sel: bool): SurfacePtr =
     result = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
-    result.renderRect(rect, sel)
+    result.renderRect(rect, self.mViewPort, sel)
+  
   proc initSurfaceCache*(self: wBlockPanel) =
     # Creates all new surfaces
     for surface in self.mSurfaceCache.values:
@@ -96,6 +97,7 @@ wClass(wBlockPanel of wSDLPanel):
     for id, rect in gDb:
       for sel in [false, true]:
         self.mSurfaceCache[(id, sel)] = self.rectToSurface(rect, sel)
+  
   proc initTextureCache*(self: wBlockPanel) =
     # Copies surfaces from surfaceCache to textures
     for texture in self.mTextureCache.values:
@@ -251,6 +253,8 @@ wClass(wBlockPanel of wSDLPanel):
     if event.getEventType == wEvent_MouseMove:
       let hWnd = GetAncestor(self.handle, GA_ROOT)
       # mouse value is in mLparam
+      let mPxPos = lParamTuple[int](event)
+      let mWPos = mPxPos.toWorld(self.mViewPort)
       SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
 
     let vp = self.mViewPort
@@ -353,9 +357,9 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         let pbox: PRect = normalizeRectCoords(self.mMouseData.clickPxPos, event.mousePos)
-        dump pbox
+        #dump pbox
         self.mSelectBox = pbox.toWRect(vp)
-        dump self.mSelectBox
+        #dump self.mSelectBox
         let newsel = gDb.rectInRects(self.mSelectBox)
         gDb.clearRectSelect()
         gDb.setRectSelect(self.mFirmSelection)
@@ -406,15 +410,15 @@ Rendering options for SDL and pixie
     for rect in gDb.values:
       let texture = self.mTextureCache[(rect.id, rect.selected)]
       let dstrectWorld = rect.toWRectNoRot
-      dump dstRectWorld
+      #dump dstRectWorld
       let dstwh: wSize = ((dstrectWorld.w.float * vp.zoom).round.int, 
                           (dstrectWorld.h.float * vp.zoom).round.int)
-      dump dstwh
+      #dump dstwh
       var dstPt1 = vp.toPixel((dstrectWorld.x, dstrectWorld.y))
       dstPt1.y -= dstwh.height
-      dump dstPt1
+      #dump dstPt1
       let dstrectPx: PRect = (dstPt1.x, dstPt1.y, dstwh.width, dstwh.height)
-      dump dstrectPx
+      #dump dstrectPx
       let pt = self.mViewPort.toPixel(rect.origin)
       self.sdlRenderer.copyEx(texture, nil, addr dstrectPx, -rect.rot.toFloat, addr pt)
 
@@ -422,7 +426,7 @@ Rendering options for SDL and pixie
     # Copy from surface cache to screen via surface ptr
     let dstsurface = self.sdlWindow.getSurface()
     for rect in gDb.values:
-      dstsurface.renderRect(rect, rect.selected)
+      dstsurface.renderRect(rect, self.mViewPort, rect.selected)
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
     self.sdlRenderer.setDrawColor(self.backgroundColor.toColor())
@@ -458,6 +462,8 @@ Rendering options for SDL and pixie
     self.mDstRect = (10, 10, 780, 780)
     self.mGrid.xSpace = 25
     self.mGrid.ySpace = 25
+    self.mGrid.visible = true
+    self.mGrid.originVisible = true
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
