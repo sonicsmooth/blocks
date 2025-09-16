@@ -140,7 +140,7 @@ proc aspectRatio*(rect: SomeWRect): float
 proc aspectRatio*[T:SomeWRect](rects: openArray[T]): float
 proc fillArea*[T:SomeWRect](rects: openArray[T]): WCoordT
 proc fillRatio*[T:SomeWRect](rects: openArray[T]): float
-proc normalizeRectCoords*(startPos, endPos: WPoint): PRect
+proc normalizeRectCoords*(startPos, endPos: PPoint): PRect
 proc toFloat*(rot: Rotation): float {.inline.}
 proc inc*(r: var Rotation) {.inline.}
 proc dec*(r: var Rotation) {.inline.}
@@ -471,10 +471,10 @@ proc fillRatio*[T:SomeWRect](rects: openArray[T]): float =
   # for overlap, so value can be > 1.0.
   rects.fillArea.float / rects.boundingBox.area.float
 
-proc normalizeRectCoords*(startPos, endPos: WPoint): PRect =
+proc normalizeRectCoords*(startPos, endPos: PPoint): PRect =
   # make sure that rect.x,y is always lower left
-  let (sx,sy) = startPos
-  let (ex,ey) = endPos
+  let (sx, sy) = startPos
+  let (ex, ey) = endPos
   (x: min(sx, ex),
    y: min(sy, ey),
    w: abs(ex - sx),
@@ -779,22 +779,22 @@ proc testRectsRects() =
   assert r2.originYUp   == 40
   assert r3.originYUp   == 50
   assert r4.originYUp   == 10
-  assert r1.upperLeft  == (  0,  10)
-  assert r1.upperRight == ( 50,  10)
-  assert r1.lowerLeft  == (  0,  70)
-  assert r1.lowerRight == ( 50,  70)
-  assert r2.upperLeft  == (  0, -20)
-  assert r2.upperRight == ( 60, -20)
-  assert r2.lowerLeft  == (  0,  30)
-  assert r2.lowerRight == ( 60,  30)
-  assert r3.upperLeft  == (-30, -30)
-  assert r3.upperRight == ( 20, -30)
-  assert r3.lowerLeft  == (-30,  30)
-  assert r3.lowerRight == ( 20,  30)
-  assert r4.upperLeft  == (-40,  10)
-  assert r4.upperRight == ( 20,  10)
-  assert r4.lowerLeft  == (-40,  60)
-  assert r4.lowerRight == ( 20,  60)
+  assert r1.lowerLeft  == (  0,  10)
+  assert r1.lowerRight == ( 50,  10)
+  assert r1.upperLeft  == (  0,  70)
+  assert r1.upperRight == ( 50,  70)
+  assert r2.lowerLeft  == (  0, -20)
+  assert r2.lowerRight == ( 60, -20)
+  assert r2.upperLeft  == (  0,  30)
+  assert r2.upperRight == ( 60,  30)
+  assert r3.lowerLeft  == (-30, -30)
+  assert r3.lowerRight == ( 20, -30)
+  assert r3.upperLeft  == (-30,  30)
+  assert r3.upperRight == ( 20,  30)
+  assert r4.lowerLeft  == (-40,  10)
+  assert r4.lowerRight == ( 20,  10)
+  assert r4.upperLeft  == (-40,  60)
+  assert r4.upperRight == ( 20,  60)
   assert r1.TopEdge    ==    TopEdge(pt0: (  0,  10), pt1: ( 50,  10))
   assert r1.BottomEdge == BottomEdge(pt0: (  0,  70), pt1: ( 50,  70))
   assert r1.LeftEdge   ==   LeftEdge(pt0: (  0,  10), pt1: (  0,  70))

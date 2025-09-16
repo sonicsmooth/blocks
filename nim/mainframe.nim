@@ -1,6 +1,7 @@
 import std/[strformat, sugar]
 import wNim
 import mainpanel, userMessages, utils
+import viewport
 from db import QTY
 export mainpanel
 
@@ -24,8 +25,13 @@ wClass(wMainFrame of wFrame):
     self.mStatusBar.setStatusText($sz, index=1)
 
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
-    let mousePos: wPoint = lParamTuple[int](event)
-    self.mStatusBar.setStatusText($mousePos, index=2)
+    let mousePxPos = lParamTuple[int](event)
+    let mouseWPos = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewPort)
+    dump self.mMainPanel.mBlockPanel.mViewPort
+    dump mousePxPos
+    dump mouseWPos
+    #self.mStatusBar.setStatusText($mousePxPos, index=2)
+    self.mStatusBar.setStatusText($mouseWPos, index=2)
 
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
