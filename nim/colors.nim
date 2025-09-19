@@ -6,8 +6,10 @@ from sdl2 import Color
 
 type
   ColorFormat = enum RGBA, ARGB, BGRA, ABGR
-  ColorU32* = distinct uint32 # previously distinct uint32
-  SomeColor = Color|ColorU32|wColor|SomeInteger
+  ColorU32* = distinct uint32 # Follows one of the above formats
+  SomeRGBTuple[T:SomeInteger] = tuple[r, g, b: T]
+  SomeRGBATuple[T:SomeInteger] = tuple[r, g, b, a: T]
+  SomeColor = uint64|int64|uint32|int32|ColorU32|SomeRGBTuple|SomeRGBATuple
 
 const
   ColorFmt = 
@@ -52,11 +54,23 @@ proc `$`*(color: ColorU32): string =
 proc `==`*(c1: ColorU32|uint32, c2: ColorU32|uint32): bool =
   c1.uint32 == c2.uint32
 
+# # Color tuple uses named fields
+# template red*  (color: Color): uint8 = color.r
+# template green*(color: Color): uint8 = color.g
+# template blue* (color: Color): uint8 = color.b
+# template alpha*(color: Color): uint8 = color.a
+
 # Color tuple uses named fields
-template red*  (color: Color): uint8 = color.r
-template green*(color: Color): uint8 = color.g
-template blue* (color: Color): uint8 = color.b
-template alpha*(color: Color): uint8 = color.a
+template red*  (color: SomeRGBTuple): uint8 = color.r.uint8
+template green*(color: SomeRGBTuple): uint8 = color.g.uint8
+template blue* (color: SomeRGBTuple): uint8 = color.b.uint8
+template alpha*(color: SomeRGBTuple): uint8 = 0xff'u8
+
+# Color tuple uses named fields
+template red*  (color: SomeRGBATuple): uint8 = color.r.uint8
+template green*(color: SomeRGBATuple): uint8 = color.g.uint8
+template blue* (color: SomeRGBATuple): uint8 = color.b.uint8
+template alpha*(color: SomeRGBATuple): uint8 = color.a.uint8
 
 # ColorU32 is one of RGBA, ARGB, BGRA, ABGR
 template red*  (color: ColorU32): uint8 = color.uint32.shr(RSH).uint8
@@ -71,6 +85,7 @@ template blue* (color: SomeInteger): uint8 = color.uint32.shr( 0).uint8
 template alpha*(color: SomeInteger): uint8 = 0xff'u8
 
 # wColor is known to be BGR only; use opaque alpha
+# wColor is not distinguishable from int32
 template red*  (color: wColor): uint8 = color.shr( 0).uint8
 template green*(color: wColor): uint8 = color.shr( 8).uint8
 template blue* (color: wColor): uint8 = color.shr(16).uint8
