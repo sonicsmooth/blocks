@@ -31,38 +31,43 @@ proc stackCompactSub(table: var RectTable, rects: seq[RectID], dstRect: var WRec
     compact(table, direction.secax,  direction.secAsc,  dstRect, accRects)
     let bbox = boundingBox(table[accRects])
 
+    # Left  arrow = stack from left to right, which is x ascending
+    # Right arrow = stack from right to left, which is x descending
+    # Up    arrow = stack from top to bottom, which is y descending
+    # Down  arrow = stack from bottom to top, which is y ascending
+
     case compoundDir(direction):
-    of UpLeft:
-      if bbox.RightEdge.x > dstRect.RightEdge.x:
-        dstRect.y = bbox.BottomEdge.y
-        accRects = @[rect.id]
-    of UpRight:
-      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
-        dstRect.y = bbox.BottomEdge.y
-        accRects = @[rect.id]
-    of DownLeft:
-      if bbox.RightEdge.x > dstRect.RightEdge.x:
-        dstRect.y -= bbox.h
-        accRects = @[rect.id]
-    of DownRight:
-      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
-        dstRect.y -= bbox.h
-        accRects = @[rect.id]
     of LeftUp:
-      if bbox.BottomEdge.y > dstRect.BottomEdge.y:
+      if bbox.BottomEdge.y < dstRect.BottomEdge.y:
         dstRect.x = bbox.RightEdge.x
         accRects = @[rect.id]
     of LeftDown:
-      if bbox.TopEdge.y < dstRect.TopEdge.y:
+      if bbox.TopEdge.y > dstRect.TopEdge.y:
         dstRect.x = bbox.RightEdge.x
         accRects = @[rect.id]
     of RightUp:
-      if bbox.BottomEdge.y > dstRect.BottomEdge.y:
+      if bbox.BottomEdge.y < dstRect.BottomEdge.y:
         dstRect.x -= bbox.w
         accRects = @[rect.id]
     of RightDown:
-      if bbox.TopEdge.y < dstRect.TopEdge.y:
+      if bbox.TopEdge.y > dstRect.TopEdge.y:
         dstRect.x -= bbox.w
+        accRects = @[rect.id]
+    of UpLeft:
+      if bbox.RightEdge.x > dstRect.RightEdge.x:
+        dstRect.y -= bbox.h
+        accRects = @[rect.id]
+    of UpRight:
+      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
+        dstRect.y -= bbox.h
+        accRects = @[rect.id]
+    of DownLeft:
+      if bbox.RightEdge.x > dstRect.RightEdge.x:
+        dstRect.y = bbox.TopEdge.y
+        accRects = @[rect.id]
+    of DownRight:
+      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
+        dstRect.y = bbox.TopEdge.y
         accRects = @[rect.id]
 
 
@@ -82,11 +87,14 @@ proc stackCompact*(table: var RectTable, dstRect: WRect, direction: CompactDir) 
     rects.sort(vertCmp, Descending)
 
   for rect in rects:
-    rect.x = if isXAscending(direction): int32.high - WRANGE.b
-             else:                       int32.low
-    rect.y = if isYAscending(direction): int32.high - HRANGE.b
-             else:                       int32.low
-
+    # Move everything to extreme position
+    # For horiz, ascending is stack left to right (min to max)
+    # therefore move everything right so there is some space
+    # to move left into.  Back off a bit by the maximum amount a block might be
+    rect.x = if isXAscending(direction): WCoordT.high - rect.greatestDim  # stack from left to right
+             else:                       WCoordT.low  + rect.greatestDim  # stack from right to left
+    rect.y = if isYAscending(direction): WCoordT.high - rect.greatestDim  # stack from bottom to top
+             else:                       WCoordT.low  + rect.greatestDim  # stack from top to bottom
   stackCompactSub(table, rects.ids, dstRect, direction)
 
 

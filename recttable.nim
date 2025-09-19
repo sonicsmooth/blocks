@@ -96,7 +96,7 @@ proc rectInRects*(table: RectTable, rect: WRect|DBRect): seq[RectID] =
 proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] = 
   table.rectInRects(table[rectId])
 
-proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: bool=false) = 
+proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
     table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 200, origin: (10, 20), rot: R0,
@@ -110,12 +110,12 @@ proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: b
   else:
     for i in 1..qty:
       let rid = i.RectID
-      table[rid] = randRect(rid, panelSize, log)
+      table[rid] = randRect(rid, region, log)
 
-proc randomizeRectsPos*(table: RectTable, panelSize: Size) =
+proc randomizeRectsPos*(table: RectTable, region: WRect) =
   for id, rect in table:
-    rect.x = rand(panelSize.w - rect.w  - 1)
-    rect.y = rand(panelSize.h - rect.h - 1)
+    rect.x = region.x + rand(region.w - 1)
+    rect.y = region.y + rand(region.h - 1)
 
 proc boundingBox*(rectTable: RectTable): WRect =
   rectTable.values.toSeq.boundingBox()

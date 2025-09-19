@@ -41,7 +41,8 @@ type
   RectID* = uint
   Rotation* = enum R0, R90, R180, R270
   Orientation* = enum Vertical, Horizontal
-  Size* = tuple[w: WCoordT, h: WCoordT]
+  WSize* = tuple[w, h: WCoordT]
+  PSize* = tuple[w, h: cint]
   PPoint* = sdl2.Point   # location on screen
   PRect* = sdl2.Rect     # screen/pixel rectangle
   WRect* = tuple[x, y, w, h: WCoordT] # world rectangle
@@ -84,8 +85,10 @@ proc `$`*(rect: PRect): string
 proc `==`*(a, b: DBRect): bool
 proc pos*(rect: SomeWRect): WPoint {.inline.}
 proc pos*(rect: PRect): PPoint {.inline.}
-proc size*(rect: SomeWRect): Size {.inline.}
-proc size*(rect: PRect): Size {.inline.}
+proc size*(rect: SomeWRect): WSize {.inline.}
+proc size*(rect: PRect): PSize {.inline.}
+proc greatestDim*(rect: PRect): cint {.inline.}
+proc greatestDim*(rect: SomeWRect): WCoordT {.inline.}
 proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.}
 converter toWRect*(rect: DBRect): WRect {.inline.}
 proc toWRect*(rect: PRect, vp: ViewPort): WRect {.inline.}
@@ -124,7 +127,7 @@ proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.}
 proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.}
 proc isRectInRect*(rect1, rect2: WRect): bool 
 proc isRectOverRect*(rect1, rect2: WRect): bool
-proc randRect*(id: RectID, panelSize: Size, log: bool=false): DBRect 
+proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect 
 proc moveRectBy*(rect: SomeWRect, delta: WPoint)
 proc moveRectTo*(rect: SomeWRect, pos: WPoint) 
 proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.}
@@ -141,7 +144,7 @@ proc inc*(r: var Rotation) {.inline.}
 proc dec*(r: var Rotation) {.inline.}
 proc `+`*(r1, r2:Rotation): Rotation {.inline.}
 proc `-`*(r1, r2:Rotation): Rotation {.inline.}
-converter toSize*(size: wSize): Size
+#converter toSize*(size: wSize): Size
 converter toPPoint*(pt: wPoint): PPoint {.inline.}
 
 
@@ -171,7 +174,7 @@ proc pos*(rect: SomeWRect): WPoint {.inline.} =
 proc pos*(rect: PRect): PPoint {.inline.} =
   # Returns PRect's upper left corner 
   (rect.x, rect.y)
-proc size*(rect: SomeWRect): Size {.inline.} =
+proc size*(rect: SomeWRect): WSize {.inline.} =
   # Returns width and height, accounting for rotation if DBRect
   when SomeWRect is rects.DBRect:
     if rect.rot == R0 or rect.rot == R180:
@@ -180,9 +183,15 @@ proc size*(rect: SomeWRect): Size {.inline.} =
       (rect.h, rect.w)
   elif typeof(rect) is WRect:
     (rect.w, rect.h)
-proc size*(rect: PRect): Size {.inline.} =
+proc size*(rect: PRect): PSize {.inline.} =
   # Returns width and height of screen rectangle
-  (rect.w.cint, rect.h.cint)
+  (rect.w, rect.h)
+
+proc greatestDim*(rect: PRect): cint {.inline.} =
+  max(rect.w, rect.h)
+
+proc greatestDim*(rect: SomeWRect): WCoordT {.inline.} =
+  max(rect.w, rect.h)
 
 proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.} =
   # Conversion from DBRect to WRect.
@@ -392,11 +401,12 @@ proc `/`[T:SomeInteger](a, b: T): T =
   a div b
 proc `/`[T:SomeFloat](a, b: T): T = a / b
 
-proc randRect*(id: RectID, panelSize: Size, log: bool=false): DBRect = 
+proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect = 
+  # Creat a DBRect with random position, size, color
   var rw: WCoordT
   var rh: WCoordT
-  let rectPosX:  WCoordT = rand(panelSize.w  - rw  - 1)
-  let rectPosY:  WCoordT = rand(panelSize.h - rh - 1)
+  let rectPosX: WCoordT = region.x + rand(region.w - 1)
+  let rectPosY: WCoordT = region.y + rand(region.h - 1)
 
   if log: # Make log distribution
     let wcdf = makecdf(WRANGE.len, 100.0, 0.1) # TODO: memoize this
@@ -564,7 +574,7 @@ proc `-`*(r1, r2:Rotation): Rotation =
     of R180: R90
     of R270: R0
 
-converter toSize*(size: wSize): Size =
+converter toSize*(size: wSize): PSize =
   (size.width, size.height)
 converter toPPoint*(pt: wPoint): PPoint {.inline.} =
   (pt.x, pt.y)

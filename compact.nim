@@ -42,15 +42,19 @@ var
   gCompactThread*: Thread[CompactArg]
 
 proc compoundDir*(cd: CompactDir): CompoundDir =
+  # Left  arrow = stack from left to right, which is x ascending
+  # Right arrow = stack from right to left, which is x descending
+  # Up    arrow = stack from top to bottom, which is y descending
+  # Down  arrow = stack from bottom to top, which is y ascending
   let compound = (cd.primax == X, cd.primAsc, cd.secAsc)
-  if   compound == (false, Ascending,  Ascending ): UpLeft
-  elif compound == (false, Ascending,  Descending): UpRight
-  elif compound == (false, Descending, Ascending ): DownLeft
-  elif compound == (false, Descending, Descending): DownRight
-  elif compound == (true,  Ascending,  Ascending ): LeftUp
-  elif compound == (true,  Ascending,  Descending): LeftDown
-  elif compound == (true,  Descending, Ascending ): RightUp
-  else: RightDown
+  if   compound == (false, Ascending,  Ascending ): DownLeft
+  elif compound == (false, Ascending,  Descending): DownRight
+  elif compound == (false, Descending, Ascending ): UpLeft
+  elif compound == (false, Descending, Descending): UpRight
+  elif compound == (true,  Ascending,  Ascending ): LeftDown
+  elif compound == (true,  Ascending,  Descending): LeftUp
+  elif compound == (true,  Descending, Ascending ): RightDown
+  else: RightUp
   
 proc isXAscending*(direction: CompactDir): bool =
   (direction.primax == X and direction.primAsc == Ascending) or
