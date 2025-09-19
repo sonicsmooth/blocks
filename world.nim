@@ -1,4 +1,5 @@
 import std/math
+from sdl2 import Point
 
 # Type conversion to world coordinate types.
 # This is not pan/zoom.  See viewport for pan/zoom.
@@ -9,6 +10,8 @@ import std/math
 type
   WCoordT* = int # This may eventually be float or some very large integer
   WPoint* = tuple[x, y: WCoordT]
+  PCoordT* = cint
+  PPoint* = sdl2.Point
 
 # Single dimension converting any type of number to a world coordinate
 converter toWorldCoord*[T:SomeNumber](a: T): WCoordT =
@@ -19,8 +22,16 @@ converter toWorldCoord*[T:SomeNumber](a: T): WCoordT =
   elif WCoordT is SomeFloat:
     a.WCoordT
   else:
+    # Todo: raise exception
     echo "Weird condition"
     echo getStackTrace()
+
+converter toPixelCoord*[T:SomeNumber](a: T): PCoordT =
+  # PCoordT is always an integer
+  when T is SomeInteger:
+    a.PCoordT
+  elif T is SomeFloat:
+    a.round.PCoordT
 
 # Two dimensions converting any type of tuple with x, y to a world point
 converter toWorldPoint*(pt: tuple[x, y: SomeNumber]): WPoint =
@@ -30,6 +41,9 @@ converter toWorldPoint*(pt: tuple[x, y: SomeNumber]): WPoint =
 converter toWorldSize*(pt: tuple[width, height: SomeNumber]): WPoint =
   (pt[0].toWorldCoord, pt[1].toWorldCoord) 
   
+converter toPPoint*(pt: tuple[x, y: SomeNumber]): PPoint =
+  (pt[0].toPixelCoord, pt[1].toPixelCoord)
+
 
 
 when isMainModule:

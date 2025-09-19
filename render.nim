@@ -55,7 +55,7 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
   # Todo: There is something to be said here about model space
   # todo: to world space to pixel space
   let
-    opx: sdl2.Point = (rect.origin.x * vp.zoom, (-rect.origin.y + rect.h) * vp.zoom)
+    opx = (rect.origin.x * vp.zoom, (-rect.origin.y + rect.h) * vp.zoom).toPPoint
     extent = 10
   rp.setDrawColor(Black.toColor)
   rp.drawLine(opx.x - extent, opx.y, opx.x + extent, opx.y)

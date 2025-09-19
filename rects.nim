@@ -43,7 +43,7 @@ type
   Orientation* = enum Vertical, Horizontal
   WSize* = tuple[w, h: WCoordT]
   PSize* = tuple[w, h: cint]
-  PPoint* = sdl2.Point   # location on screen
+  #PPoint* = sdl2.Point   # location on screen
   PRect* = sdl2.Rect     # screen/pixel rectangle
   WRect* = tuple[x, y, w, h: WCoordT] # world rectangle
   DBRect* = ref object # database object to be replaced later by Component, etc.
@@ -75,8 +75,6 @@ const
   HRANGE* = (5*scale) .. (25*scale)
   # WRNGby2 = WRANGE.a + (WRANGE.b - WRANGE.a) div 2
   # HRNGby2 = HRANGE.a + (HRANGE.b - HRANGE.a) div 2
-
-
 
 
 # Declarations
@@ -144,7 +142,6 @@ proc inc*(r: var Rotation) {.inline.}
 proc dec*(r: var Rotation) {.inline.}
 proc `+`*(r1, r2:Rotation): Rotation {.inline.}
 proc `-`*(r1, r2:Rotation): Rotation {.inline.}
-#converter toSize*(size: wSize): Size
 converter toPPoint*(pt: wPoint): PPoint {.inline.}
 
 
@@ -787,11 +784,13 @@ proc testRectsRects() =
   assert r1.pos  == (10, 20)
   assert r2.pos  == (10, 20)
   assert r3.pos  == (10, 20)
-  assert r4.pos  == (10, 20)
-  assert r1.size == (50, 60)
-  assert r2.size == (60, 50)
-  assert r3.size == (50, 60)
-  assert r4.size == (60, 50)
+  assert r4.pos  == (10.WCoordT, 20.WCoordT)
+  # Not sure why above doesn't require .WCoordT but below does,
+  # as both pos and size return tuple[WCoordT, WCoordT]
+  assert r1.size == (50.WCoordT, 60.WCoordT)
+  assert r2.size == (60.WCoordT, 50.WCoordT)
+  assert r3.size == (50.WCoordT, 60.WCoordT)
+  assert r4.size == (60.WCoordT, 50.WCoordT)
   # TODO: add test for int.high convert to cint.high, etc.
   # assert r1.toPlainWRect ==  (  0.WCoordT,  0.WCoordT, 50.WCoordT, 60.WCoordT)
   # assert r2.toPlainWRect ==  (  0.WCoordT,  0.WCoordT, 50.WCoordT, 60.WCoordT)
