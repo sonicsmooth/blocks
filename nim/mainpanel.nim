@@ -3,7 +3,7 @@ from std/sequtils import toSeq, foldl
 import wNim
 import winim
 import anneal, compact, concurrent, db
-import stack, userMessages, utils, blockpanel
+import stack, userMessages, utils, blockpanel, world
 export blockpanel
 
 type
@@ -26,6 +26,7 @@ type
 
 const 
   logRandomize = true
+  randRegion: WRect = (-400, -400, 801, 801)
 
 
 wClass(wMainPanel of wPanel):
@@ -82,8 +83,8 @@ wClass(wMainPanel of wPanel):
       butt.size     = (bw, bh)
       yPosAcc += bh
 
-  proc randomizeRectsAll*(self: wMainPanel, qty: int=self.mSpnr.value) = 
-    gDb.randomizeRectsAll(self.mBlockPanel.clientSize, qty, logRandomize)
+  proc randomizeRectsAll*(self: wMainPanel, qty: int=self.mSpnr.value) =
+    gDb.randomizeRectsAll(randRegion, qty, logRandomize)
     self.mBlockPanel.mFillArea = gDb.fillArea()
     self.mBlockPanel.updateRatio()
     self.mBlockPanel.initSurfaceCache()
@@ -112,6 +113,7 @@ wClass(wMainPanel of wPanel):
                              dstRect:     dstRect)
       gCompactThread.createThread(compactWorker, arg)
       gCompactThread.joinThread()
+      self.mBlockPanel.updateRatio()
       self.refresh(false)
     
     elif self.mCTRb2.value: # Do anneal
@@ -135,6 +137,8 @@ wClass(wMainPanel of wPanel):
         break
     
     elif self.mCTRb3.value: # Do stack
+      echo dstRect
+      echo direction
       withLock(gLock):
         stackCompact(gDb, dstRect, direction)
       self.mBlockPanel.updateRatio()
@@ -182,41 +186,50 @@ wClass(wMainPanel of wPanel):
     self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onButtonrandomizePos(self: wMainPanel) =
-    let sz = self.mBlockPanel.clientSize
-    gDb.randomizeRectsPos(sz)
+    #let sz = self.mBlockPanel.clientSize
+    gDb.randomizeRectsPos(randRegion)
     self.mBlockPanel.updateRatio()
     self.refresh(false)
   proc onButtonTest(self: wMainPanel) =
     for rect in gDb.values:
       echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.w, rect.h)}, rot: {rect.rot}"
-  # Left  arrow = stack to the left,   which is x ascending
-  # Right arrow = stack to the right,  which is x descending
-  # Up    arrow = stack to the top,    which is y ascending
-  # Down  arrow = stack to the bottom, which is y descending
+  # Left  arrow = stack from left to right, which is x ascending
+  # Right arrow = stack from right to left, which is x descending
+  # Up    arrow = stack from top to bottom, which is y descending
+  # Down  arrow = stack from bottom to top, which is y ascending
   proc onButtonCompact←(self: wMainPanel) =
     self.delegate1DButtonCompact(X, Ascending)
   proc onButtonCompact→(self: wMainPanel) =
     self.delegate1DButtonCompact(X, Descending)
-  proc onButtonCompact↑(self: wMainPanel) =
-    self.delegate1DButtonCompact(Y, Ascending)
   proc onButtonCompact↓(self: wMainPanel) =
+    self.delegate1DButtonCompact(Y, Ascending)
+  proc onButtonCompact↑(self: wMainPanel) =
     self.delegate1DButtonCompact(Y, Descending)
+
   proc onButtonCompact←↑(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, Ascending, Ascending))
-  proc onButtonCompact←↓(self: wMainPanel) =
     self.delegate2DButtonCompact((X, Y, Ascending, Descending))
+
+  proc onButtonCompact←↓(self: wMainPanel) =
+    self.delegate2DButtonCompact((X, Y, Ascending, Ascending))
+
   proc onButtonCompact→↑(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, Descending, Ascending))
-  proc onButtonCompact→↓(self: wMainPanel) =
     self.delegate2DButtonCompact((X, Y, Descending, Descending))
+
+  proc onButtonCompact→↓(self: wMainPanel) =
+    self.delegate2DButtonCompact((X, Y, Descending, Ascending))
+
   proc onButtonCompact↑←(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, Ascending, Ascending))
-  proc onButtonCompact↑→(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, Ascending, Descending))
-  proc onButtonCompact↓←(self: wMainPanel) =
     self.delegate2DButtonCompact((Y, X, Descending, Ascending))
-  proc onButtonCompact↓→(self: wMainPanel) =
+
+  proc onButtonCompact↑→(self: wMainPanel) =
     self.delegate2DButtonCompact((Y, X, Descending, Descending))
+
+  proc onButtonCompact↓←(self: wMainPanel) =
+    self.delegate2DButtonCompact((Y, X, Ascending, Ascending))
+
+  proc onButtonCompact↓→(self: wMainPanel) =
+    self.delegate2DButtonCompact((Y, X, Ascending, Descending))
+
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
     let (idx, _) = lParamTuple[int](event)

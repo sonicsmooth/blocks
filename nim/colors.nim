@@ -55,22 +55,22 @@ proc `==`*(c1: ColorU32|uint32, c2: ColorU32|uint32): bool =
   c1.uint32 == c2.uint32
 
 # # Color tuple uses named fields
-# template red*  (color: Color): uint8 = color.r
-# template green*(color: Color): uint8 = color.g
-# template blue* (color: Color): uint8 = color.b
-# template alpha*(color: Color): uint8 = color.a
+# template red*  (color: Color): uint8 = color[0[
+# template green*(color: Color): uint8 = color[1]
+# template blue* (color: Color): uint8 = color[2]
+# template alpha*(color: Color): uint8 = color[3]
 
 # Color tuple uses named fields
-template red*  (color: SomeRGBTuple): uint8 = color.r.uint8
-template green*(color: SomeRGBTuple): uint8 = color.g.uint8
-template blue* (color: SomeRGBTuple): uint8 = color.b.uint8
+template red*  (color: SomeRGBTuple): uint8 = color[0].uint8
+template green*(color: SomeRGBTuple): uint8 = color[1].uint8
+template blue* (color: SomeRGBTuple): uint8 = color[2].uint8
 template alpha*(color: SomeRGBTuple): uint8 = 0xff'u8
 
 # Color tuple uses named fields
-template red*  (color: SomeRGBATuple): uint8 = color.r.uint8
-template green*(color: SomeRGBATuple): uint8 = color.g.uint8
-template blue* (color: SomeRGBATuple): uint8 = color.b.uint8
-template alpha*(color: SomeRGBATuple): uint8 = color.a.uint8
+template red*  (color: SomeRGBATuple): uint8 = color[0].uint8
+template green*(color: SomeRGBATuple): uint8 = color[1].uint8
+template blue* (color: SomeRGBATuple): uint8 = color[2].uint8
+template alpha*(color: SomeRGBATuple): uint8 = color[3].uint8
 
 # ColorU32 is one of RGBA, ARGB, BGRA, ABGR
 template red*  (color: ColorU32): uint8 = color.uint32.shr(RSH).uint8
@@ -130,6 +130,7 @@ template toColor*(color: SomeColor): Color =
                   else: 255'u8
       (r: color.red, g: color.green, b: color.blue, a: alpha).Color
 
+# todo: do * and / for colors with float
 proc colordiv*(color: ColorU32, num: SomeInteger): ColorU32 =
   let
     r = color.red.uint32   div num.uint32
@@ -153,8 +154,6 @@ proc colordiv*(color: wColor, num: SomeInteger): wColor =
     b = (color.blue.uint32  div num.uint32).shl(16)
     a = color.alpha.uint32.shl(24)
   bitor(r,g,b,a).wColor
-
-
 
 proc randColor*(): ColorU32 = 
   let
