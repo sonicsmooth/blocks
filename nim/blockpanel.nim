@@ -400,7 +400,6 @@ Rendering options for SDL and pixie
 
 
 ]# 
-  var r = 0.0
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
     # for rect in gDb.values:
@@ -414,11 +413,7 @@ Rendering options for SDL and pixie
         texture = self.mTextureCache[(rect.id, rect.selected)]
         dstRect: sdl2.Rect = rect.toPRect(vp, rot=false)
         center: sdl2.Point = (rect.origin.x * vp.zoom, (-rect.origin.y + rect.h) * vp.zoom)
-        #center: sdl2.Point = (dstRect.w div 2, dstRect.h div 2)
       self.sdlRenderer.copyEx(texture, nil, addr dstRect, -rect.rot.toFloat, addr center)
-      #self.sdlRenderer.copyEx(texture, nil, addr dstRect, -r, addr center)
-      r += 1.0
-      #self.sdlRenderer.copyEx(texture, nil, addr dstRect, -45, addr center)
 
   proc blitFromSurfaceCache(self: wBlockPanel) = 
     # Copy from surface cache to screen via surface ptr
