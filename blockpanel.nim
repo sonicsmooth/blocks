@@ -1,13 +1,12 @@
 import std/[math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq
 import wNim
-import winim except PRECT
+import winim except PRECT, Color
 from wNim/private/wHelper import `-`
 import sdl2
 import rects, recttable, sdlframes, db, viewport, grid, pointmath
 import userMessages, utils
 import render
-import timeit
 
 # TODO: copy background before Move
 # TODO: Hover
@@ -359,9 +358,9 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         let pbox: PRect = normalizeRectCoords(self.mMouseData.clickPxPos, event.mousePos)
         self.mSelectBox = pbox.toWRect(vp)
-        dump pbox
-        dump self.mSelectBox
-        dump self.mSelectBox.toPRect(vp)
+        #dump pbox
+        #dump self.mSelectBox
+        #dump self.mSelectBox.toPRect(vp)
         let newsel = gDb.rectInRects(self.mSelectBox)
         gDb.clearRectSelect()
         gDb.setRectSelect(self.mFirmSelection)
@@ -447,8 +446,10 @@ Rendering options for SDL and pixie
     if self.mDstRect.w > 0:
       self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
     self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort), Green)
-    self.sdlRenderer.renderOutlineRect(self.mSelectBox.toPRect(self.mViewPort), Red)
-    # self.sdlRenderer.renderText(self.sdlWindow, self.mText)
+    self.sdlRenderer.renderFilledRect(self.mSelectBox.toPRect(self.mViewPort),
+                                      fillColor=(r:0,g:102,b:204,a:70).toColorU32,
+                                      penColor=(r:0, g:120, b: 215, a:255).toColorU32)
+    self.sdlRenderer.renderText(self.sdlWindow, self.mText)
     self.sdlRenderer.present()
 
     # release(gLock)
