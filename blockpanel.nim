@@ -85,9 +85,10 @@ wClass(wBlockPanel of wSDLPanel):
     UpdateWindow(self.mHwnd)
 
   proc rectToSurface(self: wBlockPanel, rect: DBRect, sel: bool): SurfacePtr =
+    # Create surface, draw rect, return surface
     result = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
-    result.renderRect(rect, self.mViewPort, sel)
+    result.renderDBRect(self.mViewPort, rect, sel)
   
   proc initSurfaceCache*(self: wBlockPanel) =
     # Creates all new surfaces
@@ -100,6 +101,7 @@ wClass(wBlockPanel of wSDLPanel):
   
   proc initTextureCache*(self: wBlockPanel) =
     # Copies surfaces from surfaceCache to textures
+    # Requires to be called when resize because of new texture
     for texture in self.mTextureCache.values:
       texture.destroy()
     self.mTextureCache.clear()
@@ -117,8 +119,7 @@ wClass(wBlockPanel of wSDLPanel):
       self.mText = "0.0" #$0.0
       self.mRatio = 0.0
     else:
-      let bbox: WRect = gDb.boundingBox()
-      self.mAllBbox = bbox #bbox.toWRect
+      self.mAllBbox = gDb.boundingBox()
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
         echo ratio
@@ -357,9 +358,10 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         let pbox: PRect = normalizeRectCoords(self.mMouseData.clickPxPos, event.mousePos)
-        #dump pbox
         self.mSelectBox = pbox.toWRect(vp)
-        #dump self.mSelectBox
+        dump pbox
+        dump self.mSelectBox
+        dump self.mSelectBox.toPRect(vp)
         let newsel = gDb.rectInRects(self.mSelectBox)
         gDb.clearRectSelect()
         gDb.setRectSelect(self.mFirmSelection)
@@ -398,7 +400,7 @@ Rendering options for SDL and pixie
 
 
 ]# 
-
+  var r = 0.0
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
     # for rect in gDb.values:
@@ -408,28 +410,24 @@ Rendering options for SDL and pixie
     #   self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
     let vp = self.mViewPort
     for rect in gDb.values:
-      let texture = self.mTextureCache[(rect.id, rect.selected)]
-      let dstrectWorld = rect.toWRectNoRot
-      #dump dstRectWorld
-      let dstwh: wSize = ((dstrectWorld.w.float * vp.zoom).round.int, 
-                          (dstrectWorld.h.float * vp.zoom).round.int)
-      #dump dstwh
-      var dstPt1 = vp.toPixel((dstrectWorld.x, dstrectWorld.y))
-      dstPt1.y -= dstwh.height
-      #dump dstPt1
-      let dstrectPx: PRect = (dstPt1.x, dstPt1.y, dstwh.width, dstwh.height)
-      #dump dstrectPx
-      let pt = self.mViewPort.toPixel(rect.origin)
-      self.sdlRenderer.copyEx(texture, nil, addr dstrectPx, -rect.rot.toFloat, addr pt)
+      let 
+        texture = self.mTextureCache[(rect.id, rect.selected)]
+        dstRect: sdl2.Rect = rect.toPRect(vp, rot=false)
+        center: sdl2.Point = (rect.origin.x * vp.zoom, (-rect.origin.y + rect.h) * vp.zoom)
+        #center: sdl2.Point = (dstRect.w div 2, dstRect.h div 2)
+      self.sdlRenderer.copyEx(texture, nil, addr dstRect, -rect.rot.toFloat, addr center)
+      #self.sdlRenderer.copyEx(texture, nil, addr dstRect, -r, addr center)
+      r += 1.0
+      #self.sdlRenderer.copyEx(texture, nil, addr dstRect, -45, addr center)
 
   proc blitFromSurfaceCache(self: wBlockPanel) = 
     # Copy from surface cache to screen via surface ptr
     let dstsurface = self.sdlWindow.getSurface()
     for rect in gDb.values:
-      dstsurface.renderRect(rect, self.mViewPort, rect.selected)
+      dstsurface.renderDBRect(self.mViewPort, rect, rect.selected)
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
-    self.sdlRenderer.setDrawColor(self.backgroundColor.toColor())
+    self.sdlRenderer.setDrawColor(self.backgroundColor.toColor)
     self.sdlRenderer.clear()
     
     # Draw grid
@@ -446,11 +444,11 @@ Rendering options for SDL and pixie
       discard
 
     # Draw various boxes and text, then done
-    # if self.mDstRect.w > 0:
-    #   self.sdlRenderer.renderDestinationBox(self.mDstRect)
-    # self.sdlRenderer.renderBoundingBox(self.mAllBbox)
-    # self.sdlRenderer.renderSelectionBox(self.mSelectBox)
-    self.sdlRenderer.renderText(self.sdlWindow, self.mText)
+    if self.mDstRect.w > 0:
+      self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
+    self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort), Green)
+    self.sdlRenderer.renderOutlineRect(self.mSelectBox.toPRect(self.mViewPort), Red)
+    # self.sdlRenderer.renderText(self.sdlWindow, self.mText)
     self.sdlRenderer.present()
 
     # release(gLock)
@@ -459,7 +457,7 @@ Rendering options for SDL and pixie
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.mDstRect = (10, 10, 780, 780)
+    self.mDstRect = (-200, -200, 401, 401)
     self.mGrid.xSpace = 25
     self.mGrid.ySpace = 25
     self.mGrid.visible = true

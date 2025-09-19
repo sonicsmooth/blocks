@@ -8,7 +8,7 @@ import std/math
 
 type
   WCoordT* = int # This may eventually be float or some very large integer
-  Point* = tuple[x, y: WCoordT]
+  WPoint* = tuple[x, y: WCoordT]
 
 # Single dimension converting any type of number to a world coordinate
 converter toWorldCoord*[T:SomeNumber](a: T): WCoordT =
@@ -23,11 +23,11 @@ converter toWorldCoord*[T:SomeNumber](a: T): WCoordT =
     echo getStackTrace()
 
 # Two dimensions converting any type of tuple with x, y to a world point
-converter toWorldPoint*(pt: tuple[x, y: SomeNumber]): Point =
+converter toWorldPoint*(pt: tuple[x, y: SomeNumber]): WPoint =
   (pt[0].toWorldCoord, pt[1].toWorldCoord) 
   
 # Two dimensions converting any type of tuple with width, height to a world size
-converter toWorldSize*(pt: tuple[width, height: SomeNumber]): Point =
+converter toWorldSize*(pt: tuple[width, height: SomeNumber]): WPoint =
   (pt[0].toWorldCoord, pt[1].toWorldCoord) 
   
 
@@ -39,6 +39,6 @@ when isMainModule:
   echo "(10, 20) -> ", toWorldPoint((10, 20))
   echo "(0, 0) -> ", (0,0).toWorldPoint
   echo "(3.0, 5.5) -> ", toWorldPoint((3.0, 5.5))
-  var x: Point
-  x = (10.2, 11.5).Point
+  var x: WPoint
+  x = (10.2, 11.5).WPoint
   echo "(10.2, 11.5) -> ", x

@@ -1,4 +1,4 @@
-import std/[math, sugar]
+import std/[math]
 import sdl2
 import world
 export world
@@ -20,12 +20,12 @@ proc toPixelY*(vp: ViewPort, y: world.WCoordT): cint =
   (y.float * (-vp.zoom) + vp.pan.y.float).round.cint
 proc toPixelY*(y: world.WCoordT, vp: ViewPort): cint =
   (y.float * (-vp.zoom) + vp.pan.y.float).round.cint
-proc toPixel*(vp: ViewPort, pt: world.Point): sdl2.Point =
+proc toPixel*(vp: ViewPort, pt: WPoint): sdl2.Point =
   let
     newx = pt.x.float *   vp.zoom  + vp.pan.x.float
     newy = pt.y.float * (-vp.zoom) + vp.pan.y.float
   (newx.round.cint, newy.round.cint)
-proc toPixel*(pt: world.Point, vp: ViewPort): sdl2.Point =
+proc toPixel*(pt: WPoint, vp: ViewPort): sdl2.Point =
   let
     newx = pt.x.float *   vp.zoom  + vp.pan.x.float
     newy = pt.y.float * (-vp.zoom) + vp.pan.y.float
@@ -36,19 +36,19 @@ proc toPixel*(pt: world.Point, vp: ViewPort): sdl2.Point =
 
 # world = (pixel - pan) / zoom.  Flip zoom for y
 # pixels are always integers
-proc toWorld*(vp: ViewPort, pt: tuple[x, y: SomeInteger]): world.Point =
+proc toWorld*(vp: ViewPort, pt: tuple[x, y: SomeInteger]): WPoint =
   let
     newpt = pt.toWorldPoint
     newpan = vp.pan.toWorldPoint
     newxf = (newpt.x - newpan.x).float /   vp.zoom
     newyf = (newpt.y - newpan.y).float / (-vp.zoom)
-  result = world.Point((newxf, newyf))
-proc toWorld*(pt: tuple[x, y: SomeInteger], vp: ViewPort): world.Point =
+  result = WPoint((newxf, newyf))
+proc toWorld*(pt: tuple[x, y: SomeInteger], vp: ViewPort): WPoint =
   let newpt = pt.toWorldPoint
   let newpan = vp.pan.toWorldPoint
   let newxf = (newpt.x - newpan.x).float /   vp.zoom
   let newyf = (newpt.y - newpan.y).float / (-vp.zoom)
-  result = world.Point((newxf, newyf))
+  result = WPoint((newxf, newyf))
 
 proc toWorldX*(vp: ViewPort, x: SomeInteger): world.WCoordT =
   let
@@ -77,4 +77,6 @@ proc toWorldY*(y: SomeInteger, vp: ViewPort): world.WCoordT =
   result = world.WCoordT(newyf)
 
 when isMainModule:
-  echo ViewPort()
+  let vp = ViewPort(pan: (400, 400), zoom: 1.0)
+  let p1 = (10,10).WPoint
+  assert p1.toPixel(vp).toWorld(vp) == p1
