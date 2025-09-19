@@ -40,7 +40,7 @@ type
     mSurfaceCache: Table[CacheKey, SurfacePtr]
     mTextureCache: Table[CacheKey, TexturePtr]
     mFirmSelection*: seq[RectID]
-    mFillArea*: int
+    mFillArea*: WCoordT
     mRatio*: float
     mAllBbox*: WRect
     mSelectBox*: WRect

@@ -5,7 +5,7 @@ import wnim
 import winim/inc/windef except PRECT
 import winim/inc/winuser
 import userMessages
-import randrect, arange, recttable
+import randrect, arange, recttable, world
 import concurrent
 
 # At each temperature generate 100 randomized next states
@@ -141,8 +141,8 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float): seq[RectID] =
     let a = idSet.pop
     if a in pairTable:
       let b = pairTable[a]
-      let aPos: wPoint = (initState[a].x, initState[a].y)
-      let bPos: wPoint = (initState[b].x, initState[b].y)
+      let aPos: world.PPoint = (initState[a].x, initState[a].y)
+      let bPos: world.PPoint = (initState[b].x, initState[b].y)
       pTable[][a].x = bPos.x
       pTable[][a].y = bPos.y
       pTable[][a].rot = rand(Rotation) #todo: probability based on temp

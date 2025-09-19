@@ -91,10 +91,18 @@ proc stackCompact*(table: var RectTable, dstRect: WRect, direction: CompactDir) 
     # For horiz, ascending is stack left to right (min to max)
     # therefore move everything right so there is some space
     # to move left into.  Back off a bit by the maximum amount a block might be
-    rect.x = if isXAscending(direction): WCoordT.high - rect.greatestDim  # stack from left to right
-             else:                       WCoordT.low  + rect.greatestDim  # stack from right to left
-    rect.y = if isYAscending(direction): WCoordT.high - rect.greatestDim  # stack from bottom to top
-             else:                       WCoordT.low  + rect.greatestDim  # stack from top to bottom
+
+    when WCoordT is SomeInteger:
+      let maxval = WCoordT.high
+      let minval = WCoordT.low
+    elif WCoordT is SomeFloat:
+      # Todo: how to get this without inf?
+      let maxval = 1e10
+      let minval = -1e10
+    rect.x = if isXAscending(direction): maxval - rect.greatestDim  # stack from left to right
+             else:                       minval + rect.greatestDim  # stack from right to left
+    rect.y = if isYAscending(direction): maxval - rect.greatestDim  # stack from bottom to top
+             else:                       minval + rect.greatestDim  # stack from top to bottom
   stackCompactSub(table, rects.ids, dstRect, direction)
 
 
