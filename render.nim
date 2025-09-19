@@ -41,7 +41,7 @@ proc renderFilledRect*(rp: RendererPtr, # vp: ViewPort,
 proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
                         rect: PRect, penColor: ColorU32) =
   #let prect = rect.toPRect(vp)
-  rp.setDrawColor(Black.toColor)
+  rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
 proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
@@ -104,11 +104,11 @@ proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
 #   renderer.setDrawColor(Black.toColor())
 #   renderer.drawRect(addr prect)
 
-proc renderSelectionBox*(renderer: RendererPtr, rect: PRect) =
-  renderer.setDrawColor(0, 102, 204, 70)
-  renderer.fillRect(addr rect)
-  renderer.setDrawColor(0, 120, 215)
-  renderer.drawRect(addr rect)
+# proc renderSelectionBox*(renderer: RendererPtr, rect: PRect) =
+#   renderer.setDrawColor(0, 102, 204, 70)
+#   renderer.fillRect(addr rect)
+#   renderer.setDrawColor(0, 120, 215)
+#   renderer.drawRect(addr rect)
 
 # proc renderDestinationBox*(renderer: RendererPtr, rect: PRect) =
 #   renderer.setDrawColor(Red.toColor())
