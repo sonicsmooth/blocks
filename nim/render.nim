@@ -1,7 +1,7 @@
 import std/[tables, math, sugar]
 import sdl2
 import sdl2/ttf
-import rects, utils
+import rects, utils, pointmath
 
 
 type
@@ -28,43 +28,54 @@ proc font(rect: DBRect): FontPtr =
   let scaledSize = (px.float * fontScale).round.int
   font(scaledSize)
 
+proc renderFilledRect*(rp: RendererPtr, # vp: ViewPort, 
+                       rect: PRect, fillColor, penColor: ColorU32) = #: PRect =
+  # Draw WRect, return PRect created in the process
+  #let prect = rect.toPRect(vp)
+  rp.setDrawColor(fillColor.toColor)
+  rp.fillRect(addr rect)
+  rp.setDrawColor(penColor.toColor)
+  rp.drawRect(addr rect)
+  #rect
 
-proc renderRect*(renderer: RendererPtr, rect: DBRect, vp: ViewPort, sel: bool) =
+proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
+                        rect: PRect, penColor: ColorU32) =
+  #let prect = rect.toPRect(vp)
+  rp.setDrawColor(Black.toColor)
+  rp.drawRect(addr rect)
+
+proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
   # Draw rectangle on SDL2 renderer
-  # Draw main filled rectangle with outline
-  let 
-    z = vp.zoom
-    sdlRect: Rect = (x:0, y:0, w:rect.w * z, h:rect.h * z)
-    (w, h) = (sdlRect.w, sdlRect.h)
-    (ox, oy) = (rect.origin.x * z, rect.origin.y * (-z))
+  let prect = rect.toPRect(vp, rot=false)
 
-  # Main rectangle
-  renderer.setDrawColor(rect.brushColor.toColor)
-  renderer.fillRect(addr sdlRect)
-
-  # Outline
-  renderer.setDrawColor(rect.penColor.toColor)
-  renderer.drawRect(addr sdlRect)
+  # Delegate rectangle to renderWRect after relocating to 0,0
+  rp.renderFilledRect(prect.zero, rect.fillColor, rect.penColor)
 
   # Origin
-  renderer.setDrawColor(Black.toColor)
-  renderer.drawLine(ox-10, oy, ox+10, oy)
-  renderer.drawLine(ox, oy-10, ox, oy+10)
+  # Todo: There is something to be said here about model space
+  # todo: to world space to pixel space
+  let
+    opx: sdl2.Point = (rect.origin.x * vp.zoom, (-rect.origin.y + rect.h) * vp.zoom)
+    extent = 10
+  rp.setDrawColor(Black.toColor)
+  rp.drawLine(opx.x - extent, opx.y, opx.x + extent, opx.y)
+  rp.drawLine(opx.x, opx.y - extent, opx.x, opx.y + extent)
 
   # Text to texture, then texture to renderer
+  let (w, h) = (prect.w, prect.h) 
   let selstr = $rect.id & (if sel: "*" else: "")
   let font = rect.font()
   let textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
   let (tsw, tsh) = (textSurface.w, textSurface.h)
   let dstRect: PRect = ((w div 2) - (tsw div 2),
                         (h div 2) - (tsh div 2), tsw, tsh)
-  let textTexture = renderer.createTextureFromSurface(textSurface)
-  renderer.copy(textTexture, nil, addr dstRect)
+  let textTexture = rp.createTextureFromSurface(textSurface)
+  rp.copy(textTexture, nil, addr dstRect)
   textTexture.destroy()
 
-proc renderRect*(surface: SurfacePtr, rect: DBRect, vp: ViewPort, sel: bool) =
-  let renderer = createSoftwareRenderer(surface)
-  renderer.renderRect(rect, vp, sel)
+proc renderDBRect*(surface: SurfacePtr, vp: ViewPort, rect: DBRect, sel: bool) =
+  let rp = createSoftwareRenderer(surface)
+  rp.renderDBRect(vp, rect, sel)
 
 proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   # Draws text at bottom right corner
@@ -83,11 +94,15 @@ proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   txtTexture.destroy()
   txtSurface.destroy()
 
-proc renderBoundingBox*(renderer: RendererPtr, rect: PRect) = 
-  # Assumes wRect and PRect have same memory layout
-  # Doesn't set drawcolor back to what it was
-  renderer.setDrawColor(Black.toColor())
-  renderer.drawRect(cast [ptr PRect](addr rect))
+
+
+
+# proc renderBoundingBox*(renderer: RendererPtr, vp: ViewPort, rect: WRect) = 
+#   # Assumes wRect and PRect have same memory layout
+#   # Doesn't set drawcolor back to what it was
+#   let prect = rect.toPRect(vp)
+#   renderer.setDrawColor(Black.toColor())
+#   renderer.drawRect(addr prect)
 
 proc renderSelectionBox*(renderer: RendererPtr, rect: PRect) =
   renderer.setDrawColor(0, 102, 204, 70)
@@ -95,6 +110,6 @@ proc renderSelectionBox*(renderer: RendererPtr, rect: PRect) =
   renderer.setDrawColor(0, 120, 215)
   renderer.drawRect(addr rect)
 
-proc renderDestinationBox*(renderer: RendererPtr, rect: PRect) =
-  renderer.setDrawColor(Red.toColor())
-  renderer.drawRect(addr rect)
+# proc renderDestinationBox*(renderer: RendererPtr, rect: PRect) =
+#   renderer.setDrawColor(Red.toColor())
+#   renderer.drawRect(addr rect)

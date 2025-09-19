@@ -99,13 +99,14 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 proc randomizeRectsAll*(table: var RectTable, panelSize: wSize, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
-    echo "testRects"
-    table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 100, origin: (0, 0), rot: R0,
-                    selected: false, penColor: Blue, brushColor: Blue.colordiv(2).toColorU32(127))
+    table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 200, origin: (10, 20), rot: R0,
+                    selected: false, penColor: Blue, fillColor: Blue.colordiv(2).toColorU32(127))
+    table[2] = DBRect(id: 2, x: 0, y: 0, w: 100, h: 120, origin: (10, 20), rot: R90,
+                    selected: false, penColor: Red, fillColor: Red.toColorU32(127))
     #table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 100, origin: (0, 0), rot: R0,
-    #                selected: false, penColor: 0x7f0000ff.toColorU32, brushColor: 0x7f00007f.toColorU32)
+    #                selected: false, penColor: 0x7f0000ff.toColorU32, fillColor: 0x7f00007f.toColorU32)
     # table[2] = DBRect(id: 2, x: 100, y: 100, w: 100, h: 100, origin: (0,0), rot: R0,
-    #                 selected: false, penColor: 0xffff0000.toColorU32, brushColor: 0x7fff0000.toColorU32)
+    #                 selected: false, penColor: 0xffff0000.toColorU32, fillColor: 0x7fff0000.toColorU32)
   else:
     for i in 1..qty:
       let rid = i.RectID

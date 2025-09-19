@@ -15,13 +15,13 @@ type
 
 echo Grid()
 
-proc snap*(pt: world.Point, grid: Grid): world.Point =
+proc snap*(pt: WPoint, grid: Grid): WPoint =
   # Round to nearest grid point
   let xcnt: int = (pt.x / grid.xSpace).round.int
   let ycnt: int = (pt.y / grid.ySpace).round.int
   (xcnt * grid.xSpace, ycnt * grid.ySpace)
 
-proc snap*(grid: Grid, pt: world.Point): world.Point =
+proc snap*(grid: Grid, pt: WPoint): WPoint =
   # Round to nearest grid point
   let xcnt: int = (pt.x / grid.xSpace).round.int
   let ycnt: int = (pt.y / grid.ySpace).round.int
