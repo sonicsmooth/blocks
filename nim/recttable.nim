@@ -1,4 +1,4 @@
-import std/[random, sets, strformat, tables]
+import std/[random, sets, strformat, sugar, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
 import rects, colors

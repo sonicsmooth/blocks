@@ -288,7 +288,6 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       arg.pRectTable[][id].x   = pos.x
       arg.pRectTable[][id].y   = pos.y
       arg.pRectTable[][id].rot = pos.rot
-    #echo arg.pRectTable[].fillRatio
   {.gcsafe.}:
     sendText(&"Final {bestEver.heur:.5}")
   update(arg.pRectTable[].keys.toSeq)
