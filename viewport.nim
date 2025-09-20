@@ -1,15 +1,30 @@
 import std/[math]
-import sdl2
+#import sdl2
 import world
+import pointmath
 export world
 
 type
   ViewPort* = object
-    pan*: sdl2.Point = (0, 0)
+    pan*: PPoint = (0, 0)
     zoom*: float = 1.0
+    zoomSteps: int
+
+const
+  zoomBase = 2.0
+  zoomDiv = 20.0
 
 # Proc args are provided as both vp,coord and coord,vp
 # so you can do point.toWhatever(vp) and also vp.toWhatever(point)
+
+proc doZoom*(vp: var ViewPort, delta: int) = 
+  # Calculate new zoom factor
+  vp.zoomSteps += delta
+  vp.zoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
+
+proc doPan*(vp: var ViewPort, delta: PPoint) = 
+  vp.pan += delta
+
 
 # pixel = world * zoom + pan.  Flip zoom for y
 proc toPixelX*(vp: ViewPort, x: world.WCoordT): cint =
@@ -20,12 +35,12 @@ proc toPixelY*(vp: ViewPort, y: world.WCoordT): cint =
   (y.float * (-vp.zoom) + vp.pan.y.float).round.cint
 proc toPixelY*(y: world.WCoordT, vp: ViewPort): cint =
   (y.float * (-vp.zoom) + vp.pan.y.float).round.cint
-proc toPixel*(vp: ViewPort, pt: WPoint): sdl2.Point =
+proc toPixel*(vp: ViewPort, pt: WPoint): PPoint =
   let
     newx = pt.x.float *   vp.zoom  + vp.pan.x.float
     newy = pt.y.float * (-vp.zoom) + vp.pan.y.float
   (newx.round.cint, newy.round.cint)
-proc toPixel*(pt: WPoint, vp: ViewPort): sdl2.Point =
+proc toPixel*(pt: WPoint, vp: ViewPort): PPoint =
   let
     newx = pt.x.float *   vp.zoom  + vp.pan.x.float
     newy = pt.y.float * (-vp.zoom) + vp.pan.y.float

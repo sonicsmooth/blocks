@@ -121,7 +121,6 @@ wClass(wBlockPanel of wSDLPanel):
       self.mAllBbox = gDb.boundingBox()
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
-        echo ratio
         self.mText = $ratio
         self.mRatio = ratio
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: sdl2.Point) =
@@ -270,6 +269,10 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateRMBDown
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
+      of wEvent_MouseWheel:
+        self.mViewPort.doZoom(event.getWheelRotation)
+        dump self.mViewPort
+        self.refresh(false)
       else:
         discard
     of PZStateRMBDown:
@@ -277,7 +280,8 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         let deltaPx: wPoint = event.mousePos - self.mMouseData.lastPxPos
         self.mMouseData.lastPxPos = event.mousePos
-        self.mViewPort.pan += deltaPx
+        #self.mViewPort.pan += deltaPx
+        self.mViewPort.doPan(deltaPx)
         self.refresh(false)
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
@@ -295,7 +299,6 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.lastPxPos  = event.mousePos
         self.mMouseData.clickWPos = event.mousePos.toWorld(vp)
         self.mMouseData.lastWPos  = event.mousePos.toWorld(vp)
-        #self.mMouseData.clickHitIds = gDb.ptInRects(event.mousePos)
         self.mMouseData.clickHitIds = gDb.ptInRects(self.mMouseData.clickWPos)
         if self.mMouseData.clickHitIds.len > 0: # Click in rect
           self.mMouseData.dirtyIds = gDb.rectInRects(self.mMouseData.clickHitIds[^1])
@@ -358,9 +361,6 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         let pbox: PRect = normalizeRectCoords(self.mMouseData.clickPxPos, event.mousePos)
         self.mSelectBox = pbox.toWRect(vp)
-        #dump pbox
-        #dump self.mSelectBox
-        #dump self.mSelectBox.toPRect(vp)
         let newsel = gDb.rectInRects(self.mSelectBox)
         gDb.clearRectSelect()
         gDb.setRectSelect(self.mFirmSelection)
@@ -373,9 +373,9 @@ wClass(wBlockPanel of wSDLPanel):
       else:
         self.mMouseData.state = StateNone
 
-    self.mText.setLen(0)
-    self.mText &= modifierText(event)
-    self.mText &= &"State: {self.mMouseData.state}"
+    #self.mText.setLen(0)
+    #self.mText &= modifierText(event)
+    #self.mText &= &"State: {self.mMouseData.state}"
 
 
 # Todo: hovering over

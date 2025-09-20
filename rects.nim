@@ -1,4 +1,4 @@
-import std/[math, random, sets, sequtils, strutils, tables]
+import std/[math, random, sets, sequtils, strutils, tables, sugar]
 import wNim/wTypes
 import wNim/private/wHelper
 from sdl2 import Rect, Point
@@ -354,8 +354,7 @@ proc `>=`*(edge1, edge2: HorizEdge): bool {.inline.} = edge1.y >= edge2.y
 proc `==`*(edge1, edge2: HorizEdge): bool {.inline.} = edge1.y == edge2.y
 
 
-# Procs for hit testing operate on graphical PRects <-- old
-# Procs for hit testing operate on world WRects <-- new
+# Procs for hit testing operate on world WRects
 proc isPointInRect*(pt: WPoint, rect: WRect): bool {.inline.} = 
     let urcorner = rect.upperRight
     pt.x >= rect.x and pt.x <= urcorner.x and
@@ -364,16 +363,22 @@ proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
   let edgeInside = (edge >= rect.LeftEdge and edge <= rect.RightEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.y > rect.TopEdge.pt0.y
-  let pt1Outside = edge.pt1.y < rect.BottomEdge.pt0.y
+  let pt0Outside = edge.pt0.y < rect.BottomEdge.y
+  let pt1Outside = edge.pt1.y > rect.TopEdge.y
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
+
+let e = VertEdge(pt0:(5,-1), pt1:(5,101))
+let r = (0,0,100,100).WRect
+echo isEdgeInRect(e, r)
+
+
 proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.} =
   let edgeInside = (edge >= rect.BottomEdge and edge <= rect.TopEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
-  let pt0Outside = edge.pt0.x < rect.LeftEdge.pt0.x
-  let pt1Outside = edge.pt1.x > rect.RightEdge.pt0.x
+  let pt0Outside = edge.pt0.x < rect.LeftEdge.x
+  let pt1Outside = edge.pt1.x > rect.RightEdge.x
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
 proc isRectInRect*(rect1, rect2: WRect): bool = 
@@ -386,9 +391,9 @@ proc isRectInRect*(rect1, rect2: WRect): bool =
 proc isRectOverRect*(rect1, rect2: WRect): bool =
   # Check if rect1 completely covers rect2
   # TODO: Use <=, >= instead of <, > ?
-  rect1.TopEdge    < rect2.TopEdge    and
+  rect1.TopEdge    > rect2.TopEdge    and
   rect1.LeftEdge   < rect2.LeftEdge   and
-  rect1.BottomEdge > rect2.BottomEdge and
+  rect1.BottomEdge < rect2.BottomEdge and
   rect1.RightEdge  > rect2.RightEdge
 
 
