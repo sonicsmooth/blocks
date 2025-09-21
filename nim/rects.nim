@@ -251,8 +251,8 @@ proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} =
 
 proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} = 
   # Origin of output is upper left of rectangle
-  # if dorot is false, then upper left is plain.
-  # if dorot is true, then, upper left is based on rotation
+  # if rot is false, then upper left is plain.
+  # if rot is true, then, upper left is based on rotation
   let
     origin = rect.toWRect(rot).upperLeft.toPixel(vp)
     width = (rect.w.float * vp.zoom).round.cint

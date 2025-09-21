@@ -1,4 +1,4 @@
-import std/math
+import std/[math, sugar]
 import sdl2
 import colors
 from arange import arange
@@ -12,8 +12,6 @@ type
     ySpace*: WCoordT = 10
     visible*: bool = true
     originVisible*: bool = true
-
-echo Grid()
 
 proc snap*(pt: WPoint, grid: Grid): WPoint =
   # Round to nearest grid point
@@ -35,14 +33,19 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
     worldEnd   = vp.toWorld((size.width, 0)).snap(grid)
     pxStart = vp.toPixel(worldStart)
     pxEnd = vp.toPixel(worldEnd)
-    xstep  = (grid.xSpace * vp.zoom).cint
-    ystep  = (grid.ySpace * vp.zoom).cint
-
-  for x in arange(pxStart.x .. pxEnd.x, xstep):
-    rp.drawLine(x, 0, x, size.height.cint)
+    xstep  = (grid.xSpace.float * vp.zoom)
+    ystep  = (grid.ySpace.float * vp.zoom)
   
-  for y in arange(pxStart.y .. pxEnd.y, ystep):
-    rp.drawLine(0, y, size.width.cint, y)
+  #dump xstep
+
+  if xstep >= 10.0:
+    for x in arange(pxStart.x.float .. pxEnd.x.float, xstep):
+      let xr = x.round.cint
+      rp.drawLine(xr, 0, xr, size.height.cint)
+    
+    for y in arange(pxStart.y.float .. pxEnd.y.float, ystep):
+      let yr = y.round.cint
+      rp.drawLine(0, yr, size.width.cint, yr)
   
   if grid.originVisible:
     var pt1, pt2: sdl2.Point

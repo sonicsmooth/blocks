@@ -271,7 +271,7 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         self.mViewPort.doZoom(event.getWheelRotation)
-        dump self.mViewPort
+        #dump self.mViewPort
         self.refresh(false)
       else:
         discard
@@ -280,7 +280,6 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         let deltaPx: wPoint = event.mousePos - self.mMouseData.lastPxPos
         self.mMouseData.lastPxPos = event.mousePos
-        #self.mViewPort.pan += deltaPx
         self.mViewPort.doPan(deltaPx)
         self.refresh(false)
       of wEvent_RightUp:
@@ -411,7 +410,8 @@ Rendering options for SDL and pixie
       let 
         texture = self.mTextureCache[(rect.id, rect.selected)]
         dstRect: sdl2.Rect = rect.toPRect(vp, rot=false)
-        center: sdl2.Point = (rect.origin.x * vp.zoom, (-rect.origin.y + rect.h) * vp.zoom)
+        center: sdl2.Point = ( rect.origin.x.float * vp.zoom, 
+                             (-rect.origin.y.float + rect.h.float) * vp.zoom)
       self.sdlRenderer.copyEx(texture, nil, addr dstRect, -rect.rot.toFloat, addr center)
 
   proc blitFromSurfaceCache(self: wBlockPanel) = 
