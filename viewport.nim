@@ -8,19 +8,26 @@ type
   ViewPort* = object
     pan*: PPoint = (0, 0)
     zoom*: float = 1.0
+    fakezoom: float = 1.0
     zoomSteps: int
 
 const
-  zoomBase = 2.0
-  zoomDiv = 20.0
+  zoomBase = 10 # Eventually this becomes the small grid size
+  zoomDiv = 1000 # how many zooms for every power of zoomBase
+  zoomMaxPwr = 3 # maximum zoom is zoomBase ^ zoomMaxPwr
+  zoomStepUpperLimit =  zoomDiv * zoomMaxPwr # implies max zoom is 2^10
+  zoomStepLowerLimit = -zoomDiv * zoomMaxPwr # implies min zoom is 2^-10
 
 # Proc args are provided as both vp,coord and coord,vp
 # so you can do point.toWhatever(vp) and also vp.toWhatever(point)
 
 proc doZoom*(vp: var ViewPort, delta: int) = 
   # Calculate new zoom factor
-  vp.zoomSteps += delta
-  vp.zoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
+  vp.zoomSteps = clamp(vp.zoomSteps + delta,
+                       zoomStepLowerLimit,
+                       zoomStepUpperLimit)
+  vp.fakezoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
+  vp.zoom = vp.fakezoom
 
 proc doPan*(vp: var ViewPort, delta: PPoint) = 
   vp.pan += delta
