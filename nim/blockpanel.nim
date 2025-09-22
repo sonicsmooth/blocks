@@ -83,12 +83,6 @@ wClass(wBlockPanel of wSDLPanel):
     self.refresh(false)
     UpdateWindow(self.mHwnd)
 
-  proc rectToSurface(self: wBlockPanel, rect: DBRect, sel: bool): SurfacePtr =
-    # Create surface, draw rect, return surface
-    result = createRGBSurface(0, rect.w, rect.h, 32, 
-      rmask, gmask, bmask, amask)
-    result.renderDBRect(self.mViewPort, rect, sel)
-  
   proc initSurfaceCache*(self: wBlockPanel) =
     # Creates all new surfaces
     for surface in self.mSurfaceCache.values:
@@ -96,7 +90,10 @@ wClass(wBlockPanel of wSDLPanel):
     self.mSurfaceCache.clear()
     for id, rect in gDb:
       for sel in [false, true]:
-        self.mSurfaceCache[(id, sel)] = self.rectToSurface(rect, sel)
+        let surface = 
+          createRGBSurface(0, rect.w, rect.h, 32, rmask, gmask, bmask, amask)
+        surface.renderDBRect(self.mViewPort, rect, sel)                                       
+        self.mSurfaceCache[(id, sel)] = surface
   
   proc initTextureCache*(self: wBlockPanel) =
     # Copies surfaces from surfaceCache to textures
@@ -453,7 +450,7 @@ Rendering options for SDL and pixie
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.mDstRect = (-200, -200, 401, 401)
+    self.mDstRect = (-200, -200, 5000, 5000)
     self.mGrid.xSpace = 25
     self.mGrid.ySpace = 25
     self.mGrid.visible = true

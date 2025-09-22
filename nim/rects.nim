@@ -403,6 +403,10 @@ proc `/`[T:SomeInteger](a, b: T): T =
   a div b
 proc `/`[T:SomeFloat](a, b: T): T = a / b
 
+const 
+  wcdf = makecdf(WRANGE.len, 100.0, 0.1)
+  hcdf = makecdf(HRANGE.len, 100.0, 0.1)
+
 proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect = 
   # Creat a DBRect with random position, size, color
   var rw: WCoordT
@@ -411,8 +415,6 @@ proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect =
   let rectPosY: WCoordT = region.y + rand(region.h - 1)
 
   if log: # Make log distribution
-    let wcdf = makecdf(WRANGE.len, 100.0, 0.1) # TODO: memoize this
-    let hcdf = makecdf(HRANGE.len, 100.0, 0.1) # TODO: or compile-time
     while true:
       rw = RND.sample(WRANGE.toSeq, wcdf)
       rh = RND.sample(HRANGE.toSeq, hcdf)

@@ -46,6 +46,8 @@ proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
 
 proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
   # Draw rectangle on SDL2 renderer
+  var vp = vp
+  vp.zoom = 1.0
   let prect = rect.toPRect(vp, rot=false)
 
   # Delegate rectangle to renderWRect after relocating to 0,0
