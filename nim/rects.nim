@@ -203,25 +203,25 @@ proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.} =
     (ox, oy) = (rect.origin.x, rect.origin.y)
   var outx, outy, outw, outh: WCoordT
   if rect.rot == R0 or dorot == false:
-    outx = clamp(x - ox,     WCoordT.low, WCoordT.high).WCoordT
-    outy = clamp(y - oy,     WCoordT.low, WCoordT.high).WCoordT
-    outw = clamp(w,          WCoordT.low, WCoordT.high).WCoordT
-    outh = clamp(h,          WCoordT.low, WCoordT.high).WCoordT
+    outx = (x - ox).WCoordT
+    outy = (y - oy).WCoordT
+    outw = (w     ).WCoordT
+    outh = (h     ).WCoordT
   elif rect.rot == R90:
-    outx = clamp(x + oy - h, WCoordT.low, WCoordT.high).WCoordT
-    outy = clamp(y - ox,     WCoordT.low, WCoordT.high).WCoordT
-    outw = clamp(h,          WCoordT.low, WCoordT.high).WCoordT
-    outh = clamp(w,          WCoordT.low, WCoordT.high).WCoordT
+    outx = (x + oy - h).WCoordT
+    outy = (y - ox    ).WCoordT
+    outw = (h         ).WCoordT
+    outh = (w         ).WCoordT
   elif rect.rot == R180:
-    outx = clamp(x + ox - w, WCoordT.low, WCoordT.high).WCoordT
-    outy = clamp(y + oy - h, WCoordT.low, WCoordT.high).WCoordT
-    outw = clamp(w,          WCoordT.low, WCoordT.high).WCoordT
-    outh = clamp(h,          WCoordT.low, WCoordT.high).WCoordT
+    outx = (x + ox - w).WCoordT
+    outy = (y + oy - h).WCoordT
+    outw = (w         ).WCoordT
+    outh = (h         ).WCoordT
   elif rect.rot == R270:
-    outx = clamp(x - oy,     WCoordT.low, WCoordT.high).WCoordT
-    outy = clamp(y + ox - w, WCoordT.low, WCoordT.high).WCoordT
-    outw = clamp(h,          WCoordT.low, WCoordT.high).WCoordT
-    outh = clamp(w,          WCoordT.low, WCoordT.high).WCoordT
+    outx = (x - oy    ).WCoordT
+    outy = (y + ox - w).WCoordT
+    outw = (h         ).WCoordT
+    outh = (w         ).WCoordT
   (outx, outy, outw, outh)
 converter toWRect*(rect: DBRect): WRect {.inline.} =
   # Implicit conversion from DBRect to WRect.
