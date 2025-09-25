@@ -10,16 +10,16 @@ type
   Axis* = enum X=true, Y=false
   MajMin = enum Major=true, Minor=false
   Node = RectID
-  Weight = WCoordT
+  Weight = WType
   GraphEdge  = tuple[frm, to: Node]
   Graph* = Table[GraphEdge, Weight]
   ScanType = enum Top, Mid, Bot
   ScanEdge = tuple
     id:    RectID
-    pos:   WCoordT
+    pos:   WType
     etype: ScanType
   ScanLine = tuple
-    pos:    WCoordT
+    pos:    WType
     top:    seq[RectID]
     mid:    seq[RectID]
     bot:    seq[RectID]
@@ -101,15 +101,15 @@ proc appendField[T](line: var ScanLine, field: ScanType, val: T) =
     of Mid: line.mid.add(val)
     of Bot: line.bot.add(val)
 
-type DimGetter = proc(node: Node): WCoordT
+type DimGetter = proc(node: Node): WType
 proc makeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
   # Return proc returns width or height of given Node
   if axis == X:
-    proc(node: Node): WCoordT =
+    proc(node: Node): WType =
       if node != RootNode:
         result = rectTable[node].WRect.w
   else: # axis == Y:
-    proc(node: Node): WCoordT =
+    proc(node: Node): WType =
       if node != RootNode:
         result = rectTable[node].WRect.h
 
@@ -131,17 +131,17 @@ proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
         result[(src, dst)] = if sortOrder == Descending: dst.getDim() else: src.getDim()
       src = dst
 
-proc posChooser(ax: MajMin): proc(rect: DBRect): WCoordT =
+proc posChooser(ax: MajMin): proc(rect: DBRect): WType =
   if ax == Major:
-    proc(rect: DBRect): WCoordT =  rect.WRect.x
+    proc(rect: DBRect): WType =  rect.WRect.x
   else:
-    proc(rect: DBRect): WCoordT =  rect.WRect.y
+    proc(rect: DBRect): WType =  rect.WRect.y
 
-proc sizeChooser(ax: MajMin): proc(rect: DBRect): WCoordT =
+proc sizeChooser(ax: MajMin): proc(rect: DBRect): WType =
   if ax == Major:
-    proc(rect: DBRect): WCoordT = rect.WRect.w # converter with rotation
+    proc(rect: DBRect): WType = rect.WRect.w # converter with rotation
   else:
-    proc(rect: DBRect): WCoordT = rect.WRect.h
+    proc(rect: DBRect): WType = rect.WRect.h
 
 proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
   let
@@ -200,7 +200,7 @@ proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq
   result = composeGraph(lines, rectTable, axis, sortOrder)
 
 
-proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WCoordT): Table[RectID, Weight] =
+proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[RectID, Weight] =
   for node in nodes:
     result[node] = Weight.low
   result[RootNode] = minpos

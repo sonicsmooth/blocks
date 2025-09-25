@@ -92,10 +92,10 @@ proc stackCompact*(table: var RectTable, dstRect: WRect, direction: CompactDir) 
     # therefore move everything right so there is some space
     # to move left into.  Back off a bit by the maximum amount a block might be
 
-    when WCoordT is SomeInteger:
-      let maxval = WCoordT.high
-      let minval = WCoordT.low
-    elif WCoordT is SomeFloat:
+    when WType is SomeInteger:
+      let maxval = WType.high
+      let minval = WType.low
+    elif WType is SomeFloat:
       # Todo: how to get this without inf?
       let maxval = 1e10
       let minval = -1e10

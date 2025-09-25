@@ -1,7 +1,7 @@
 import std/[math, random, sets, sequtils, strutils, tables, sugar]
 import wNim/wTypes
 import wNim/private/wHelper
-from sdl2 import Rect, Point
+#from sdl2 import Rect, Point
 import randrect
 import colors
 import world, viewport
@@ -41,16 +41,13 @@ type
   RectID* = uint
   Rotation* = enum R0, R90, R180, R270
   Orientation* = enum Vertical, Horizontal
-  WSize* = tuple[w, h: WCoordT]
-  PSize* = tuple[w, h: cint]
-  #PPoint* = sdl2.Point   # location on screen
-  PRect* = sdl2.Rect     # screen/pixel rectangle
-  WRect* = tuple[x, y, w, h: WCoordT] # world rectangle
+  PRect* = tuple[x, y, w, h: PxType]  # screen/pixel rectangle
+  WRect* = tuple[x, y, w, h: WType] # world rectangle
   DBRect* = ref object # database object to be replaced later by Component, etc.
-    x*: WCoordT
-    y*: WCoordT
-    w*: WCoordT
-    h*: WCoordT
+    x*: WType
+    y*: WType
+    w*: WType
+    h*: WType
     id*: RectID
     label*: string
     origin*: WPoint
@@ -82,19 +79,19 @@ proc `$`*(rect: DBRect): string
 proc `$`*(rect: PRect): string
 proc `==`*(a, b: DBRect): bool
 proc pos*(rect: SomeWRect): WPoint {.inline.}
-proc pos*(rect: PRect): PPoint {.inline.}
+proc pos*(rect: PRect): PxPoint {.inline.}
 proc size*(rect: SomeWRect): WSize {.inline.}
-proc size*(rect: PRect): PSize {.inline.}
+proc size*(rect: PRect): PxSize {.inline.}
 proc greatestDim*(rect: PRect): cint {.inline.}
-proc greatestDim*(rect: SomeWRect): WCoordT {.inline.}
+proc greatestDim*(rect: SomeWRect): WType {.inline.}
 proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.}
 converter toWRect*(rect: DBRect): WRect {.inline.}
 proc toWRect*(rect: PRect, vp: ViewPort): WRect {.inline.}
 proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.}
 proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.}
 proc zero*[T:PRect|WRect](rect: T): T {.inline.}
-proc originXLeft*(rect: DBRect): WCoordT
-proc originYDn*(rect: DBRect): WCoordT
+proc originXLeft*(rect: DBRect): WType
+proc originYDn*(rect: DBRect): WType
 proc lowerLeft*(rect: SomeWRect): WPoint
 proc lowerRight*(rect: SomeWRect): WPoint
 proc upperLeft*(rect: SomeWRect): WPoint
@@ -103,12 +100,12 @@ converter toTopEdge*(rect: SomeWRect): TopEdge
 converter toLeftEdge*(rect: SomeWRect): LeftEdge
 converter toBottomEdge*(rect: SomeWRect): BottomEdge
 converter toRightEdge*(rect: SomeWRect): RightEdge
-proc left*(rect: SomeWRect): WCoordT
-proc right*(rect: SomeWRect): WCoordT
-proc top*(rect: SomeWRect): WCoordT
-proc bottom*(rect: SomeWRect): WCoordT
-proc x*(edge: VertEdge ): WCoordT {.inline.}
-proc y*(edge: HorizEdge): WCoordT {.inline.}
+proc left*(rect: SomeWRect): WType
+proc right*(rect: SomeWRect): WType
+proc top*(rect: SomeWRect): WType
+proc bottom*(rect: SomeWRect): WType
+proc x*(edge: VertEdge ): WType {.inline.}
+proc y*(edge: HorizEdge): WType {.inline.}
 proc ids*(rects: openArray[DBRect]): seq[RectID]
 proc `<`* (edge1, edge2: VertEdge): bool {.inline.}
 proc `<=`*(edge1, edge2: VertEdge): bool {.inline.}
@@ -131,18 +128,18 @@ proc moveRectTo*(rect: SomeWRect, pos: WPoint)
 proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.}
 proc rotate*(rect: DBRect, amt: Rotation)
 proc rotate*(rect: DBRect, orient: Orientation)
-proc area*(rect: SomeWRect): WCoordT {.inline.}
+proc area*(rect: SomeWRect): WType {.inline.}
 proc aspectRatio*(rect: SomeWRect): float
 proc aspectRatio*[T:SomeWRect](rects: openArray[T]): float
-proc fillArea*[T:SomeWRect](rects: openArray[T]): WCoordT
+proc fillArea*[T:SomeWRect](rects: openArray[T]): WType
 proc fillRatio*[T:SomeWRect](rects: openArray[T]): float
-proc normalizeRectCoords*(startPos, endPos: PPoint): PRect
+proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect
 proc toFloat*(rot: Rotation): float {.inline.}
 proc inc*(r: var Rotation) {.inline.}
 proc dec*(r: var Rotation) {.inline.}
 proc `+`*(r1, r2:Rotation): Rotation {.inline.}
 proc `-`*(r1, r2:Rotation): Rotation {.inline.}
-converter toPPoint*(pt: wPoint): PPoint {.inline.}
+converter toPxPoint*(pt: wPoint): PxPoint {.inline.}
 
 
 # Procs for single Rect
@@ -168,7 +165,7 @@ proc pos*(rect: SomeWRect): WPoint {.inline.} =
   # Returns DBRect's origin.
   # Returns WRect's upper left corner 
   (rect.x, rect.y)
-proc pos*(rect: PRect): PPoint {.inline.} =
+proc pos*(rect: PRect): PxPoint {.inline.} =
   # Returns PRect's upper left corner 
   (rect.x, rect.y)
 proc size*(rect: SomeWRect): WSize {.inline.} =
@@ -180,14 +177,14 @@ proc size*(rect: SomeWRect): WSize {.inline.} =
       (rect.h, rect.w)
   elif typeof(rect) is WRect:
     (rect.w, rect.h)
-proc size*(rect: PRect): PSize {.inline.} =
+proc size*(rect: PRect): PxSize {.inline.} =
   # Returns width and height of screen rectangle
   (rect.w, rect.h)
 
 proc greatestDim*(rect: PRect): cint {.inline.} =
   max(rect.w, rect.h)
 
-proc greatestDim*(rect: SomeWRect): WCoordT {.inline.} =
+proc greatestDim*(rect: SomeWRect): WType {.inline.} =
   max(rect.w, rect.h)
 
 proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.} =
@@ -195,33 +192,33 @@ proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.} =
   # This is basis of upper/lower/left/right/edge/bounding box functions
   # Looks at rotation, then returns barebones rectangle x,y,w,h with
   # lowerleft origin in world space.
-  # Values are clipped to WCoordT high/low
+  # Values are clipped to WType high/low
   # TODO: Use rotation/translation matrix with shortcuts for 0/90/180/270
   let
-    (w, h)   = (rect.w,        rect.h  )
-    (x, y)   = (rect.x,        rect.y  )
+    (w, h)   = (rect.w, rect.h)
+    (x, y)   = (rect.x, rect.y)
     (ox, oy) = (rect.origin.x, rect.origin.y)
-  var outx, outy, outw, outh: WCoordT
+  var outx, outy, outw, outh: WType
   if rect.rot == R0 or dorot == false:
-    outx = (x - ox).WCoordT
-    outy = (y - oy).WCoordT
-    outw = (w     ).WCoordT
-    outh = (h     ).WCoordT
+    outx = x - ox
+    outy = y - oy
+    outw = w
+    outh = h
   elif rect.rot == R90:
-    outx = (x + oy - h).WCoordT
-    outy = (y - ox    ).WCoordT
-    outw = (h         ).WCoordT
-    outh = (w         ).WCoordT
+    outx = x + oy - h
+    outy = y - ox
+    outw = h
+    outh = w
   elif rect.rot == R180:
-    outx = (x + ox - w).WCoordT
-    outy = (y + oy - h).WCoordT
-    outw = (w         ).WCoordT
-    outh = (h         ).WCoordT
+    outx = x + ox - w
+    outy = y + oy - h
+    outw = w
+    outh = h
   elif rect.rot == R270:
-    outx = (x - oy    ).WCoordT
-    outy = (y + ox - w).WCoordT
-    outw = (h         ).WCoordT
-    outh = (w         ).WCoordT
+    outx = x - oy
+    outy = y + ox - w
+    outw = h
+    outh = w
   (outx, outy, outw, outh)
 converter toWRect*(rect: DBRect): WRect {.inline.} =
   # Implicit conversion from DBRect to WRect.
@@ -230,16 +227,16 @@ converter toWRect*(rect: DBRect): WRect {.inline.} =
 proc toWRect*(rect: PRect, vp: ViewPort): WRect =
   # Converts from screen/pixel space to world space
   # PRect has x,y in upper left, so choose lower left then convert
-  when WCoordT is SomeFloat:
+  when WType is SomeFloat:
     (rect.x.toWorldX(vp),
     (rect.y + rect.h).toWorldY(vp),
-    (rect.w.float / vp.zoom).WCoordT,
-    (rect.h.float / vp.zoom).WCoordT)
-  elif WCoordT is SomeInteger:
+    (rect.w.float / vp.zoom).WType,
+    (rect.h.float / vp.zoom).WType)
+  elif WType is SomeInteger:
     (rect.x.toWorldX(vp),
     (rect.y + rect.h).toWorldY(vp),
-    (rect.w.float / vp.zoom).round.WCoordT,
-    (rect.h.float / vp.zoom).round.WCoordT)
+    (rect.w.float / vp.zoom).round.WType,
+    (rect.h.float / vp.zoom).round.WType)
 
 proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} = 
   # Origin of output is upper left of rectangle
@@ -265,14 +262,14 @@ proc zero*[T:PRect|WRect](rect: T): T {.inline.} =
   else:
     (0.CoordT, 0.CoordT, rect.w, rect.h)
 
-proc originXLeft*(rect: DBRect): WCoordT =
+proc originXLeft*(rect: DBRect): WType =
   # Horizontal distance from left edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.x
   of R90:  rect.h - rect.origin.y
   of R180: rect.w - rect.origin.x
   of R270: rect.origin.y
-proc originYDn*(rect: DBRect): WCoordT =
+proc originYDn*(rect: DBRect): WType =
   # Vertical distance from bottom edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.y
@@ -320,16 +317,16 @@ converter toBottomEdge*(rect: SomeWRect): BottomEdge =
 converter toRightEdge*(rect: SomeWRect):  RightEdge =
   result.pt0 = rect.lowerRight
   result.pt1 = rect.upperRight
-proc left*(rect: SomeWRect): WCoordT =
+proc left*(rect: SomeWRect): WType =
   rect.LeftEdge.x
-proc right*(rect: SomeWRect): WCoordT =
+proc right*(rect: SomeWRect): WType =
   rect.RightEdge.x
-proc top*(rect: SomeWRect): WCoordT =
+proc top*(rect: SomeWRect): WType =
   rect.TopEdge.y
-proc bottom*(rect: SomeWRect): WCoordT =
+proc bottom*(rect: SomeWRect): WType =
   rect.BottomEdge.y
-proc x*(edge: VertEdge ): WCoordT {.inline.} = edge.pt0.x
-proc y*(edge: HorizEdge): WCoordT {.inline.} = edge.pt0.y
+proc x*(edge: VertEdge ): WType {.inline.} = edge.pt0.x
+proc y*(edge: HorizEdge): WType {.inline.} = edge.pt0.y
 
 
 # Procs for multiple Rects
@@ -369,7 +366,7 @@ proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
   (pt0Outside and pt1Outside and edgeInside)
 
 let e = VertEdge(pt0:(5,-1), pt1:(5,101))
-let r = (0,0,100,100).WRect
+let r: WRect = (0, 0, 100, 100)
 echo isEdgeInRect(e, r)
 
 
@@ -409,10 +406,10 @@ const
 
 proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect = 
   # Creat a DBRect with random position, size, color
-  var rw: WCoordT
-  var rh: WCoordT
-  let rectPosX: WCoordT = region.x + rand(region.w - 1)
-  let rectPosY: WCoordT = region.y + rand(region.h - 1)
+  var rw: WType
+  var rh: WType
+  let rectPosX: WType = region.x + rand(region.w - 1)
+  let rectPosY: WType = region.y + rand(region.h - 1)
 
   if log: # Make log distribution
     while true:
@@ -447,11 +444,11 @@ proc moveRectTo*(rect: SomeWRect, pos: WPoint) =
   rect.y = pos.y
 
 proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.} =
-  var left, right, top, bottom: WCoordT
-  left   = WCoordT.high
-  right  = WCoordT.low
-  top    = WCoordT.low
-  bottom = WCoordT.high
+  var left, right, top, bottom: WType
+  left   = WType.high
+  right  = WType.low
+  top    = WType.low
+  bottom = WType.high
   # Todo: make proc edges() that returns all edges with only one conversion
   for r in rects:
     left   = min(left,   r.LeftEdge.x)
@@ -478,7 +475,7 @@ proc rotate*(rect: DBRect, orient: Orientation) =
     else: rect.rot = R0
     
 
-proc area*(rect: SomeWRect): WCoordT {.inline.} =
+proc area*(rect: SomeWRect): WType {.inline.} =
   rect.w * rect.h
 
 proc aspectRatio*(rect: SomeWRect): float =
@@ -493,7 +490,7 @@ proc aspectRatio*(rect: SomeWRect): float =
 proc aspectRatio*[T:SomeWRect](rects: openArray[T]): float =
   rects.boundingBox.aspectRatio
 
-proc fillArea*[T:SomeWRect](rects: openArray[T]): WCoordT =
+proc fillArea*[T:SomeWRect](rects: openArray[T]): WType =
   # Total area of all rectangles.  Does not account for overlap.
   for r in rects:
     result += r.area
@@ -503,7 +500,7 @@ proc fillRatio*[T:SomeWRect](rects: openArray[T]): float =
   # for overlap, so value can be > 1.0.
   rects.fillArea.float / rects.boundingBox.area.float
 
-proc normalizeRectCoords*(startPos, endPos: PPoint): PRect =
+proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect =
   # make sure that rect.x,y is always lower left
   let (sx, sy) = startPos
   let (ex, ey) = endPos
@@ -578,9 +575,9 @@ proc `-`*(r1, r2:Rotation): Rotation =
     of R180: R90
     of R270: R0
 
-converter toSize*(size: wSize): PSize =
+converter toSize*(size: wSize): PxSize =
   (size.width, size.height)
-converter toPPoint*(pt: wPoint): PPoint {.inline.} =
+converter toPxPoint*(pt: wPoint): PxPoint {.inline.} =
   (pt.x, pt.y)
 
 
@@ -791,18 +788,18 @@ proc testRectsRects() =
   assert r1.pos  == (10, 20)
   assert r2.pos  == (10, 20)
   assert r3.pos  == (10, 20)
-  assert r4.pos  == (10.WCoordT, 20.WCoordT)
-  # Not sure why above doesn't require .WCoordT but below does,
-  # as both pos and size return tuple[WCoordT, WCoordT]
-  assert r1.size == (50.WCoordT, 60.WCoordT)
-  assert r2.size == (60.WCoordT, 50.WCoordT)
-  assert r3.size == (50.WCoordT, 60.WCoordT)
-  assert r4.size == (60.WCoordT, 50.WCoordT)
+  assert r4.pos  == (10.WType, 20.WType)
+  # Not sure why above doesn't require .WType but below does,
+  # as both pos and size return tuple[WType, WType]
+  assert r1.size == (50.WType, 60.WType)
+  assert r2.size == (60.WType, 50.WType)
+  assert r3.size == (50.WType, 60.WType)
+  assert r4.size == (60.WType, 50.WType)
   # TODO: add test for int.high convert to cint.high, etc.
-  # assert r1.toPlainWRect ==  (  0.WCoordT,  0.WCoordT, 50.WCoordT, 60.WCoordT)
-  # assert r2.toPlainWRect ==  (  0.WCoordT,  0.WCoordT, 50.WCoordT, 60.WCoordT)
-  # assert r3.toPlainWRect ==  (  0.WCoordT,  0.WCoordT, 50.WCoordT, 60.WCoordT)
-  # assert r4.toPlainWRect ==  (  0.WCoordT,  0.WCoordT, 50.WCoordT, 60.WCoordT)
+  # assert r1.toPlainWRect ==  (  0.WType,  0.WType, 50.WType, 60.WType)
+  # assert r2.toPlainWRect ==  (  0.WType,  0.WType, 50.WType, 60.WType)
+  # assert r3.toPlainWRect ==  (  0.WType,  0.WType, 50.WType, 60.WType)
+  # assert r4.toPlainWRect ==  (  0.WType,  0.WType, 50.WType, 60.WType)
   assert r1.originXLeft == 10
   assert r2.originXLeft == 50
   assert r3.originXLeft == 40
@@ -1021,10 +1018,10 @@ proc testRectsRects() =
   assert boundingBox([r3]) == (x:r3.left, y:r3.top, w:r3.w, h:r3.h)
   assert boundingBox([r4]) == (x:r4.left, y:r4.top, w:r4.h, h:r4.w)
 
-  assert boundingBox([r1, r2]) == (x: -8.WCoordT, 
-                                   y: -37.WCoordT,
-                                   w: 60.WCoordT,
-                                   h: 90.WCoordT)
+  assert boundingBox([r1, r2]) == (x: -8.WType, 
+                                   y: -37.WType,
+                                   w: 60.WType,
+                                   h: 90.WType)
 
   rotate(r1, R0);
   rotate(r2, R0);
