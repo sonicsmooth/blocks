@@ -29,7 +29,7 @@ export rects, tables
 
 type 
   RectTable* = ref Table[RectID, DBRect]   # meant to be shared
-  PosRot = tuple[x: WCoordT, y: WCoordT, rot: Rotation]
+  PosRot = tuple[x: WType, y: WType, rot: Rotation]
   PosTable* = Table[RectID, PosRot] # meant to have value semantics
 
 const
@@ -101,8 +101,8 @@ proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool
   when defined(testRects):
     table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 200, origin: (10, 20), rot: R0,
                     selected: false, penColor: Blue, fillColor: Blue.colordiv(2).toColorU32(127))
-    table[2] = DBRect(id: 2, x: 0, y: 0, w: 100, h: 120, origin: (10, 20), rot: R90,
-                    selected: false, penColor: Red, fillColor: Red.toColorU32(127))
+    # table[2] = DBRect(id: 2, x: 0, y: 0, w: 100, h: 120, origin: (10, 20), rot: R90,
+    #                 selected: false, penColor: Red, fillColor: Red.toColorU32(127))
     #table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 100, origin: (0, 0), rot: R0,
     #                selected: false, penColor: 0x7f0000ff.toColorU32, fillColor: 0x7f00007f.toColorU32)
     # table[2] = DBRect(id: 2, x: 100, y: 100, w: 100, h: 100, origin: (0,0), rot: R0,
@@ -123,7 +123,7 @@ proc boundingBox*(rectTable: RectTable): WRect =
 proc aspectRatio*(rtable: RectTable): float =
   rtable.values.toSeq.aspectRatio()
 
-proc fillArea*(rtable: RectTable): WCoordT = 
+proc fillArea*(rtable: RectTable): WType = 
   # Just the rectangle area
   rtable.values.toSeq.fillArea()
 

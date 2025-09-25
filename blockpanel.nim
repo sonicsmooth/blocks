@@ -13,7 +13,6 @@ import render
 # TODO: update qty when spinner text loses focus
 # TODO: Load up system colors from HKEY_CURRENT_USER\Control Panel\Colors
 
-
 type
   MouseState = enum
     StateNone
@@ -40,7 +39,7 @@ type
     mSurfaceCache: Table[CacheKey, SurfacePtr]
     mTextureCache: Table[CacheKey, TexturePtr]
     mFirmSelection*: seq[RectID]
-    mFillArea*: WCoordT
+    mFillArea*: WType
     mRatio*: float
     mAllBbox*: WRect
     mSelectBox*: WRect
@@ -90,8 +89,11 @@ wClass(wBlockPanel of wSDLPanel):
     self.mSurfaceCache.clear()
     for id, rect in gDb:
       for sel in [false, true]:
+        # Could not get the point math * to work here yet
+        let w = (rect.w.float * self.mViewPort.zoom).round.cint
+        let h = (rect.h.float * self.mViewPort.zoom).round.cint
         let surface = 
-          createRGBSurface(0, rect.w, rect.h, 32, rmask, gmask, bmask, amask)
+          createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
         surface.renderDBRect(self.mViewPort, rect, sel)                                       
         self.mSurfaceCache[(id, sel)] = surface
   
@@ -118,9 +120,10 @@ wClass(wBlockPanel of wSDLPanel):
       self.mAllBbox = gDb.boundingBox()
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
-        self.mText = $ratio
+        #self.mText = $ratio
         self.mRatio = ratio
-  proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: sdl2.Point) =
+  
+  proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
     let rects = gDb[rectIDs]
@@ -128,11 +131,21 @@ wClass(wBlockPanel of wSDLPanel):
       moveRectBy(rect, delta)
     self.updateRatio()
     self.refresh(false)
-  proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: sdl2.Point) =
+  
+  proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
+    #let wdelta: WPoint = delta.toWorld(self.mViewPort)
+    #echo delta
     moveRectBy(gDb[rectId], delta)
     self.updateRatio()
     self.refresh(false)
+  
+  proc rotateRects(self: wBlockPanel, rectIds: seq[RectId], amt: Rotation) =
+    for id in rectIds:
+      gDb[id].rotate(amt)
+    self.updateRatio()
+    self.refresh(false)
+  
   proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
       gDb.del(id) # Todo: check whether this deletes rect
@@ -142,11 +155,7 @@ wClass(wBlockPanel of wSDLPanel):
     self.mFillArea = gDb.fillArea()
     self.updateRatio()
     self.refresh(false)
-  proc rotateRects(self: wBlockPanel, rectIds: seq[RectId], amt: Rotation) =
-    for id in rectIds:
-      gDb[id].rotate(amt)
-    self.updateRatio()
-    self.refresh(false)
+  
   proc selectAll(self: wBlockPanel) =
     gDb.setRectSelect()
     self.refresh()
@@ -268,7 +277,10 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         self.mViewPort.doZoom(event.getWheelRotation)
-        #dump self.mViewPort
+        self.initSurfaceCache()
+        self.initTextureCache()
+
+        self.mText = $self.mViewPort.zoom
         self.refresh(false)
       else:
         discard
@@ -325,13 +337,12 @@ wClass(wBlockPanel of wSDLPanel):
       let sel = gdb.selected()
       case event.getEventType
       of wEvent_MouseMove:
-        #let deltaPx: wPoint = event.mousePos - self.mMouseData.lastPxPos
         let delta: WPoint = event.mousePos.toWorld(vp) - self.mMouseData.lastWPos
         if event.ctrlDown and hitid in sel:
           self.moveRectsBy(sel, delta)
         else:
           self.moveRectBy(hitid, delta)
-        self.mMouseData.lastPxPos = event.mousePos
+        #self.mMouseData.lastPxPos = event.mousePos
         self.mMouseData.lastWPos = event.mousePos.toWorld(vp)
         self.refresh(false)
       else:
@@ -395,21 +406,22 @@ Rendering options for SDL and pixie
 
 
 ]# 
+  var a = 0.0
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
-    # for rect in gDb.values:
-    #   let texture = self.mTextureCache[(rect.id, rect.selected)]
-    #   let dstrect = rect.toRectNoRot
-    #   let pt = rect.origin
-    #   self.sdlRenderer.copyEx(texture, nil, addr dstrect, -rect.rot.toFloat, addr pt)
     let vp = self.mViewPort
     for rect in gDb.values:
       let 
-        texture = self.mTextureCache[(rect.id, rect.selected)]
-        dstRect: sdl2.Rect = rect.toPRect(vp, rot=false)
-        center: sdl2.Point = ( rect.origin.x.float * vp.zoom, 
-                             (-rect.origin.y.float + rect.h.float) * vp.zoom)
-      self.sdlRenderer.copyEx(texture, nil, addr dstRect, -rect.rot.toFloat, addr center)
+        pTexture: TexturePtr = self.mTextureCache[(rect.id, rect.selected)]
+        dstRect: PRect = rect.toPRect(vp, rot=true)
+        # center: PxPoint = ( rect.origin.x.float * vp.zoom, 
+        #                   (-rect.origin.y.float + rect.h.float) * vp.zoom)
+        center: PxPoint = (rect.origin.x.float * vp.zoom,
+                          (rect.h.float - rect.origin.y.float ) * vp.zoom)
+      self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, 0, addr center)
+      #self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, -rect.rot.toFloat, addr center)
+      #self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, a, addr center)
+      #a += 90.0
 
   proc blitFromSurfaceCache(self: wBlockPanel) = 
     # Copy from surface cache to screen via surface ptr
@@ -450,7 +462,7 @@ Rendering options for SDL and pixie
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.mDstRect = (-200, -200, 5000, 5000)
+    self.mDstRect = (-250, -250, 500, 500)
     self.mGrid.xSpace = 25
     self.mGrid.ySpace = 25
     self.mGrid.visible = true

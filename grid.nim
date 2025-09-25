@@ -8,8 +8,8 @@ import wNim/wTypes
 
 type
   Grid* = object
-    xSpace*: WCoordT = 10
-    ySpace*: WCoordT = 10
+    xSpace*: WType = 10
+    ySpace*: WType = 10
     visible*: bool = true
     originVisible*: bool = true
 
@@ -29,16 +29,15 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels
   rp.setDrawColor(colors.LightSlateGray.toColor())
   let
-    worldStart = vp.toWorld((0, size.height)).snap(grid)
-    worldEnd   = vp.toWorld((size.width, 0)).snap(grid)
-    pxStart = vp.toPixel(worldStart)
-    pxEnd = vp.toPixel(worldEnd)
-    xstep  = (grid.xSpace.float * vp.zoom)
-    ystep  = (grid.ySpace.float * vp.zoom)
+    worldStart: WPoint = (0, size.height).toWorld(vp).snap(grid)
+    worldEnd: WPoint   = (size.width, 0).toWorld(vp).snap(grid)
+    pxStart: PxPoint = worldStart.toPixel(vp)
+    pxEnd: PxPoint = worldEnd.toPixel(vp)
+    xstep: float  = (grid.xSpace.float * vp.zoom)
+    ystep: float  = (grid.ySpace.float * vp.zoom)
   
-  #dump xstep
 
-  if xstep >= 10.0:
+  if xstep >= 5.0:
     for x in arange(pxStart.x.float .. pxEnd.x.float, xstep):
       let xr = x.round.cint
       rp.drawLine(xr, 0, xr, size.height.cint)
@@ -47,18 +46,21 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
       let yr = y.round.cint
       rp.drawLine(0, yr, size.width.cint, yr)
   
-  if grid.originVisible:
-    var pt1, pt2: sdl2.Point
-    let extent = 25.0
-    let offset = 1.0
-    let perps = [-offset, 0.0, offset]
-    rp.setDrawColor(colors.DarkRed.toColor())
-    for y in perps:
-      pt1 = vp.toPixel((-extent,  y))
-      pt2 = vp.toPixel(( extent,  y))
-      rp.drawLine(pt1.x, pt1.y, pt2.x, pt2.y)
-    for x in perps:
-      pt1 = vp.toPixel((x, -extent))
-      pt2 = vp.toPixel((x,  extent))
-      rp.drawLine(pt1.x, pt1.y, pt2.x, pt2.y)
+  # if grid.originVisible:
+  #   let
+  #     extent: PxType = (25.0 * vp.zoom).toPxType
+  #     o: PxPoint = (0, 0).toPixel(vp)
+        
+  #   rp.setDrawColor(colors.DarkRed.toColor())
+
+  #   # Horizontals
+  #   rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
+  #   rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
+  #   rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
+    
+  #   # Verticals
+  #   rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
+  #   rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
+  #   rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
+
   
