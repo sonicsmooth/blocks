@@ -18,7 +18,6 @@ var
 proc font(size: int): FontPtr =
   # Return properly sized font ptr from cache based on size
   let clampSize = clamp(size, fontRange)
-  dump clampSize
   if clampSize notin fontCache:
     fontCache[clampSize] = openFont("fonts/DejaVuSans.ttf", clampSize)
   fontCache[clampSize]

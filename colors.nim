@@ -443,5 +443,3 @@ when isMainModule:
     assert 0xabcdefaa_5500ff00.toColorU32(127) == 0x7f00ff00'u32
     assert 0xabcdefaa_550000ff.toColorU32(127) == 0x7f0000ff'u32
 
-
-echo "Done"

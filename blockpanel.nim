@@ -27,10 +27,8 @@ type
   MouseData = tuple
     clickHitIds: seq[RectID]
     dirtyIds:    seq[RectID]
-    clickPxPos:  wPoint
-    lastPxPos:   wPoint
-    clickWPos: WPoint
-    lastWPos: WPoint
+    clickPos:    wPoint # comes from winim (wPoint) not SDL2 (cint)
+    lastPos:     wPoint # comes from winim (wPoint) not SDL2 (cint)
     state:       MouseState
     pzState:     PanZoomState
   CacheKey = tuple[id:RectID, selected: bool]
@@ -140,6 +138,14 @@ wClass(wBlockPanel of wSDLPanel):
     self.updateRatio()
     self.refresh(false)
   
+  proc moveRectTo(self: wBlockPanel, rectId: RectId, delta: WPoint) =
+    # Common proc to move one or more Rects; used by mouse and keyboard
+    #let wdelta: WPoint = delta.toWorld(self.mViewPort)
+    #echo delta
+    moveRectTo(gDb[rectId], delta)
+    self.updateRatio()
+    self.refresh(false)
+  
   proc rotateRects(self: wBlockPanel, rectIds: seq[RectId], amt: Rotation) =
     for id in rectIds:
       gDb[id].rotate(amt)
@@ -180,10 +186,10 @@ wClass(wBlockPanel of wSDLPanel):
     proc resetMouseData() = 
       self.mMouseData.clickHitIds.setLen(0)
       self.mMouseData.dirtyIds.setLen(0)
-      self.mMouseData.clickPxPos = (0, 0)
-      self.mMouseData.lastPxPos = (0, 0)
-      self.mMouseData.clickWPos = (0, 0)
-      self.mMouseData.lastWPos = (0, 0)
+      self.mMouseData.clickPos = (0, 0)
+      self.mMouseData.lastPos = (0, 0)
+      #self.mMouseData.clickWPos = (0, 0)
+      #self.mMouseData.lastWPos = (0, 0)
     proc escape() =
       resetMouseData()
       resetBox()
@@ -258,27 +264,25 @@ wClass(wBlockPanel of wSDLPanel):
     if event.getEventType == wEvent_MouseMove:
       let hWnd = GetAncestor(self.handle, GA_ROOT)
       # mouse value is in mLparam
-      let mPxPos = lParamTuple[int](event)
-      let mWPos = mPxPos.toWorld(self.mViewPort)
       SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
 
-    let vp = self.mViewPort
+    let 
+      vp = self.mViewPort
+      wmp = event.mousePos.toWorld(vp)
     
     case self.mMouseData.pzState:
     of PZStateNone:
       case event.getEventType
       of wEvent_RightDown:
-        self.mMouseData.clickPxPos = event.mousePos
-        self.mMouseData.lastPxPos  = event.mousePos
-        self.mMouseData.clickWPos = event.mousePos.toWorld(vp)
-        self.mMouseData.lastWPos = event.mousePos.toWorld(vp)
+        self.mMouseData.clickPos = event.mousePos
+        self.mMouseData.lastPos  = event.mousePos
         self.mMouseData.pzState = PZStateRMBDown
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         self.mViewPort.doZoom(event.getWheelRotation)
-        self.initSurfaceCache()
-        self.initTextureCache()
+        #self.initSurfaceCache()
+        #self.initTextureCache()
 
         self.mText = $self.mViewPort.zoom
         self.refresh(false)
@@ -287,8 +291,8 @@ wClass(wBlockPanel of wSDLPanel):
     of PZStateRMBDown:
       case event.getEventType
       of wEvent_MouseMove:
-        let deltaPx: wPoint = event.mousePos - self.mMouseData.lastPxPos
-        self.mMouseData.lastPxPos = event.mousePos
+        let deltaPx: PxPoint = event.mousePos - self.mMouseData.lastPos
+        self.mMouseData.lastPos = event.mousePos
         self.mViewPort.doPan(deltaPx)
         self.refresh(false)
       of wEvent_RightUp:
@@ -303,11 +307,9 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
-        self.mMouseData.clickPxPos = event.mousePos
-        self.mMouseData.lastPxPos  = event.mousePos
-        self.mMouseData.clickWPos = event.mousePos.toWorld(vp)
-        self.mMouseData.lastWPos  = event.mousePos.toWorld(vp)
-        self.mMouseData.clickHitIds = gDb.ptInRects(self.mMouseData.clickWPos)
+        self.mMouseData.clickPos = event.mousePos
+        self.mMouseData.lastPos  = event.mousePos
+        self.mMouseData.clickHitIds = gDb.ptInRects(wmp)
         if self.mMouseData.clickHitIds.len > 0: # Click in rect
           self.mMouseData.dirtyIds = gDb.rectInRects(self.mMouseData.clickHitIds[^1])
           self.mMouseData.state = StateLMBDownInRect
@@ -321,7 +323,7 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         self.mMouseData.state = StateDraggingRect
       of wEvent_LeftUp:
-        if event.mousePos == self.mMouseData.clickPxPos: # click and release in rect
+        if event.mousePos == self.mMouseData.clickPos: # click and release in rect
           var oldsel = gDb.selected()
           if not event.ctrlDown: # clear existing except this one
             oldsel.excl(hitid)
@@ -337,13 +339,18 @@ wClass(wBlockPanel of wSDLPanel):
       let sel = gdb.selected()
       case event.getEventType
       of wEvent_MouseMove:
-        let delta: WPoint = event.mousePos.toWorld(vp) - self.mMouseData.lastWPos
+        let 
+          lastSnap: WPoint = self.mGrid.snap(self.mMouseData.lastPos.toWorld(vp))
+          newSnap: WPoint = self.mGrid.snap(wmp)
+          delta: WPoint = newSnap - lastSnap
         if event.ctrlDown and hitid in sel:
+          # Group move should snap by grid amount even if not on grid to start
           self.moveRectsBy(sel, delta)
         else:
-          self.moveRectBy(hitid, delta)
-        #self.mMouseData.lastPxPos = event.mousePos
-        self.mMouseData.lastWPos = event.mousePos.toWorld(vp)
+          # Should snap to nearest without snapping to mouse pos
+          let newPos = self.mGrid.snap(gDb[hitid].pos + delta)
+          self.moveRectTo(hitid, newPos)
+        self.mMouseData.lastPos = event.mousePos
         self.refresh(false)
       else:
         self.mMouseData.state = StateNone
@@ -366,7 +373,7 @@ wClass(wBlockPanel of wSDLPanel):
     of StateDraggingSelect:
       case event.getEventType
       of wEvent_MouseMove:
-        let pbox: PRect = normalizeRectCoords(self.mMouseData.clickPxPos, event.mousePos)
+        let pbox: PRect = normalizeRectCoords(self.mMouseData.clickPos, event.mousePos)
         self.mSelectBox = pbox.toWRect(vp)
         let newsel = gDb.rectInRects(self.mSelectBox)
         gDb.clearRectSelect()
@@ -406,22 +413,24 @@ Rendering options for SDL and pixie
 
 
 ]# 
-  var a = 0.0
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
     let vp = self.mViewPort
     for rect in gDb.values:
       let 
         pTexture: TexturePtr = self.mTextureCache[(rect.id, rect.selected)]
-        dstRect: PRect = rect.toPRect(vp, rot=true)
-        # center: PxPoint = ( rect.origin.x.float * vp.zoom, 
-        #                   (-rect.origin.y.float + rect.h.float) * vp.zoom)
-        center: PxPoint = (rect.origin.x.float * vp.zoom,
-                          (rect.h.float - rect.origin.y.float ) * vp.zoom)
-      self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, 0, addr center)
-      #self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, -rect.rot.toFloat, addr center)
-      #self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, a, addr center)
-      #a += 90.0
+        center: PxPoint = (0, 0)
+      var dstRect: PRect = rect.toPRect(vp, rot=true)
+      if   rect.rot == R0:
+        discard
+      elif rect.rot == R90:
+        dstRect.y += (rect.w.float * vp.zoom).round.cint
+      elif rect.rot == R180:
+        dstRect.x += (rect.w.float * vp.zoom).round.cint
+        dstRect.y += (rect.h.float * vp.zoom).round.cint
+      elif rect.rot == R270:
+        dstRect.x += (rect.h.float * vp.zoom).round.cint
+      self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, -rect.rot.toFloat, addr center)
 
   proc blitFromSurfaceCache(self: wBlockPanel) = 
     # Copy from surface cache to screen via surface ptr

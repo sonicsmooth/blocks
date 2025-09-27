@@ -365,11 +365,6 @@ proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
 
-let e = VertEdge(pt0:(5,-1), pt1:(5,101))
-let r: WRect = (0, 0, 100, 100)
-echo isEdgeInRect(e, r)
-
-
 proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.} =
   let edgeInside = (edge >= rect.BottomEdge and edge <= rect.TopEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
