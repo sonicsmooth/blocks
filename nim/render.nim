@@ -46,6 +46,7 @@ proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
 var cnt = 0
 proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
   # Draw rectangle on SDL2 renderer
+  echo "renderdbrect"
   let prect = rect.toPRect(vp, rot=false)
   let pz = prect.zero
 
@@ -101,19 +102,3 @@ proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
 
 
 
-# proc renderBoundingBox*(renderer: RendererPtr, vp: ViewPort, rect: WRect) = 
-#   # Assumes wRect and PRect have same memory layout
-#   # Doesn't set drawcolor back to what it was
-#   let prect = rect.toPRect(vp)
-#   renderer.setDrawColor(Black.toColor())
-#   renderer.drawRect(addr prect)
-
-# proc renderSelectionBox*(renderer: RendererPtr, rect: PRect) =
-#   renderer.setDrawColor(0, 102, 204, 70)
-#   renderer.fillRect(addr rect)
-#   renderer.setDrawColor(0, 120, 215)
-#   renderer.drawRect(addr rect)
-
-# proc renderDestinationBox*(renderer: RendererPtr, rect: PRect) =
-#   renderer.setDrawColor(Red.toColor())
-#   renderer.drawRect(addr rect)

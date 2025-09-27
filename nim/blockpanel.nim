@@ -107,7 +107,6 @@ wClass(wBlockPanel of wSDLPanel):
 
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
-    self.initTextureCache()
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   proc updateRatio*(self: wBlockPanel) =
@@ -281,8 +280,8 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         self.mViewPort.doZoom(event.getWheelRotation)
-        #self.initSurfaceCache()
-        #self.initTextureCache()
+        self.initSurfaceCache()
+        self.initTextureCache()
 
         self.mText = $self.mViewPort.zoom
         self.refresh(false)
@@ -348,6 +347,7 @@ wClass(wBlockPanel of wSDLPanel):
           self.moveRectsBy(sel, delta)
         else:
           # Should snap to nearest without snapping to mouse pos
+          # Todo: make snap-to-grid proc 
           let newPos = self.mGrid.snap(gDb[hitid].pos + delta)
           self.moveRectTo(hitid, newPos)
         self.mMouseData.lastPos = event.mousePos
