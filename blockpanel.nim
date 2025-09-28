@@ -79,31 +79,67 @@ wClass(wBlockPanel of wSDLPanel):
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
-
   proc initSurfaceCache*(self: wBlockPanel) =
-    # Creates all new surfaces
     for surface in self.mSurfaceCache.values:
       surface.destroy()
     self.mSurfaceCache.clear()
-    for id, rect in gDb:
-      for sel in [false, true]:
-        # Could not get the point math * to work here yet
-        let w = (rect.w.float * self.mViewPort.zoom).round.cint
-        let h = (rect.h.float * self.mViewPort.zoom).round.cint
-        let surface = 
-          createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
-        surface.renderDBRect(self.mViewPort, rect, sel)                                       
-        self.mSurfaceCache[(id, sel)] = surface
-  
+  proc getFromSurfaceCache(self: wBlockPanel, id: RectID, sel: bool): SurfacePtr =
+    # Creates all new surfaces
+    let key = (id, sel)
+    if self.mSurfaceCache.hasKey(key):
+      self.mSurfaceCache[key]
+    else:
+      let
+        rect = gDb[id]
+        w = (rect.w.float * self.mViewPort.zoom).round.cint
+        h = (rect.h.float * self.mViewPort.zoom).round.cint
+        surface = createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
+      surface.renderDBRect(self.mViewPort, rect, sel)                                       
+      self.mSurfaceCache[key] = surface
+      surface
   proc initTextureCache*(self: wBlockPanel) =
-    # Copies surfaces from surfaceCache to textures
-    # Requires to be called when resize because of new texture
     for texture in self.mTextureCache.values:
       texture.destroy()
     self.mTextureCache.clear()
-    for key, surface in self.mSurfaceCache:
-      self.mTextureCache[key] = 
-        self.sdlRenderer.createTextureFromSurface(surface)
+  proc getFromTextureCache(self: wBlockPanel, id: RectID, sel: bool): TexturePtr =
+    # Copies surfaces from surfaceCache to textures
+    # Requires to be called when resize because of new texture
+    let key = (id, sel)
+    if self.mTextureCache.hasKey(key):
+      self.mTextureCache[key]
+    else:
+      let
+        surface = self.getFromSurfaceCache(id, sel)
+        texture = self.sdlRenderer.createTextureFromSurface(surface)
+      texture
+  proc blitFromTextureCache(self: wBlockPanel) =
+    # Copy from texture cache to screen via sdlrenderer
+    let vp = self.mViewPort
+    for rect in gDb.values:
+      let 
+        sz: PxSize = self.size
+        inside: bool = rect.upperLeft.within(vp, sz) or
+                       rect.upperRight.within(vp, sz) or
+                       rect.lowerLeft.within(vp, sz) or
+                       rect.lowerRight.within(vp, sz)
+      if not inside:
+        continue
+      let 
+        #pTexture: TexturePtr = self.mTextureCache[(rect.id, rect.selected)]
+        pTexture: TexturePtr = self.getFromTextureCache(rect.id, rect.selected)
+        center: PxPoint = (0, 0)
+      var dstRect: PRect = rect.toPRect(vp, rot=true)
+      if   rect.rot == R0:
+        discard
+      elif rect.rot == R90:
+        dstRect.y += (rect.w.float * vp.zoom).round.cint
+      elif rect.rot == R180:
+        dstRect.x += (rect.w.float * vp.zoom).round.cint
+        dstRect.y += (rect.h.float * vp.zoom).round.cint
+      elif rect.rot == R270:
+        dstRect.x += (rect.h.float * vp.zoom).round.cint
+      self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, -rect.rot.toFloat, addr center)
+
 
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
@@ -119,7 +155,6 @@ wClass(wBlockPanel of wSDLPanel):
       if ratio != self.mRatio:
         #self.mText = $ratio
         self.mRatio = ratio
-  
   proc moveRectsBy(self: wBlockPanel, rectIds: seq[RectId], delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
@@ -128,7 +163,6 @@ wClass(wBlockPanel of wSDLPanel):
       moveRectBy(rect, delta)
     self.updateRatio()
     self.refresh(false)
-  
   proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     #let wdelta: WPoint = delta.toWorld(self.mViewPort)
@@ -136,7 +170,6 @@ wClass(wBlockPanel of wSDLPanel):
     moveRectBy(gDb[rectId], delta)
     self.updateRatio()
     self.refresh(false)
-  
   proc moveRectTo(self: wBlockPanel, rectId: RectId, delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     #let wdelta: WPoint = delta.toWorld(self.mViewPort)
@@ -144,13 +177,11 @@ wClass(wBlockPanel of wSDLPanel):
     moveRectTo(gDb[rectId], delta)
     self.updateRatio()
     self.refresh(false)
-  
   proc rotateRects(self: wBlockPanel, rectIds: seq[RectId], amt: Rotation) =
     for id in rectIds:
       gDb[id].rotate(amt)
     self.updateRatio()
     self.refresh(false)
-  
   proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
       gDb.del(id) # Todo: check whether this deletes rect
@@ -160,7 +191,6 @@ wClass(wBlockPanel of wSDLPanel):
     self.mFillArea = gDb.fillArea()
     self.updateRatio()
     self.refresh(false)
-  
   proc selectAll(self: wBlockPanel) =
     gDb.setRectSelect()
     self.refresh()
@@ -400,7 +430,6 @@ wClass(wBlockPanel of wSDLPanel):
 Rendering options for pure SDL
 1. Blitting to window renderer...
   A. ...from sdl Texture cache (copied from sdl surface cache on init and resize)
-  B. ...from sdl surface cache
 2. Rendering in real time directly to sdl surface
 
 Rendering options for SDL and pixie
@@ -413,30 +442,6 @@ Rendering options for SDL and pixie
 
 
 ]# 
-  proc blitFromTextureCache(self: wBlockPanel) =
-    # Copy from texture cache to screen via sdlrenderer
-    let vp = self.mViewPort
-    for rect in gDb.values:
-      let 
-        pTexture: TexturePtr = self.mTextureCache[(rect.id, rect.selected)]
-        center: PxPoint = (0, 0)
-      var dstRect: PRect = rect.toPRect(vp, rot=true)
-      if   rect.rot == R0:
-        discard
-      elif rect.rot == R90:
-        dstRect.y += (rect.w.float * vp.zoom).round.cint
-      elif rect.rot == R180:
-        dstRect.x += (rect.w.float * vp.zoom).round.cint
-        dstRect.y += (rect.h.float * vp.zoom).round.cint
-      elif rect.rot == R270:
-        dstRect.x += (rect.h.float * vp.zoom).round.cint
-      self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, -rect.rot.toFloat, addr center)
-
-  proc blitFromSurfaceCache(self: wBlockPanel) = 
-    # Copy from surface cache to screen via surface ptr
-    let dstsurface = self.sdlWindow.getSurface()
-    for rect in gDb.values:
-      dstsurface.renderDBRect(self.mViewPort, rect, rect.selected)
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
     self.sdlRenderer.setDrawColor(self.backgroundColor.toColor)
@@ -449,10 +454,8 @@ Rendering options for SDL and pixie
     # Try a few methods to draw rectangles
     when true:
       self.blitFromTextureCache()
-    elif false:
-      self.blitFromSurfaceCache()
     else:
-      # Draw directly to surface
+      # Draw directly to 
       discard
 
     # Draw various boxes and text, then done
