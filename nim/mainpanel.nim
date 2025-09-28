@@ -137,8 +137,6 @@ wClass(wMainPanel of wPanel):
         break
     
     elif self.mCTRb3.value: # Do stack
-      echo dstRect
-      echo direction
       withLock(gLock):
         stackCompact(gDb, dstRect, direction)
       self.mBlockPanel.updateRatio()

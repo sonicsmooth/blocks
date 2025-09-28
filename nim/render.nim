@@ -43,10 +43,8 @@ proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-var cnt = 0
 proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
   # Draw rectangle on SDL2 renderer
-  echo "renderdbrect"
   let prect = rect.toPRect(vp, rot=false)
   let pz = prect.zero
 
@@ -62,19 +60,17 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
   rp.setDrawColor(Black.toColor)
   rp.drawLine(opx.x - extent, opx.y, opx.x + extent, opx.y)
   rp.drawLine(opx.x, opx.y - extent, opx.x, opx.y + extent)
-  rp.drawLine(0, 0, pz.w div 2, pz.h div 2)
 
   # Text to texture, then texture to renderer
   let 
     (w, h) = (prect.w, prect.h)
-    selstr = $rect.id & "_" & $cnt & (if sel: "*" else: "")
+    selstr = $rect.id & (if sel: "*" else: "")
     font = rect.font(vp.zoom)
     textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
     (tsw, tsh) = (textSurface.w, textSurface.h)
     dstRect: PRect = ((w div 2) - (tsw div 2),
                       (h div 2) - (tsh div 2), tsw, tsh)
     textTexture = rp.createTextureFromSurface(textSurface)
-  cnt.inc
   rp.copy(textTexture, nil, addr dstRect)
   textTexture.destroy()
 

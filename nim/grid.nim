@@ -46,21 +46,21 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
       let yr = y.round.cint
       rp.drawLine(0, yr, size.width.cint, yr)
   
-  # if grid.originVisible:
-  #   let
-  #     extent: PxType = (25.0 * vp.zoom).toPxType
-  #     o: PxPoint = (0, 0).toPixel(vp)
+  if grid.originVisible:
+    let
+      extent: PxType = (25.0 * vp.zoom).toPxType
+      o: PxPoint = (0, 0).toPixel(vp)
         
-  #   rp.setDrawColor(colors.DarkRed.toColor())
+    rp.setDrawColor(colors.DarkRed.toColor())
 
-  #   # Horizontals
-  #   rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
-  #   rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
-  #   rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
+    # Horizontals
+    rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
+    rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
+    rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
     
-  #   # Verticals
-  #   rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
-  #   rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
-  #   rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
+    # Verticals
+    rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
+    rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
+    rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
 
   
