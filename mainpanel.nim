@@ -87,7 +87,6 @@ wClass(wMainPanel of wPanel):
     gDb.randomizeRectsAll(randRegion, qty, logRandomize)
     self.mBlockPanel.mFillArea = gDb.fillArea()
     self.mBlockPanel.updateRatio()
-    self.mBlockPanel.initSurfaceCache()
     self.mBlockPanel.initTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 

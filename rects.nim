@@ -194,6 +194,7 @@ proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.} =
   # lowerleft origin in world space.
   # Values are clipped to WType high/low
   # TODO: Use rotation/translation matrix with shortcuts for 0/90/180/270
+  # TODO: cache or memoize WRect either in DBRect or in some other table
   let
     (w, h)   = (rect.w, rect.h)
     (x, y)   = (rect.x, rect.y)
