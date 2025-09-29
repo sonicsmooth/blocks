@@ -71,7 +71,7 @@ const
      (key: wKey_Space,  ctrl: false, shift: true,  alt: false): CmdRotateCW,
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
   moveTable: array[wKey_Left .. wKey_Down, sdl2.Point] =
-    [(-1,0), (0, -1), (1, 0), (0, 1)]
+    [(-1,0), (0, 1), (1, 0), (0, -1)]
 
 
 
@@ -86,16 +86,19 @@ wClass(wBlockPanel of wSDLPanel):
   proc getFromTextureCache(self: wBlockPanel, id: RectID, sel: bool): TexturePtr =
     # Copies surfaces from surfaceCache to textures
     # Requires to be called when resize because of new texture
-    let key = (id, sel)
+    let 
+      key = (id, sel)
+      vp = self.mViewPort
     if self.mTextureCache.hasKey(key):
       self.mTextureCache[key]
     else:
       let
         rect = gDb[id]
-        w = (rect.w.float * self.mViewPort.zoom).round.cint
-        h = (rect.h.float * self.mViewPort.zoom).round.cint
+        w = (rect.w.float * vp.zoom).round.cint
+        h = (rect.h.float * vp.zoom).round.cint
         surface = createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
-      surface.renderDBRect(self.mViewPort, rect, sel)                                       
+        swRenderer = createSoftwareRenderer(surface)
+      swRenderer.renderDBRect(vp, rect, sel, zero=true)
       let texture = self.sdlRenderer.createTextureFromSurface(surface)
       self.mTextureCache[key] = texture
       texture
@@ -124,8 +127,7 @@ wClass(wBlockPanel of wSDLPanel):
         dstRect.x += (rect.h.float * vp.zoom).round.cint
       self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, -rect.rot.toFloat, addr center)
   proc renderToScreen(self: wBlockPanel) =
-    # Render blocks directly to renderer
-    # Cannot rotate without updating renderDBRect
+    # Render blocks to screen using default renderer
     let
       vp = self.mViewPort
       sz: PxSize = self.size
@@ -133,7 +135,7 @@ wClass(wBlockPanel of wSDLPanel):
     for rect in gDb.values:
       if not isRectInRect(rect, screenRect):
         continue
-      self.sdlRenderer.renderDBRect(vp, rect, rect.selected)
+      self.sdlRenderer.renderDBRect(vp, rect, rect.selected, zero=false)
 
 
 
@@ -426,8 +428,7 @@ wClass(wBlockPanel of wSDLPanel):
 
 #[
 Rendering options for pure SDL
-1. Blitting to window renderer...
-  A. ...from sdl Texture cache (copied from sdl surface cache on init and resize)
+1. Blitting to window renderer from sdl Texture cache
 2. Rendering in real time directly to sdl surface
 
 Rendering options for SDL and pixie
@@ -450,7 +451,7 @@ Rendering options for SDL and pixie
       self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
-    when true:
+    when false:
       self.blitFromTextureCache()
     else:
       self.renderToScreen()

@@ -43,23 +43,34 @@ proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
+proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool, zero: bool) =
   # Draw rectangle on SDL2 renderer
-  let prect = rect.toPRect(vp, rot=false)
-  let pz = prect.zero
+  # rp is renderer
+  # vp is viewport to convert between pixels and world coords
+  # rect is domain object rectangle
+  # sel is whether the object should be rendered as selected
+  # zero is whether the object should be rendered at upper left corner of target
+  #   this should be false when target is screen
+  #   and true when target is texture
+  
+  # When drawn to textureCache
+  let prect = 
+    if zero: rect.toPRect(vp, rot=false).zero
+    else:    rect.toPRect(vp, rot=true)
+
 
   # Delegate rectangle to renderWRect after relocating to 0,0
-  rp.renderFilledRect(pz, rect.fillColor, rect.penColor)
+  rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
 
   # Origin
   # Todo: There is something to be said here about model space
   # todo: to world space to pixel space
   let
-    opx = (rect.origin.x.float * vp.zoom, (-rect.origin.y + rect.h).float * vp.zoom).toPxPoint
+    opx: PxPoint = (rect.originXLeft.float * vp.zoom, rect.originYUp.float * vp.zoom)
     extent = 10.0 * vp.zoom
   rp.setDrawColor(Black.toColor)
-  rp.drawLine(opx.x - extent, opx.y, opx.x + extent, opx.y)
-  rp.drawLine(opx.x, opx.y - extent, opx.x, opx.y + extent)
+  rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
+  rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
   # Text to texture, then texture to renderer
   let 
@@ -68,15 +79,11 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool) =
     font = rect.font(vp.zoom)
     textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
     (tsw, tsh) = (textSurface.w, textSurface.h)
-    dstRect: PRect = ((w div 2) - (tsw div 2),
-                      (h div 2) - (tsh div 2), tsw, tsh)
+    dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
+                      prect.y + (h div 2) - (tsh div 2), tsw, tsh)
     textTexture = rp.createTextureFromSurface(textSurface)
-  rp.copy(textTexture, nil, addr dstRect)
+  rp.copyEx(textTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
   textTexture.destroy()
-
-proc renderDBRect*(surface: SurfacePtr, vp: ViewPort, rect: DBRect, sel: bool) =
-  let rp = createSoftwareRenderer(surface)
-  rp.renderDBRect(vp, rect, sel)
 
 proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   # Draws text at bottom right corner
