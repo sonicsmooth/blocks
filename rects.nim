@@ -252,9 +252,10 @@ proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} =
   # if rot is false, then upper left is plain.
   # if rot is true, then, upper left is based on rotation
   let
-    origin = rect.toWRect(rot).upperLeft.toPixel(vp)
-    width = (rect.w.float * vp.zoom).round.cint
-    height = (rect.h.float * vp.zoom).round.cint
+    wrect = rect.toWRect(rot)
+    origin = wrect.upperLeft.toPixel(vp)
+    width = (wrect.w.float * vp.zoom).round.cint
+    height = (wrect.h.float * vp.zoom).round.cint
   (origin.x, origin.y, width, height)
 
 proc zero*[T:PRect|WRect](rect: T): T {.inline.} =
@@ -270,13 +271,26 @@ proc originXLeft*(rect: DBRect): WType =
   of R90:  rect.h - rect.origin.y
   of R180: rect.w - rect.origin.x
   of R270: rect.origin.y
+proc originXRight*(rect: DBRect): WType =
+  case rect.rot:
+  of R0:   rect.w - rect.origin.x
+  of R90:  rect.origin.y
+  of R180: rect.origin.x
+  of R270: rect.h - rect.origin.y 
 proc originYDn*(rect: DBRect): WType =
   # Vertical distance from bottom edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.y
   of R90:  rect.origin.x
   of R180: rect.h - rect.origin.y
-  of R270: rect.w  - rect.origin.x
+  of R270: rect.w - rect.origin.x
+proc originYUp*(rect: DBRect): WType =
+  # Vertical distance from bottom edge to origin after rotation
+  case rect.rot:
+  of R0 :  rect.h - rect.origin.y
+  of R90:  rect.w - rect.origin.x
+  of R180: rect.origin.y
+  of R270: rect.origin.x
 
 # Procs for single WRect
 proc lowerLeft*(rect: SomeWRect):  WPoint =
