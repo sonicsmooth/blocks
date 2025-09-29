@@ -43,23 +43,21 @@ proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool, zero: bool) =
+proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   # Draw rectangle on SDL2 renderer
   # rp is renderer
   # vp is viewport to convert between pixels and world coords
   # rect is domain object rectangle
-  # sel is whether the object should be rendered as selected
   # zero is whether the object should be rendered at upper left corner of target
   #   this should be false when target is screen
   #   and true when target is texture
   
-  # When drawn to textureCache
   let prect = 
-    if zero: rect.toPRect(vp, rot=false).zero
-    else:    rect.toPRect(vp, rot=true)
+    if zero: rect.toPRect(vp, rot=true).zero # used by texture renderer
+    else:    rect.toPRect(vp, rot=true)      # used by screen renderer
 
 
-  # Delegate rectangle to renderWRect after relocating to 0,0
+  # Delegate rectangle drawing
   rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
 
   # Origin
@@ -75,7 +73,7 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect,  sel: bool, zero
   # Text to texture, then texture to renderer
   let 
     (w, h) = (prect.w, prect.h)
-    selstr = $rect.id & (if sel: "*" else: "")
+    selstr = $rect.id & (if rect.selected: "*" else: "")
     font = rect.font(vp.zoom)
     textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
     (tsw, tsh) = (textSurface.w, textSurface.h)
