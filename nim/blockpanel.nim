@@ -79,24 +79,6 @@ wClass(wBlockPanel of wSDLPanel):
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
     self.refresh(false)
     UpdateWindow(self.mHwnd)
-  proc initSurfaceCache*(self: wBlockPanel) =
-    for surface in self.mSurfaceCache.values:
-      surface.destroy()
-    self.mSurfaceCache.clear()
-  proc getFromSurfaceCache(self: wBlockPanel, id: RectID, sel: bool): SurfacePtr =
-    # Creates all new surfaces
-    let key = (id, sel)
-    if self.mSurfaceCache.hasKey(key):
-      self.mSurfaceCache[key]
-    else:
-      let
-        rect = gDb[id]
-        w = (rect.w.float * self.mViewPort.zoom).round.cint
-        h = (rect.h.float * self.mViewPort.zoom).round.cint
-        surface = createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
-      surface.renderDBRect(self.mViewPort, rect, sel)                                       
-      self.mSurfaceCache[key] = surface
-      surface
   proc initTextureCache*(self: wBlockPanel) =
     for texture in self.mTextureCache.values:
       texture.destroy()
@@ -109,27 +91,29 @@ wClass(wBlockPanel of wSDLPanel):
       self.mTextureCache[key]
     else:
       let
-        surface = self.getFromSurfaceCache(id, sel)
-        texture = self.sdlRenderer.createTextureFromSurface(surface)
+        rect = gDb[id]
+        w = (rect.w.float * self.mViewPort.zoom).round.cint
+        h = (rect.h.float * self.mViewPort.zoom).round.cint
+        surface = createRGBSurface(0, w, h, 32, rmask, gmask, bmask, amask)
+      surface.renderDBRect(self.mViewPort, rect, sel)                                       
+      let texture = self.sdlRenderer.createTextureFromSurface(surface)
+      self.mTextureCache[key] = texture
       texture
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
-    let vp = self.mViewPort
+    let
+      vp = self.mViewPort
+      sz: PxSize = self.size
+      screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
+    var dstRect: PRect
     for rect in gDb.values:
-      let 
-        sz: PxSize = self.size
-        inside: bool = rect.upperLeft.within(vp, sz) or
-                       rect.upperRight.within(vp, sz) or
-                       rect.lowerLeft.within(vp, sz) or
-                       rect.lowerRight.within(vp, sz)
-      if not inside:
+      if not isRectInRect(rect, screenRect):
         continue
       let 
-        #pTexture: TexturePtr = self.mTextureCache[(rect.id, rect.selected)]
         pTexture: TexturePtr = self.getFromTextureCache(rect.id, rect.selected)
         center: PxPoint = (0, 0)
-      var dstRect: PRect = rect.toPRect(vp, rot=true)
-      if   rect.rot == R0:
+      dstRect = rect.toPRect(vp, rot=true)
+      if rect.rot == R0:
         discard
       elif rect.rot == R90:
         dstRect.y += (rect.w.float * vp.zoom).round.cint
@@ -139,6 +123,18 @@ wClass(wBlockPanel of wSDLPanel):
       elif rect.rot == R270:
         dstRect.x += (rect.h.float * vp.zoom).round.cint
       self.sdlRenderer.copyEx(pTexture, nil, addr dstRect, -rect.rot.toFloat, addr center)
+  proc renderToScreen(self: wBlockPanel) =
+    # Render blocks directly to renderer
+    # Cannot rotate without updating renderDBRect
+    let
+      vp = self.mViewPort
+      sz: PxSize = self.size
+      screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
+    for rect in gDb.values:
+      if not isRectInRect(rect, screenRect):
+        continue
+      self.sdlRenderer.renderDBRect(vp, rect, rect.selected)
+
 
 
   proc onResize(self: wBlockPanel, event: wEvent) =
@@ -270,13 +266,14 @@ wClass(wBlockPanel of wSDLPanel):
       self.mMouseData.state = StateNone
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     # Unified event processing
-    # Trying to implement roughly a 3d grid
-    # events: move, lmb up, lmb dn, rmb up, rmb dn, mmb up, mmb dn
-    # states: MouseState, PZState
-    # modifiers: ctrl, alt, shift.
-    # Cross product of these is 7 * 5 * 3 * 3! = 35*3*6 = 35*18 = 630 conditions
-    # Most of these are probably no-op
-
+    # Separate specific events (eg shft+LMB) from state changes
+    # For example, StateLMBDownInRect should be renamed to
+    # something like StateSelectStartInRect, and the event
+    # that gets into that state is MainSelector which comes 
+    # from mouseEvent == wEvent_LeftDown.
+    # so wEvent_LeftDown is mapped to MainSelector, which triggers
+    # state change from None to StateSelectStartInRect
+    # Also dragging is delayed by one event; fix it.
 
     # We don't deal with modifier keys directly
     if isModifierEvent(event):
@@ -310,9 +307,7 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         self.mViewPort.doZoom(event.getWheelRotation)
-        self.initSurfaceCache()
         self.initTextureCache()
-
         self.mText = $self.mViewPort.zoom
         self.refresh(false)
       else:
@@ -375,9 +370,12 @@ wClass(wBlockPanel of wSDLPanel):
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
           self.moveRectsBy(sel, delta)
+          # Todo: make snap-to-grid proc like this
+          # for id in sel:
+          #   let newPos = self.mGrid.snap(gDb[id].pos + delta)
+          #   self.moveRectTo(id, newPos)
         else:
-          # Should snap to nearest without snapping to mouse pos
-          # Todo: make snap-to-grid proc 
+          # Snap pos to nearest grid point
           let newPos = self.mGrid.snap(gDb[hitid].pos + delta)
           self.moveRectTo(hitid, newPos)
         self.mMouseData.lastPos = event.mousePos
@@ -455,8 +453,7 @@ Rendering options for SDL and pixie
     when true:
       self.blitFromTextureCache()
     else:
-      # Draw directly to 
-      discard
+      self.renderToScreen()
 
     # Draw various boxes and text, then done
     if self.mDstRect.w > 0:

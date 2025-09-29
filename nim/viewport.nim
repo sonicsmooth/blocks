@@ -55,11 +55,13 @@ proc toWorldY*(y: PxType, vp: ViewPort): WType =
 proc toWorld*[T: SomePoint](pt: T, vp: ViewPort): WPoint =
   (pt[0].toWorldX(vp), pt[1].toWorldY(vp))
 
-proc within*(wpt: WPoint, vp: ViewPort, size: PxSize): bool =
+proc isPointVisible*(wpt: WPoint, vp: ViewPort, size: PxSize): bool =
   # Returns true if pt is visible on screen
   let pxpt: PxPoint = wpt.toPixel(vp)
   pxpt.x >= 0 and pxpt.x < size.w and
   pxpt.y >= 0 and pxpt.y < size.h
+
+
 
 when isMainModule:
   when WType is int:
