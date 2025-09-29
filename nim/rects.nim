@@ -122,6 +122,7 @@ proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.}
 proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.}
 proc isRectInRect*(rect1, rect2: WRect): bool 
 proc isRectOverRect*(rect1, rect2: WRect): bool
+proc isRectSeparate*(rect1, rect2: WRect): bool
 proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect 
 proc moveRectBy*(rect: SomeWRect, delta: WPoint)
 proc moveRectTo*(rect: SomeWRect, pos: WPoint) 
@@ -379,7 +380,6 @@ proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
   let pt1Outside = edge.pt1.y > rect.TopEdge.y
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
-
 proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.} =
   let edgeInside = (edge >= rect.BottomEdge and edge <= rect.TopEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
@@ -396,13 +396,18 @@ proc isRectInRect*(rect1, rect2: WRect): bool =
   isEdgeInRect(rect1.BottomEdge, rect2) or
   isEdgeInRect(rect1.RightEdge,  rect2)
 proc isRectOverRect*(rect1, rect2: WRect): bool =
-  # Check if rect1 completely covers rect2
-  # TODO: Use <=, >= instead of <, > ?
-  rect1.TopEdge    > rect2.TopEdge    and
-  rect1.LeftEdge   < rect2.LeftEdge   and
-  rect1.BottomEdge < rect2.BottomEdge and
-  rect1.RightEdge  > rect2.RightEdge
-
+  # Check if rect1 completely covers rect2,
+  # ie, all rect1 edges are on or outside rect2 edges
+  rect1.TopEdge    >= rect2.TopEdge    and
+  rect1.LeftEdge   <= rect2.LeftEdge   and
+  rect1.BottomEdge <= rect2.BottomEdge and
+  rect1.RightEdge  >= rect2.RightEdge
+proc isRectSeparate*(rect1, rect2: WRect): bool =
+  # Returns true if rect1 and rect2 do not have any overlap
+  rect1.BottomEdge > rect2.TopEdge or
+  rect1.RightEdge  < rect2.LeftEdge or
+  rect1.TopEdge    < rect2.BottomEdge or
+  rect1.LeftEdge   > rect2.RightEdge
 
 # Misc Procs
 proc `/`[T:SomeInteger](a, b: T): T = 
@@ -444,15 +449,12 @@ proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect =
                          selected: false,
                          penColor: penColor,
                          fillColor: fillColor)
-
 proc moveRectBy*(rect: SomeWRect, delta: WPoint) =
   rect.x += delta.x
   rect.y += delta.y
-
 proc moveRectTo*(rect: SomeWRect, pos: WPoint) = 
   rect.x = pos.x
   rect.y = pos.y
-
 proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.} =
   var left, right, top, bottom: WType
   left   = WType.high
@@ -469,11 +471,9 @@ proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.} =
    y: bottom, 
    w: right - left, 
    h: top - bottom)
-
 proc rotate*(rect: DBRect, amt: Rotation) =
   # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
-
 proc rotate*(rect: DBRect, orient: Orientation) =
   # Rotate to either 0 or 90 based on aspect ratio and 
   # given orientation
@@ -483,11 +483,8 @@ proc rotate*(rect: DBRect, orient: Orientation) =
   else:
     if orient == Horizontal: rect.rot = R90
     else: rect.rot = R0
-    
-
 proc area*(rect: SomeWRect): WType {.inline.} =
   rect.w * rect.h
-
 proc aspectRatio*(rect: SomeWRect): float =
   when SomeWRect is DBRect:
     if rect.rot == R90 or rect.rot == R270:
@@ -496,20 +493,16 @@ proc aspectRatio*(rect: SomeWRect): float =
       rect.w.float / rect.h.float
   else:
     rect.w.float / rect.h.float
-
 proc aspectRatio*[T:SomeWRect](rects: openArray[T]): float =
   rects.boundingBox.aspectRatio
-
 proc fillArea*[T:SomeWRect](rects: openArray[T]): WType =
   # Total area of all rectangles.  Does not account for overlap.
   for r in rects:
     result += r.area
-
 proc fillRatio*[T:SomeWRect](rects: openArray[T]): float =
   # Find ratio of total area to filled area. Does not account
   # for overlap, so value can be > 1.0.
   rects.fillArea.float / rects.boundingBox.area.float
-
 proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect =
   # make sure that rect.x,y is always lower left
   let (sx, sy) = startPos
@@ -518,7 +511,6 @@ proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect =
    y: min(sy, ey),
    w: abs(ex - sx),
    h: abs(ey - sy))
-
 proc toFloat*(rot: Rotation): float =
   case rot:
   of R0: 0.0
