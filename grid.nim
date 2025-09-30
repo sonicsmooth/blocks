@@ -55,12 +55,12 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
 
     # Horizontals
     rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
-    rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
-    rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
+    #rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
+    #rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
     
     # Verticals
     rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
-    rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
-    rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
+    #rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
+    #rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
 
   

@@ -78,13 +78,13 @@ wClass(wBlockPanel of wSDLPanel):
     self.refresh(false)
     UpdateWindow(self.mHwnd)
 
-  proc initTextureCache*(self: wBlockPanel) =
+  proc clearTextureCache*(self: wBlockPanel) =
     # Clear all textures
     for texture in self.mTextureCache.values:
       texture.destroy()
     self.mTextureCache.clear()
 
-  proc initTextureCache*(self:wBlockPanel, id: RectID) =
+  proc clearTextureCache*(self:wBlockPanel, id: RectID) =
     # Clear specific id from texture cache
     for sel in [false, true]:
       let key = (id, sel)
@@ -174,13 +174,13 @@ wClass(wBlockPanel of wSDLPanel):
   proc rotateRects(self: wBlockPanel, rectIds: seq[RectId], amt: Rotation) =
     for id in rectIds:
       gDb[id].rotate(amt)
-      self.initTextureCache(id)
+      self.clearTextureCache(id)
     self.updateRatio()
     self.refresh(false)
   proc deleteRects(self: wBlockPanel, rectIds: seq[RectId]) =
     for id in rectIds:
       gDb.del(id) # Todo: check whether this deletes rect
-      self.initTextureCache(id)
+      self.clearTextureCache(id)
     self.mFillArea = gDb.fillArea()
     self.updateRatio()
     self.refresh(false)
@@ -303,15 +303,15 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
-        let zmWMousePos = event.mousePos.toWorld(vp)
+        # Same mouse point represents two different world points before
+        # and after zoom.  Calculate delta in world coords, then convert
+        # to pixels and use this for pan delta
+        let zmWMousePos1 = event.mousePos.toWorld(self.mViewPort)
         self.mViewPort.doZoom(event.wheelRotation)
-        let zmPxMousePos = event.mousePos.toPixel(vp)
-        let delta = zmPxMousePos - event.mousePos
-        #dump zmWMousePos
-        #dump zmPxMousePos
-        #dump delta
-        #self.mViewPort.doPan(delta)
-        self.initTextureCache()
+        let zmWMousePos2 = event.mousePos.toWorld(self.mViewPort)
+        let pxDelta = ((zmWMousePos2 - zmWMousePos1) * self.mViewPort.zoom).toPxPoint
+        self.mViewPort.doPan((pxDelta.x, pxDelta.y * -1))
+        self.clearTextureCache()
         self.mText = $self.mViewPort.zoom
         self.refresh(false)
       else:
@@ -461,7 +461,7 @@ Rendering options for SDL and pixie
     # Draw various boxes and text, then done
     if self.mDstRect.w > 0:
       self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
-    self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort), Green)
+    #self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox.toPRect(self.mViewPort),
                                       fillColor=(0, 102, 204, 70).toColorU32,
                                       penColor=(0, 120, 215, 255).toColorU32)
