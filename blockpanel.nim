@@ -1,4 +1,4 @@
-import std/[math, segfaults, sets, sugar, strformat, tables ]
+import std/[bitops, math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq
 import wNim
 import winim except PRECT, Color
@@ -210,8 +210,6 @@ wClass(wBlockPanel of wSDLPanel):
       self.mMouseData.dirtyIds.setLen(0)
       self.mMouseData.clickPos = (0, 0)
       self.mMouseData.lastPos = (0, 0)
-      #self.mMouseData.clickWPos = (0, 0)
-      #self.mMouseData.lastWPos = (0, 0)
     proc escape() =
       resetMouseData()
       resetBox()
@@ -284,10 +282,12 @@ wClass(wBlockPanel of wSDLPanel):
       return
 
     # Send mouse message for x,y position
-    if event.getEventType == wEvent_MouseMove:
+    if event.eventType == wEvent_MouseMove or
+       event.eventType == wEvent_MouseWheel:
+      #displayParams(event.wParam, event.lParam)
       let hWnd = GetAncestor(self.handle, GA_ROOT)
-      # mouse value is in mLparam
-      SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.mLparam)
+      SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.lParam)
+
 
     let 
       vp = self.mViewPort
@@ -303,7 +303,14 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
-        self.mViewPort.doZoom(event.getWheelRotation)
+        let zmWMousePos = event.mousePos.toWorld(vp)
+        self.mViewPort.doZoom(event.wheelRotation)
+        let zmPxMousePos = event.mousePos.toPixel(vp)
+        let delta = zmPxMousePos - event.mousePos
+        #dump zmWMousePos
+        #dump zmPxMousePos
+        #dump delta
+        #self.mViewPort.doPan(delta)
         self.initTextureCache()
         self.mText = $self.mViewPort.zoom
         self.refresh(false)

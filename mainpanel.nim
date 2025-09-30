@@ -231,10 +231,10 @@ wClass(wMainPanel of wPanel):
 
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
-    let (idx, _) = lParamTuple[int](event)
+    let (idx, _) = paramSplit(event.lParam)
     let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
     if msgAvail:
-        self.mBlockPanel.mText = $idx & ": " & msg 
+        self.mBlockPanel.mText = $idx.int64 & ": " & msg 
     
     let (_, _) = gAnnealComms[idx].idChan.tryRecv()
     withLock(gLock):
