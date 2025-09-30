@@ -26,7 +26,9 @@ proc doZoom*(vp: var ViewPort, delta: int) =
   vp.zoom = vp.fakezoom
 
 proc doPan*(vp: var ViewPort, delta: PxPoint) = 
+  # Just pan by the pixel amount
   vp.pan += delta
+
 
 
 # Convert from anything to pixels through viewport

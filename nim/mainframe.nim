@@ -1,4 +1,4 @@
-import std/[strformat, sugar]
+import std/[strformat, strutils, sugar]
 import wNim
 import mainpanel, userMessages, utils
 import viewport
@@ -21,13 +21,17 @@ wClass(wMainFrame of wFrame):
        event.size.height - self.mStatusBar.size.height)
 
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
-    let sz: wSize = lParamTuple[int](event)
+    #let sz: wSize = lParamTuple[int](event)
+    let sz: wSize = paramSplit[int](event.lParam)
     self.mStatusBar.setStatusText($sz, index=1)
 
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
-    let mousePxPos = lParamTuple[int](event)
-    let mouseWPos = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewPort)
-    self.mStatusBar.setStatusText($mouseWPos, index=2)
+    # event can contain either client or screen coordinates
+    # so ignore wparam and lparam.  Just grab  mouse pos directly
+    let mousePxPos = screenToClient(self.mMainPanel.mBlockPanel, wGetMousePosition())
+    let mouseWPos: WPoint = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewPort)
+    let txt = "Pixel: " & $mousePxPos & "; World: " & $mouseWPos
+    self.mStatusBar.setStatusText(txt, index=2)
 
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
@@ -58,7 +62,7 @@ wClass(wMainFrame of wFrame):
     # Do stuff
     self.size = (newWidth, newHeight)
     self.mMenuFile.append(1, "Open")
-    self.mStatusBar.setStatusWidths([-2, -1, 200])
+    self.mStatusBar.setStatusWidths([-2, -1, 400])
     
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
