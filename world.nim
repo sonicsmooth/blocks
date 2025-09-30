@@ -11,6 +11,10 @@ when defined(worldInt):
   type WType* = int
 elif defined(worldFloat):
   type WType* = float
+else:
+  static:
+    echo "WType not defined; defaulting to int"
+  type WType* = int
 
 type
   #WType* = float

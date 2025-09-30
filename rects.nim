@@ -135,6 +135,8 @@ proc aspectRatio*[T:SomeWRect](rects: openArray[T]): float
 proc fillArea*[T:SomeWRect](rects: openArray[T]): WType
 proc fillRatio*[T:SomeWRect](rects: openArray[T]): float
 proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect
+proc grow*(rect: WRect, amt: WType): WRect {.inline.}
+proc grow*(rect: PRect, amt: PxType): PRect {.inline.}
 proc toFloat*(rot: Rotation): float {.inline.}
 proc inc*(r: var Rotation) {.inline.}
 proc dec*(r: var Rotation) {.inline.}
@@ -274,22 +276,22 @@ proc originXLeft*(rect: DBRect): WType =
   of R270: rect.origin.y
 proc originXRight*(rect: DBRect): WType =
   case rect.rot:
-  of R0:   rect.w - rect.origin.x
+  of R0:   rect.w - rect.origin.x - 1
   of R90:  rect.origin.y
   of R180: rect.origin.x
-  of R270: rect.h - rect.origin.y 
+  of R270: rect.h - rect.origin.y - 1
 proc originYDn*(rect: DBRect): WType =
   # Vertical distance from bottom edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.y
   of R90:  rect.origin.x
-  of R180: rect.h - rect.origin.y
-  of R270: rect.w - rect.origin.x
+  of R180: rect.h - rect.origin.y - 1
+  of R270: rect.w - rect.origin.x - 1
 proc originYUp*(rect: DBRect): WType =
   # Vertical distance from bottom edge to origin after rotation
   case rect.rot:
-  of R0 :  rect.h - rect.origin.y
-  of R90:  rect.w - rect.origin.x
+  of R0 :  rect.h - rect.origin.y - 1
+  of R90:  rect.w - rect.origin.x - 1
   of R180: rect.origin.y
   of R270: rect.origin.x
 
@@ -306,19 +308,19 @@ proc lowerLeft*(rect: SomeWRect):  WPoint =
 proc lowerRight*(rect: SomeWRect): WPoint = 
   when SomeWRect is DBRect:
     let r = rect.toWRect
-    (r.x + r.w, r.y)
+    (r.x + r.w - 1, r.y)
   else:
     (rect.x + rect.w, rect.y)
 proc upperLeft*(rect: SomeWRect):  WPoint = 
   when SomeWRect is DBRect:
     let r = rect.toWRect
-    (r.x, r.y + r.h)
+    (r.x, r.y + r.h - 1)
   else:
     (rect.x, rect.y + rect.h)
 proc upperRight*(rect: SomeWRect): WPoint = 
   when SomeWRect is DBRect:
     let r = rect.toWRect
-    (r.x + r.w, r.y + r.h)
+    (r.x + r.w - 1, r.y + r.h - 1)
   else:
     (rect.x + rect.w, rect.y + rect.h)
 converter toTopEdge*(rect: SomeWRect):    TopEdge =
@@ -463,14 +465,14 @@ proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.} =
   bottom = WType.high
   # Todo: make proc edges() that returns all edges with only one conversion
   for r in rects:
-    left   = min(left,   r.LeftEdge.x)
-    bottom = min(bottom, r.BottomEdge.y)
-    right  = max(right,  r.RightEdge.x)
-    top    = max(top,    r.TopEdge.y)
+    left   = min(left,   r.left)
+    bottom = min(bottom, r.bottom)
+    right  = max(right,  r.right)
+    top    = max(top,    r.top)
   (x: left, 
    y: bottom, 
-   w: right - left, 
-   h: top - bottom)
+   w: right - left + 1, 
+   h: top - bottom + 1)
 proc rotate*(rect: DBRect, amt: Rotation) =
   # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
@@ -511,6 +513,11 @@ proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect =
    y: min(sy, ey),
    w: abs(ex - sx),
    h: abs(ey - sy))
+proc grow*(rect: WRect, amt: WType): WRect {.inline.} =
+  (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
+proc grow*(rect: PRect, amt: PxType): PRect {.inline.} =
+  (rect.x - amt, rect.y + amt, rect.w + 2*amt, rect.h + 2*amt)
+
 proc toFloat*(rot: Rotation): float =
   case rot:
   of R0: 0.0

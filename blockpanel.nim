@@ -145,7 +145,7 @@ wClass(wBlockPanel of wSDLPanel):
       self.mText = "0.0" #$0.0
       self.mRatio = 0.0
     else:
-      self.mAllBbox = gDb.boundingBox()
+      self.mAllBbox = gDb.boundingBox().grow(2)
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
         self.mRatio = ratio
@@ -448,9 +448,9 @@ Rendering options for SDL and pixie
     self.sdlRenderer.setDrawColor(self.backgroundColor.toColor)
     self.sdlRenderer.clear()
     
-    # Draw grid
-    if self.mGrid.visible:
-      self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
+    # # Draw grid
+    # if self.mGrid.visible:
+    #   self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
     when defined(textureCache):
@@ -461,10 +461,10 @@ Rendering options for SDL and pixie
     # Draw various boxes and text, then done
     if self.mDstRect.w > 0:
       self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
-    #self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort), Green)
-    self.sdlRenderer.renderFilledRect(self.mSelectBox.toPRect(self.mViewPort),
-                                      fillColor=(0, 102, 204, 70).toColorU32,
-                                      penColor=(0, 120, 215, 255).toColorU32)
+    self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort), Green)
+    # self.sdlRenderer.renderFilledRect(self.mSelectBox.toPRect(self.mViewPort),
+    #                                   fillColor=(0, 102, 204, 70).toColorU32,
+    #                                   penColor=(0, 120, 215, 255).toColorU32)
     self.sdlRenderer.renderText(self.sdlWindow, self.mText)
     self.sdlRenderer.present()
 
