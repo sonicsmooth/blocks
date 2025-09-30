@@ -1,5 +1,6 @@
 import std/[strformat, strutils, sugar]
 import wNim
+from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 import mainpanel, userMessages, utils
 import viewport
 from db import QTY
@@ -21,8 +22,9 @@ wClass(wMainFrame of wFrame):
        event.size.height - self.mStatusBar.size.height)
 
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
-    #let sz: wSize = lParamTuple[int](event)
-    let sz: wSize = paramSplit[int](event.lParam)
+    #let sz: wSize = paramSplit(event.lParam)
+    let sz = (LOWORD(event.lParam).WORD, 
+              HIWORD(event.lParam).WORD)
     self.mStatusBar.setStatusText($sz, index=1)
 
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =

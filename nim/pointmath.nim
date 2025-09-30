@@ -2,23 +2,24 @@
 
 # Hopefully this can cover all the +-*/ for different combinations of stuff
 
-proc `+`*[T:SomeNumber](a: tuple[x, y: T], b: tuple[x, y: T]): tuple[x, y: T] =
+proc `+`*[T:SomeNumber](a: tuple[x, y: T], b: tuple[x, y: T]): auto =
   (a.x + b.x, a.y + b.y)
 
 proc `+=`*[T:SomeNumber](a: var tuple[x, y: T], b: tuple[x, y: T]) =
   a = (a.x + b.x, a.y + b.y)
 
-proc `-`*[T:SomeNumber](a: tuple[x, y: T], b: tuple[x, y: T]): tuple[x, y: T] =
+proc `-`*[T:SomeNumber](a: tuple[x, y: T], b: tuple[x, y: T]): auto =
   (a.x - b.x, a.y - b.y)
 
 proc `-=`*[T:SomeNumber](a: var tuple[x, y: T], b: tuple[x, y: T]) =
   a = (a.x - b.x, a.y - b.y)
 
-proc `*`*[TN:SomeNumber, TF: SomeFloat](a: tuple[x, y: TN], b: TF): tuple[x, y: TF] =
-  (a.x.TF * b, a.y.TF * b)
-
-# proc `*`*[TN:SomeNumber, TF: SomeFloat](a: tuple[w, h: TN], b: TF): tuple[w, h: TF] =
-#   (a.w.TF * b, a.h.TF * b)
+proc `*`*[TN:SomeNumber, TF: SomeFloat](a: tuple[x, y: TN], b: TF): auto =
+  when SomeNumber is SomeInteger:
+    ((a.x.TF * b).round.TN, 
+     (a.y.TF * b).round.TN)
+  else:
+    (a.x.TF * b, a.y.TF * b)
 
 # TODO figure out how to multiply PxSize, WSize, PxPoint, WPoint, etc.
 

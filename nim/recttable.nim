@@ -99,10 +99,10 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
-    table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 200, origin: (30, 50), rot: R0,
-                    selected: false, penColor: Blue, fillColor: Blue.colordiv(2).toColorU32(127))
-    # table[2] = DBRect(id: 2, x: 0, y: 0, w: 100, h: 120, origin: (10, 20), rot: R90,
-    #                 selected: false, penColor: Red, fillColor: Red.toColorU32(127))
+    table[1] = DBRect(id: 1, x: 5, y: 5, w: 5, h: 5, origin: (2, 2), rot: R0,
+                     selected: false, penColor: Red, fillColor: Blue)
+    table[2] = DBRect(id: 2, x: 20, y: 5, w: 10, h: 10, origin: (5, 5), rot: R0,
+                     selected: false, penColor: Blue, fillColor: Red)
     #table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 100, origin: (0, 0), rot: R0,
     #                selected: false, penColor: 0x7f0000ff.toColorU32, fillColor: 0x7f00007f.toColorU32)
     # table[2] = DBRect(id: 2, x: 100, y: 100, w: 100, h: 100, origin: (0,0), rot: R0,

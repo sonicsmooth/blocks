@@ -17,6 +17,10 @@ const
   zoomStepUpperLimit =  zoomDiv * zoomMaxPwr # implies max zoom is 2^3
   zoomStepLowerLimit = -zoomDiv * zoomMaxPwr # implies min zoom is 2^-3
 
+proc doPan*(vp: var ViewPort, delta: PxPoint) = 
+  # Just pan by the pixel amount
+  vp.pan += delta
+
 proc doZoom*(vp: var ViewPort, delta: int) = 
   # Calculate new zoom factor
   vp.zoomSteps = clamp(vp.zoomSteps + delta,
@@ -25,11 +29,8 @@ proc doZoom*(vp: var ViewPort, delta: int) =
   vp.fakezoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
   vp.zoom = vp.fakezoom
 
-proc doPan*(vp: var ViewPort, delta: PxPoint) = 
-  # Just pan by the pixel amount
-  vp.pan += delta
 
-
+#proc doAdaptiveZoom(vp: var ViewPort...)
 
 # Convert from anything to pixels through viewport
 # pixel = world * zoom + pan.  Flip zoom for y

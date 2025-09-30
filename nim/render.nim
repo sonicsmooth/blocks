@@ -1,7 +1,7 @@
 import std/[tables, math, sugar]
 import sdl2
 import sdl2/ttf
-import rects, utils, pointmath
+import rects, utils #, pointmath
 
 
 type
@@ -28,10 +28,8 @@ proc font(rect: DBRect, zoom: float): FontPtr =
   let scaledSize = (px.float * fontScale * zoom).round.int
   font(scaledSize)
 
-proc renderFilledRect*(rp: RendererPtr, # vp: ViewPort, 
-                       rect: PRect, fillColor, penColor: ColorU32) =
-  # Draw WRect, return PRect created in the process
-  #let prect = rect.toPRect(vp)
+proc renderFilledRect*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorU32) =
+  # Draw PRect
   rp.setDrawColor(fillColor.toColor)
   rp.fillRect(addr rect)
   rp.setDrawColor(penColor.toColor)
@@ -65,23 +63,24 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   # todo: to world space to pixel space
   let
     opx: PxPoint = (rect.originXLeft.float * vp.zoom, rect.originYUp.float * vp.zoom)
-    extent = 10.0 * vp.zoom
+    extent = (10.0 * vp.zoom).round.cint
   rp.setDrawColor(Black.toColor)
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
   # Text to texture, then texture to renderer
-  let 
-    (w, h) = (prect.w, prect.h)
-    selstr = $rect.id & (if rect.selected: "*" else: "")
-    font = rect.font(vp.zoom)
-    textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
-    (tsw, tsh) = (textSurface.w, textSurface.h)
-    dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
-                      prect.y + (h div 2) - (tsh div 2), tsw, tsh)
-    textTexture = rp.createTextureFromSurface(textSurface)
-  rp.copyEx(textTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
-  textTexture.destroy()
+  when not defined(noText):
+    let 
+      (w, h) = (prect.w, prect.h)
+      selstr = $rect.id & (if rect.selected: "*" else: "")
+      font = rect.font(vp.zoom)
+      textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
+      (tsw, tsh) = (textSurface.w, textSurface.h)
+      dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
+                        prect.y + (h div 2) - (tsh div 2), tsw, tsh)
+      textTexture = rp.createTextureFromSurface(textSurface)
+    rp.copyEx(textTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
+    textTexture.destroy()
 
 proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   # Draws text at bottom right corner

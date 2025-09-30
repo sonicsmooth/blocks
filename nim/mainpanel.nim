@@ -87,7 +87,7 @@ wClass(wMainPanel of wPanel):
     gDb.randomizeRectsAll(randRegion, qty, logRandomize)
     self.mBlockPanel.mFillArea = gDb.fillArea()
     self.mBlockPanel.updateRatio()
-    self.mBlockPanel.initTextureCache()
+    self.mBlockPanel.clearTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
     #echo GC_getStatistics()
@@ -133,13 +133,13 @@ wClass(wMainPanel of wPanel):
                               comm:       gAnnealComms[i])
         # Weird, TODO: just do once
         gAnnealComms[i].thread.createThread(annealMain, arg)
-        # TODO: figure out how to initTextureCache when thread is done
+        # TODO: figure out how to clearTextureCache when thread is done
         break
     
     elif self.mCTRb3.value: # Do stack
       withLock(gLock):
         stackCompact(gDb, dstRect, direction)
-      self.mBlockPanel.initTextureCache()
+      self.mBlockPanel.clearTextureCache()
       self.mBlockPanel.updateRatio()
       self.refresh(false)
 
@@ -238,7 +238,7 @@ wClass(wMainPanel of wPanel):
     
     let (_, _) = gAnnealComms[idx].idChan.tryRecv()
     withLock(gLock):
-      self.mBlockPanel.initTextureCache()
+      self.mBlockPanel.clearTextureCache()
       self.mBlockPanel.forceRedraw(0)
       gAnnealComms[idx].ackChan.send(ackCnt)
     inc ackCnt

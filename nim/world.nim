@@ -6,8 +6,14 @@ import std/math
 # world coordinate types and rounding if needed instead
 # of truncating.
 
+
+when defined(worldInt): 
+  type WType* = int
+elif defined(worldFloat):
+  type WType* = float
+
 type
-  WType* = int # This may eventually be float or some very large integer
+  #WType* = float
   WPoint* = tuple[x, y: WType]
   WSize* = tuple[w, h: WType]
   PxType* = cint
