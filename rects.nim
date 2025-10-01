@@ -308,28 +308,20 @@ proc lowerLeft*(rect: SomeWRect):  WPoint =
   # So if you want corner of unrotated DBRect, first
   # do dbrect.toWRect(false) then call this function
   when SomeWRect is DBRect:
-    let r = rect.toWRect
-    (r.x, r.y)
-  else:
-    (rect.x, rect.y)
+    let rect = rect.toWRect
+  (rect.x, rect.y)
 proc lowerRight*(rect: SomeWRect): WPoint = 
   when SomeWRect is DBRect:
-    let r = rect.toWRect
-    (r.x + r.w - 1, r.y)
-  else:
-    (rect.x + rect.w, rect.y)
+    let rect = rect.toWRect
+  (rect.x + rect.w - 1, rect.y)
 proc upperLeft*(rect: SomeWRect):  WPoint = 
   when SomeWRect is DBRect:
-    let r = rect.toWRect
-    (r.x, r.y + r.h - 1)
-  else:
-    (rect.x, rect.y + rect.h)
+    let rect = rect.toWRect
+  (rect.x, rect.y + rect.h - 1)
 proc upperRight*(rect: SomeWRect): WPoint = 
-  when SomeWRect is DBRect:
-    let r = rect.toWRect
-    (r.x + r.w - 1, r.y + r.h - 1)
-  else:
-    (rect.x + rect.w, rect.y + rect.h)
+  when rect is DBRect:
+    let rect = rect.toWRect
+  (rect.x + rect.w - 1, rect.y + rect.h - 1)
 converter toTopEdge*(rect: SomeWRect):    TopEdge =
   result.pt0 = rect.upperLeft
   result.pt1 = rect.upperRight
@@ -523,7 +515,7 @@ proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect =
 proc grow*(rect: WRect, amt: WType): WRect {.inline.} =
   (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
 proc grow*(rect: PRect, amt: PxType): PRect {.inline.} =
-  (rect.x - amt, rect.y + amt, rect.w + 2*amt, rect.h + 2*amt)
+  (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
 
 proc toFloat*(rot: Rotation): float =
   case rot:

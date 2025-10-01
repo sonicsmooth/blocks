@@ -11,9 +11,9 @@ type
     zoomSteps: int
 
 const
-  zoomBase = 20 # Eventually this becomes the small grid size
-  zoomDiv = 5000 # how many mouse wheels for every power of zoomBase
-  zoomMaxPwr = 3 # maximum zoom is zoomBase ^ zoomMaxPwr
+  zoomBase = 2 # Eventually this becomes the small grid size
+  zoomDiv = 2400 # how many mouse wheels for every power of zoomBase
+  zoomMaxPwr = 8 # maximum zoom is zoomBase ^ zoomMaxPwr
   zoomStepUpperLimit =  zoomDiv * zoomMaxPwr # implies max zoom is 2^3
   zoomStepLowerLimit = -zoomDiv * zoomMaxPwr # implies min zoom is 2^-3
 
