@@ -145,7 +145,7 @@ wClass(wBlockPanel of wSDLPanel):
       self.mText = "0.0" #$0.0
       self.mRatio = 0.0
     else:
-      self.mAllBbox = gDb.boundingBox().grow(2)
+      self.mAllBbox = gDb.boundingBox()
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
         self.mRatio = ratio
@@ -461,7 +461,7 @@ Rendering options for SDL and pixie
     # Draw various boxes and text, then done
     if self.mDstRect.w > 0:
       self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
-    self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort), Green)
+    self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     # self.sdlRenderer.renderFilledRect(self.mSelectBox.toPRect(self.mViewPort),
     #                                   fillColor=(0, 102, 204, 70).toColorU32,
     #                                   penColor=(0, 120, 215, 255).toColorU32)
@@ -479,6 +479,7 @@ Rendering options for SDL and pixie
     self.mGrid.ySpace = 25
     self.mGrid.visible = true
     self.mGrid.originVisible = true
+    self.mViewPort.zoom = 5.0
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)

@@ -225,19 +225,19 @@ proc compact*(rectTable: RectTable,
 
   if axis == X and sortOrder == Ascending:
     for id in nodes:
-      rectTable[id].x = dstRect.x + lp[id] + rectTable[id].originXLeft
+      rectTable[id].x = dstRect.x + lp[id] + rectTable[id].originToLeftEdge
 
   elif axis == X and sortOrder == Descending:
     for id in nodes:
-      rectTable[id].x = dstRect.x + dstRect.w - lp[id] + rectTable[id].originXLeft
+      rectTable[id].x = dstRect.x + dstRect.w - lp[id] + rectTable[id].originToLeftEdge
 
   elif axis == Y and sortOrder == Ascending:
     for id in nodes:
-      rectTable[id].y = dstRect.y + lp[id] + rectTable[id].originYDn
+      rectTable[id].y = dstRect.y + lp[id] + rectTable[id].originToBottomEdge
 
   elif axis == Y and sortOrder == Descending:
     for id in nodes:
-      rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originYDn
+      rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originToBottomEdge
 
 proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
   # Run compact function until rectTable doesn't change

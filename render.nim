@@ -1,7 +1,7 @@
 import std/[tables, math, sugar]
 import sdl2
 import sdl2/ttf
-import rects, utils #, pointmath
+import rects, utils, pointmath
 
 
 type
@@ -50,21 +50,25 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   #   this should be false when target is screen
   #   and true when target is texture
   
+  # Delegate rectangle drawing
   let prect = 
     if zero: rect.toPRect(vp, rot=true).zero # used by texture renderer
     else:    rect.toPRect(vp, rot=true)      # used by screen renderer
-
-
-  # Delegate rectangle drawing
   rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
 
   # Origin
   # Todo: There is something to be said here about model space
   # todo: to world space to pixel space
   let
-    opx: PxPoint = (rect.originXLeft.float * vp.zoom, rect.originYUp.float * vp.zoom)
+    urect = rect.toWRect(rot=true)
+    fnx = proc(x: WType): PxType =
+      x * (vp.zoom * urect.w.float - 1.0) / (urect.w.float - 1.0).round.cint
+    fny = proc(y: WType): PxType =
+      y * (vp.zoom * urect.h.float - 1.0) / (urect.h.float - 1.0).round.cint
+    xl = rect.originToLeftEdge
+    yd = rect.originToTopEdge
+    opx: PxPoint = (fnx(xl), fny(yd))
     extent = (10.0 * vp.zoom).round.cint
-  dump opx
   rp.setDrawColor(Black.toColor)
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)

@@ -84,14 +84,16 @@ proc size*(rect: SomeWRect): WSize {.inline.}
 proc size*(rect: PRect): PxSize {.inline.}
 proc greatestDim*(rect: PRect): cint {.inline.}
 proc greatestDim*(rect: SomeWRect): WType {.inline.}
-proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.}
+proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.}
 converter toWRect*(rect: DBRect): WRect {.inline.}
 proc toWRect*(rect: PRect, vp: ViewPort): WRect {.inline.}
 proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.}
 proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.}
 proc zero*[T:PRect|WRect](rect: T): T {.inline.}
-proc originXLeft*(rect: DBRect): WType
-proc originYDn*(rect: DBRect): WType
+proc originToLeftEdge*(rect: DBRect): WType
+proc originToRightEdge*(rect: DBRect): WType
+proc originToBottomEdge*(rect: DBRect): WType
+proc originToTopEdge*(rect: DBRect): WType
 proc lowerLeft*(rect: SomeWRect): WPoint
 proc lowerRight*(rect: SomeWRect): WPoint
 proc upperLeft*(rect: SomeWRect): WPoint
@@ -190,7 +192,7 @@ proc greatestDim*(rect: PRect): cint {.inline.} =
 proc greatestDim*(rect: SomeWRect): WType {.inline.} =
   max(rect.w, rect.h)
 
-proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.} =
+proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.} =
   # Conversion from DBRect to WRect.
   # This is basis of upper/lower/left/right/edge/bounding box functions
   # Looks at rotation, then returns barebones rectangle x,y,w,h with
@@ -203,24 +205,24 @@ proc toWRect*(rect: DBRect, dorot: bool): WRect {.inline.} =
     (x, y)   = (rect.x, rect.y)
     (ox, oy) = (rect.origin.x, rect.origin.y)
   var outx, outy, outw, outh: WType
-  if rect.rot == R0 or dorot == false:
+  if rect.rot == R0 or rot == false:
     outx = x - ox
     outy = y - oy
     outw = w
     outh = h
   elif rect.rot == R90:
-    outx = x + oy - h
+    outx = x + oy - h + 1
     outy = y - ox
     outw = h
     outh = w
   elif rect.rot == R180:
-    outx = x + ox - w
-    outy = y + oy - h
+    outx = x + ox - w + 1
+    outy = y + oy - h + 1
     outw = w
     outh = h
   elif rect.rot == R270:
     outx = x - oy
-    outy = y + ox - w
+    outy = y + ox - w + 1
     outw = h
     outh = w
   (outx, outy, outw, outh)
@@ -271,28 +273,29 @@ proc zero*[T:PRect|WRect](rect: T): T {.inline.} =
 # TODO: using DBRect(x: 0, y: 0, w: 5, h: 5, id: 0, label: , origin: (x: 2, y: 2), rot: R0)
 # TODO: and vary rot.  All answers should be 2.
 
-proc originXLeft*(rect: DBRect): WType =
+proc originToLeftEdge*(rect: DBRect): WType =
   # Horizontal distance from left edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.x
   of R90:  rect.h - rect.origin.y - 1
   of R180: rect.w - rect.origin.x - 1
   of R270: rect.origin.y
-proc originXRight*(rect: DBRect): WType =
+proc originToRightEdge*(rect: DBRect): WType =
+  # Horizontal distance from right edge to origin after rotation
   case rect.rot:
   of R0:   rect.w - rect.origin.x - 1
   of R90:  rect.origin.y
   of R180: rect.origin.x
   of R270: rect.h - rect.origin.y - 1
-proc originYDn*(rect: DBRect): WType =
+proc originToBottomEdge*(rect: DBRect): WType =
   # Vertical distance from bottom edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.y
   of R90:  rect.origin.x
   of R180: rect.h - rect.origin.y - 1
   of R270: rect.w - rect.origin.x - 1
-proc originYUp*(rect: DBRect): WType =
-  # Vertical distance from bottom edge to origin after rotation
+proc originToTopEdge*(rect: DBRect): WType =
+  # Vertical distance from top edge to origin after rotation
   case rect.rot:
   of R0 :  rect.h - rect.origin.y - 1
   of R90:  rect.w - rect.origin.x - 1
@@ -813,14 +816,14 @@ proc testRectsRects() =
   # assert r2.toPlainWRect ==  (  0.WType,  0.WType, 50.WType, 60.WType)
   # assert r3.toPlainWRect ==  (  0.WType,  0.WType, 50.WType, 60.WType)
   # assert r4.toPlainWRect ==  (  0.WType,  0.WType, 50.WType, 60.WType)
-  # assert r1.originXLeft == 10
-  # assert r2.originXLeft == 50
-  # assert r3.originXLeft == 40
-  # assert r4.originXLeft == 10
-  # assert r1.originYDn   == 10
-  # assert r2.originYDn   == 10
-  # assert r3.originYDn   == 50
-  # assert r4.originYDn   == 40
+  # assert r1.originToLeftEdge == 10
+  # assert r2.originToLeftEdge == 50
+  # assert r3.originToLeftEdge == 40
+  # assert r4.originToLeftEdge == 10
+  # assert r1.originToBottomEdge   == 10
+  # assert r2.originToBottomEdge   == 10
+  # assert r3.originToBottomEdge   == 50
+  # assert r4.originToBottomEdge   == 40
   
   assert r1.lowerLeft  == (  0,  10)
   assert r2.lowerLeft  == (-40,  10)
@@ -1118,28 +1121,28 @@ proc testRectsRects() =
 
   var rr = DBRect(x: 0, y:0, w:5, h:5, origin: (2, 2), rot: R0)
   assert rr.rot == R0
-  assert rr.originXLeft == 2
-  assert rr.originXRight == 2
-  assert rr.originYUp == 2
-  assert rr.originYDn == 2
+  assert rr.originToLeftEdge == 2
+  assert rr.originToRightEdge == 2
+  assert rr.originToTopEdge == 2
+  assert rr.originToBottomEdge == 2
   inc rr.rot
   assert rr.rot == R90
-  assert rr.originXLeft == 2
-  assert rr.originXRight == 2
-  assert rr.originYUp == 2
-  assert rr.originYDn == 2
+  assert rr.originToLeftEdge == 2
+  assert rr.originToRightEdge == 2
+  assert rr.originToTopEdge == 2
+  assert rr.originToBottomEdge == 2
   inc rr.rot
   assert rr.rot == R180
-  assert rr.originXLeft == 2
-  assert rr.originXRight == 2
-  assert rr.originYUp == 2
-  assert rr.originYDn == 2
+  assert rr.originToLeftEdge == 2
+  assert rr.originToRightEdge == 2
+  assert rr.originToTopEdge == 2
+  assert rr.originToBottomEdge == 2
   inc rr.rot
   assert rr.rot == R270
-  assert rr.originXLeft == 2
-  assert rr.originXRight == 2
-  assert rr.originYUp == 2
-  assert rr.originYDn == 2
+  assert rr.originToLeftEdge == 2
+  assert rr.originToRightEdge == 2
+  assert rr.originToTopEdge == 2
+  assert rr.originToBottomEdge == 2
 
 
 
