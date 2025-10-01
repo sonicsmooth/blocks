@@ -419,9 +419,6 @@ wClass(wBlockPanel of wSDLPanel):
       else:
         self.mMouseData.state = StateNone
 
-    #self.mText.setLen(0)
-    #self.mText &= modifierText(event)
-    #self.mText &= &"State: {self.mMouseData.state}"
 
 
 # Todo: hovering over
@@ -461,7 +458,7 @@ Rendering options for SDL and pixie
     # Draw various boxes and text, then done
     if self.mDstRect.w > 0:
       self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
-    self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
+    # self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     # self.sdlRenderer.renderFilledRect(self.mSelectBox.toPRect(self.mViewPort),
     #                                   fillColor=(0, 102, 204, 70).toColorU32,
     #                                   penColor=(0, 120, 215, 255).toColorU32)
@@ -475,7 +472,7 @@ Rendering options for SDL and pixie
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mDstRect = (-250, -250, 500, 500)
-    self.mGrid.xSpace = 10
+    self.mGrid.xSpace = 1
     self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true

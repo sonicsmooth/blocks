@@ -30,14 +30,14 @@ proc font(rect: DBRect, zoom: float): FontPtr =
 
 proc renderFilledRect*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorU32) =
   # Draw PRect
+  let r: sdl2.Rect = (x: rect.x, y: rect.y+1, w: rect.w, h: rect.h)
   rp.setDrawColor(fillColor.toColor)
-  rp.fillRect(addr rect)
+  rp.fillRect(addr r)
   rp.setDrawColor(penColor.toColor)
-  rp.drawRect(addr rect)
+  rp.drawRect(addr r)
 
-proc renderOutlineRect*(rp: RendererPtr, #vp: ViewPort,
-                        rect: PRect, penColor: ColorU32) =
-  #let prect = rect.toPRect(vp)
+proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
+  let r: sdl2.Rect = (x: rect.x, y: rect.y+1, w: rect.w, h: rect.h)
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
@@ -60,14 +60,16 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   # Todo: There is something to be said here about model space
   # todo: to world space to pixel space
   let
-    urect = rect.toWRect(rot=true)
+    #urect = rect.toWRect(rot=true)
     fnx = proc(x: WType): PxType =
-      x * (vp.zoom * urect.w.float - 1.0) / (urect.w.float - 1.0).round.cint
+      # x * (vp.zoom * urect.w.float - 1.0) / (urect.w.float - 1.0).round.cint
+      (x.float * vp.zoom).round.cint
     fny = proc(y: WType): PxType =
-      y * (vp.zoom * urect.h.float - 1.0) / (urect.h.float - 1.0).round.cint
+      # y * (vp.zoom * urect.h.float - 1.0) / (urect.h.float - 1.0).round.cint
+      (y.float * vp.zoom).round.cint
     xl = rect.originToLeftEdge
     yd = rect.originToTopEdge
-    opx: PxPoint = (fnx(xl), fny(yd))
+    opx: PxPoint = (fnx(xl), fny(yd)-1)
     extent = (10.0 * vp.zoom).round.cint
   rp.setDrawColor(Black.toColor)
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)

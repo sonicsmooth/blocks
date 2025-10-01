@@ -8,8 +8,12 @@ import world, viewport
 export world, viewport
 
 # Generally,
-#  rects.DBRect is a domain rectangle in the database
+#  DBRect is a domain rectangle in the database
+#  DBRect does not consider pixels
+#  Corners, edges, points, etc. are ideal and refer to edges
+
 #  PRect is a graphical literal rectangle
+#  Corners, edges, points, etc., refer to pixels and their indices
 
 #[
 Each box is a pixel.
@@ -70,9 +74,9 @@ const
   scale = 10
   WRANGE* = (5*scale) .. (25*scale)
   HRANGE* = (5*scale) .. (25*scale)
-  # WRNGby2 = WRANGE.a + (WRANGE.b - WRANGE.a) div 2
-  # HRNGby2 = HRANGE.a + (HRANGE.b - HRANGE.a) div 2
-
+  wcdf = makecdf(WRANGE.len, 100.0, 0.1)
+  hcdf = makecdf(HRANGE.len, 100.0, 0.1)
+  
 
 # Declarations
 proc `$`*(rect: DBRect): string
@@ -184,6 +188,7 @@ proc size*(rect: SomeWRect): WSize {.inline.} =
     (rect.w, rect.h)
 proc size*(rect: PRect): PxSize {.inline.} =
   # Returns width and height of screen rectangle
+  # This is pixel count
   (rect.w, rect.h)
 
 proc greatestDim*(rect: PRect): cint {.inline.} =
@@ -211,18 +216,18 @@ proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.} =
     outw = w
     outh = h
   elif rect.rot == R90:
-    outx = x + oy - h + 1
+    outx = x + oy - h # + 1
     outy = y - ox
     outw = h
     outh = w
   elif rect.rot == R180:
-    outx = x + ox - w + 1
-    outy = y + oy - h + 1
+    outx = x + ox - w #+ 1
+    outy = y + oy - h #+ 1
     outw = w
     outh = h
   elif rect.rot == R270:
     outx = x - oy
-    outy = y + ox - w + 1
+    outy = y + ox - w #+ 1
     outw = h
     outh = w
   (outx, outy, outw, outh)
@@ -245,7 +250,7 @@ proc toWRect*(rect: PRect, vp: ViewPort): WRect =
     (rect.h.float / vp.zoom).round.WType)
 
 proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} = 
-  # Origin of output is upper left of rectangle
+  # Output's origin is upper left of rectangle
   let
     origin = rect.upperLeft.toPixel(vp)
     width  = (rect.w.float * vp.zoom).round.cint
@@ -253,7 +258,7 @@ proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} =
   (origin.x, origin.y, width, height)
 
 proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} = 
-  # Origin of output is upper left of rectangle
+  # Output's origin is upper left of rectangle
   # if rot is false, then upper left is plain.
   # if rot is true, then, upper left is based on rotation
   let
@@ -269,36 +274,32 @@ proc zero*[T:PRect|WRect](rect: T): T {.inline.} =
   else:
     (0.CoordT, 0.CoordT, rect.w, rect.h)
 
-# TODO: add tests for these four procs
-# TODO: using DBRect(x: 0, y: 0, w: 5, h: 5, id: 0, label: , origin: (x: 2, y: 2), rot: R0)
-# TODO: and vary rot.  All answers should be 2.
-
 proc originToLeftEdge*(rect: DBRect): WType =
   # Horizontal distance from left edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.x
-  of R90:  rect.h - rect.origin.y - 1
-  of R180: rect.w - rect.origin.x - 1
+  of R90:  rect.h - rect.origin.y #- 1
+  of R180: rect.w - rect.origin.x #- 1
   of R270: rect.origin.y
 proc originToRightEdge*(rect: DBRect): WType =
   # Horizontal distance from right edge to origin after rotation
   case rect.rot:
-  of R0:   rect.w - rect.origin.x - 1
+  of R0:   rect.w - rect.origin.x #- 1
   of R90:  rect.origin.y
   of R180: rect.origin.x
-  of R270: rect.h - rect.origin.y - 1
+  of R270: rect.h - rect.origin.y #- 1
 proc originToBottomEdge*(rect: DBRect): WType =
   # Vertical distance from bottom edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.y
   of R90:  rect.origin.x
-  of R180: rect.h - rect.origin.y - 1
-  of R270: rect.w - rect.origin.x - 1
+  of R180: rect.h - rect.origin.y #- 1
+  of R270: rect.w - rect.origin.x #- 1
 proc originToTopEdge*(rect: DBRect): WType =
   # Vertical distance from top edge to origin after rotation
   case rect.rot:
-  of R0 :  rect.h - rect.origin.y - 1
-  of R90:  rect.w - rect.origin.x - 1
+  of R0 :  rect.h - rect.origin.y #- 1
+  of R90:  rect.w - rect.origin.x #- 1
   of R180: rect.origin.y
   of R270: rect.origin.x
 
@@ -313,25 +314,28 @@ proc lowerLeft*(rect: SomeWRect):  WPoint =
 proc lowerRight*(rect: SomeWRect): WPoint = 
   when SomeWRect is DBRect:
     let rect = rect.toWRect
-  (rect.x + rect.w - 1, rect.y)
+  #(rect.x + rect.w - 1, rect.y)
+  (rect.x + rect.w, rect.y)
 proc upperLeft*(rect: SomeWRect):  WPoint = 
   when SomeWRect is DBRect:
     let rect = rect.toWRect
-  (rect.x, rect.y + rect.h - 1)
+  #(rect.x, rect.y + rect.h - 1)
+  (rect.x, rect.y + rect.h)
 proc upperRight*(rect: SomeWRect): WPoint = 
   when rect is DBRect:
     let rect = rect.toWRect
-  (rect.x + rect.w - 1, rect.y + rect.h - 1)
-converter toTopEdge*(rect: SomeWRect):    TopEdge =
+  #(rect.x + rect.w - 1, rect.y + rect.h - 1)
+  (rect.x + rect.w, rect.y + rect.h)
+converter toTopEdge*(rect: SomeWRect): TopEdge =
   result.pt0 = rect.upperLeft
   result.pt1 = rect.upperRight
-converter toLeftEdge*(rect: SomeWRect):   LeftEdge =
+converter toLeftEdge*(rect: SomeWRect): LeftEdge =
   result.pt0 = rect.lowerLeft
   result.pt1 = rect.upperLeft
 converter toBottomEdge*(rect: SomeWRect): BottomEdge =
   result.pt0 = rect.lowerLeft
   result.pt1 = rect.lowerRight
-converter toRightEdge*(rect: SomeWRect):  RightEdge =
+converter toRightEdge*(rect: SomeWRect): RightEdge =
   result.pt0 = rect.lowerRight
   result.pt1 = rect.upperRight
 proc left*(rect: SomeWRect): WType =
@@ -416,16 +420,13 @@ proc `/`[T:SomeInteger](a, b: T): T =
   a div b
 proc `/`[T:SomeFloat](a, b: T): T = a / b
 
-const 
-  wcdf = makecdf(WRANGE.len, 100.0, 0.1)
-  hcdf = makecdf(HRANGE.len, 100.0, 0.1)
 
 proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect = 
   # Creat a DBRect with random position, size, color
   var rw: WType
   var rh: WType
-  let rectPosX: WType = region.x + rand(region.w - 1)
-  let rectPosY: WType = region.y + rand(region.h - 1)
+  let rectPosX: WType = region.x + rand(region.w) # - 1)
+  let rectPosY: WType = region.y + rand(region.h) # - 1)
 
   if log: # Make log distribution
     while true:
@@ -470,8 +471,8 @@ proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.} =
     top    = max(top,    r.top)
   (x: left, 
    y: bottom, 
-   w: right - left + 1, 
-   h: top - bottom + 1)
+   w: right - left, #+ 1, 
+   h: top - bottom ) #+ 1)
 proc rotate*(rect: DBRect, amt: Rotation) =
   # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
