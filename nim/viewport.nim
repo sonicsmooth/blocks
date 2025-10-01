@@ -40,7 +40,7 @@ proc toPixelX*[T:SomeNumber](x: T, vp: ViewPort): PxType =
 
 proc toPixelY*[T:SomeNumber](y: T, vp: ViewPort): PxType =
   # Implicit conversion to PxType which includes rounding
-  (y.float * (-vp.zoom) + vp.pan.y.float)
+  (y.float * (-vp.zoom) + vp.pan.y.float) # add extra to offset down by 1
 
 proc toPixel*[T:SomePoint](pt: T, vp: ViewPort): PxPoint =
   (pt[0].toPixelX(vp), pt[1].toPixelY(vp))
