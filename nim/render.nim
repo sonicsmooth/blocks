@@ -64,6 +64,7 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   let
     opx: PxPoint = (rect.originXLeft.float * vp.zoom, rect.originYUp.float * vp.zoom)
     extent = (10.0 * vp.zoom).round.cint
+  dump opx
   rp.setDrawColor(Black.toColor)
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)

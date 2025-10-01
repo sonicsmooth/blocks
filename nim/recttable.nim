@@ -99,14 +99,15 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
-    table[1] = DBRect(id: 1, x: 0, y: 0, w: 5, h: 5, origin: (2, 2), rot: R0,
+    table[1] = DBRect(id: 1, x: 0, y: 0, w: 5, h: 5, origin: (0, 0), rot: R0,
                      selected: false, penColor: Red, fillColor: Blue)
-    table[2] = DBRect(id: 2, x: 20, y: 0, w: 5, h: 5, origin: (2, 2), rot: R0,
-                     selected: false, penColor: Blue, fillColor: Red)
-    #table[1] = DBRect(id: 1, x: 0, y: 0, w: 100, h: 100, origin: (0, 0), rot: R0,
-    #                selected: false, penColor: 0x7f0000ff.toColorU32, fillColor: 0x7f00007f.toColorU32)
-    # table[2] = DBRect(id: 2, x: 100, y: 100, w: 100, h: 100, origin: (0,0), rot: R0,
-    #                 selected: false, penColor: 0xffff0000.toColorU32, fillColor: 0x7fff0000.toColorU32)
+    table[2] = DBRect(id: 2, x: 10, y: 0, w: 5, h: 5, origin: (0, 0), rot: R90,
+                     selected: false, penColor: Red, fillColor: Blue)
+    table[3] = DBRect(id: 3, x: 20, y: 0, w: 5, h: 5, origin: (0, 0), rot: R180,
+                     selected: false, penColor: Red, fillColor: Blue)
+    table[4] = DBRect(id: 4, x: 30, y: 0, w: 5, h: 5, origin: (0, 0), rot: R270,
+                     selected: false, penColor: Red, fillColor: Blue)
+
   else:
     for i in 1..qty:
       let rid = i.RectID
