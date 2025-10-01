@@ -448,9 +448,9 @@ Rendering options for SDL and pixie
     self.sdlRenderer.setDrawColor(self.backgroundColor.toColor)
     self.sdlRenderer.clear()
     
-    # # Draw grid
-    # if self.mGrid.visible:
-    #   self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
+    # Draw grid
+    if self.mGrid.visible:
+      self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
     when defined(textureCache):
@@ -475,11 +475,11 @@ Rendering options for SDL and pixie
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mDstRect = (-250, -250, 500, 500)
-    self.mGrid.xSpace = 25
-    self.mGrid.ySpace = 25
+    self.mGrid.xSpace = 10
+    self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
-    self.mViewPort.zoom = 5.0
+    self.mViewPort.doZoom(2400)
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
