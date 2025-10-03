@@ -54,7 +54,10 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   let prect = 
     if zero: rect.toPRect(vp, rot=true).zero # used by texture renderer
     else:    rect.toPRect(vp, rot=true)      # used by screen renderer
-  rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
+  if rect.hovering:
+    rp.renderFilledRect(prect, rect.hoverColor, rect.penColor)
+  else:
+    rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
 
   # Origin
   # Todo: There is something to be said here about model space

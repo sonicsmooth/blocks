@@ -64,6 +64,16 @@ proc notSelected*(table: RectTable): seq[RectId] =
     if not rect.selected:
       result.add(id)
 
+proc hovering*(table: RectTable): seq[RectId] =
+  for id, rect in table:
+    if rect.hovering:
+      result.add(id)
+
+proc notHovering*(table: RectTable): seq[RectId] =
+  for id, rect in table:
+    if not rect.hovering:
+      result.add(id)
+
 proc positions*(table: RectTable): PosTable =
   for id, rect in table:
     result[id] = (rect.x, rect.y, rect.rot)
@@ -99,7 +109,7 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
-    table[ 1] = DBRect(id:  1, x: 0, y:  0, w: 5, h: 5, origin: (0, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
+    table[ 1] = DBRect(id:  1, x: 0, y:  0, w: 5, h: 5, origin: (0, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue, hoverColor: Yellow)
     # table[ 2] = DBRect(id:  2, x: 1, y: 10, w: 5, h: 5, origin: (1, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 3] = DBRect(id:  3, x: 2, y: 20, w: 5, h: 5, origin: (2, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 4] = DBRect(id:  4, x: 3, y: 30, w: 5, h: 5, origin: (3, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
@@ -147,27 +157,33 @@ proc setRectSelect*(table: RectTable): seq[RectId] {.discardable.}
 proc setRectSelect*(table: RectTable, id: RectID): bool {.discardable.}
 proc setRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] {.discardable.}
 
+proc toggleRectHovering*(table: RectTable, id: RectID)
+proc toggleRectHovering*(table: RectTable, ids: seq[RectId]) {.discardable.}
+proc toggleRectHovering*(table: RectTable) {.discardable.}
+proc clearRectHovering*(table: RectTable): seq[RectId] {.discardable.}
+proc clearRectHovering*(table: RectTable, id: RectID): bool {.discardable.}
+proc clearRectHovering*(table: RectTable, ids: seq[RectId]): seq[RectId] {.discardable.}
+proc setRectHovering*(table: RectTable): seq[RectId] {.discardable.}
+proc setRectHovering*(table: RectTable, id: RectID): bool {.discardable.}
+proc setRectHovering*(table: RectTable, ids: seq[RectId]): seq[RectId] {.discardable.}
+
+
 proc toggleRectSelect*(table: RectTable, id: RectID) = 
   table[id].selected = not table[id].selected
-
 proc toggleRectSelect*(table: RectTable, ids: seq[RectId]) =
   for rect in table.values:
     rect.selected = not rect.selected
-
 proc toggleRectSelect*(table: RectTable) =
   for rect in table.values:
     rect.selected = not rect.selected
-
 
 proc clearRectSelect*(table: RectTable): seq[RectId] = 
   result = table.selected
   for id in result:
     table[id].selected = false
-
 proc clearRectSelect*(table: RectTable, id: RectID): bool =
   result = table[id].selected
   table[id].selected = false
-
 proc clearRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] =
   let sel = ids.toSeq
   for id in sel:
@@ -175,20 +191,55 @@ proc clearRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] =
       result.add(id)
     table[id].selected = false
 
-
 proc setRectSelect*(table: RectTable): seq[RectId] = 
   result = table.notSelected
   for id in result:
     table[id].selected = true
-
 proc setRectSelect*(table: RectTable, id: RectID): bool =
   result = table[id].selected
   table[id].selected = true
-
 proc setRectSelect*(table: RectTable, ids: seq[RectId]): seq[RectId] =
   let sel = ids.toSeq
   for id in sel:
     if not table[id].selected:
       result.add(id)
     table[id].selected = true
+
+
+proc toggleRectHovering*(table: RectTable, id: RectID) = 
+  table[id].hovering = not table[id].hovering
+proc toggleRectHovering*(table: RectTable, ids: seq[RectId]) =
+  for rect in table.values:
+    rect.hovering = not rect.hovering
+proc toggleRectHovering*(table: RectTable) =
+  for rect in table.values:
+    rect.hovering = not rect.hovering
+
+proc clearRectHovering*(table: RectTable): seq[RectId] = 
+  result = table.hovering
+  for id in result:
+    table[id].hovering = false
+proc clearRectHovering*(table: RectTable, id: RectID): bool =
+  result = table[id].hovering
+  table[id].hovering = false
+proc clearRectHovering*(table: RectTable, ids: seq[RectId]): seq[RectId] =
+  let sel = ids.toSeq
+  for id in sel:
+    if table[id].hovering:
+      result.add(id)
+    table[id].hovering = false
+
+proc setRectHovering*(table: RectTable): seq[RectId] = 
+  result = table.notSelected
+  for id in result:
+    table[id].hovering = true
+proc setRectHovering*(table: RectTable, id: RectID): bool =
+  result = table[id].hovering
+  table[id].hovering = true
+proc setRectHovering*(table: RectTable, ids: seq[RectId]): seq[RectId] =
+  let sel = ids.toSeq
+  for id in sel:
+    if not table[id].hovering:
+      result.add(id)
+    table[id].hovering = true
 

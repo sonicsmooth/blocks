@@ -30,7 +30,7 @@ type
     lastPos:     wPoint # comes from winim (wPoint) not SDL2 (cint)
     state:       MouseState
     pzState:     PanZoomState
-  CacheKey = tuple[id:RectID, selected: bool]
+  CacheKey = tuple[id:RectID, selected, hovering: bool]
   wBlockPanel* = ref object of wSDLPanel
     mMouseData: MouseData
     mTextureCache: Table[CacheKey, TexturePtr]
@@ -87,17 +87,18 @@ wClass(wBlockPanel of wSDLPanel):
   proc clearTextureCache*(self:wBlockPanel, id: RectID) =
     # Clear specific id from texture cache
     for sel in [false, true]:
-      let key = (id, sel)
-      if key in self.mTextureCache:
-        self.mTextureCache[key].destroy()
-      self.mTextureCache.del(key)
+      for hov in [false, true]:
+        let key = (id, sel, hov)
+        if key in self.mTextureCache:
+          self.mTextureCache[key].destroy()
+        self.mTextureCache.del(key)
 
   proc getFromTextureCache(self: wBlockPanel, id: RectID): TexturePtr =
     # Copies surfaces from surfaceCache to textures
     # Requires to be called when resize because of new texture
     let 
       rect = gDb[id]
-      key = (id, rect.selected)
+      key = (id, rect.selected, rect.hovering)
       vp = self.mViewPort
     if self.mTextureCache.hasKey(key):
       self.mTextureCache[key]
@@ -160,14 +161,12 @@ wClass(wBlockPanel of wSDLPanel):
   proc moveRectBy(self: wBlockPanel, rectId: RectId, delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     #let wdelta: WPoint = delta.toWorld(self.mViewPort)
-    #echo delta
     moveRectBy(gDb[rectId], delta)
     self.updateRatio()
     self.refresh(false)
   proc moveRectTo(self: wBlockPanel, rectId: RectId, delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     #let wdelta: WPoint = delta.toWorld(self.mViewPort)
-    #echo delta
     moveRectTo(gDb[rectId], delta)
     self.updateRatio()
     self.refresh(false)
@@ -284,7 +283,7 @@ wClass(wBlockPanel of wSDLPanel):
     # Send mouse message for x,y position
     if event.eventType == wEvent_MouseMove or
        event.eventType == wEvent_MouseWheel:
-      displayParams(event.wParam, event.lParam)
+      #displayParams(event.wParam, event.lParam)
       let hWnd = GetAncestor(self.handle, GA_ROOT)
       SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.lParam)
 
@@ -333,6 +332,10 @@ wClass(wBlockPanel of wSDLPanel):
     case self.mMouseData.state
     of StateNone:
       case event.getEventType
+      of wEvent_MouseMove:
+        gDb.clearRectHovering()
+        gDb.setRectHovering(gDb.ptInRects(wmp))
+        self.refresh(false)
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         self.mMouseData.clickPos = event.mousePos
@@ -420,9 +423,6 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.state = StateNone
 
 
-
-# Todo: hovering over
-# TODO optimize what gets invalidated during move
 
 
 #[
