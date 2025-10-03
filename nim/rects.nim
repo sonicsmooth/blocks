@@ -58,7 +58,9 @@ type
     rot*: Rotation
     penColor*: ColorU32
     fillColor*: ColorU32
+    hoverColor*: ColorU32
     selected*: bool
+    hovering*: bool
   SomeWRect = DBRect | WRect
   Edge* = object of RootObj
     pt0*: WPoint
@@ -190,13 +192,10 @@ proc size*(rect: PRect): PxSize {.inline.} =
   # Returns width and height of screen rectangle
   # This is pixel count
   (rect.w, rect.h)
-
 proc greatestDim*(rect: PRect): cint {.inline.} =
   max(rect.w, rect.h)
-
 proc greatestDim*(rect: SomeWRect): WType {.inline.} =
   max(rect.w, rect.h)
-
 proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.} =
   # Conversion from DBRect to WRect.
   # This is basis of upper/lower/left/right/edge/bounding box functions
@@ -234,7 +233,6 @@ proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.} =
 converter toWRect*(rect: DBRect): WRect {.inline.} =
   # Implicit conversion from DBRect to WRect.
   rect.toWRect(true) # Call main fn with rotation explicitly enabled
-
 proc toWRect*(rect: PRect, vp: ViewPort): WRect =
   # Converts from screen/pixel space to world space
   # PRect has x,y in upper left, so choose lower left then convert
@@ -248,7 +246,6 @@ proc toWRect*(rect: PRect, vp: ViewPort): WRect =
     (rect.y + rect.h).toWorldY(vp),
     (rect.w.float / vp.zoom).round.WType,
     (rect.h.float / vp.zoom).round.WType)
-
 proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} = 
   # Output's origin is upper left of rectangle
   let
@@ -257,7 +254,6 @@ proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} =
     height = (rect.h.float * vp.zoom).round.cint
   # Add + 1 adjustment for y
   (origin.x, origin.y + 1, width, height)
-
 proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} = 
   # Output's origin is upper left of rectangle
   # if rot is false, then upper left is plain.
@@ -269,13 +265,11 @@ proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} =
     height = (wrect.h.float * vp.zoom).round.cint
   # Add + 1 adjustment for y
   (origin.x, origin.y + 1, width, height)
-
 proc zero*[T:PRect|WRect](rect: T): T {.inline.} =
   when T is PRect:
     (0.cint, 0.cint, rect.w, rect.h)
   else:
     (0.CoordT, 0.CoordT, rect.w, rect.h)
-
 proc originToLeftEdge*(rect: DBRect): WType =
   # Horizontal distance from left edge to origin after rotation
   case rect.rot:
@@ -374,8 +368,9 @@ proc `==`*(edge1, edge2: HorizEdge): bool {.inline.} = edge1.y == edge2.y
 # Procs for hit testing operate on world WRects
 proc isPointInRect*(pt: WPoint, rect: WRect): bool {.inline.} = 
     let urcorner = rect.upperRight
-    pt.x >= rect.x and pt.x <= urcorner.x and
-    pt.y >= rect.y and pt.y <= urcorner.y
+    pt.x >= rect.x and pt.x < urcorner.x and
+    pt.y >= rect.y and pt.y < urcorner.y
+
 proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
   let edgeInside = (edge >= rect.LeftEdge and edge <= rect.RightEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
@@ -448,8 +443,10 @@ proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect =
                          origin: (10, 20),
                          rot: rand(Rotation),
                          selected: false,
+                         hovering: false,
                          penColor: penColor,
-                         fillColor: fillColor)
+                         fillColor: fillColor,
+                         hoverColor: Yellow)
 proc moveRectBy*(rect: SomeWRect, delta: WPoint) =
   rect.x += delta.x
   rect.y += delta.y
