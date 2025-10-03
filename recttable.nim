@@ -91,7 +91,13 @@ proc ptInRects*(table: RectTable, pt: WPoint): seq[RectID] =
   for id, rect in table:
     if isPointInRect(pt, rect):
       result.add(id)
-
+proc ptInRects*(table: RectTable, pt: PxPoint, vp: ViewPort): seq[RectID] = 
+  # Returns seq of DBRect IDs from table whose rect 
+  # surrounds or contacts pt
+  for id, rect in table:
+    let prect = rect.toPRect(vp)
+    if isPointInRect(pt, prect):
+      result.add(id)
 proc rectInRects*(table: RectTable, rect: WRect|DBRect): seq[RectID] = 
   # Return seq of DBRect IDs from table that intersect rect
   # Return seq also includes rect
@@ -102,14 +108,16 @@ proc rectInRects*(table: RectTable, rect: WRect|DBRect): seq[RectID] =
     if isRectInRect(rect, tabRect) or 
        isRectOverRect(rect, tabRect):
       result.add(id)
-
 proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] = 
   table.rectInRects(table[rectId])
+
+
+
 
 proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
-    table[ 1] = DBRect(id:  1, x: 0, y:  0, w: 5, h: 5, origin: (0, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue, hoverColor: Yellow)
+    table[ 1] = DBRect(id:  1, x: 0, y:  0, w: 6, h: 6, origin: (3, 3), rot: R0, selected: false, penColor: Red, fillColor: Blue, hoverColor: Yellow)
     # table[ 2] = DBRect(id:  2, x: 1, y: 10, w: 5, h: 5, origin: (1, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 3] = DBRect(id:  3, x: 2, y: 20, w: 5, h: 5, origin: (2, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 4] = DBRect(id:  4, x: 3, y: 30, w: 5, h: 5, origin: (3, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)

@@ -78,7 +78,8 @@ const
   HRANGE* = (5*scale) .. (25*scale)
   wcdf = makecdf(WRANGE.len, 100.0, 0.1)
   hcdf = makecdf(HRANGE.len, 100.0, 0.1)
-  
+
+# TODO: toWRect cache  
 
 # Declarations
 proc `$`*(rect: DBRect): string
@@ -112,6 +113,10 @@ proc left*(rect: SomeWRect): WType
 proc right*(rect: SomeWRect): WType
 proc top*(rect: SomeWRect): WType
 proc bottom*(rect: SomeWRect): WType
+proc left*(rect: PRect): PxType
+proc right*(rect: PRect): PxType
+proc top*(rect: PRect): PxType
+proc bottom*(rect: PRect ): PxType
 proc x*(edge: VertEdge ): WType {.inline.}
 proc y*(edge: HorizEdge): WType {.inline.}
 proc ids*(rects: openArray[DBRect]): seq[RectID]
@@ -126,6 +131,7 @@ proc `>`* (edge1, edge2: HorizEdge): bool {.inline.}
 proc `>=`*(edge1, edge2: HorizEdge): bool {.inline.}
 proc `==`*(edge1, edge2: HorizEdge): bool {.inline.}
 proc isPointInRect*(pt: WPoint, rect: WRect): bool {.inline.}
+proc isPointInRect*(pt: PxPoint, rect: PRect): bool {.inline.}
 proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.}
 proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.}
 proc isRectInRect*(rect1, rect2: WRect): bool 
@@ -331,14 +337,14 @@ converter toBottomEdge*(rect: SomeWRect): BottomEdge =
 converter toRightEdge*(rect: SomeWRect): RightEdge =
   result.pt0 = rect.lowerRight
   result.pt1 = rect.upperRight
-proc left*(rect: SomeWRect): WType =
-  rect.LeftEdge.x
-proc right*(rect: SomeWRect): WType =
-  rect.RightEdge.x
-proc top*(rect: SomeWRect): WType =
-  rect.TopEdge.y
-proc bottom*(rect: SomeWRect): WType =
-  rect.BottomEdge.y
+proc left*(rect: SomeWRect):   WType  = rect.LeftEdge.x
+proc right*(rect: SomeWRect):  WType  = rect.RightEdge.x
+proc top*(rect: SomeWRect):    WType  = rect.TopEdge.y
+proc bottom*(rect: SomeWRect): WType  = rect.BottomEdge.y
+proc left*(rect: PRect):    PxType = rect.x
+proc right*(rect: PRect):   PxType = rect.x + rect.w - 1
+proc top*(rect: PRect):     PxType = rect.y
+proc bottom*(rect: PRect ): PxType = rect.y + rect.h - 1
 proc x*(edge: VertEdge ): WType {.inline.} = edge.pt0.x
 proc y*(edge: HorizEdge): WType {.inline.} = edge.pt0.y
 
@@ -367,9 +373,13 @@ proc `==`*(edge1, edge2: HorizEdge): bool {.inline.} = edge1.y == edge2.y
 
 # Procs for hit testing operate on world WRects
 proc isPointInRect*(pt: WPoint, rect: WRect): bool {.inline.} = 
-    let urcorner = rect.upperRight
-    pt.x >= rect.x and pt.x < urcorner.x and
-    pt.y >= rect.y and pt.y < urcorner.y
+    pt.x >= rect.x and pt.x <= rect.right and
+    pt.y >= rect.y and pt.y <= rect.top
+
+proc isPointInRect*(pt: PxPoint, rect: PRect): bool {.inline.} = 
+  # TODO: top/bottom/right/left for PRects
+  pt.x >= rect.left and pt.x <= rect.right and
+  pt.y >= rect.top  and pt.y <= rect.bottom
 
 proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
   let edgeInside = (edge >= rect.LeftEdge and edge <= rect.RightEdge)

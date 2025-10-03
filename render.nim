@@ -43,37 +43,31 @@ proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
 
 proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   # Draw rectangle on SDL2 renderer
-  # rp is renderer
-  # vp is viewport to convert between pixels and world coords
-  # rect is domain object rectangle
   # zero is whether the object should be rendered at upper left corner of target
+  #   this should be true when target is texture
   #   this should be false when target is screen
-  #   and true when target is texture
   
-  # Delegate rectangle drawing
+  # Draw rectangle
   let prect = 
     if zero: rect.toPRect(vp, rot=true).zero # used by texture renderer
     else:    rect.toPRect(vp, rot=true)      # used by screen renderer
+
   if rect.hovering:
     rp.renderFilledRect(prect, rect.hoverColor, rect.penColor)
   else:
     rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
 
-  # Origin
+  # Draw origin
   # Todo: There is something to be said here about model space
   # todo: to world space to pixel space
   let
-    fnx = proc(x: WType): PxType =
-      (x.float * vp.zoom).round.cint
-    fny = proc(y: WType): PxType =
-      (y.float * vp.zoom).round.cint
-    xl = rect.originToLeftEdge
-    yd = rect.originToTopEdge
-    opx: PxPoint = (fnx(xl), fny(yd))
+    fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
+    fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
+    opx: PxPoint = (fnx(rect.originToLeftEdge), fny(rect.originToTopEdge))
     extent = (10.0 * vp.zoom).round.cint
   rp.setDrawColor(Black.toColor)
-  # rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
-  # rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
+  rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
+  rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
   # Text to texture, then texture to renderer
   when not defined(noText):
