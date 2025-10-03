@@ -284,7 +284,7 @@ wClass(wBlockPanel of wSDLPanel):
     # Send mouse message for x,y position
     if event.eventType == wEvent_MouseMove or
        event.eventType == wEvent_MouseWheel:
-      #displayParams(event.wParam, event.lParam)
+      displayParams(event.wParam, event.lParam)
       let hWnd = GetAncestor(self.handle, GA_ROOT)
       SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.lParam)
 

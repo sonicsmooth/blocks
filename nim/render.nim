@@ -56,9 +56,6 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
     else:    rect.toPRect(vp, rot=true)      # used by screen renderer
   rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
 
-  dump prect
-
-
   # Origin
   # Todo: There is something to be said here about model space
   # todo: to world space to pixel space
