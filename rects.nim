@@ -255,7 +255,8 @@ proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} =
     origin = rect.upperLeft.toPixel(vp)
     width  = (rect.w.float * vp.zoom).round.cint
     height = (rect.h.float * vp.zoom).round.cint
-  (origin.x, origin.y, width, height)
+  # Add + 1 adjustment for y
+  (origin.x, origin.y + 1, width, height)
 
 proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} = 
   # Output's origin is upper left of rectangle
@@ -266,7 +267,8 @@ proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} =
     origin = wrect.upperLeft.toPixel(vp)
     width = (wrect.w.float * vp.zoom).round.cint
     height = (wrect.h.float * vp.zoom).round.cint
-  (origin.x, origin.y, width, height)
+  # Add + 1 adjustment for y
+  (origin.x, origin.y + 1, width, height)
 
 proc zero*[T:PRect|WRect](rect: T): T {.inline.} =
   when T is PRect:
@@ -278,28 +280,28 @@ proc originToLeftEdge*(rect: DBRect): WType =
   # Horizontal distance from left edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.x
-  of R90:  rect.h - rect.origin.y #- 1
-  of R180: rect.w - rect.origin.x #- 1
+  of R90:  rect.h - rect.origin.y
+  of R180: rect.w - rect.origin.x
   of R270: rect.origin.y
 proc originToRightEdge*(rect: DBRect): WType =
   # Horizontal distance from right edge to origin after rotation
   case rect.rot:
-  of R0:   rect.w - rect.origin.x #- 1
+  of R0:   rect.w - rect.origin.x
   of R90:  rect.origin.y
   of R180: rect.origin.x
-  of R270: rect.h - rect.origin.y #- 1
+  of R270: rect.h - rect.origin.y
 proc originToBottomEdge*(rect: DBRect): WType =
   # Vertical distance from bottom edge to origin after rotation
   case rect.rot:
   of R0:   rect.origin.y
   of R90:  rect.origin.x
-  of R180: rect.h - rect.origin.y #- 1
-  of R270: rect.w - rect.origin.x #- 1
+  of R180: rect.h - rect.origin.y
+  of R270: rect.w - rect.origin.x
 proc originToTopEdge*(rect: DBRect): WType =
   # Vertical distance from top edge to origin after rotation
   case rect.rot:
-  of R0 :  rect.h - rect.origin.y #- 1
-  of R90:  rect.w - rect.origin.x #- 1
+  of R0 :  rect.h - rect.origin.y
+  of R90:  rect.w - rect.origin.x
   of R180: rect.origin.y
   of R270: rect.origin.x
 
@@ -314,17 +316,14 @@ proc lowerLeft*(rect: SomeWRect):  WPoint =
 proc lowerRight*(rect: SomeWRect): WPoint = 
   when SomeWRect is DBRect:
     let rect = rect.toWRect
-  #(rect.x + rect.w - 1, rect.y)
   (rect.x + rect.w, rect.y)
 proc upperLeft*(rect: SomeWRect):  WPoint = 
   when SomeWRect is DBRect:
     let rect = rect.toWRect
-  #(rect.x, rect.y + rect.h - 1)
   (rect.x, rect.y + rect.h)
 proc upperRight*(rect: SomeWRect): WPoint = 
   when rect is DBRect:
     let rect = rect.toWRect
-  #(rect.x + rect.w - 1, rect.y + rect.h - 1)
   (rect.x + rect.w, rect.y + rect.h)
 converter toTopEdge*(rect: SomeWRect): TopEdge =
   result.pt0 = rect.upperLeft
@@ -425,8 +424,8 @@ proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect =
   # Creat a DBRect with random position, size, color
   var rw: WType
   var rh: WType
-  let rectPosX: WType = region.x + rand(region.w) # - 1)
-  let rectPosY: WType = region.y + rand(region.h) # - 1)
+  let rectPosX: WType = region.x + rand(region.w)
+  let rectPosY: WType = region.y + rand(region.h)
 
   if log: # Make log distribution
     while true:

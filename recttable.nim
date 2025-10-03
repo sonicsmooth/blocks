@@ -99,7 +99,7 @@ proc rectInRects*(table: RectTable, rectId: RectID): seq[RectID] =
 proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
   when defined(testRects):
-    table[ 1] = DBRect(id:  1, x: 0, y:  0, w: 6, h: 6, origin: (3, 3), rot: R0, selected: false, penColor: Red, fillColor: Blue)
+    table[ 1] = DBRect(id:  1, x: 0, y:  0, w: 5, h: 5, origin: (0, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 2] = DBRect(id:  2, x: 1, y: 10, w: 5, h: 5, origin: (1, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 3] = DBRect(id:  3, x: 2, y: 20, w: 5, h: 5, origin: (2, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 4] = DBRect(id:  4, x: 3, y: 30, w: 5, h: 5, origin: (3, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
@@ -119,8 +119,8 @@ proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool
 
 proc randomizeRectsPos*(table: RectTable, region: WRect) =
   for id, rect in table:
-    rect.x = region.x + rand(region.w - 1)
-    rect.y = region.y + rand(region.h - 1)
+    rect.x = region.x + rand(region.w)
+    rect.y = region.y + rand(region.h)
 
 proc boundingBox*(rectTable: RectTable): WRect =
   rectTable.values.toSeq.boundingBox()

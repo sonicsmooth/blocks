@@ -473,7 +473,7 @@ Rendering options for SDL and pixie
     self.backgroundColor = wLightBlue
     self.mDstRect = (-250, -250, 500, 500)
     self.mGrid.xSpace = 1
-    self.mGrid.ySpace = 10
+    self.mGrid.ySpace = 1
     self.mGrid.visible = true
     self.mGrid.originVisible = true
     self.mViewPort.doZoom(2400)
