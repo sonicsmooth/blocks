@@ -13,7 +13,7 @@ type
     mTxt:  wStaticText
     mChk:  wCheckBox
     mBox1: wStaticBox
-    mBox2: wStaticBox
+    #mBox2: wStaticBox
     mCTRb1:     wRadioButton # Compact type radio button
     mCTRb2:     wRadioButton # Compact type radio button
     mCTRb3:     wRadioButton # Compact type radio button
@@ -31,31 +31,33 @@ const
 
 wClass(wMainPanel of wPanel):
   proc layout(self: wMainPanel) =
-    let bmarg = self.dpiScale(8)
-    let (cszw, cszh) = self.clientSize
-    let (bw, bh) = (self.dpiScale(150), self.dpiScale(30))
-    let (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
+    let 
+      bmarg = self.dpiScale(8)
+      (cszw, cszh) = self.clientSize
+      (bw, bh) = (self.dpiScale(150), self.dpiScale(30))
+      (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
+      bwd2 = bw div 2
     self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
     self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
                              cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Static text position, size
     self.mTxt.position = (bmarg, bmarg)
-    self.mTxt.size = (bw div 2, self.mTxt.size.height)
+    self.mTxt.size = (bwd2, self.mTxt.size.height)
 
     # Spin Ctrl position, size
-    self.mSpnr.position = (bmarg + (bw div 2), bmarg)
-    self.mSpnr.size     = (bw div 2, self.mSpnr.size.height)
+    self.mSpnr.position = (bmarg + bwd2, bmarg)
+    self.mSpnr.size     = (bwd2, self.mSpnr.size.height)
     yPosAcc += bmarg + self.mTxt.size.height
 
     # Selection strategy pos, size
     self.mCTRb1.position = (bmarg,            yPosAcc); yPosAcc += bh
     self.mCTRb2.position = (bmarg,            yPosAcc)
-    self.mCTRb3.position = (bmarg + bw div 2, yPosAcc)
+    self.mCTRb3.position = (bmarg + bwd2, yPosAcc)
 
     self.mCTRb1.size     = (bw,       bh)
-    self.mCTRb2.size     = (bw div 2, bh)
-    self.mCTRb3.size     = (bw div 2, bh)
+    self.mCTRb2.size     = (bwd2, bh)
+    self.mCTRb3.size     = (bwd2, bh)
     yPosAcc += bmarg + bh
 
     # Slider position, size
@@ -65,17 +67,21 @@ wClass(wMainPanel of wPanel):
 
     # Static box1 and radio button position, size
     self.mBox1.position      = (bmarg,   yPosAcc          )
-    self.mAStratRb1.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb1.size.height
-    self.mAStratRb2.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb2.size.height
+    self.mAStratRb1.size = (bwd2, bh)
+    self.mAStratRb2.size = (bwd2, bh)
+    self.mAStratRb3.size = (bwd2, bh)
+    self.mAStratRb4.size = (bwd2, bh)
+    self.mAStratRb1.position = (bmarg*2, yPosAcc + bmarg*3); #yPosAcc += self.mAStratRb1.size.height
+    self.mAStratRb3.position = (bmarg*2+bwd2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb3.size.height
+    self.mAStratRb2.position = (bmarg*2, yPosAcc + bmarg*3); #yPosAcc += self.mAStratRb2.size.height
+    self.mAStratRb4.position = (bmarg*2+bwd2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb4.size.height
     self.mBox1.size = (bw, self.mAStratRb1.size.height*2 + bmarg*4)
     yPosAcc += bmarg*5
 
     # Static box2 position, size
-    self.mBox2.position = (bmarg,   yPosAcc          )
-    self.mAStratRb3.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb3.size.height
-    self.mAStratRb4.position = (bmarg*2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb4.size.height
-    self.mBox2.size = (bw, self.mAStratRb3.size.height*2 + bmarg*4)
-    yPosAcc += bmarg*5
+    #self.mBox2.position = (bmarg,   yPosAcc          )
+    #self.mBox2.size = (bw, self.mAStratRb3.size.height*2 + bmarg*4)
+    #yPosAcc += bmarg*5
 
     # Buttons position, size
     for i, butt in self.mButtons:
@@ -249,8 +255,8 @@ wClass(wMainPanel of wPanel):
     # Create controls
     self.mSpnr      = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
     self.mTxt       = StaticText(self, label="Qty", style=wSpRight)
-    self.mBox1      = StaticBox(self, label="Anneal Strategy")
-    self.mBox2      = StaticBox(self, label="Anneal Perturb Func")
+    self.mBox1      = StaticBox(self, label="Strat and func")
+    #self.mBox2      = StaticBox(self, label="Anneal Perturb Func")
     self.mCTRb1     = RadioButton(self, label="None", style=wRbGroup)
     self.mCTRb2     = RadioButton(self, label="Anneal")
     self.mCTRb3     = RadioButton(self, label="Stack" )

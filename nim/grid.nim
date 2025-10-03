@@ -37,7 +37,7 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
     ystep: float  = (grid.ySpace.float * vp.zoom)
   
 
-  if xstep >= 5.0:
+  if xstep >= 2.0:
     for x in arange(pxStart.x.float .. pxEnd.x.float, xstep):
       let xr = x.round.cint
       rp.drawLine(xr, 0, xr, size.height.cint)
