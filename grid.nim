@@ -29,27 +29,27 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels
   rp.setDrawColor(colors.LightSlateGray.toColor())
   let
-    worldStart: WPoint = (0, size.height).toWorld(vp).snap(grid)
-    worldEnd: WPoint   = (size.width, 0).toWorld(vp).snap(grid)
-    pxStart: PxPoint = worldStart.toPixel(vp)
-    pxEnd: PxPoint = worldEnd.toPixel(vp)
+    worldStart: WPoint = (0, 0).toWorld(vp).snap(grid)
+    worldEnd: WPoint   = (size.width - 1, size.height - 1).toWorld(vp).snap(grid)
+    #pxStart: PxPoint = worldStart.toPixel(vp)
+    #pxEnd: PxPoint = worldEnd.toPixel(vp)
     xstep: float  = (grid.xSpace.float * vp.zoom)
-    ystep: float  = (grid.ySpace.float * vp.zoom)
+    #ystep: float  = (grid.ySpace.float * vp.zoom)
   
 
   if xstep >= 2.0:
-    for x in arange(pxStart.x.float .. pxEnd.x.float, xstep):
-      let xr = x.round.cint
-      rp.drawLine(xr, 0, xr, size.height.cint)
-    
-    for y in arange(pxStart.y.float .. pxEnd.y.float, ystep):
-      let yr = y.round.cint
-      rp.drawLine(0, yr, size.width.cint, yr)
-  
+    for x in arange(worldStart.x .. worldEnd.x, grid.xSpace):
+      let xp = x.toPixelX(vp)
+      rp.drawLine(xp, 0, xp, size.height - 1)
+
+    for y in arange(worldStart.y .. worldEnd.y, grid.ySpace):
+      let yp = y.toPixelY(vp)
+      rp.drawLine(0, yp, size.width - 1, yp)
+
   if grid.originVisible:
     let
-      extent: PxType = (25.0 * vp.zoom).toPxType
-      o: PxPoint = (0, 0).toPixel(vp)
+      extent: PxType = 25.0 * vp.zoom
+      o = (0, 0).toPixel(vp)
         
     rp.setDrawColor(colors.DarkRed.toColor())
 
