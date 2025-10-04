@@ -333,9 +333,12 @@ wClass(wBlockPanel of wSDLPanel):
     of StateNone:
       case event.getEventType
       of wEvent_MouseMove:
-        gDb.clearRectHovering()
-        gDb.setRectHovering(gDb.ptInRects(event.mousePos, vp))
-        self.refresh(false)
+        if self.mMouseData.pzState == PZStateNone:
+          gDb.clearRectHovering()
+          gDb.setRectHovering(gDb.ptInRects(event.mousePos, vp))
+          self.refresh(false)
+        else:
+          discard
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         self.mMouseData.clickPos = event.mousePos

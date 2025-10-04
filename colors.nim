@@ -4,12 +4,14 @@ from std/random import rand
 from wnim/private/wtypes import wColor
 from sdl2 import Color
 
+# TODO: use std/colors instead
+
 type
   ColorFormat = enum RGBA, ARGB, BGRA, ABGR
   ColorU32* = distinct uint32 # Follows one of the above formats
-  SomeRGBTuple[T:SomeInteger] = tuple[r, g, b: T]
-  SomeRGBATuple[T:SomeInteger] = tuple[r, g, b, a: T]
-  SomeColor = uint64|int64|uint32|int32|ColorU32|SomeRGBTuple|SomeRGBATuple
+  SomeRGBTuple[T:range[0..255]] = tuple[r, g, b: T]
+  SomeRGBATuple[T:range[0..255]] = tuple[r, g, b, a: T]
+  SomeColor = uint64|int64|uint32|int32|ColorU32|SomeRGBTuple|SomeRGBATuple|sdl2.Color
 
 const
   ColorFmt = 
@@ -98,7 +100,7 @@ proc assembleBits(r,g,b,a: uint32): ColorU32 {.inline.} =
   elif ColorFmt == ABGR: bitor(a.shl(24), b.shl(16), g.shl(8), r).ColorU32
 
 
-proc toColorU32*(color: SomeColor, a: SomeInteger): ColorU32 {.inline.} =
+proc toColorU32*(color: SomeColor, a: range[0..255]): ColorU32 {.inline.} =
   # Convert SomeColor to ColorU32 using a for alpha
   # Use this to change alpha in Color or ColorU32
   let
@@ -116,7 +118,6 @@ proc toColorU32*(color: SomeColor): ColorU32 {.inline.} =
     b: uint32 = color.blue
     a: uint32 = color.alpha
   assembleBits(r,g,b,a)
-
 
 template toColor*(color: SomeColor, alpha: range[0..255]): Color =
   (r: color.red, g: color.green, b: color.blue, a: alpha.uint8).Color

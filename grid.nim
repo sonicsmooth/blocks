@@ -1,4 +1,4 @@
-import std/[math]
+import std/[math, sequtils]
 import sdl2
 import colors
 from arange import arange
@@ -13,6 +13,11 @@ type
     visible*: bool = true
     originVisible*: bool = true
 
+const
+  stepAlphas = arange(0 .. 255, 10).toSeq
+
+echo stepAlphas
+
 proc snap*(pt: WPoint, grid: Grid): WPoint =
   # Round to nearest grid point
   let xcnt = (pt.x / grid.xSpace).round
@@ -25,15 +30,23 @@ proc snap*(grid: Grid, pt: WPoint): WPoint =
   let ycnt = (pt.y / grid.ySpace).round
   (xcnt * grid.xSpace, ycnt * grid.ySpace)
 
+proc lineAlpha(step: int): int =
+  if step < stepAlphas.len:
+    stepAlphas[step]
+  else:
+    255
+
 proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels
-  rp.setDrawColor(colors.LightSlateGray.toColor())
   let
     worldStart: WPoint = (0, 0).toWorld(vp).snap(grid)
     worldEnd: WPoint   = (size.width - 1, size.height - 1).toWorld(vp).snap(grid)
     xstep: float  = (grid.xSpace.float * vp.zoom)
     ystep: float  = (grid.ySpace.float * vp.zoom)
   
+  rp.setDrawColor(LightSlateGray.toColor(lineAlpha(xstep.round.int)))
+
+
   if xstep >= 2.0:
     for x in arange(worldStart.x .. worldEnd.x, grid.xSpace):
       let xp = x.toPixelX(vp)
@@ -53,12 +66,12 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
 
     # Horizontals
     rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
-    #rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
-    #rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
+    rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
+    rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
     
     # Verticals
     rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
-    #rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
-    #rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
+    rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
+    rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
 
   

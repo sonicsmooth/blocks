@@ -1,7 +1,6 @@
-import std/[math, random, sets, sequtils, strutils, tables, sugar]
+import std/[math, options, random, sets, sequtils, strutils, tables, ]
 import wNim/wTypes
 import wNim/private/wHelper
-#from sdl2 import Rect, Point
 import randrect
 import colors
 import world, viewport
@@ -47,6 +46,25 @@ type
   Orientation* = enum Vertical, Horizontal
   PRect* = tuple[x, y, w, h: PxType]  # screen/pixel rectangle
   WRect* = tuple[x, y, w, h: WType] # world rectangle
+  Edge* = object of RootObj
+    pt0*: WPoint
+    pt1*: WPoint
+  VertEdge*   = object of Edge
+  HorizEdge*  = object of Edge
+  TopEdge*    = object of HorizEdge
+  LeftEdge*   = object of VertEdge
+  BottomEdge* = object of HorizEdge
+  RightEdge*  = object of VertEdge
+  PropCache* = tuple
+    prect: Option[PRect]
+    wrectNoRot: Option[WRect]
+    wrectRot: Option[WRect]
+    leftEdge: Option[LeftEdge]
+    rightEdge: Option[RightEdge]
+    topEdge: Option[TopEdge]
+    bottomEdge: Option[BottomEdge]
+
+
   DBRect* = ref object # database object to be replaced later by Component, etc.
     x*: WType
     y*: WType
@@ -61,16 +79,8 @@ type
     hoverColor*: ColorU32
     selected*: bool
     hovering*: bool
+    #propCache*: PropCache
   SomeWRect = DBRect | WRect
-  Edge* = object of RootObj
-    pt0*: WPoint
-    pt1*: WPoint
-  VertEdge*   = object of Edge
-  HorizEdge*  = object of Edge
-  TopEdge*    = object of HorizEdge
-  LeftEdge*   = object of VertEdge
-  BottomEdge* = object of HorizEdge
-  RightEdge*  = object of VertEdge
 
 const
   scale = 10
@@ -79,24 +89,23 @@ const
   wcdf = makecdf(WRANGE.len, 100.0, 0.1)
   hcdf = makecdf(HRANGE.len, 100.0, 0.1)
 
-# TODO: toWRect cache  
 
 # Declarations
 proc `$`*(rect: DBRect): string
 proc `$`*(rect: PRect): string
 proc `==`*(a, b: DBRect): bool
-proc pos*(rect: SomeWRect): WPoint {.inline.}
-proc pos*(rect: PRect): PxPoint {.inline.}
-proc size*(rect: SomeWRect): WSize {.inline.}
-proc size*(rect: PRect): PxSize {.inline.}
-proc greatestDim*(rect: PRect): cint {.inline.}
-proc greatestDim*(rect: SomeWRect): WType {.inline.}
-proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.}
-converter toWRect*(rect: DBRect): WRect {.inline.}
-proc toWRect*(rect: PRect, vp: ViewPort): WRect {.inline.}
-proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.}
-proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.}
-proc zero*[T:PRect|WRect](rect: T): T {.inline.}
+proc pos*(rect: SomeWRect): WPoint 
+proc pos*(rect: PRect): PxPoint 
+proc size*(rect: SomeWRect): WSize 
+proc size*(rect: PRect): PxSize 
+proc greatestDim*(rect: PRect): cint 
+proc greatestDim*(rect: SomeWRect): WType 
+proc toWRect*(rect: DBRect, rot: bool): WRect 
+converter toWRect*(rect: DBRect): WRect 
+proc toWRect*(rect: PRect, vp: ViewPort): WRect 
+proc toPRect*(rect: WRect, vp: ViewPort): PRect 
+proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect 
+proc zero*[T:PRect|WRect](rect: T): T 
 proc originToLeftEdge*(rect: DBRect): WType
 proc originToRightEdge*(rect: DBRect): WType
 proc originToBottomEdge*(rect: DBRect): WType
@@ -117,46 +126,46 @@ proc left*(rect: PRect): PxType
 proc right*(rect: PRect): PxType
 proc top*(rect: PRect): PxType
 proc bottom*(rect: PRect ): PxType
-proc x*(edge: VertEdge ): WType {.inline.}
-proc y*(edge: HorizEdge): WType {.inline.}
+proc x*(edge: VertEdge ): WType 
+proc y*(edge: HorizEdge): WType 
 proc ids*(rects: openArray[DBRect]): seq[RectID]
-proc `<`* (edge1, edge2: VertEdge): bool {.inline.}
-proc `<=`*(edge1, edge2: VertEdge): bool {.inline.}
-proc `>`* (edge1, edge2: VertEdge): bool {.inline.}
-proc `>=`*(edge1, edge2: VertEdge): bool {.inline.}
-proc `==`*(edge1, edge2: VertEdge): bool {.inline.}
-proc `<`* (edge1, edge2: HorizEdge): bool {.inline.}
-proc `<=`*(edge1, edge2: HorizEdge): bool {.inline.}
-proc `>`* (edge1, edge2: HorizEdge): bool {.inline.}
-proc `>=`*(edge1, edge2: HorizEdge): bool {.inline.}
-proc `==`*(edge1, edge2: HorizEdge): bool {.inline.}
-proc isPointInRect*(pt: WPoint, rect: WRect): bool {.inline.}
-proc isPointInRect*(pt: PxPoint, rect: PRect): bool {.inline.}
-proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.}
-proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.}
+proc `<`* (edge1, edge2: VertEdge): bool 
+proc `<=`*(edge1, edge2: VertEdge): bool 
+proc `>`* (edge1, edge2: VertEdge): bool 
+proc `>=`*(edge1, edge2: VertEdge): bool 
+proc `==`*(edge1, edge2: VertEdge): bool 
+proc `<`* (edge1, edge2: HorizEdge): bool 
+proc `<=`*(edge1, edge2: HorizEdge): bool 
+proc `>`* (edge1, edge2: HorizEdge): bool 
+proc `>=`*(edge1, edge2: HorizEdge): bool 
+proc `==`*(edge1, edge2: HorizEdge): bool 
+proc isPointInRect*(pt: WPoint, rect: WRect): bool 
+proc isPointInRect*(pt: PxPoint, rect: PRect): bool 
+proc isEdgeInRect(edge: VertEdge, rect: WRect): bool 
+proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool 
 proc isRectInRect*(rect1, rect2: WRect): bool 
 proc isRectOverRect*(rect1, rect2: WRect): bool
 proc isRectSeparate*(rect1, rect2: WRect): bool
 proc randRect*(id: RectID, region: WRect, log: bool=false): DBRect 
 proc moveRectBy*(rect: SomeWRect, delta: WPoint)
 proc moveRectTo*(rect: SomeWRect, pos: WPoint) 
-proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.}
+proc boundingBox*(rects: openArray[SomeWRect]): WRect 
 proc rotate*(rect: DBRect, amt: Rotation)
 proc rotate*(rect: DBRect, orient: Orientation)
-proc area*(rect: SomeWRect): WType {.inline.}
+proc area*(rect: SomeWRect): WType 
 proc aspectRatio*(rect: SomeWRect): float
 proc aspectRatio*[T:SomeWRect](rects: openArray[T]): float
 proc fillArea*[T:SomeWRect](rects: openArray[T]): WType
 proc fillRatio*[T:SomeWRect](rects: openArray[T]): float
 proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect
-proc grow*(rect: WRect, amt: WType): WRect {.inline.}
-proc grow*(rect: PRect, amt: PxType): PRect {.inline.}
-proc toFloat*(rot: Rotation): float {.inline.}
-proc inc*(r: var Rotation) {.inline.}
-proc dec*(r: var Rotation) {.inline.}
-proc `+`*(r1, r2:Rotation): Rotation {.inline.}
-proc `-`*(r1, r2:Rotation): Rotation {.inline.}
-converter toPxPoint*(pt: wPoint): PxPoint {.inline.}
+proc grow*(rect: WRect, amt: WType): WRect 
+proc grow*(rect: PRect, amt: PxType): PRect 
+proc toFloat*(rot: Rotation): float 
+proc inc*(r: var Rotation) 
+proc dec*(r: var Rotation) 
+proc `+`*(r1, r2:Rotation): Rotation 
+proc `-`*(r1, r2:Rotation): Rotation 
+converter toPxPoint*(pt: wPoint): PxPoint 
 
 
 # Procs for single Rect
@@ -178,14 +187,14 @@ proc `==`*(a, b: DBRect): bool =
   a.h == b.h and
   a.origin == b.origin and
   a.rot == b.rot
-proc pos*(rect: SomeWRect): WPoint {.inline.} =
+proc pos*(rect: SomeWRect): WPoint  =
   # Returns DBRect's origin.
   # Returns WRect's upper left corner 
   (rect.x, rect.y)
-proc pos*(rect: PRect): PxPoint {.inline.} =
+proc pos*(rect: PRect): PxPoint  =
   # Returns PRect's upper left corner 
   (rect.x, rect.y)
-proc size*(rect: SomeWRect): WSize {.inline.} =
+proc size*(rect: SomeWRect): WSize  =
   # Returns width and height, accounting for rotation if DBRect
   when SomeWRect is rects.DBRect:
     if rect.rot == R0 or rect.rot == R180:
@@ -194,15 +203,15 @@ proc size*(rect: SomeWRect): WSize {.inline.} =
       (rect.h, rect.w)
   elif typeof(rect) is WRect:
     (rect.w, rect.h)
-proc size*(rect: PRect): PxSize {.inline.} =
+proc size*(rect: PRect): PxSize  =
   # Returns width and height of screen rectangle
   # This is pixel count
   (rect.w, rect.h)
-proc greatestDim*(rect: PRect): cint {.inline.} =
+proc greatestDim*(rect: PRect): cint  =
   max(rect.w, rect.h)
-proc greatestDim*(rect: SomeWRect): WType {.inline.} =
+proc greatestDim*(rect: SomeWRect): WType  =
   max(rect.w, rect.h)
-proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.} =
+proc toWRect*(rect: DBRect, rot: bool): WRect  =
   # Conversion from DBRect to WRect.
   # This is basis of upper/lower/left/right/edge/bounding box functions
   # Looks at rotation, then returns barebones rectangle x,y,w,h with
@@ -221,22 +230,22 @@ proc toWRect*(rect: DBRect, rot: bool): WRect {.inline.} =
     outw = w
     outh = h
   elif rect.rot == R90:
-    outx = x + oy - h # + 1
+    outx = x + oy - h
     outy = y - ox
     outw = h
     outh = w
   elif rect.rot == R180:
-    outx = x + ox - w #+ 1
-    outy = y + oy - h #+ 1
+    outx = x + ox - w
+    outy = y + oy - h
     outw = w
     outh = h
   elif rect.rot == R270:
     outx = x - oy
-    outy = y + ox - w #+ 1
+    outy = y + ox - w
     outw = h
     outh = w
   (outx, outy, outw, outh)
-converter toWRect*(rect: DBRect): WRect {.inline.} =
+converter toWRect*(rect: DBRect): WRect  =
   # Implicit conversion from DBRect to WRect.
   rect.toWRect(true) # Call main fn with rotation explicitly enabled
 proc toWRect*(rect: PRect, vp: ViewPort): WRect =
@@ -252,15 +261,14 @@ proc toWRect*(rect: PRect, vp: ViewPort): WRect =
     (rect.y + rect.h).toWorldY(vp),
     (rect.w.float / vp.zoom).round.WType,
     (rect.h.float / vp.zoom).round.WType)
-proc toPRect*(rect: WRect, vp: ViewPort): PRect {.inline.} = 
+proc toPRect*(rect: WRect, vp: ViewPort): PRect  = 
   # Output's origin is upper left of rectangle
   let
     origin = rect.upperLeft.toPixel(vp)
     width  = (rect.w.float * vp.zoom).round.cint
     height = (rect.h.float * vp.zoom).round.cint
-  # Add + 1 adjustment for y
   (origin.x, origin.y + 1, width, height)
-proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} = 
+proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect  = 
   # Output's origin is upper left of rectangle
   # if rot is false, then upper left is plain.
   # if rot is true, then, upper left is based on rotation
@@ -269,9 +277,8 @@ proc toPRect*(rect: DBRect, vp: ViewPort, rot: bool): PRect {.inline.} =
     origin = wrect.upperLeft.toPixel(vp)
     width = (wrect.w.float * vp.zoom).round.cint
     height = (wrect.h.float * vp.zoom).round.cint
-  # Add + 1 adjustment for y
   (origin.x, origin.y + 1, width, height)
-proc zero*[T:PRect|WRect](rect: T): T {.inline.} =
+proc zero*[T:PRect|WRect](rect: T): T  =
   when T is PRect:
     (0.cint, 0.cint, rect.w, rect.h)
   else:
@@ -345,8 +352,8 @@ proc left*(rect: PRect):    PxType = rect.x
 proc right*(rect: PRect):   PxType = rect.x + rect.w - 1
 proc top*(rect: PRect):     PxType = rect.y
 proc bottom*(rect: PRect ): PxType = rect.y + rect.h - 1
-proc x*(edge: VertEdge ): WType {.inline.} = edge.pt0.x
-proc y*(edge: HorizEdge): WType {.inline.} = edge.pt0.y
+proc x*(edge: VertEdge ): WType  = edge.pt0.x
+proc y*(edge: HorizEdge): WType  = edge.pt0.y
 
 
 # Procs for multiple Rects
@@ -359,29 +366,29 @@ proc ids*(rects: openArray[DBRect]): seq[RectID] =
 # Procs for edges
 # Comparators assume edges are truly vertical or horizontal
 # So we only look at pt0
-proc `<`* (edge1, edge2: VertEdge):  bool {.inline.} = edge1.x <  edge2.x
-proc `<=`*(edge1, edge2: VertEdge):  bool {.inline.} = edge1.x <= edge2.x
-proc `>`* (edge1, edge2: VertEdge):  bool {.inline.} = edge1.x >  edge2.x
-proc `>=`*(edge1, edge2: VertEdge):  bool {.inline.} = edge1.x >= edge2.x
-proc `==`*(edge1, edge2: VertEdge):  bool {.inline.} = edge1.x == edge2.x
-proc `<`* (edge1, edge2: HorizEdge): bool {.inline.} = edge1.y <  edge2.y
-proc `<=`*(edge1, edge2: HorizEdge): bool {.inline.} = edge1.y <= edge2.y
-proc `>`* (edge1, edge2: HorizEdge): bool {.inline.} = edge1.y >  edge2.y
-proc `>=`*(edge1, edge2: HorizEdge): bool {.inline.} = edge1.y >= edge2.y
-proc `==`*(edge1, edge2: HorizEdge): bool {.inline.} = edge1.y == edge2.y
+proc `<`* (edge1, edge2: VertEdge):  bool  = edge1.x <  edge2.x
+proc `<=`*(edge1, edge2: VertEdge):  bool  = edge1.x <= edge2.x
+proc `>`* (edge1, edge2: VertEdge):  bool  = edge1.x >  edge2.x
+proc `>=`*(edge1, edge2: VertEdge):  bool  = edge1.x >= edge2.x
+proc `==`*(edge1, edge2: VertEdge):  bool  = edge1.x == edge2.x
+proc `<`* (edge1, edge2: HorizEdge): bool  = edge1.y <  edge2.y
+proc `<=`*(edge1, edge2: HorizEdge): bool  = edge1.y <= edge2.y
+proc `>`* (edge1, edge2: HorizEdge): bool  = edge1.y >  edge2.y
+proc `>=`*(edge1, edge2: HorizEdge): bool  = edge1.y >= edge2.y
+proc `==`*(edge1, edge2: HorizEdge): bool  = edge1.y == edge2.y
 
 
 # Procs for hit testing operate on world WRects
-proc isPointInRect*(pt: WPoint, rect: WRect): bool {.inline.} = 
+proc isPointInRect*(pt: WPoint, rect: WRect): bool  = 
     pt.x >= rect.x and pt.x <= rect.right and
     pt.y >= rect.y and pt.y <= rect.top
 
-proc isPointInRect*(pt: PxPoint, rect: PRect): bool {.inline.} = 
+proc isPointInRect*(pt: PxPoint, rect: PRect): bool  = 
   # TODO: top/bottom/right/left for PRects
   pt.x >= rect.left and pt.x <= rect.right and
   pt.y >= rect.top  and pt.y <= rect.bottom
 
-proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
+proc isEdgeInRect(edge: VertEdge, rect: WRect): bool  =
   let edgeInside = (edge >= rect.LeftEdge and edge <= rect.RightEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
@@ -389,7 +396,7 @@ proc isEdgeInRect(edge: VertEdge, rect: WRect): bool {.inline.} =
   let pt1Outside = edge.pt1.y > rect.TopEdge.y
   (pt0Inside or pt1Inside) or 
   (pt0Outside and pt1Outside and edgeInside)
-proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool {.inline.} =
+proc isEdgeInRect(edge: HorizEdge, rect: WRect): bool  =
   let edgeInside = (edge >= rect.BottomEdge and edge <= rect.TopEdge)
   let pt0Inside = isPointInRect(edge.pt0, rect)
   let pt1Inside = isPointInRect(edge.pt1, rect)
@@ -463,7 +470,7 @@ proc moveRectBy*(rect: SomeWRect, delta: WPoint) =
 proc moveRectTo*(rect: SomeWRect, pos: WPoint) = 
   rect.x = pos.x
   rect.y = pos.y
-proc boundingBox*(rects: openArray[SomeWRect]): WRect {.inline.} =
+proc boundingBox*(rects: openArray[SomeWRect]): WRect  =
   var left, right, top, bottom: WType
   left   = WType.high
   right  = WType.low
@@ -491,7 +498,7 @@ proc rotate*(rect: DBRect, orient: Orientation) =
   else:
     if orient == Horizontal: rect.rot = R90
     else: rect.rot = R0
-proc area*(rect: SomeWRect): WType {.inline.} =
+proc area*(rect: SomeWRect): WType  =
   rect.w * rect.h
 proc aspectRatio*(rect: SomeWRect): float =
   when SomeWRect is DBRect:
@@ -519,9 +526,9 @@ proc normalizeRectCoords*(startPos, endPos: PxPoint): PRect =
    y: min(sy, ey),
    w: abs(ex - sx),
    h: abs(ey - sy))
-proc grow*(rect: WRect, amt: WType): WRect {.inline.} =
+proc grow*(rect: WRect, amt: WType): WRect  =
   (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
-proc grow*(rect: PRect, amt: PxType): PRect {.inline.} =
+proc grow*(rect: PRect, amt: PxType): PRect  =
   (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
 
 proc toFloat*(rot: Rotation): float =
@@ -592,7 +599,7 @@ proc `-`*(r1, r2:Rotation): Rotation =
 
 converter toSize*(size: wSize): PxSize =
   (size.width, size.height)
-converter toPxPoint*(pt: wPoint): PxPoint {.inline.} =
+converter toPxPoint*(pt: wPoint): PxPoint  =
   (pt.x, pt.y)
 
 
