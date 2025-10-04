@@ -75,7 +75,7 @@ wClass(wTestPanel of wSDLPanel):
   proc toTexture(self: wTestPanel, rect: TestRect): TexturePtr =
     let surface = createRGBSurface(0, rect.w, rect.h, 32, 
       rmask, gmask, bmask, amask)
-    surface.fillRect(nil, rect.color.toColorU32().uint32)
+    surface.fillRect(nil, rect.color.toColorU32.uint32)
     result = self.sdlRenderer.createTextureFromSurface(surface)
   proc updateRect(self: wTestPanel, rect: ptr TestRect) =
     let step = 2
