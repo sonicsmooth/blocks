@@ -9,6 +9,7 @@ when compileOption("profiler"):
   import std/nimprof
 
 try:
+  echo "wassup"
   randomize()
   wSetSystemDpiAware()
   echo "DPI: ", wAppGetDpi()

@@ -21,6 +21,13 @@ proc `*`*[TN:SomeNumber, TF: SomeFloat](a: tuple[x, y: TN], b: TF): auto =
   else:
     (a.x.TF * b, a.y.TF * b)
 
+proc `/`*[TN:SomeNumber, TF: SomeFloat](a: tuple[x, y: TN], b: TF): auto =
+  when SomeNumber is SomeInteger:
+    ((a.x.TF / b).round.TN, 
+     (a.y.TF / b).round.TN)
+  else:
+    (a.x.TF / b, a.y.TF / b)
+
 # TODO figure out how to multiply PxSize, WSize, PxPoint, WPoint, etc.
 
 when isMainModule:
