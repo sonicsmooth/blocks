@@ -8,15 +8,13 @@ import wNim/wTypes
 
 type
   Grid* = object
-    xSpace*: WType = 10
-    ySpace*: WType = 10
+    xSpace*: WType = 50
+    ySpace*: WType = 200
     visible*: bool = true
     originVisible*: bool = true
 
 const
   stepAlphas = arange(0 .. 255, 10).toSeq
-
-echo stepAlphas
 
 proc snap*(pt: WPoint, grid: Grid): WPoint =
   # Round to nearest grid point
@@ -41,8 +39,8 @@ proc draw*(grid: Grid, vp: ViewPort, rp: sdl2.RendererPtr, size: wSize) =
   let
     worldStart: WPoint = (0, 0).toWorld(vp).snap(grid)
     worldEnd: WPoint   = (size.width - 1, size.height - 1).toWorld(vp).snap(grid)
-    xstep: float  = (grid.xSpace.float * vp.zoom)
-    ystep: float  = (grid.ySpace.float * vp.zoom)
+    xstep: float = grid.xSpace.float * vp.zoom
+    ystep: float = grid.ySpace.float * vp.zoom
   
   rp.setDrawColor(LightSlateGray.toColor(lineAlpha(xstep.round.int)))
 

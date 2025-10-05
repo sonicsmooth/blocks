@@ -302,14 +302,23 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
-        # Same mouse point represents two different world points before
-        # and after zoom.  Calculate delta in world coords, then convert
-        # to pixels and use this for pan delta
-        let zmWMousePos1 = event.mousePos.toWorld(self.mViewPort)
+        # Keep mouse location in the same spot during zoom.
+        # Mouse position is the same before and after because it's just the wheel event
+        # We want world position to be the same so it looks like things aren't moving
+        # Set world1 = world2 = (mp-p1)/z1 = (mp-p2)/z2
+        # Solve for p2 = mp - (mp-p1)*(z2/z1)
+        # pan delta = p2-p1 = mp(1-zr) + p1(zr-1) where mp is mousePos in pixels
+        # and zr is ratio of zooms after/before
+        let z1 = self.mViewPort.zoom
         self.mViewPort.doZoom(event.wheelRotation)
-        let zmWMousePos2 = event.mousePos.toWorld(self.mViewPort)
-        let pxDelta = ((zmWMousePos2 - zmWMousePos1) * self.mViewPort.zoom).toPxPoint
-        self.mViewPort.doPan((pxDelta.x, pxDelta.y * -1))
+        let
+          pan = self.mViewPort.pan
+          mp: PxPoint = event.mousePos
+          zr = self.mViewPort.zoom / z1
+          pxDelta: PxPoint = 
+            (x: (mp.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
+             y: (mp.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0)))
+        self.mViewPort.doPan(pxDelta)
         self.clearTextureCache()
         self.mText = $self.mViewPort.zoom
         self.refresh(false)
@@ -475,8 +484,8 @@ Rendering options for SDL and pixie
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     self.mDstRect = (-250, -250, 500, 500)
-    self.mGrid.xSpace = 1
-    self.mGrid.ySpace = 1
+    self.mGrid.xSpace = 10
+    self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
     self.mViewPort.doZoom(2400)
