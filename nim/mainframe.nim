@@ -22,7 +22,6 @@ wClass(wMainFrame of wFrame):
        event.size.height - self.mStatusBar.size.height)
 
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
-    #let sz: wSize = paramSplit(event.lParam)
     let sz = (LOWORD(event.lParam).WORD, 
               HIWORD(event.lParam).WORD)
     self.mStatusBar.setStatusText($sz, index=1)
@@ -64,14 +63,14 @@ wClass(wMainFrame of wFrame):
     # Do stuff
     self.size = (newWidth, newHeight)
     self.mMenuFile.append(1, "Open")
-    self.mStatusBar.setStatusWidths([-2, -1, 400])
+    self.mStatusBar.setStatusWidths([-1, -1, 400])
     
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
-    self.mStatusBar.setStatusText($newBlockSz, index=1)
     let sldrVal = self.mMainPanel.mSldr.value
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
+    self.mStatusBar.setStatusText($newBlockSz, index=1)
     self.mMainPanel.randomizeRectsAll()
 
     # # Connect Events

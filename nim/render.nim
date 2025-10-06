@@ -1,4 +1,4 @@
-import std/[tables, math, sugar]
+import std/[enumerate, strutils, tables, math, sugar]
 import sdl2
 import sdl2/ttf
 import rects, utils, pointmath
@@ -83,18 +83,34 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
     rp.copyEx(textTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
     textTexture.destroy()
 
+proc longestLine(lines: openArray[string]): string =
+  # Returns longest substring terminated by newline
+  var
+    maxLen: int
+    maxi: int
+  for i, line in enumerate(lines):
+    if line.len > maxLen:
+      maxLen = line.len
+      maxi = i
+  lines[maxi]
+
 proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
   # Draws text at bottom right corner
   var txtSzW, txtSzH: cint
-  let fnt = font(defFontSize)
-  let sz = window.getSize()
-  let marg = 10
-  
-  discard sizeText(fnt, txt, addr txtSzW, addr txtSzH)
+  let
+    fnt = font(defFontSize)
+    sz = window.getSize()
+    marg = 10
+    lines = txt.splitLines
+    maxLine = longestLine(lines)
+
+  discard sizeText(fnt, maxLine, addr txtSzW, addr txtSzH)
+  txtSzH *= lines.len
   let dstRect: PRect = (sz.x - txtSzW - marg, 
                         sz.y - txtSzH - marg, 
                         txtSzW, txtSzH)
-  let txtSurface = renderTextBlended(fnt, txt, Black.toColor())
+  #let txtSurface = renderTextBlended(fnt, txt, Black.toColor())
+  let txtSurface = renderTextBlendedWrapped(fnt, txt, Black.toColor(), 0)
   let txtTexture = renderer.createTextureFromSurface(txtSurface)
   discard renderer.copy(txtTexture, nil, addr dstRect)
   txtTexture.destroy()
