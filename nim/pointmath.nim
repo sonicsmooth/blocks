@@ -45,6 +45,6 @@ when isMainModule:
   jt -= (1,1)
   assert jt == (15, 16)
 
-  var r = DBRect(x: 15, y: 20, w: 50, h: 30)
+  var r = DBComp(x: 15, y: 20, w: 50, h: 30)
   assert r.pos + (10, 20) == (25, 40)
   echo (r.pos + (10, 20).WPoint).typeof

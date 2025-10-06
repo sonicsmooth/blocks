@@ -17,7 +17,6 @@ else:
   type WType* = int
 
 type
-  #WType* = float
   WPoint* = tuple[x, y: WType]
   WSize* = tuple[w, h: WType]
   PxType* = cint

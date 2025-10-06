@@ -22,26 +22,26 @@ proc font(size: int): FontPtr =
     fontCache[clampSize] = openFont("fonts/DejaVuSans.ttf", clampSize)
   fontCache[clampSize]
 
-proc font(rect: DBRect, zoom: float): FontPtr =
+proc font(rect: DBComp, zoom: float): FontPtr =
   # Return properly sized font ptr from cache based on rect size
-  let px = min(rect.size.w, rect.size.h)
+  let px = min(rect.bbox.w, rect.bbox.h)
   let scaledSize = (px.float * fontScale * zoom).round.int
   font(scaledSize)
 
 proc renderFilledRect*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorU32) =
   # Draw PRect
-  let r: sdl2.Rect = (x: rect.x, y: rect.y, w: rect.w, h: rect.h)
+  #let r: sdl2.Rect = (x: rect.x, y: rect.y, w: rect.w, h: rect.h)
   rp.setDrawColor(fillColor.toColor)
-  rp.fillRect(addr r)
-  rp.setDrawColor(penColor.toColor)
-  rp.drawRect(addr r)
-
-proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
-  let r: sdl2.Rect = (x: rect.x, y: rect.y, w: rect.w, h: rect.h)
+  rp.fillRect(addr rect)
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
+proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
+  #let r: sdl2.Rect = (x: rect.x, y: rect.y, w: rect.w, h: rect.h)
+  rp.setDrawColor(penColor.toColor)
+  rp.drawRect(addr rect)
+
+proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
   # Draw rectangle on SDL2 renderer
   # zero is whether the object should be rendered at upper left corner of target
   #   this should be true when target is texture
@@ -49,8 +49,8 @@ proc renderDBRect*(rp: RendererPtr, vp: ViewPort, rect: DBRect, zero: bool) =
   
   # Draw rectangle
   let prect = 
-    if zero: rect.toPRect(vp, rot=true).zero # used by texture renderer
-    else:    rect.toPRect(vp, rot=true)      # used by screen renderer
+    if zero: rect.bbox.toPRect(vp).zero # used by texture renderer
+    else:    rect.bbox.toPRect(vp)      # used by screen renderer
 
   if rect.hovering:
     rp.renderFilledRect(prect, rect.hoverColor, rect.penColor)
