@@ -321,11 +321,19 @@ proc bottomEdge*[T: SomeRect](rect: T): BottomEdge[T] =
   result.pt0 = rect.lowerLeft
   result.pt1 = rect.lowerRight
 proc leftEdge*[T: SomeRect](rect: T): LeftEdge[T] =
-  result.pt0 = rect.lowerLeft
-  result.pt1 = rect.upperLeft
+  when T is WRect:
+    result.pt0 = rect.lowerLeft
+    result.pt1 = rect.upperLeft
+  elif T is PRect:
+    result.pt0 = rect.upperLeft
+    result.pt1 = rect.lowerLeft
 proc rightEdge*[T: SomeRect](rect: T): RightEdge[T] =
-  result.pt0 = rect.lowerRight
-  result.pt1 = rect.upperRight
+  when T is WRect:
+    result.pt0 = rect.lowerRight
+    result.pt1 = rect.upperRight
+  elif T is PRect:
+    result.pt0 = rect.upperRight
+    result.pt1 = rect.lowerRight
 proc top*(rect: SomeRect): auto = rect.upperLeft.y
 proc bottom*(rect: SomeRect): auto = rect.lowerLeft.y
 proc left*(rect: SomeRect): auto = rect.lowerLeft.x
@@ -397,7 +405,7 @@ proc grow*(rect: WRect, amt: WType): WRect  =
 proc grow*(rect: PRect, amt: PxType): PRect  =
   (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
 proc normalizePRectCoords*(startPos, endPos: PxPoint): PRect =
-  # make sure that rect.x,y is always lower left
+  # make sure that rect.x,y is always minimum (upper left for PRect)
   let (sx, sy) = startPos
   let (ex, ey) = endPos
   (x: min(sx, ex),
@@ -430,7 +438,6 @@ proc isPointInRect*(pt: PxPoint, rect: PRect): bool  =
   pt.y >= rect.top  and pt.y <= rect.bottom
 proc isEdgeInRect[T: SomeRect](edge: VertEdge[T], rect: T): bool  =
   # Return true if any part of edge is in rect
-  assert edge.pt0 < edge.pt1
   when T is WRect:
     (isPointInRect(edge.pt0, rect) or isPointInRect(edge.pt1, rect)) or 
     (edge.pt0.y < rect.bottomEdge.y and 
@@ -445,7 +452,6 @@ proc isEdgeInRect[T: SomeRect](edge: VertEdge[T], rect: T): bool  =
      edge <= rect.rightEdge)
 proc isEdgeInRect[T: SomeRect](edge: HorizEdge[T], rect: T): bool  =
   # Return true if any part of edge is in rect
-  assert edge.pt0 < edge.pt1
   when T is WRect:
     (isPointInRect(edge.pt0, rect) or isPointInRect(edge.pt1, rect)) or 
     (edge.pt0.x < rect.leftEdge.x and 
@@ -460,16 +466,23 @@ proc isRectInRect*[T: SomeRect](rect1, rect2: T): bool =
   # Check if any corners or edges of rect2 are within rect1
   # Generally rect1 is moving around and rect2 is part of the db
   isEdgeInRect(rect1.topEdge,    rect2) or
-  isEdgeInRect(rect1.leftEdge,   rect2) or
   isEdgeInRect(rect1.bottomEdge, rect2) or
+  isEdgeInRect(rect1.leftEdge,   rect2) or
   isEdgeInRect(rect1.rightEdge,  rect2)
 proc isRectOverRect*[T: SomeRect](rect1, rect2: T): bool =
   # Check if rect1 completely covers rect2,
   # ie, all rect1 edges are on or outside rect2 edges
-  rect1.topEdge    >= rect2.topEdge    and
-  rect1.leftEdge   <= rect2.leftEdge   and
-  rect1.bottomEdge <= rect2.bottomEdge and
-  rect1.rightEdge  >= rect2.rightEdge
+  when T is WRect:
+    rect1.topEdge    > rect2.topEdge    and
+    rect1.bottomEdge < rect2.bottomEdge and
+    rect1.leftEdge   < rect2.leftEdge   and
+    rect1.rightEdge  > rect2.rightEdge
+  elif T is PRect:
+    rect1.topEdge    < rect2.topEdge    and
+    rect1.bottomEdge > rect2.bottomEdge and
+    rect1.leftEdge   < rect2.leftEdge   and
+    rect1.rightEdge  > rect2.rightEdge
+
 proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
   # Returns true if rect1 and rect2 do not have any overlap
   rect1.bottomEdge > rect2.topEdge or

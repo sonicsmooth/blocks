@@ -111,15 +111,8 @@ proc rectInRects*(table: RectTable, rect: PRect, vp: ViewPort): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
   for id, dbcomp in table:
     let tpr = dbcomp.bbox.toPRect(vp)
-    #TODO: optimize by excluding based on right < left, etc.
-    if isPointInRect((tpr.left, tpr.top),     rect) or
-       isPointInRect((tpr.left, tpr.bottom),  rect) or
-       isPointInRect((tpr.right, tpr.top),    rect) or
-       isPointInRect((tpr.right, tpr.bottom), rect) or
-       (rect.left   <= tpr.left  and
-        rect.right  >= tpr.right and
-        rect.top    <= tpr.top   and
-        rect.bottom >= tpr.bottom):
+    if isRectInRect(rect, tpr) or
+       isRectOverRect(rect, tpr):
       result.add(id)
 
 

@@ -421,7 +421,6 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         let pbox: PRect = normalizePRectCoords(self.mMouseData.clickPos, event.mousePos)
         self.mSelectBox = pbox
-        #let newsel = gDb.rectInRects(self.mSelectBox.toWRect(vp))
         let newsel = gDb.rectInRects(self.mSelectBox, vp)
         gDb.clearRectSelect()
         gDb.setRectSelect(self.mFirmSelection)
