@@ -7,8 +7,8 @@ type
   ViewPort* = object
     pan*: PxPoint = (0, 0)
     zoom*: float = 1.0
-    fakezoom: float = 1.0
-    zoomSteps: int
+    #fakezoom: float = 1.0
+    zoomSteps*: int
 
 const
   zoomBase = 2 # Eventually this becomes the small grid size
@@ -26,8 +26,9 @@ proc doZoom*(vp: var ViewPort, delta: int) =
   vp.zoomSteps = clamp(vp.zoomSteps + delta,
                        zoomStepLowerLimit,
                        zoomStepUpperLimit)
-  vp.fakezoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
-  vp.zoom = vp.fakezoom
+  # vp.fakezoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
+  # vp.zoom = vp.fakezoom
+  vp.zoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
 
 
 #proc doAdaptiveZoom(vp: var ViewPort...)

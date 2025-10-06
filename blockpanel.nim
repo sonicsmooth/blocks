@@ -142,7 +142,7 @@ wClass(wBlockPanel of wSDLPanel):
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
   proc updateRatio*(self: wBlockPanel) =
     if gDb.len == 0:
-      self.mText = "0.0" #$0.0
+      #self.mText = "0.0" #$0.0
       self.mRatio = 0.0
     else:
       self.mAllBbox = gDb.boundingBox()
@@ -319,7 +319,7 @@ wClass(wBlockPanel of wSDLPanel):
              y: (mp.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0)))
         self.mViewPort.doPan(pxDelta)
         self.clearTextureCache()
-        self.mText = $self.mViewPort.zoom
+        #self.mText = $self.mViewPort.zoom
         self.refresh(false)
       else:
         discard
@@ -473,7 +473,13 @@ Rendering options for SDL and pixie
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
                                       penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
-    self.sdlRenderer.renderText(self.sdlWindow, self.mText)
+    var txt: string
+    txt &= &"{self.mViewPort.pan}\n"
+    txt &= &"{self.mViewPort.zoomSteps}\n"
+    txt &= &"{self.mViewPort.zoom:.3f}"
+    
+    self.sdlRenderer.renderText(self.sdlWindow, txt)
+    #self.sdlRenderer.renderText(self.sdlWindow, self.mText)
     self.sdlRenderer.present()
 
     # release(gLock)
