@@ -53,7 +53,9 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
     else:    rect.bbox.toPRect(vp)      # used by screen renderer
 
   if rect.hovering:
-    rp.renderFilledRect(prect, rect.hoverColor, rect.penColor)
+    rp.renderFilledRect(prect, rect.fillColor * 1.2, rect.penColor)
+  elif rect.selected:
+    rp.renderFilledRect(prect, rect.fillColor * 1.5, rect.penColor)
   else:
     rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
 

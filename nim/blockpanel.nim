@@ -1,8 +1,8 @@
 import std/[bitops, math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq
+import timeit
 import wNim
 import winim except PRECT, Color
-#from wNim/private/wHelper import `-`
 import sdl2
 import rects, recttable, sdlframes, db, viewport, grid, pointmath
 import userMessages, utils
@@ -198,6 +198,12 @@ wClass(wBlockPanel of wSDLPanel):
     event.keyCode == wKey_Alt
   proc isModifierPresent(event: wEvent): bool = 
     event.ctrlDown or event.shiftDown or event.altDown
+  proc evaluateHovering(self: wBlockPanel, event: wEvent): bool {.discardable.} =
+    # clear and set hovering
+    # Return true if something changed
+    let cleared = gDb.clearRectHovering()
+    let newset = gDb.setRectHovering(gDb.ptInRects(event.mousePos, self.mViewPort))
+    len(cleared) > 0 or len(newset) > 0
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
     # event must not be a modifier key
     proc resetBox() =
@@ -239,17 +245,25 @@ wClass(wBlockPanel of wSDLPanel):
       if self.mMouseData.state == StateDraggingRect or 
          self.mMouseData.state == StateLMBDownInRect:
         self.rotateRects(@[self.mMouseData.clickHitIds[^1]], R90)
+        self.evaluateHovering(event)
+        self.refresh(false)
       else:
         self.rotateRects(sel, R90)
+        self.evaluateHovering(event)
         resetBox()
+        self.refresh(false)
         self.mMouseData.state = StateNone
     of CmdRotateCW:
       if self.mMouseData.state == StateDraggingRect or 
          self.mMouseData.state == StateLMBDownInRect:
         self.rotateRects(@[self.mMouseData.clickHitIds[^1]], R270)
+        self.evaluateHovering(event)
+        self.refresh(false)
       else:
         self.rotateRects(sel, R270)
+        self.evaluateHovering(event)
         resetBox()
+        self.refresh(false)
         self.mMouseData.state = StateNone
     of CmdSelect:
       discard
@@ -257,6 +271,7 @@ wClass(wBlockPanel of wSDLPanel):
       self.selectAll()
       self.mSelectBox = (0,0,0,0)
       self.mMouseData.state = StateNone
+
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     # Unified event processing
     # Separate specific events (eg shft+LMB) from state changes
@@ -302,24 +317,11 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         # Keep mouse location in the same spot during zoom.
-        # Mouse position is the same before and after because it's just the wheel event
-        # We want world position to be the same so it looks like things aren't moving
-        # Set world1 = world2 = (mp-p1)/z1 = (mp-p2)/z2
-        # Solve for p2 = mp-(mp-p1)*(z2/z1)
-        # pan delta = p2-p1 = mp(1-zr) + p1(zr-1) where mp is mousePos in pixels
-        # and zr is ratio of zooms after/before
-        let z1 = self.mViewPort.zoom
+        let oldvp = self.mViewPort
         self.mViewPort.doZoom(event.wheelRotation)
-        let
-          pan = self.mViewPort.pan
-          mp: PxPoint = event.mousePos
-          zr = self.mViewPort.zoom / z1
-          pxDelta: PxPoint = 
-            (x: (mp.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
-             y: (mp.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0)))
+        let pxDelta = doAdaptivePan(oldvp, self.mViewPort, event.mousePos)
         self.mViewPort.doPan(pxDelta)
         self.clearTextureCache()
-        #self.mText = $self.mViewPort.zoom
         self.refresh(false)
       else:
         discard
@@ -342,9 +344,8 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         if self.mMouseData.pzState == PZStateNone:
-          gDb.clearRectHovering()
-          gDb.setRectHovering(gDb.ptInRects(event.mousePos, vp))
-          self.refresh(false)
+          if self.evaluateHovering(event):
+            self.refresh(false)
         else:
           discard
       of wEvent_LeftDown:
