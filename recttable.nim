@@ -1,4 +1,5 @@
 import std/[random, sets, strformat, sugar, tables]
+import timeit
 from std/sequtils import toSeq
 import wNim/[wTypes]
 import rects, colors
@@ -33,7 +34,7 @@ type
   PosTable* = Table[CompID, PosRot] # meant to have value semantics
 
 const
-  QTY* = 20
+  QTY* = 2000
 
 
 proc newRectTable*(): RectTable =
@@ -93,10 +94,19 @@ proc ptInRects*(table: RectTable, pt: WPoint): seq[CompID] =
       result.add(id)
 proc ptInRects*(table: RectTable, pt: PxPoint, vp: ViewPort): seq[CompID] = 
   # Returns seq of DBComp IDs from table if pt in comp's bbox
-  for id, rect in table:
-    let prect = rect.bbox.toPRect(vp)
+  # Pre-select by checking without converting every rect
+  let wpt = pt.toWorld(vp)
+  var preBbs: seq[(CompID, WRect)]
+  for id, comp in table:
+    let bb = comp.bbox
+    if isPointInRect(wpt, bb):
+      preBbs.add((id, bb))
+
+  for (id, bb) in preBbs:
+    let prect = bb.toPRect(vp)
     if isPointInRect(pt, prect):
       result.add(id)
+
 proc rectInRects*(table: RectTable, rect: WRect): seq[CompID] = 
   # Return seq of DBComp IDs from table that intersect rect
   # Return seq also includes rect

@@ -1,5 +1,5 @@
 
-import std/[bitops, strformat]
+import std/[bitops, math, strformat]
 from std/random import rand
 from wnim/private/wtypes import wColor
 from sdl2 import Color
@@ -124,36 +124,48 @@ template toColor*(color: SomeColor, alpha: range[0..255]): Color =
 template toColor*(color: SomeColor): Color =
   block:
     when typeof(color) is Color:
+    #when SomeColor is Color:
       color
     else:
       let alpha = if color.alpha > 0: color.alpha
                   else: 255'u8
       (r: color.red, g: color.green, b: color.blue, a: alpha).Color
 
-# todo: do * and / for colors with float
-proc colordiv*(color: ColorU32, num: SomeInteger): ColorU32 =
+proc `*`*[T](color: T, num: float): T =
   let
-    r = color.red.uint32   div num.uint32
-    g = color.green.uint32 div num.uint32
-    b = color.blue.uint32  div num.uint32
-    a = color.alpha.uint32
-  assembleBits(r,g,b,a)
+    r = (color.red.float   * num).round.clamp(0.0 .. 255.0).uint8
+    g = (color.green.float * num).round.clamp(0.0 .. 255.0).uint8
+    b = (color.blue.float  * num).round.clamp(0.0 .. 255.0).uint8
+    a = color.alpha
+  when T is RGBTuple: (r,g,b)
+  elif T is RGBATuple: (r,g,b,a)
+  elif T is sdl2.Color: (r,g,b,a)
+  else: assembleBits(r,g,b,a)
 
-proc colordiv*(color: Color, num: SomeInteger): Color =
-  let
-    r = color.red   div num.uint8
-    g = color.green div num.uint8
-    b = color.blue  div num.uint8
-    a = color.alpha.uint8
-  (r: color.red, g: color.green, b: color.blue, a: alpha).Color
 
-proc colordiv*(color: wColor, num: SomeInteger): wColor =
-  let
-    r = (color.red.uint32   div num.uint32).shl( 0)
-    g = (color.green.uint32 div num.uint32).shl( 8)
-    b = (color.blue.uint32  div num.uint32).shl(16)
-    a = color.alpha.uint32.shl(24)
-  bitor(r,g,b,a).wColor
+# proc `*`*(color: ColorU32, num: float): ColorU32 =
+#   let
+#     r = color.red.uint32   div num.uint32
+#     g = color.green.uint32 div num.uint32
+#     b = color.blue.uint32  div num.uint32
+#     a = color.alpha.uint32
+#   assembleBits(r,g,b,a)
+
+# proc `*`*(color: Color, num: float): Color =
+#   let
+#     r = color.red   div num.uint8
+#     g = color.green div num.uint8
+#     b = color.blue  div num.uint8
+#     a = color.alpha.uint8
+#   (r: color.red, g: color.green, b: color.blue, a: alpha).Color
+
+# proc `*`*(color: wColor, num: float): wColor =
+#   let
+#     r = (color.red.uint32   div num.uint32).shl( 0)
+#     g = (color.green.uint32 div num.uint32).shl( 8)
+#     b = (color.blue.uint32  div num.uint32).shl(16)
+#     a = color.alpha.uint32.shl(24)
+#   bitor(r,g,b,a).wColor
 
 proc randColor*(): ColorU32 = 
   let
@@ -380,15 +392,15 @@ when isMainModule:
     assert Red.toColorU32(127)              == 0xff00007f'u32
     assert Lime.toColorU32(127)             == 0x00ff007f'u32
     assert Blue.toColorU32(127)             == 0x0000ff7f'u32
-    assert Red.toColorU32.colordiv(2)       == 0x7f0000ff'u32
-    assert Lime.toColorU32.colordiv(2)      == 0x007f00ff'u32
-    assert Blue.toColorU32.colordiv(2)      == 0x00007fff'u32
-    assert Red.colordiv(2)                  == 0x7f0000ff'u32
-    assert Lime.colordiv(2)                 == 0x007f00ff'u32
-    assert Blue.colordiv(2)                 == 0x00007fff'u32
-    assert Red.toColorU32(127).colordiv(2)  == 0x7f00007f'u32
-    assert Lime.toColorU32(127).colordiv(2) == 0x007f007f'u32
-    assert Blue.toColorU32(127).colordiv(2) == 0x00007f7f'u32
+    assert Red.toColorU32.`*`(2)       == 0x7f0000ff'u32
+    assert Lime.toColorU32.`*`(2)      == 0x007f00ff'u32
+    assert Blue.toColorU32.`*`(2)      == 0x00007fff'u32
+    assert Red.`*`(2)                  == 0x7f0000ff'u32
+    assert Lime.`*`(2)                 == 0x007f00ff'u32
+    assert Blue.`*`(2)                 == 0x00007fff'u32
+    assert Red.toColorU32(127).`*`(2)  == 0x7f00007f'u32
+    assert Lime.toColorU32(127).`*`(2) == 0x007f007f'u32
+    assert Blue.toColorU32(127).`*`(2) == 0x00007f7f'u32
 
     assert 0xff0000.toColorU32                 == 0xff0000ff'u32 
     assert 0x00ff00.toColorU32                 == 0x00ff00ff'u32 

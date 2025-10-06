@@ -26,12 +26,23 @@ proc doZoom*(vp: var ViewPort, delta: int) =
   vp.zoomSteps = clamp(vp.zoomSteps + delta,
                        zoomStepLowerLimit,
                        zoomStepUpperLimit)
-  # vp.fakezoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
-  # vp.zoom = vp.fakezoom
   vp.zoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
 
 
-#proc doAdaptiveZoom(vp: var ViewPort...)
+proc doAdaptivePan*(vp1, vp2: ViewPort, mousePos: PxPoint): PxPoint =
+  # Keep mouse location in the same spot during zoom.
+  # Mouse position is the same before and after because it's just the wheel event
+  # We want world position to be the same so it looks like things aren't moving
+  # Set world1 = world2 = (mp-p1)/z1 = (mp-p2)/z2
+  # Solve for p2 = mp-(mp-p1)*(z2/z1)
+  # pan delta = p2-p1 = mp(1-zr) + p1(zr-1) where mp is mousePos in pixels
+  # and zr is ratio of zooms after/before
+  let
+    pan = vp1.pan
+    zr = vp2.zoom / vp1.zoom
+  (x: (mousePos.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
+   y: (mousePos.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0)))
+
 
 # Convert from anything to pixels through viewport
 # pixel = world * zoom + pan.  Flip zoom for y

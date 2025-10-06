@@ -263,8 +263,8 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
     rw = rand(WRANGE)
     rh = rand(HRANGE)
 
-  let fillColor = randColor() #ColorU32 0x7f_ff_00_00 # half red
-  let penColor   = fillColor.colordiv(2)
+  let fillColor = randColor()
+  let penColor   = fillColor * 0.25
   result = rects.DBComp( x: rectPosX,
                          y: rectPosY,
                          w: rw / 2,
