@@ -9,21 +9,21 @@ import recttable, userMessages
 type 
   Axis* = enum X=true, Y=false
   MajMin = enum Major=true, Minor=false
-  Node = RectID
+  Node = CompID
   Weight = WType
   GraphEdge  = tuple[frm, to: Node]
   Graph* = Table[GraphEdge, Weight]
   ScanType = enum Top, Mid, Bot
   ScanEdge = tuple
-    id:    RectID
+    id:    CompID
     pos:   WType
     etype: ScanType
   ScanLine = tuple
     pos:    WType
-    top:    seq[RectID]
-    mid:    seq[RectID]
-    bot:    seq[RectID]
-    sorted: seq[RectID]
+    top:    seq[CompID]
+    mid:    seq[CompID]
+    bot:    seq[CompID]
+    sorted: seq[CompID]
   CompactDir* = tuple
     primax,  secax:  Axis
     primAsc, secAsc: SortOrder
@@ -36,7 +36,7 @@ type
 
 
 const
-  RootNode = when RectID is string: "0" else: 0
+  RootNode = when CompID is string: "0" else: 0
 
 var
   gCompactThread*: Thread[CompactArg]
@@ -64,21 +64,21 @@ proc isYAscending*(direction: CompactDir): bool =
   (direction.primax == Y and direction.primAsc == Ascending) or
   (direction.secax  == Y and direction.secAsc  == Ascending)
 
-proc rectCmpX(r1, r2: rects.DBRect): int = 
+proc rectCmpX(r1, r2: DBComp): int = 
   # Sort first by x position, then by id
   # Can't inline because it's passed as arg to sort
-  result = cmp(r1.WRect.x, r2.WRect.x)
+  result = cmp(r1.bbox.x, r2.bbox.x)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
-proc rectCmpY(r1, r2: rects.DBRect): int = 
+proc rectCmpY(r1, r2: DBComp): int = 
   # Sort first by y position, then by id
-  result = cmp(r1.WRect.y, r2.WRect.y)
+  result = cmp(r1.bbox.y, r2.bbox.y)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
 # TODO: change to in-place sorting
-proc sortedRectsIds(rects: seq[rects.DBRect], axis: Axis, sortOrder: SortOrder): seq[RectID] =
+proc sortedRectsIds(rects: seq[rects.DBComp], axis: Axis, sortOrder: SortOrder): seq[CompID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
   if axis == X:
@@ -107,11 +107,11 @@ proc makeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
   if axis == X:
     proc(node: Node): WType =
       if node != RootNode:
-        result = rectTable[node].WRect.w
+        result = rectTable[node].bbox.w
   else: # axis == Y:
     proc(node: Node): WType =
       if node != RootNode:
-        result = rectTable[node].WRect.h
+        result = rectTable[node].bbox.h
 
 proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
                   axis: Axis, sortOrder: SortOrder): Graph = 
@@ -131,19 +131,19 @@ proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
         result[(src, dst)] = if sortOrder == Descending: dst.getDim() else: src.getDim()
       src = dst
 
-proc posChooser(ax: MajMin): proc(rect: DBRect): WType =
+proc posChooser(ax: MajMin): proc(rect: DBComp): WType =
   if ax == Major:
-    proc(rect: DBRect): WType =  rect.WRect.x
+    proc(rect: DBComp): WType =  rect.bbox.x
   else:
-    proc(rect: DBRect): WType =  rect.WRect.y
+    proc(rect: DBComp): WType =  rect.bbox.y
 
-proc sizeChooser(ax: MajMin): proc(rect: DBRect): WType =
+proc sizeChooser(ax: MajMin): proc(rect: DBComp): WType =
   if ax == Major:
-    proc(rect: DBRect): WType = rect.WRect.w # converter with rotation
+    proc(rect: DBComp): WType = rect.bbox.w
   else:
-    proc(rect: DBRect): WType = rect.WRect.h
+    proc(rect: DBComp): WType = rect.bbox.h
 
-proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): seq[ScanLine] =
+proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
   let
     minor = if axis==X: Minor else: Major
     secPos  = posChooser(minor)
@@ -191,7 +191,7 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     lastpos = edge.pos
   result.add(line)
 
-proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[RectID]): Graph =
+proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): Graph =
   # Returns DAG = table((frm,to): weight)
   # rectTable is table of rects
   # axis is X or Y
@@ -200,7 +200,7 @@ proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq
   result = composeGraph(lines, rectTable, axis, sortOrder)
 
 
-proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[RectID, Weight] =
+proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
   for node in nodes:
     result[node] = Weight.low
   result[RootNode] = minpos
@@ -216,7 +216,7 @@ proc compact*(rectTable: RectTable,
               axis: Axis,
               sortOrder: SortOrder,
               dstRect: WRect,
-              ids: seq[RectID] = @[]) =
+              ids: seq[CompID] = @[]) =
   # Top level compact function in one direction
   let graph = makeGraph(rectTable, axis, sortOrder, ids)
   let nodes = if ids.len == 0: rectTable.keys.toSeq

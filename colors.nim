@@ -5,13 +5,12 @@ from wnim/private/wtypes import wColor
 from sdl2 import Color
 
 # TODO: use std/colors instead
-
 type
   ColorFormat = enum RGBA, ARGB, BGRA, ABGR
   ColorU32* = distinct uint32 # Follows one of the above formats
-  SomeRGBTuple[T:range[0..255]] = tuple[r, g, b: T]
-  SomeRGBATuple[T:range[0..255]] = tuple[r, g, b, a: T]
-  SomeColor = uint64|int64|uint32|int32|ColorU32|SomeRGBTuple|SomeRGBATuple|sdl2.Color
+  RGBTuple*[T:range[0..255]] = tuple[r, g, b: T]
+  RGBATuple*[T:range[0..255]] = tuple[r, g, b, a: T]
+  SomeColor = uint64|int64|uint32|int32|ColorU32|RGBTuple|RGBATuple|sdl2.Color
 
 const
   ColorFmt = 
@@ -63,16 +62,16 @@ proc `==`*(c1: ColorU32|uint32, c2: ColorU32|uint32): bool =
 # template alpha*(color: Color): uint8 = color[3]
 
 # Color tuple uses named fields
-template red*  (color: SomeRGBTuple): uint8 = color[0].uint8
-template green*(color: SomeRGBTuple): uint8 = color[1].uint8
-template blue* (color: SomeRGBTuple): uint8 = color[2].uint8
-template alpha*(color: SomeRGBTuple): uint8 = 0xff'u8
+template red*  (color: RGBTuple): uint8 = color[0].uint8
+template green*(color: RGBTuple): uint8 = color[1].uint8
+template blue* (color: RGBTuple): uint8 = color[2].uint8
+template alpha*(color: RGBTuple): uint8 = 0xff'u8
 
 # Color tuple uses named fields
-template red*  (color: SomeRGBATuple): uint8 = color[0].uint8
-template green*(color: SomeRGBATuple): uint8 = color[1].uint8
-template blue* (color: SomeRGBATuple): uint8 = color[2].uint8
-template alpha*(color: SomeRGBATuple): uint8 = color[3].uint8
+template red*  (color: RGBATuple): uint8 = color[0].uint8
+template green*(color: RGBATuple): uint8 = color[1].uint8
+template blue* (color: RGBATuple): uint8 = color[2].uint8
+template alpha*(color: RGBATuple): uint8 = color[3].uint8
 
 # ColorU32 is one of RGBA, ARGB, BGRA, ABGR
 template red*  (color: ColorU32): uint8 = color.uint32.shr(RSH).uint8
@@ -93,14 +92,14 @@ template green*(color: wColor): uint8 = color.shr( 8).uint8
 template blue* (color: wColor): uint8 = color.shr(16).uint8
 template alpha*(color: wColor): uint8 = 0xff'u8
 
-proc assembleBits(r,g,b,a: uint32): ColorU32 {.inline.} =
+proc assembleBits(r,g,b,a: uint32): ColorU32 =
   when ColorFmt == RGBA: bitor(r.shl(24), g.shl(16), b.shl(8), a).ColorU32
   elif ColorFmt == BGRA: bitor(b.shl(24), g.shl(16), r.shl(8), a).ColorU32
   elif ColorFmt == ARGB: bitor(a.shl(24), r.shl(16), g.shl(8), b).ColorU32
   elif ColorFmt == ABGR: bitor(a.shl(24), b.shl(16), g.shl(8), r).ColorU32
 
 
-proc toColorU32*(color: SomeColor, a: range[0..255]): ColorU32 {.inline.} =
+proc toColorU32*(color: SomeColor, a: range[0..255]): ColorU32 =
   # Convert SomeColor to ColorU32 using a for alpha
   # Use this to change alpha in Color or ColorU32
   let
@@ -110,7 +109,7 @@ proc toColorU32*(color: SomeColor, a: range[0..255]): ColorU32 {.inline.} =
     a: uint32 = a.uint32
   assembleBits(r,g,b,a)
 
-proc toColorU32*(color: SomeColor): ColorU32 {.inline.} =
+proc toColorU32*(color: SomeColor): ColorU32 =
   # Convert SomeColor to ColorU32.
   let
     r: uint32 = color.red

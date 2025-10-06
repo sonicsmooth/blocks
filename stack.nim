@@ -1,5 +1,5 @@
 import std/[algorithm, sugar, sequtils]
-from rects import DBRect
+from rects import DBComp
 import recttable, compact
 
 
@@ -19,12 +19,12 @@ For rect in rects:
 
 
 # Comparison procs
-proc vertCmp (r1, r2: DBRect): int = cmp(r1.size.h, r2.size.h)
-proc horizCmp(r1, r2: DBRect): int = cmp(r1.size.w, r2.size.w)
+proc vertCmp (r1, r2: DBComp): int = cmp(r1.bbox.h, r2.bbox.h)
+proc horizCmp(r1, r2: DBComp): int = cmp(r1.bbox.w, r2.bbox.w)
 
-proc stackCompactSub(table: var RectTable, rects: seq[RectID], dstRect: var WRect, direction: CompactDir) =
+proc stackCompactSub(table: var RectTable, rects: seq[CompID], dstRect: var WRect, direction: CompactDir) =
   # Compact given IDs into given rect
-  var accRects: seq[RectID]
+  var accRects: seq[CompID]
   for rect in table[rects]:
     accRects.add(rect.id)
     compact(table, direction.primax, direction.primAsc, dstRect, accRects)
@@ -38,36 +38,36 @@ proc stackCompactSub(table: var RectTable, rects: seq[RectID], dstRect: var WRec
 
     case compoundDir(direction):
     of LeftUp:
-      if bbox.BottomEdge.y < dstRect.BottomEdge.y:
-        dstRect.x = bbox.RightEdge.x
+      if bbox.bottom < dstRect.bottom:
+        dstRect.x = bbox.right
         accRects = @[rect.id]
     of LeftDown:
-      if bbox.TopEdge.y > dstRect.TopEdge.y:
-        dstRect.x = bbox.RightEdge.x
+      if bbox.top > dstRect.top:
+        dstRect.x = bbox.right
         accRects = @[rect.id]
     of RightUp:
-      if bbox.BottomEdge.y < dstRect.BottomEdge.y:
+      if bbox.bottom < dstRect.bottom:
         dstRect.x -= bbox.w
         accRects = @[rect.id]
     of RightDown:
-      if bbox.TopEdge.y > dstRect.TopEdge.y:
+      if bbox.top > dstRect.top:
         dstRect.x -= bbox.w
         accRects = @[rect.id]
     of UpLeft:
-      if bbox.RightEdge.x > dstRect.RightEdge.x:
+      if bbox.right > dstRect.right:
         dstRect.y -= bbox.h
         accRects = @[rect.id]
     of UpRight:
-      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
+      if bbox.left < dstRect.left:
         dstRect.y -= bbox.h
         accRects = @[rect.id]
     of DownLeft:
-      if bbox.RightEdge.x > dstRect.RightEdge.x:
-        dstRect.y = bbox.TopEdge.y
+      if bbox.right > dstRect.right:
+        dstRect.y = bbox.top
         accRects = @[rect.id]
     of DownRight:
-      if bbox.LeftEdge.x < dstRect.LeftEdge.x:
-        dstRect.y = bbox.TopEdge.y
+      if bbox.left < dstRect.left:
+        dstRect.y = bbox.top
         accRects = @[rect.id]
 
 
@@ -99,10 +99,11 @@ proc stackCompact*(table: var RectTable, dstRect: WRect, direction: CompactDir) 
       # Todo: how to get this without inf?
       let maxval = 1e10
       let minval = -1e10
-    rect.x = if isXAscending(direction): maxval - rect.greatestDim  # stack from left to right
-             else:                       minval + rect.greatestDim  # stack from right to left
-    rect.y = if isYAscending(direction): maxval - rect.greatestDim  # stack from bottom to top
-             else:                       minval + rect.greatestDim  # stack from top to bottom
+    let rgd = rect.bbox.greatestDim
+    rect.x = if isXAscending(direction): maxval - rgd  # stack from left to right
+             else:                       minval + rgd  # stack from right to left
+    rect.y = if isYAscending(direction): maxval - rgd  # stack from bottom to top
+             else:                       minval + rgd  # stack from top to bottom
   stackCompactSub(table, rects.ids, dstRect, direction)
 
 
