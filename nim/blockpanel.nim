@@ -118,9 +118,11 @@ wClass(wBlockPanel of wSDLPanel):
       sz: PxSize = self.size
       screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
     var dstRect: PRect
+    componentsVisible.setLen(0)
     for rect in gDb.values:
       if isRectSeparate(rect.bbox, screenRect):
         continue
+      componentsVisible.add(rect)
       let pTexture: TexturePtr = self.getFromTextureCache(rect.id)
       dstRect = rect.bbox.toPRect(vp)
       self.sdlRenderer.copy(pTexture, nil, addr dstRect)
@@ -136,13 +138,20 @@ wClass(wBlockPanel of wSDLPanel):
         continue
       self.sdlRenderer.renderDBComp(vp, rect, zero=false)
 
+  proc updateDestinationBox(self: wBlockPanel) =
+    let 
+      marg = 25
+      (w, h) = self.size
+    let pdstrect: PRect = (marg, marg, w - 2*marg, h - 2*marg)
+    self.mDstRect = pdstrect.toWRect(self.mViewPort)
+
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+
   proc updateRatio*(self: wBlockPanel) =
     if gDb.len == 0:
-      #self.mText = "0.0" #$0.0
       self.mRatio = 0.0
     else:
       self.mAllBbox = gDb.boundingBox()
@@ -468,8 +477,8 @@ Rendering options for SDL and pixie
       self.renderToScreen()
 
     # Draw various boxes and text, then done
-    if self.mDstRect.w > 0:
-      self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
+    self.updateDestinationBox()
+    self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
     self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
@@ -489,7 +498,7 @@ Rendering options for SDL and pixie
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.mDstRect = (-100, -100, 200, 200)
+    #self.mDstRect = (-100, -100, 200, 200)
     self.mGrid.xSpace = 10
     self.mGrid.ySpace = 10
     self.mGrid.visible = true

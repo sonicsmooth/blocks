@@ -32,10 +32,13 @@ type
   RectTable* = ref Table[CompID, DBComp]   # meant to be shared
   PosRot = tuple[x: WType, y: WType, rot: Rotation]
   PosTable* = Table[CompID, PosRot] # meant to have value semantics
+  SomeComps* = RectTable | seq[(CompID, DBComp)]
 
 const
-  QTY* = 2000
-
+  QTY* = 200
+  
+var
+  componentsVisible*: seq[DBComp]
 
 proc newRectTable*(): RectTable =
   newTable[CompID, rects.DBComp]()
@@ -85,14 +88,15 @@ proc setPositions*[T:Table](table: var RectTable, pos: T) =
     rect.x = pos[id].x
     rect.y = pos[id].y
 
-proc ptInRects*(table: RectTable, pt: WPoint): seq[CompID] = 
+proc ptInRects*(table: SomeComps, pt: WPoint): seq[CompID] = 
   # Returns seq of DBComp IDs from table if pt in comp's bbox
   # surrounds or contacts pt
   # Optimization? -- return after first one
-  for id, rect in table:
-    if isPointInRect(pt, rect.bbox):
+  for id, comp in table:
+    if isPointInRect(pt, comp.bbox):
       result.add(id)
-proc ptInRects*(table: RectTable, pt: PxPoint, vp: ViewPort): seq[CompID] = 
+
+proc ptInRects*(table: SomeComps, pt: PxPoint, vp: ViewPort): seq[CompID] = 
   # Returns seq of DBComp IDs from table if pt in comp's bbox
   # Pre-select by checking without converting every rect
   let wpt = pt.toWorld(vp)
@@ -107,7 +111,7 @@ proc ptInRects*(table: RectTable, pt: PxPoint, vp: ViewPort): seq[CompID] =
     if isPointInRect(pt, prect):
       result.add(id)
 
-proc rectInRects*(table: RectTable, rect: WRect): seq[CompID] = 
+proc rectInRects*(table: SomeComps, rect: WRect): seq[CompID] = 
   # Return seq of DBComp IDs from table that intersect rect
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
@@ -117,15 +121,14 @@ proc rectInRects*(table: RectTable, rect: WRect): seq[CompID] =
     if isRectInRect(rect, dbcomp.bbox) or 
        isRectOverRect(rect, dbcomp.bbox):
       result.add(id)
-proc rectInRects*(table: RectTable, rect: PRect, vp: ViewPort): seq[CompID] =
+
+proc rectInRects*(table: SomeComps, rect: PRect, vp: ViewPort): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
   for id, dbcomp in table:
     let tpr = dbcomp.bbox.toPRect(vp)
     if isRectInRect(rect, tpr) or
        isRectOverRect(rect, tpr):
       result.add(id)
-
-
 
 proc rectInRects*(table: RectTable, compId: CompID): seq[CompID] = 
   # Uses table[compId] and delegates to rectInRects above
