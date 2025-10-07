@@ -52,12 +52,13 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
     if zero: rect.bbox.toPRect(vp).zero # used by texture renderer
     else:    rect.bbox.toPRect(vp)      # used by screen renderer
 
-  if rect.hovering:
-    rp.renderFilledRect(prect, rect.fillColor * 1.2, rect.penColor)
-  elif rect.selected:
-    rp.renderFilledRect(prect, rect.fillColor * 1.5, rect.penColor)
-  else:
-    rp.renderFilledRect(prect, rect.fillColor, rect.penColor)
+  let highlight =
+    if   (rect.selected, rect.hovering) == (false, false): 1.0
+    elif (rect.selected, rect.hovering) == (false, true ): 1.2
+    elif (rect.selected, rect.hovering) == (true,  false): 1.5
+    else: 1.9
+  
+  rp.renderFilledRect(prect, rect.fillColor * highlight, rect.penColor)
 
   # Draw origin
   # Todo: There is something to be said here about model space
