@@ -10,7 +10,8 @@ type
   ColorU32* = distinct uint32 # Follows one of the above formats
   RGBTuple*[T:range[0..255]] = tuple[r, g, b: T]
   RGBATuple*[T:range[0..255]] = tuple[r, g, b, a: T]
-  SomeColor = uint64|int64|uint32|int32|ColorU32|RGBTuple|RGBATuple|sdl2.Color
+  #SomeColor = uint64|int64|uint32|int32|ColorU32|RGBTuple|RGBATuple|sdl2.Color
+  SomeColor = ColorU32|RGBTuple|RGBATuple|sdl2.Color
 
 const
   ColorFmt = 
@@ -99,7 +100,7 @@ proc assembleBits(r,g,b,a: uint32): ColorU32 =
   elif ColorFmt == ABGR: bitor(a.shl(24), b.shl(16), g.shl(8), r).ColorU32
 
 
-proc toColorU32*(color: SomeColor, a: range[0..255]): ColorU32 =
+proc toColorU32*(color: SomeColor|SomeInteger, a: range[0..255]): ColorU32 =
   # Convert SomeColor to ColorU32 using a for alpha
   # Use this to change alpha in Color or ColorU32
   let
@@ -109,7 +110,7 @@ proc toColorU32*(color: SomeColor, a: range[0..255]): ColorU32 =
     a: uint32 = a.uint32
   assembleBits(r,g,b,a)
 
-proc toColorU32*(color: SomeColor): ColorU32 =
+proc toColorU32*(color: SomeColor|SomeInteger): ColorU32 =
   # Convert SomeColor to ColorU32.
   let
     r: uint32 = color.red
@@ -118,20 +119,19 @@ proc toColorU32*(color: SomeColor): ColorU32 =
     a: uint32 = color.alpha
   assembleBits(r,g,b,a)
 
-template toColor*(color: SomeColor, alpha: range[0..255]): Color =
+template toColor*(color: SomeColor|SomeInteger, alpha: range[0..255]): Color =
   (r: color.red, g: color.green, b: color.blue, a: alpha.uint8).Color
 
-template toColor*(color: SomeColor): Color =
+template toColor*(color: SomeColor|SomeInteger): Color =
   block:
     when typeof(color) is Color:
-    #when SomeColor is Color:
       color
     else:
       let alpha = if color.alpha > 0: color.alpha
                   else: 255'u8
       (r: color.red, g: color.green, b: color.blue, a: alpha).Color
 
-proc `*`*[T](color: T, num: float): T =
+proc `*`*[T: SomeColor](color: T, num: float): T =
   let
     r = (color.red.float   * num).round.clamp(0.0 .. 255.0).uint8
     g = (color.green.float * num).round.clamp(0.0 .. 255.0).uint8

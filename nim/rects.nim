@@ -294,26 +294,26 @@ proc rotate*(rect: DBComp, orient: Orientation) =
 # Procs for rects
 proc pos*(rect: SomeRect): auto  = (x: rect.x, y: rect.y)
 proc size*(rect: SomeRect): auto  = (w: rect.w, h: rect.h)
-proc lowerLeft*(rect: SomeRect): WPoint =
+proc lowerLeft*(rect: SomeRect): auto =
   when SomeRect is WRect:
-    (rect.x, rect.y)
+    (rect.x, rect.y).toWPoint
   elif SomeRect is PRect:
-    (rect.x, rect.y + rect.h - 1)
-proc lowerRight*(rect: SomeRect): WPoint = 
+    (rect.x, rect.y + rect.h - 1).toPxPoint
+proc lowerRight*(rect: SomeRect): auto = 
   when SomeRect is WRect:
-    (rect.x + rect.w, rect.y)
+    (rect.x + rect.w, rect.y).toWPoint
   elif SomeRect is PRect:
-    (rect.x + rect.w - 1, rect.y + rect.h - 1)
-proc upperLeft*(rect: SomeRect): WPoint = 
+    (rect.x + rect.w - 1, rect.y + rect.h - 1).toPxPoint
+proc upperLeft*(rect: SomeRect): auto = 
   when SomeRect is WRect:
-    (rect.x, rect.y + rect.h)
+    (rect.x, rect.y + rect.h).toWPoint
   elif SomeRect is PRect:
-    (rect.x, rect.y)
-proc upperRight*(rect: SomeRect): WPoint = 
+    (rect.x, rect.y).toPxPoint
+proc upperRight*(rect: SomeRect): auto = 
   when SomeRect is WRect:
-    (rect.x + rect.w, rect.y + rect.h)
+    (rect.x + rect.w, rect.y + rect.h).toWPoint
   elif SomeRect is PRect:
-    (rect.x + rect.w - 1, rect.y)
+    (rect.x + rect.w - 1, rect.y).toPxPoint
 proc topEdge*[T: SomeRect](rect: T): TopEdge[T] =
   result.pt0 = rect.upperLeft
   result.pt1 = rect.upperRight
@@ -343,9 +343,9 @@ proc toWRect*(rect: PRect, vp: ViewPort): WRect =
   # PRect has x,y in upper left, so choose lower left then convert
   when WType is SomeFloat:
     (x: rect.x.toWorldX(vp),
-    (y: rect.y + rect.h).toWorldY(vp),
-    (w: rect.w.float / vp.zoom).WType,
-    (h: rect.h.float / vp.zoom).WType)
+     y: (rect.y + rect.h).toWorldY(vp),
+     w: (rect.w.float / vp.zoom).WType,
+     h: (rect.h.float / vp.zoom).WType)
   elif WType is SomeInteger:
     (x: rect.x.toWorldX(vp),
      y: (rect.y + rect.h).toWorldY(vp),
@@ -401,9 +401,15 @@ proc fillRatio*(rects: openArray[SomeRect]): float =
   let denom = a.float 
   numerator / denom 
 proc grow*(rect: WRect, amt: WType): WRect  =
-  (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
+  (x: rect.x - amt, 
+   y: rect.y - amt, 
+   w: rect.w + amt * 2, 
+   h: rect.h + amt * 2)
 proc grow*(rect: PRect, amt: PxType): PRect  =
-  (rect.x - amt, rect.y - amt, rect.w + 2*amt, rect.h + 2*amt)
+  (x: rect.x - amt,
+   y: rect.y - amt,
+   w: rect.w + amt * 2,
+   h: rect.h + amt * 2)
 proc normalizePRectCoords*(startPos, endPos: PxPoint): PRect =
   # make sure that rect.x,y is always minimum (upper left for PRect)
   let (sx, sy) = startPos

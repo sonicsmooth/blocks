@@ -392,8 +392,8 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         let 
-          lastSnap: WPoint = self.mGrid.snap(self.mMouseData.lastPos.toWorld(vp))
-          newSnap: WPoint = self.mGrid.snap(wmp)
+          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid)
+          newSnap: WPoint = wmp.snap(self.mGrid)
           delta: WPoint = newSnap - lastSnap
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
@@ -402,9 +402,8 @@ wClass(wBlockPanel of wSDLPanel):
           # for id in sel:
           #   let newPos = self.mGrid.snap(gDb[id].pos + delta)
           #   self.moveRectTo(id, newPos)
-        else:
-          # Snap pos to nearest grid point
-          let newPos = self.mGrid.snap(gDb[hitid].pos + delta)
+        else: # Snap pos to nearest grid point
+          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid)
           self.moveRectTo(hitid, newPos)
         self.mMouseData.lastPos = event.mousePos
         self.refresh(false)
@@ -477,16 +476,18 @@ Rendering options for SDL and pixie
       self.renderToScreen()
 
     # Draw various boxes and text, then done
-    self.updateDestinationBox()
-    self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
+    # self.updateDestinationBox()
+    # self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
     self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
                                       penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
     var txt: string
-    txt &= &"{self.mViewPort.pan}\n"
-    txt &= &"{self.mViewPort.zoomSteps}\n"
-    txt &= &"{self.mViewPort.zoom:.3f}"
+    txt &= &"pan: {self.mViewPort.pan}\n"
+    txt &= &"steps: {self.mViewPort.zoomSteps}\n"
+    txt &= &"level: {self.mViewPort.zoomLevel}\n"
+    txt &= &"preZoom: {self.mViewPort.preZoom:.3f}\n"
+    txt &= &"zoom: {self.mViewPort.zoom:.3f}"
     
     self.sdlRenderer.renderText(self.sdlWindow, txt)
     #self.sdlRenderer.renderText(self.sdlWindow, self.mText)
@@ -499,11 +500,11 @@ Rendering options for SDL and pixie
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     #self.mDstRect = (-100, -100, 200, 200)
-    self.mGrid.xSpace = 10
-    self.mGrid.ySpace = 10
+    self.mGrid.xSpace = 50
+    self.mGrid.ySpace = 50
     self.mGrid.visible = true
     self.mGrid.originVisible = true
-    self.mViewPort.doZoom(2400)
+    self.mViewPort.doZoom(0)
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
