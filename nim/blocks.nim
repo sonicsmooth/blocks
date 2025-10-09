@@ -9,10 +9,10 @@ when compileOption("profiler"):
   import std/nimprof
 
 try:
-  echo "wassup"
   randomize()
   wSetSystemDpiAware()
-  echo "DPI: ", wAppGetDpi()
+  when defined(debug):
+    echo "DPI: ", wAppGetDpi()
   
   # Start stuff
   concurrent.init()
