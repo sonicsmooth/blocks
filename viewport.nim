@@ -1,23 +1,24 @@
-import std/[math]
+import std/math
 import world
 import pointmath
 export world
 
+
 type
   ViewPort* = object
     pan*: PxPoint = (0, 0)
-    preZoom*: float
-    zoomSteps*: int # there are zoomDiv zoomSteps between zoomLevels
-    zoomLevel*: int # each zoom level controls the big and small grid
-    zoom*: float # final zoom value that everyone uses
+    zClicks*: int # counts wheel zClicks; there are div zClicks between levels
+    rawZoom*: float # zoom before density applied
+    zoom*: float # final zoom value after density
+    zctrl*: ZoomCtrl
 
-const
-  zoomBase* = 4 # Eventually this becomes the small grid size
-  zoomDiv* = 2400 # how many mouse wheels for every power of zoomBase
-  zoomMaxPwr = 3 # maximum zoom is zoomBase ^ zoomMaxPwr
-  zoomDensity*: float = 1.0
-  zoomStepUpperLimit =  zoomDiv * zoomMaxPwr # implies max zoom is 2^3
-  zoomStepLowerLimit = -zoomDiv * zoomMaxPwr # implies min zoom is 2^-3
+  ZoomCtrl = object
+    base* = 4 # Eventually this becomes the small grid size
+    clickDiv* = 2400 # how many zClicks for every power of zoomBase (log)
+    maxPwr = 3 # maximum rawZoom is zoomBase ^ maxPwr
+    density*: float = 1.0 # scales entire image without affecting grid
+    logStep*: int # each log controls the big and small grid
+
 
 proc doPan*(vp: var ViewPort, delta: PxPoint) = 
   # Just pan by the pixel amount
@@ -25,12 +26,12 @@ proc doPan*(vp: var ViewPort, delta: PxPoint) =
 
 proc doZoom*(vp: var ViewPort, delta: int) = 
   # Calculate new zoom factor
-  vp.zoomSteps = clamp(vp.zoomSteps + delta,
-                       zoomStepLowerLimit,
-                       zoomStepUpperLimit)
-  vp.zoomLevel = (vp.zoomSteps / zoomDiv).floor.int
-  vp.preZoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
-  vp.zoom = vp.preZoom * zoomDensity
+  let
+    maxzClicks =  vp.zctrl.clickDiv * vp.zctrl.maxPwr
+  vp.zClicks = clamp(vp.zClicks + delta, -maxzClicks, maxzClicks)
+  vp.rawZoom = pow(vp.zctrl.base, vp.zClicks / vp.zctrl.clickDiv )
+  vp.zoom = vp.rawZoom * vp.zctrl.density
+  vp.zctrl.logStep = (vp.zClicks / vp.zctrl.clickDiv).floor.int
 
 
 proc doAdaptivePan*(vp1, vp2: ViewPort, mousePos: PxPoint): PxPoint =

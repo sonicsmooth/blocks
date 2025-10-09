@@ -45,7 +45,8 @@ proc initSDL*() =
 
 wClass(wSDLPanel of wPanel):
   proc init*(self: wSDLPanel, parent: wWindow, style: wStyle=0) =
-    echo "wSDLPanel.init()"
+    when defined(debug):
+      echo "wSDLPanel.init()"
     wPanel(self).init(parent, style=style)
 
     self.sdlWindow = createWindowFrom(cast[pointer] (self.mHwnd))
@@ -60,10 +61,11 @@ wClass(wSDLPanel of wPanel):
     discard getDisplayMode(self.sdlWindow, dm)
     self.pixelFormat = dm.format
     self.pixelFormatName = $getPixelFormatName(dm.format)
-    echo "Window DisplayMode():"
-    for key, value in fieldPairs(dm):
-      echo key & ": " & $cast[cint](value)
-    echo "formatName: ", self.pixelFormatName
+    when defined(debug):
+      echo "Window DisplayMode():"
+      for key, value in fieldPairs(dm):
+        echo key & ": " & $cast[cint](value)
+      echo "formatName: ", self.pixelFormatName
 
 wClass(wTestPanel of wSDLPanel):
   proc drawRect(self: wTestPanel, rect: TestRect) =

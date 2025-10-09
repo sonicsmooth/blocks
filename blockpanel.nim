@@ -392,8 +392,8 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         let 
-          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid)
-          newSnap: WPoint = wmp.snap(self.mGrid)
+          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp)
+          newSnap: WPoint = wmp.snap(self.mGrid, vp)
           delta: WPoint = newSnap - lastSnap
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
@@ -403,7 +403,7 @@ wClass(wBlockPanel of wSDLPanel):
           #   let newPos = self.mGrid.snap(gDb[id].pos + delta)
           #   self.moveRectTo(id, newPos)
         else: # Snap pos to nearest grid point
-          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid)
+          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, vp)
           self.moveRectTo(hitid, newPos)
         self.mMouseData.lastPos = event.mousePos
         self.refresh(false)
@@ -484,9 +484,9 @@ Rendering options for SDL and pixie
                                       penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
     var txt: string
     txt &= &"pan: {self.mViewPort.pan}\n"
-    txt &= &"steps: {self.mViewPort.zoomSteps}\n"
-    txt &= &"level: {self.mViewPort.zoomLevel}\n"
-    txt &= &"preZoom: {self.mViewPort.preZoom:.3f}\n"
+    txt &= &"zClicks: {self.mViewPort.zClicks}\n"
+    txt &= &"level: {self.mViewPort.zCtrl.logStep}\n"
+    txt &= &"rawZoom: {self.mViewPort.rawZoom:.3f}\n"
     txt &= &"zoom: {self.mViewPort.zoom:.3f}"
     
     self.sdlRenderer.renderText(self.sdlWindow, txt)
