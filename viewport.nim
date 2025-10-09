@@ -6,14 +6,16 @@ export world
 type
   ViewPort* = object
     pan*: PxPoint = (0, 0)
-    zoom*: float = 1.0
-    #fakezoom: float = 1.0
-    zoomSteps*: int
+    preZoom*: float
+    zoomSteps*: int # there are zoomDiv zoomSteps between zoomLevels
+    zoomLevel*: int # each zoom level controls the big and small grid
+    zoom*: float # final zoom value that everyone uses
 
 const
-  zoomBase = 2 # Eventually this becomes the small grid size
-  zoomDiv = 2400 # how many mouse wheels for every power of zoomBase
-  zoomMaxPwr = 8 # maximum zoom is zoomBase ^ zoomMaxPwr
+  zoomBase* = 4 # Eventually this becomes the small grid size
+  zoomDiv* = 2400 # how many mouse wheels for every power of zoomBase
+  zoomMaxPwr = 3 # maximum zoom is zoomBase ^ zoomMaxPwr
+  zoomDensity*: float = 1.0
   zoomStepUpperLimit =  zoomDiv * zoomMaxPwr # implies max zoom is 2^3
   zoomStepLowerLimit = -zoomDiv * zoomMaxPwr # implies min zoom is 2^-3
 
@@ -26,7 +28,9 @@ proc doZoom*(vp: var ViewPort, delta: int) =
   vp.zoomSteps = clamp(vp.zoomSteps + delta,
                        zoomStepLowerLimit,
                        zoomStepUpperLimit)
-  vp.zoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
+  vp.zoomLevel = (vp.zoomSteps / zoomDiv).floor.int
+  vp.preZoom = pow(zoomBase, vp.zoomSteps / zoomDiv )
+  vp.zoom = vp.preZoom * zoomDensity
 
 
 proc doAdaptivePan*(vp1, vp2: ViewPort, mousePos: PxPoint): PxPoint =

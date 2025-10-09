@@ -31,7 +31,13 @@ wClass(wMainFrame of wFrame):
     # so ignore wparam and lparam.  Just grab  mouse pos directly
     let mousePxPos = screenToClient(self.mMainPanel.mBlockPanel, wGetMousePosition())
     let mouseWPos: WPoint = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewPort)
-    let txt = "Pixel: " & $mousePxPos & "; World: " & $mouseWPos
+    when WType is SomeFloat:
+      let mwpx = &"{mouseWPos.x:0.4f}"
+      let mwpy = &"{mouseWPos.y:0.4f}"
+    elif WType is SomeInteger:
+      let mwpx = &"{mouseWPos.x}"
+      let mwpy = &"{mouseWPos.y}"
+    let txt = &"Pixel: {mousePxPos}; World: ({mwpx}, {mwpy})"
     self.mStatusBar.setStatusText(txt, index=2)
 
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
@@ -63,7 +69,7 @@ wClass(wMainFrame of wFrame):
     # Do stuff
     self.size = (newWidth, newHeight)
     self.mMenuFile.append(1, "Open")
-    self.mStatusBar.setStatusWidths([-1, -1, 400])
+    self.mStatusBar.setStatusWidths([-1, -1, 600])
     
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
