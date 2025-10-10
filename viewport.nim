@@ -15,7 +15,7 @@ type
   ZoomCtrl = object
     base* = 4 # Eventually this becomes the small grid size
     clickDiv* = 2400 # how many zClicks for every power of zoomBase (log)
-    maxPwr = 3 # maximum rawZoom is zoomBase ^ maxPwr
+    maxPwr = 5 # maximum rawZoom is zoomBase ^ maxPwr
     density*: float = 1.0 # scales entire image without affecting grid
     logStep*: int # each log controls the big and small grid
 
