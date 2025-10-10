@@ -500,8 +500,8 @@ Rendering options for SDL and pixie
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
     #self.mDstRect = (-100, -100, 200, 200)
-    self.mGrid.xSpace = 50
-    self.mGrid.ySpace = 50
+    self.mGrid.xSpace = 10
+    self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
     self.mViewPort.doZoom(0)
