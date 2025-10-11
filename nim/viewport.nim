@@ -13,10 +13,10 @@ type
     zctrl*: ZoomCtrl
 
   ZoomCtrl = object
-    base* = 4 # Eventually this becomes the small grid size
-    clickDiv* = 2400 # how many zClicks for every power of zoomBase (log)
-    maxPwr = 5 # maximum rawZoom is zoomBase ^ maxPwr
-    density*: float = 1.0 # scales entire image without affecting grid
+    base*: int = 5 # Eventually this becomes the small grid size
+    clickDiv*: int = 2400 # how many zClicks for every power of zoomBase (log)
+    maxPwr: int = 5 # maximum rawZoom is zoomBase ^ maxPwr
+    density*: float = 2.0 # scales entire image without affecting grid
     logStep*: int # each log controls the big and small grid
 
 
@@ -29,7 +29,7 @@ proc doZoom*(vp: var ViewPort, delta: int) =
   let
     maxzClicks =  vp.zctrl.clickDiv * vp.zctrl.maxPwr
   vp.zClicks = clamp(vp.zClicks + delta, -maxzClicks, maxzClicks)
-  vp.rawZoom = pow(vp.zctrl.base, vp.zClicks / vp.zctrl.clickDiv )
+  vp.rawZoom = pow(vp.zctrl.base.float, vp.zClicks / vp.zctrl.clickDiv )
   vp.zoom = vp.rawZoom * vp.zctrl.density
   vp.zctrl.logStep = (vp.zClicks / vp.zctrl.clickDiv).floor.int
 

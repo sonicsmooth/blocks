@@ -496,12 +496,6 @@ proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
   rect1.topEdge    < rect2.bottomEdge or
   rect1.leftEdge   > rect2.rightEdge
 
-# Misc Procs
-proc `/`[T:SomeInteger](a, b: T): T = 
-  echo "my own div"
-  a div b
-
-
 
 converter toSize*(size: wSize): PxSize = (size.width, size.height)
 converter toPxPoint*(pt: wPoint): PxPoint = (pt.x, pt.y)

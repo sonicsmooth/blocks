@@ -67,7 +67,7 @@ const
      (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotateCCW,
      (key: wKey_Space,  ctrl: false, shift: true,  alt: false): CmdRotateCW,
      (key: wKey_A,      ctrl: true,  shift: false, alt: false): CmdSelectAll }.toTable
-  moveTable: array[wKey_Left .. wKey_Down, sdl2.Point] =
+  moveTable: array[wKey_Left .. wKey_Down, WPoint] =
     [(-1,0), (0, 1), (1, 0), (0, -1)]
 
 
@@ -243,7 +243,10 @@ wClass(wBlockPanel of wSDLPanel):
     of CmdEscape:
       escape()
     of CmdMove:
-      self.moveRectsBy(sel, moveTable[event.keyCode])
+      let
+        md: WPoint = minDelta[WType](self.mGrid, self.mViewPort, major=false)
+        moveby: WPoint = md .* moveTable[event.keyCode]
+      self.moveRectsBy(sel, moveBy)
       resetBox()
       self.mMouseData.state = StateNone
     of CmdDelete:
@@ -328,8 +331,9 @@ wClass(wBlockPanel of wSDLPanel):
         # Keep mouse location in the same spot during zoom.
         let oldvp = self.mViewPort
         self.mViewPort.doZoom(event.wheelRotation)
-        let pxDelta = doAdaptivePan(oldvp, self.mViewPort, event.mousePos)
-        self.mViewPort.doPan(pxDelta)
+        #dump minDelta(self.mGrid, vp, major=false)
+        #let pxDelta = doAdaptivePan(oldvp, self.mViewPort, event.mousePos)
+        #self.mViewPort.doPan(pxDelta)
         self.clearTextureCache()
         self.refresh(false)
       else:
@@ -351,12 +355,12 @@ wClass(wBlockPanel of wSDLPanel):
     case self.mMouseData.state
     of StateNone:
       case event.getEventType
-      of wEvent_MouseMove:
-        if self.mMouseData.pzState == PZStateNone:
-          if self.evaluateHovering(event):
-            self.refresh(false)
-        else:
-          discard
+      # of wEvent_MouseMove:
+      #   if self.mMouseData.pzState == PZStateNone:
+      #     if self.evaluateHovering(event):
+      #       self.refresh(false)
+      #   else:
+      #     discard
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         self.mMouseData.clickPos = event.mousePos
@@ -504,7 +508,7 @@ Rendering options for SDL and pixie
     self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
-    self.mViewPort.doZoom(0)
+    self.mViewPort.doZoom(2400)
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
