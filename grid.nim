@@ -88,7 +88,7 @@ proc draw*(grid: Grid, vp: ViewPort, rp: RendererPtr, size: wSize) =
     worldEndMajor = (size.width - 1, size.height - 1).toWorldF(vp).snap(grid, vp, major=true)
     worldStepMajor = worldStep * vp.zctrl.base
    
-  echo &"ws.x: {worldStart.y}; wsm.x: {worldStartMajor.y}"
+  #echo &"ws.x: {worldStart.y}; wsm.x: {worldStartMajor.y}"
   rp.setDrawColor(Red.toColor)
   rp.drawLine(upperLeft.x, upperLeft.y, upperLeft.x + 100, upperLeft.y)
   rp.drawLine(upperLeft.x, upperLeft.y, upperLeft.x, upperLeft.y + 100)

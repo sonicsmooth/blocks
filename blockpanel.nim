@@ -83,7 +83,7 @@ wClass(wBlockPanel of wSDLPanel):
       texture.destroy()
     self.mTextureCache.clear()
 
-  proc clearTextureCache*(self:wBlockPanel, id: CompID) =
+  proc clearTextureCache*(self: wBlockPanel, id: CompID) =
     # Clear specific id from texture cache
     for sel in [false, true]:
       for hov in [false, true]:
@@ -91,6 +91,28 @@ wClass(wBlockPanel of wSDLPanel):
         if key in self.mTextureCache:
           self.mTextureCache[key].destroy()
         self.mTextureCache.del(key)
+
+  proc clampRectSize(self: wBlockPanel, prect: PRect): PRect =
+    # Return the given prect if one or more dimensions fits in client area
+    # If both dimensions exceed client size, then return a PRect with the
+    # same aspect ratio and with one dim that matches client dim.
+    if prect.w <= self.size.width or prect.h <= self.size.height:
+      prect
+    else:
+      let 
+        rectRatio: float = prect.w.float / prect.h.float
+        clientRatio: float = self.size.width / self.size.height
+      var neww, newh: int
+      if rectRatio <= clientRatio:
+        # Set rect width to client width
+        neww = self.size.width
+        newh = (neww.float / rectRatio).round.int
+      else:
+        # Set rect height to client height
+        newh = self.size.height
+        neww = (newh.float * rectRatio).round.int
+      (x: prect.x, y: prect.y, w: neww, h: newh)
+        
 
   proc getFromTextureCache(self: wBlockPanel, id: CompID): TexturePtr =
     # Copies surfaces from surfaceCache to textures
@@ -102,14 +124,17 @@ wClass(wBlockPanel of wSDLPanel):
     if self.mTextureCache.hasKey(key):
       self.mTextureCache[key]
     else:
-      let
+      let 
         prect = rect.bbox.toPRect(vp)
-        surface = createRGBSurface(0, prect.w, prect.h, 32, rmask, gmask, bmask, amask)
+        cprect = self.clampRectSize(prect)
+        surface = createRGBSurface(0, cprect.w, cprect.h, 32, rmask, gmask, bmask, amask)
         swRenderer = createSoftwareRenderer(surface)
-      swRenderer.renderDBComp(vp, rect, zero=true)
-      let texture = self.sdlRenderer.createTextureFromSurface(surface)
-      self.mTextureCache[key] = texture
-      texture
+      swRenderer.renderDBComp(vp, rect, cprect, zero=true)
+      let pTexture = self.sdlRenderer.createTextureFromSurface(surface)
+      if pTexture.isNil:
+        raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
+      self.mTextureCache[key] = pTexture
+      pTexture
   
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
@@ -124,6 +149,8 @@ wClass(wBlockPanel of wSDLPanel):
         continue
       componentsVisible.add(rect)
       let pTexture: TexturePtr = self.getFromTextureCache(rect.id)
+      if pTexture.isNil:
+        raise newException(ValueError, &"Texture pointer is nil from getFromTextureCache: {getError()}")
       dstRect = rect.bbox.toPRect(vp)
       self.sdlRenderer.copy(pTexture, nil, addr dstRect)
   
@@ -136,7 +163,10 @@ wClass(wBlockPanel of wSDLPanel):
     for rect in gDb.values:
       if isRectSeparate(rect.bbox, screenRect):
         continue
-      self.sdlRenderer.renderDBComp(vp, rect, zero=false)
+      let
+        prect = rect.bbox.toPRect(vp)
+        cprect = self.clampRectSize(prect)
+      self.sdlRenderer.renderDBComp(vp, rect, cprect, zero=false)
 
   proc updateDestinationBox(self: wBlockPanel) =
     let 
@@ -473,10 +503,10 @@ Rendering options for SDL and pixie
       self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
-    when defined(textureCache):
-      self.blitFromTextureCache()
-    else:
+    when defined(noTextureCache):
       self.renderToScreen()
+    else:
+      self.blitFromTextureCache()
 
     # Draw various boxes and text, then done
     # self.updateDestinationBox()
