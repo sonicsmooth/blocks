@@ -1,4 +1,4 @@
-import std/[enumerate, strutils, tables, math, sugar]
+import std/[enumerate, strutils, strformat, tables, math, sugar]
 import sdl2
 import sdl2/ttf
 import rects, utils, pointmath
@@ -41,16 +41,17 @@ proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
+proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, prect: PRect, zero: bool) =
   # Draw rectangle on SDL2 renderer
   # zero is whether the object should be rendered at upper left corner of target
   #   this should be true when target is texture
   #   this should be false when target is screen
-  
+
   # Draw rectangle
+  var err: SDL_Return
   let prect = 
-    if zero: rect.bbox.toPRect(vp).zero # used by texture renderer
-    else:    rect.bbox.toPRect(vp)      # used by screen renderer
+    if zero: prect.zero # used by texture renderer
+    else:    prect      # used by screen renderer
 
   let highlight =
     if   (rect.selected, rect.hovering) == (false, false): 1.0
@@ -59,6 +60,9 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
     else: 1.9
   
   rp.renderFilledRect(prect, rect.fillColor * highlight, rect.penColor)
+  when defined(debug):
+    if err != SdlSuccess:
+      raise newException(ValueError, &"Could not renderFilledRect: {getError()}")
 
   # Draw origin
   # Todo: There is something to be said here about model space
@@ -69,8 +73,14 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
     opx: PxPoint = (fnx(rect.originToLeftEdge), fny(rect.originToTopEdge))
     extent = (10.0 * vp.zoom).round.cint
   rp.setDrawColor(Black.toColor)
-  rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
-  rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
+  err = rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
+  when defined(debug):
+    if err != SdlSuccess:
+      raise newException(ValueError, &"Could not drawLine: {getError()}")
+  err = rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
+  when defined(debug):
+    if err != SdlSuccess:
+      raise newException(ValueError, &"Could not drawLine: {getError()}")
 
   # Text to texture, then texture to renderer
   when not defined(noText):
@@ -82,9 +92,12 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, zero: bool) =
       (tsw, tsh) = (textSurface.w, textSurface.h)
       dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
                         prect.y + (h div 2) - (tsh div 2), tsw, tsh)
-      textTexture = rp.createTextureFromSurface(textSurface)
-    rp.copyEx(textTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
-    textTexture.destroy()
+      pTextTexture = rp.createTextureFromSurface(textSurface)
+    if pTextTexture.isNil:
+      raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
+
+    rp.copyEx(pTextTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
+    pTextTexture.destroy()
 
 proc longestLine(lines: openArray[string]): string =
   # Returns longest substring terminated by newline
