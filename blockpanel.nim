@@ -244,7 +244,7 @@ wClass(wBlockPanel of wSDLPanel):
       escape()
     of CmdMove:
       let
-        md: WPoint = minDelta[WType](self.mGrid, self.mViewPort, major=false)
+        md: WPoint = minDelta[WType](self.mGrid, self.mViewPort)
         moveby: WPoint = md .* moveTable[event.keyCode]
       self.moveRectsBy(sel, moveBy)
       resetBox()
@@ -331,7 +331,6 @@ wClass(wBlockPanel of wSDLPanel):
         # Keep mouse location in the same spot during zoom.
         let oldvp = self.mViewPort
         self.mViewPort.doZoom(event.wheelRotation)
-        #dump minDelta(self.mGrid, vp, major=false)
         #let pxDelta = doAdaptivePan(oldvp, self.mViewPort, event.mousePos)
         #self.mViewPort.doPan(pxDelta)
         self.clearTextureCache()
@@ -508,7 +507,7 @@ Rendering options for SDL and pixie
     self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
-    self.mViewPort.doZoom(2400)
+    self.mViewPort.doZoom(6400)
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)

@@ -14,17 +14,17 @@ proc `-`*[T:SomeNumber](a: tuple[x, y: T], b: tuple[x, y: T]): auto =
 proc `-=`*[T:SomeNumber](a: var tuple[x, y: T], b: tuple[x, y: T]) =
   a = (a.x - b.x, a.y - b.y)
 
-proc `*`*[TN:SomeNumber, TF: SomeFloat](a: tuple[x, y: TN], b: TF): auto =
-  when SomeNumber is SomeInteger:
-    (x: (a.x.TF * b).round.TN, 
-     y: (a.y.TF * b).round.TN)
-  else:
-    (x: a.x.TF * b, y: a.y.TF * b)
+# proc `*`*[TN:SomeNumber, TF: SomeFloat](a: tuple[x, y: TN], b: TF): auto =
+#   when SomeNumber is SomeInteger:
+#     (x: (a.x.TF * b).round.TN, 
+#      y: (a.y.TF * b).round.TN)
+#   else:
+#     (x: a.x.TF * b, y: a.y.TF * b)
 
-proc `*`*[T: SomeInteger](a: tuple[x, y: T], b: T): auto =
+proc `*`*[T: SomeNumber](a: tuple[x, y: T], b: T): auto =
   (x: (a.x * b), y: (a.y * b))
 
-proc `.*`*[T: SomeInteger](a,b: tuple[x, y: T]): auto =
+proc `.*`*[T: SomeNumber](a,b: tuple[x, y: T]): auto =
   (x: (a.x * b.x), y: (a.y * b.y))
 
 

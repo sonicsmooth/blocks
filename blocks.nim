@@ -35,6 +35,7 @@ try:
   anneal.deinit()
     
 except Exception as e:
+  echo "Exception!"
   echo e.msg
   echo getStackTrace(e)
   
