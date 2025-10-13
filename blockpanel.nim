@@ -536,7 +536,7 @@ Rendering options for SDL and pixie
     self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
-    self.mViewPort.doZoom(6400)
+    self.mViewPort.doZoom(0)
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
