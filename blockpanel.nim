@@ -115,8 +115,7 @@ wClass(wBlockPanel of wSDLPanel):
         
 
   proc getFromTextureCache(self: wBlockPanel, id: CompID): TexturePtr =
-    # Copies surfaces from surfaceCache to textures
-    # Requires to be called when resize because of new texture
+    # Returns surface from textureCache if it exists, creating it if needed
     let 
       rect = gDb[id]
       key = (id, rect.selected, rect.hovering)
