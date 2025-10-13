@@ -85,7 +85,9 @@ proc draw*(grid: Grid, vp: ViewPort, rp: RendererPtr, size: wSize) =
     worldStep = minDelta[WType](grid, vp)
 
     worldStartMajor = upperLeft.toWorldF(vp).snap(grid, vp, major=true)
+    #worldStartMajor = (x: 0.0, y: 0.0)
     worldEndMajor = (size.width - 1, size.height - 1).toWorldF(vp).snap(grid, vp, major=true)
+    #worldEndMajor = (x: 100.0, y: 100.0)
     worldStepMajor = worldStep * vp.zctrl.base
    
   #echo &"ws.x: {worldStart.y}; wsm.x: {worldStartMajor.y}"
@@ -109,7 +111,7 @@ proc draw*(grid: Grid, vp: ViewPort, rp: RendererPtr, size: wSize) =
     rp.drawLine(xpx, 0, xpx, size.height - 1)
 
   for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
-    let ypx = (ywf * vp.zoom + vp.pan.x.float).round.int
+    let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
     rp.drawLine(0, ypx, size.width - 1, ypx)
 
   if grid.originVisible:
