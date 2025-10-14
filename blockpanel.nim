@@ -1,6 +1,5 @@
-import std/[bitops, math, segfaults, sets, sugar, strformat, tables ]
+import std/[math, segfaults, sets, sugar, strformat, tables ]
 from std/sequtils import toSeq
-import timeit
 import wNim
 import winim except PRECT, Color
 import sdl2
@@ -226,16 +225,16 @@ wClass(wBlockPanel of wSDLPanel):
   proc selectNone(self: wBlockPanel) =
     gDb.clearRectSelect()
     self.refresh()
-  proc modifierText(event: wEvent): string = 
-    if event.ctrlDown: result &= "Ctrl"
-    if event.shiftDown: result &= "Shift"
-    if event.altDown: result &= "Alt"
+  # proc modifierText(event: wEvent): string = 
+  #   if event.ctrlDown: result &= "Ctrl"
+  #   if event.shiftDown: result &= "Shift"
+  #   if event.altDown: result &= "Alt"
   proc isModifierEvent(event: wEvent): bool = 
     event.keyCode == wKey_Ctrl or
     event.keyCode == wKey_Shift or
     event.keyCode == wKey_Alt
-  proc isModifierPresent(event: wEvent): bool = 
-    event.ctrlDown or event.shiftDown or event.altDown
+  # proc isModifierPresent(event: wEvent): bool = 
+  #   event.ctrlDown or event.shiftDown or event.altDown
   proc evaluateHovering(self: wBlockPanel, event: wEvent): bool {.discardable.} =
     # clear and set hovering
     # Return true if something changed
@@ -273,7 +272,7 @@ wClass(wBlockPanel of wSDLPanel):
       escape()
     of CmdMove:
       let
-        md: WPoint = minDelta[WType](self.mGrid, self.mViewPort)
+        md: WPoint = minDelta[WType](self.mGrid, self.mViewPort, scale=Minor)
         moveby: WPoint = md .* moveTable[event.keyCode]
       self.moveRectsBy(sel, moveBy)
       resetBox()
@@ -360,8 +359,8 @@ wClass(wBlockPanel of wSDLPanel):
         # Keep mouse location in the same spot during zoom.
         let oldvp = self.mViewPort
         self.mViewPort.doZoom(event.wheelRotation)
-        #let pxDelta = doAdaptivePan(oldvp, self.mViewPort, event.mousePos)
-        #self.mViewPort.doPan(pxDelta)
+        let pxDelta = doAdaptivePan(oldvp, self.mViewPort, event.mousePos)
+        self.mViewPort.doPan(pxDelta)
         self.clearTextureCache()
         self.refresh(false)
       else:
@@ -383,12 +382,13 @@ wClass(wBlockPanel of wSDLPanel):
     case self.mMouseData.state
     of StateNone:
       case event.getEventType
-      # of wEvent_MouseMove:
-      #   if self.mMouseData.pzState == PZStateNone:
-      #     if self.evaluateHovering(event):
-      #       self.refresh(false)
-      #   else:
-      #     discard
+      of wEvent_MouseMove:
+        when not defined(noHover):
+          if self.mMouseData.pzState == PZStateNone:
+            if self.evaluateHovering(event):
+              self.refresh(false)
+          else:
+            discard
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         self.mMouseData.clickPos = event.mousePos
@@ -424,8 +424,8 @@ wClass(wBlockPanel of wSDLPanel):
       case event.getEventType
       of wEvent_MouseMove:
         let 
-          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp)
-          newSnap: WPoint = wmp.snap(self.mGrid, vp)
+          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=Minor)
+          newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=Minor)
           delta: WPoint = newSnap - lastSnap
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
@@ -435,7 +435,7 @@ wClass(wBlockPanel of wSDLPanel):
           #   let newPos = self.mGrid.snap(gDb[id].pos + delta)
           #   self.moveRectTo(id, newPos)
         else: # Snap pos to nearest grid point
-          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, vp)
+          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, vp, scale=Minor)
           self.moveRectTo(hitid, newPos)
         self.mMouseData.lastPos = event.mousePos
         self.refresh(false)
@@ -475,8 +475,6 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.state = StateNone
 
 
-
-
 #[
 Rendering options for pure SDL
 1. Blitting to window renderer from sdl Texture cache
@@ -488,7 +486,6 @@ Rendering options for SDL and pixie
   C. ...from pixie image cache
 2. Rendering in real time  
   B. Render to pixie image then blit to sdl surface
-
 
 
 ]# 
@@ -508,8 +505,8 @@ Rendering options for SDL and pixie
       self.blitFromTextureCache()
 
     # Draw various boxes and text, then done
-    # self.updateDestinationBox()
-    # self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), Black)
+    self.updateDestinationBox()
+    self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), DarkOrchid)
     self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
@@ -519,10 +516,12 @@ Rendering options for SDL and pixie
     txt &= &"zClicks: {self.mViewPort.zClicks}\n"
     txt &= &"level: {self.mViewPort.zCtrl.logStep}\n"
     txt &= &"rawZoom: {self.mViewPort.rawZoom:.3f}\n"
-    txt &= &"zoom: {self.mViewPort.zoom:.3f}"
+    txt &= &"zoom: {self.mViewPort.zoom:.3f}\n"
+    txt &= &"tinyDelta: {minDelta[WType](self.mGrid, self.mViewPort, scale=Tiny)}\n"
+    txt &= &"minorDelta: {minDelta[WType](self.mGrid, self.mViewPort, scale=Minor)}\n"
+    txt &= &"majorDelta: {minDelta[WType](self.mGrid, self.mViewPort, scale=Major)}\n"
     
     self.sdlRenderer.renderText(self.sdlWindow, txt)
-    #self.sdlRenderer.renderText(self.sdlWindow, self.mText)
     self.sdlRenderer.present()
 
     # release(gLock)
@@ -536,7 +535,7 @@ Rendering options for SDL and pixie
     self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
-    self.mViewPort.doZoom(0)
+    self.mViewPort.doZoom(-2401)
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)

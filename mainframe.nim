@@ -1,7 +1,7 @@
-import std/[strformat, strutils, sugar]
+import std/[strformat]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
-import mainpanel, userMessages, utils
+import mainpanel, userMessages
 import viewport
 from db import QTY
 export mainpanel
