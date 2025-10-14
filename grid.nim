@@ -14,13 +14,15 @@ type
     visible*: bool = true
     originVisible*: bool = true
 
-# const stepAlphas = arange(0 .. 255, 10).toSeq
-# proc lineAlpha(step: int): int =
-#   if step < stepAlphas.len:
-#     stepAlphas[step]
-#   else:
-#     255
-
+const
+  alphaOffset = 20 
+  stepAlphas = arange(20 .. 255, alphaOffset).toSeq
+proc lineAlpha(step: int): int =
+  let idx = max(0, step - alphaOffset)
+  if idx < stepAlphas.len:
+    result = stepAlphas[idx]
+  else:
+    result = 255
 
 proc toWorldF(pt: PxPoint, vp: ViewPort): tuple[x,y: float] =
   let
@@ -76,7 +78,6 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: ViewPort, scale: Sc
   # If this is a WPoint, and that is integer-based, then
   # rounding will occur in implicit conversion
   let
-    base = vp.zctrl.base.WType
     md = minDelta[WType](grid, vp, scale)
     xcnt:  float = (pt[0] / md.x).round
     ycnt:  float = (pt[1] / md.y).round
@@ -89,19 +90,16 @@ proc draw*(grid: Grid, vp: ViewPort, rp: RendererPtr, size: wSize) =
   let
     upperLeft: PxPoint = (0, 0)
     worldStart = upperLeft.toWorldF(vp).snap(grid, vp, scale=Minor)
-    worldEnd = (size.width - 1, size.height - 1).toWorldF(vp).snap(grid, vp, scale=Minor)
-    worldStep = minDelta[WType](grid, vp, scale=Minor)
+    worldEnd   = (size.width - 1, size.height - 1).toWorldF(vp).snap(grid, vp, scale=Minor)
+    worldStep  = minDelta[WType](grid, vp, scale=Minor)
+    xStepPx    = (worldStep.x.float * vp.zoom).round.int
 
     worldStartMajor = upperLeft.toWorldF(vp).snap(grid, vp, scale=Major)
     worldEndMajor = (size.width - 1, size.height - 1).toWorldF(vp).snap(grid, vp, scale=Major)
     worldStepMajor = minDelta[WType](grid, vp, scale=Major)
-   
-  # rp.setDrawColor(Red.toColor)
-  # rp.drawLine(upperLeft.x, upperLeft.y, upperLeft.x + 100, upperLeft.y)
-  # rp.drawLine(upperLeft.x, upperLeft.y, upperLeft.x, upperLeft.y + 100)
 
   # Minor lines
-  rp.setDrawColor(LightSlateGray.toColor)
+  rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPx)).toColor)
   for xwf in arange(worldStart.x .. worldEnd.x, worldStep.x.float):
     let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
     rp.drawLine(xpx, 0, xpx, size.height - 1)
