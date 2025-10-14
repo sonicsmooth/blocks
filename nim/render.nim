@@ -1,7 +1,7 @@
-import std/[enumerate, strutils, strformat, tables, math, sugar]
+import std/[enumerate, strutils, strformat, tables, math]
 import sdl2
 import sdl2/ttf
-import rects, utils, pointmath
+import rects, utils
 
 
 type
@@ -10,7 +10,7 @@ type
 const
   fontRange: Slice[int] = 6..100  
   fontScale = 0.45
-  defFontSize = 20
+  defFontSize = 25
 
 var
   fontCache: FontTable # Filled in as needed
@@ -43,6 +43,9 @@ proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
 
 proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, prect: PRect, zero: bool) =
   # Draw rectangle on SDL2 renderer
+  # vp is ViewPort, used for zoom
+  # rect is database object
+  # prect is target rectangle with same aspect ratio as rect
   # zero is whether the object should be rendered at upper left corner of target
   #   this should be true when target is texture
   #   this should be false when target is screen
@@ -66,7 +69,7 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, prect: PRect, ze
 
   # Draw origin
   # Todo: There is something to be said here about model space
-  # todo: to world space to pixel space
+  # TODO: to world space to pixel space
   let
     fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
     fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
@@ -83,6 +86,7 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, prect: PRect, ze
       raise newException(ValueError, &"Could not drawLine: {getError()}")
 
   # Text to texture, then texture to renderer
+  # TODO: cache texts at different sizes
   when not defined(noText):
     let 
       (w, h) = (prect.w, prect.h)
