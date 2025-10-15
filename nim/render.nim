@@ -1,7 +1,7 @@
 import std/[enumerate, strutils, strformat, tables, math]
 import sdl2
 import sdl2/ttf
-import rects, utils
+import rects, utils, appopts
 
 
 type
@@ -87,7 +87,7 @@ proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, prect: PRect, ze
 
   # Text to texture, then texture to renderer
   # TODO: cache texts at different sizes
-  when not defined(noText):
+  if gAppOpts.enableText:
     let 
       (w, h) = (prect.w, prect.h)
       selstr = $rect.id & (if rect.selected: "*" else: "")
