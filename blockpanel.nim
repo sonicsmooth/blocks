@@ -114,7 +114,11 @@ wClass(wBlockPanel of wSDLPanel):
         
 
   proc getFromTextureCache(self: wBlockPanel, id: CompID): TexturePtr =
-    # Returns surface from textureCache if it exists, creating it if needed
+    # Returns block texture, using cache if possible.
+    #  Uses software renderer to draw to newly created surface,
+    #  then creates texture from surface
+    # Returns nil if any block dimension is zero
+    # Throws exception if surface or texture can't be created.
     let 
       rect = gDb[id]
       key = (id, rect.selected, rect.hovering)
@@ -126,6 +130,7 @@ wClass(wBlockPanel of wSDLPanel):
         prect = rect.bbox.toPRect(vp)
         cprect = self.clampRectSize(prect)
       if cprect.w == 0 or cprect.h == 0:
+        # We are zoomed out too far
         return nil
       let
         surface = createRGBSurface(0, cprect.w, cprect.h, 32, rmask, gmask, bmask, amask)
@@ -148,12 +153,11 @@ wClass(wBlockPanel of wSDLPanel):
     for rect in gDb.values:
       if isRectSeparate(rect.bbox, screenRect):
         continue
-      componentsVisible.add(rect)
       let pTexture: TexturePtr = self.getFromTextureCache(rect.id)
-      if pTexture.isNil:
-        echo "pTexture is nil"
+      if not pTexture.isNil:
+        componentsVisible.add(rect)
         dstRect = rect.bbox.toPRect(vp)
-      self.sdlRenderer.copy(pTexture, nil, addr dstRect)
+        self.sdlRenderer.copy(pTexture, nil, addr dstRect)
   
   proc renderToScreen(self: wBlockPanel) =
     # Render blocks to screen using default renderer
@@ -176,6 +180,9 @@ wClass(wBlockPanel of wSDLPanel):
     let pdstrect: PRect = (marg, marg, w - 2*marg, h - 2*marg)
     self.mDstRect = pdstrect.toWRect(self.mViewPort)
 
+  proc updateBoundingBox(self: wBlockPanel) =
+    self.mAllBbox = gDb.boundingBox()
+
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
@@ -185,42 +192,34 @@ wClass(wBlockPanel of wSDLPanel):
     if gDb.len == 0:
       self.mRatio = 0.0
     else:
-      self.mAllBbox = gDb.boundingBox()
       let ratio = self.mFillArea.float / self.mAllBbox.area.float
       if ratio != self.mRatio:
         self.mRatio = ratio
-  proc moveRectsBy(self: wBlockPanel, CompIDs: seq[CompID], delta: WPoint) =
+  proc moveRectsBy(self: wBlockPanel, compIDs: seq[CompID], delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
     # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
-    let rects = gDb[CompIDs]
+    let rects = gDb[compIDs]
     for rect in rects:
       moveRectBy(rect, delta)
-    self.updateRatio()
     self.refresh(false)
-  proc moveRectBy(self: wBlockPanel, CompID: CompID, delta: WPoint) =
+  proc moveRectBy(self: wBlockPanel, compID: CompID, delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
-    #let wdelta: WPoint = delta.toWorld(self.mViewPort)
-    moveRectBy(gDb[CompID], delta)
-    self.updateRatio()
+    moveRectBy(gDb[compID], delta)
     self.refresh(false)
-  proc moveRectTo(self: wBlockPanel, CompID: CompID, delta: WPoint) =
+  proc moveRectTo(self: wBlockPanel, compID: CompID, delta: WPoint) =
     # Common proc to move one or more Rects; used by mouse and keyboard
-    #let wdelta: WPoint = delta.toWorld(self.mViewPort)
-    moveRectTo(gDb[CompID], delta)
-    self.updateRatio()
+    moveRectTo(gDb[compID], delta)
     self.refresh(false)
-  proc rotateRects(self: wBlockPanel, CompIDs: seq[CompID], amt: Rotation) =
-    for id in CompIDs:
+  proc rotateRects(self: wBlockPanel, compIDs: seq[CompID], amt: Rotation) =
+    for id in compIDs:
       gDb[id].rotate(amt)
       self.clearTextureCache(id)
-    self.updateRatio()
     self.refresh(false)
-  proc deleteRects(self: wBlockPanel, CompIDs: seq[CompID]) =
-    for id in CompIDs:
+  proc deleteRects(self: wBlockPanel, compIDs: seq[CompID]) =
+    for id in compIDs:
       gDb.del(id) # Todo: check whether this deletes rect
       self.clearTextureCache(id)
     self.mFillArea = gDb.fillArea()
-    self.updateRatio()
     self.refresh(false)
   proc selectAll(self: wBlockPanel) =
     gDb.setRectSelect()
@@ -228,16 +227,10 @@ wClass(wBlockPanel of wSDLPanel):
   proc selectNone(self: wBlockPanel) =
     gDb.clearRectSelect()
     self.refresh()
-  # proc modifierText(event: wEvent): string = 
-  #   if event.ctrlDown: result &= "Ctrl"
-  #   if event.shiftDown: result &= "Shift"
-  #   if event.altDown: result &= "Alt"
   proc isModifierEvent(event: wEvent): bool = 
     event.keyCode == wKey_Ctrl or
     event.keyCode == wKey_Shift or
     event.keyCode == wKey_Alt
-  # proc isModifierPresent(event: wEvent): bool = 
-  #   event.ctrlDown or event.shiftDown or event.altDown
   proc evaluateHovering(self: wBlockPanel, event: wEvent): bool {.discardable.} =
     # clear and set hovering
     # Return true if something changed
@@ -430,6 +423,9 @@ wClass(wBlockPanel of wSDLPanel):
           lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=Minor)
           newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=Minor)
           delta: WPoint = newSnap - lastSnap
+        # if delta.x > 0 or delta.y > 0:
+        #   echo ""
+        #   dump delta
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
           self.moveRectsBy(sel, delta)
@@ -510,7 +506,8 @@ Rendering options for SDL and pixie
     # Draw various boxes and text, then done
     self.updateDestinationBox()
     # self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), DarkOrchid)
-    self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
+    # self.updateBoundingBox()
+    # self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
                                       penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)

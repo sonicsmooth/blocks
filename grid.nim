@@ -56,15 +56,15 @@ proc minDelta*[T](grid: Grid, vp: ViewPort, scale: Scale): tuple[x,y: T] =
       (majorX.round.int, majorY.round.int)
   elif T is SomeFloat:
     let 
-      xs: float = xSpace.float / stpScale
-      ys: float = ySpace.float / stpScale
+      minorX: float = xSpace.float / stpScale
+      minorY: float = ySpace.float / stpScale
     case scale
     of Tiny:
-      (xs, ys) * (1.0 / vp.zctrl.base.float)
+      (minorX, minorY) * (1.0 / vp.zctrl.base.float)
     of Minor:
-      (xs, ys)
+      (minorX, minorY)
     of Major:
-      (xs, ys) * vp.zctrl.base.float
+      (minorX, minorY) * vp.zctrl.base.float
 
 proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: ViewPort, scale: Scale): T =
   # Round to nearest minor grid point
