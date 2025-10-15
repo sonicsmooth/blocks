@@ -9,14 +9,14 @@ import wNim/wTypes
 type
   Scale* = enum Tiny, Minor, Major
   Grid* = object
-    xSpace*: WType = 50
-    ySpace*: WType = 50
+    xSpace*: WType = 10
+    ySpace*: WType = 10
     visible*: bool = true
     originVisible*: bool = true
 
 const
   alphaOffset = 20 
-  stepAlphas = arange(20 .. 255, alphaOffset).toSeq
+  stepAlphas = arange(60 .. 255, alphaOffset).toSeq
 proc lineAlpha(step: int): int =
   let idx = max(0, step - alphaOffset)
   if idx < stepAlphas.len:
@@ -46,31 +46,25 @@ proc minDelta*[T](grid: Grid, vp: ViewPort, scale: Scale): tuple[x,y: T] =
       let
         tinyX: float = max(minorX / vp.zctrl.base.float, 1.0)
         tinyY: float = max(minorY / vp.zctrl.base.float, 1.0)
-        # Check that we have whole numbers
-      assert tinyX.round.int == tinyX.int, "Delta not integer"
-      assert tinyY.round.int == tinyY.int, "Delta not integer"
-      assert tinyX.int > 0, "Delta not positive"
-      assert tinyY.int > 0, "Delta not positive"
-      (tinyX.int, tinyY.int)
+      (tinyX.round.int, tinyY.round.int)
     of Minor:
-      assert minorX.round.int == minorX.int, "Delta not integer"
-      assert minorY.round.int == minorY.int, "Delta not integer"
-      assert minorX.int > 0, "Delta not positive"
-      assert minorY.int > 0, "Delta not positive"
-      (minorX.int, minorY.int)
+      (minorX.round.int, minorY.round.int)
     of Major:
       let
         majorX: float = minorX * vp.zctrl.base.float
         majorY: float = minorY * vp.zctrl.base.float
-      # Check that we have whole numbers
-      assert majorX.round.int == majorX.int, "Delta not integer"
-      assert majorY.round.int == majorY.int, "Delta not integer"
-      assert majorX.int > 0, "Delta not positive"
-      assert majorY.int > 0, "Delta not positive"
-      (majorX.int, majorY.int)
+      (majorX.round.int, majorY.round.int)
   elif T is SomeFloat:
-    (baseScale.float * xSpace.float / stpScale, 
-     baseScale.float * ySpace.float / stpScale)
+    let 
+      xs: float = xSpace.float / stpScale
+      ys: float = ySpace.float / stpScale
+    case scale
+    of Tiny:
+      (xs, ys) * (1.0 / vp.zctrl.base.float)
+    of Minor:
+      (xs, ys)
+    of Major:
+      (xs, ys) * vp.zctrl.base.float
 
 proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: ViewPort, scale: Scale): T =
   # Round to nearest minor grid point

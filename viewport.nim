@@ -7,17 +7,17 @@ export world
 type
   ViewPort* = object
     pan*: PxPoint = (0, 0)
-    zClicks*: int # counts wheel zClicks; there are div zClicks between levels
-    rawZoom*: float # zoom before density applied
-    zoom*: float # final zoom value after density
-    zctrl*: ZoomCtrl
+    zClicks*: int   = 0 # counts wheel zClicks; there are div zClicks between levels
+    rawZoom*: float = 1.0 # zoom before density applied
+    zoom*:    float = 1.0 # final zoom value after density
+    zctrl*:   ZoomCtrl
 
   ZoomCtrl = object
-    base*: int = 5 # Eventually this becomes the small grid size
-    clickDiv*: int = 2400 # how many zClicks for every power of zoomBase (log)
-    maxPwr: int = 5 # maximum rawZoom is zoomBase ^ maxPwr
-    density*: float = 5.0 # scales entire image without affecting grid
-    logStep*: int # each log controls the big and small grid
+    base*:     int   = 5 # Eventually this becomes the small grid size
+    clickDiv*: int   = 2400 # how many zClicks for every power of zoomBase (log)
+    maxPwr:    int   = 5 # maximum rawZoom is zoomBase ^ maxPwr
+    density*:  float = 1.0 # scales entire image without affecting grid
+    logStep*:  int   = 0 # each log controls the big and small grid
 
 
 proc doPan*(vp: var ViewPort, delta: PxPoint) = 
@@ -31,7 +31,7 @@ proc doZoom*(vp: var ViewPort, delta: int) =
   vp.zClicks = clamp(vp.zClicks + delta, -maxzClicks, maxzClicks)
   vp.rawZoom = pow(vp.zctrl.base.float, vp.zClicks / vp.zctrl.clickDiv )
   vp.zoom = vp.rawZoom * vp.zctrl.density
-  vp.zctrl.logStep = (vp.zClicks / vp.zctrl.clickDiv).floor.int + 1
+  vp.zctrl.logStep = (vp.zClicks / vp.zctrl.clickDiv).floor.int
 
 
 proc doAdaptivePan*(vp1, vp2: ViewPort, mousePos: PxPoint): PxPoint =
