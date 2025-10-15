@@ -41,7 +41,6 @@ proc `[]`*(table: RectTable, idxs: openArray[CompID]): seq[rects.DBComp] =
 proc add*(table: RectTable, rect: rects.DBComp) =
   table[rect.id] = rect
 
-
 proc selected*(table: RectTable): seq[CompID] =
   for id, rect in table:
     if rect.selected:
