@@ -62,6 +62,10 @@ const
      (key: wKey_Up,     ctrl: false, shift: false, alt: false): CmdMove,
      (key: wKey_Right,  ctrl: false, shift: false, alt: false): CmdMove,
      (key: wKey_Down,   ctrl: false, shift: false, alt: false): CmdMove,
+     (key: wKey_Left,   ctrl: false, shift: true,  alt: false): CmdMove,
+     (key: wKey_Up,     ctrl: false, shift: true,  alt: false): CmdMove,
+     (key: wKey_Right,  ctrl: false, shift: true,  alt: false): CmdMove,
+     (key: wKey_Down,   ctrl: false, shift: true,  alt: false): CmdMove,
      (key: wKey_Delete, ctrl: false, shift: false, alt: false): CmdDelete,
      (key: wKey_Space,  ctrl: false, shift: false, alt: false): CmdRotateCCW,
      (key: wKey_Space,  ctrl: false, shift: true,  alt: false): CmdRotateCW,
@@ -268,7 +272,11 @@ wClass(wBlockPanel of wSDLPanel):
       escape()
     of CmdMove:
       let
-        md: WPoint = minDelta[WType](self.mGrid, self.mViewPort, scale=Minor)
+        md: WPoint = 
+          if event.shiftDown:
+            minDelta[WType](self.mGrid, self.mViewPort, scale=Tiny)
+          else:
+            minDelta[WType](self.mGrid, self.mViewPort, scale=Minor)
         moveby: WPoint = md .* moveTable[event.keyCode]
       self.moveRectsBy(sel, moveBy)
       resetBox()
@@ -419,13 +427,11 @@ wClass(wBlockPanel of wSDLPanel):
       let sel = gdb.selected()
       case event.getEventType
       of wEvent_MouseMove:
+        # TODO: maybe implement shift-move to snap to Tiny
         let 
           lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=Minor)
           newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=Minor)
           delta: WPoint = newSnap - lastSnap
-        # if delta.x > 0 or delta.y > 0:
-        #   echo ""
-        #   dump delta
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
           self.moveRectsBy(sel, delta)
