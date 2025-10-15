@@ -3,7 +3,7 @@ import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 import mainpanel, userMessages
 import viewport
-from db import QTY
+#from db import QTY
 export mainpanel
 
 
@@ -55,7 +55,7 @@ wClass(wMainFrame of wFrame):
     wFrame(self).init(title="Blocks Frame")
     
     # Create controls
-    self.mMainPanel   = MainPanel(self, QTY)
+    self.mMainPanel   = MainPanel(self)
     self.mMenuBar     = MenuBar(self)
     self.mMenuFile    = Menu(self.mMenuBar, "&File")
     self.mStatusBar   = StatusBar(self)

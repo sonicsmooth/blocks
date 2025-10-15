@@ -2,7 +2,7 @@ import std/[algorithm, locks, math, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
 import wNim
 import winim
-import anneal, compact, concurrent, db
+import anneal, appopts, compact, concurrent, db
 import stack, userMessages, utils, blockpanel, world
 export blockpanel
 
@@ -249,11 +249,13 @@ wClass(wMainPanel of wPanel):
       gAnnealComms[idx].ackChan.send(ackCnt)
     inc ackCnt
 
-  proc init*(self: wMainPanel, parent: wWindow, initialRectQty: int) =
+  proc init*(self: wMainPanel, parent: wWindow) =
     wPanel(self).init(parent)
 
+    let rectQty = gAppOpts.compQty
+
     # Create controls
-    self.mSpnr      = SpinCtrl(self, id=wCommandID(1), value=initialRectQty, style=wAlignRight)
+    self.mSpnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
     self.mTxt       = StaticText(self, label="Qty", style=wSpRight)
     self.mBox1      = StaticBox(self, label="Strat and func")
     #self.mBox2      = StaticBox(self, label="Anneal Perturb Func")
