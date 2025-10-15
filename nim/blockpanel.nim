@@ -4,7 +4,7 @@ import wNim
 import winim except PRECT, Color
 import sdl2
 import rects, recttable, sdlframes, db, viewport, grid, pointmath
-import userMessages, utils
+import userMessages, utils, appopts
 import render
 
 # TODO: update qty when spinner text loses focus
@@ -238,9 +238,13 @@ wClass(wBlockPanel of wSDLPanel):
   proc evaluateHovering(self: wBlockPanel, event: wEvent): bool {.discardable.} =
     # clear and set hovering
     # Return true if something changed
-    let cleared = gDb.clearRectHovering()
-    let newset = gDb.setRectHovering(gDb.ptInRects(event.mousePos, self.mViewPort))
-    len(cleared) > 0 or len(newset) > 0
+    if gAppOpts.enableHover:
+      let
+        cleared = gDb.clearRectHovering()
+        newset = gDb.setRectHovering(gDb.ptInRects(event.mousePos, self.mViewPort))
+      len(cleared) > 0 or len(newset) > 0
+    else:
+      false
   proc processKeyDown(self: wBlockPanel, event: wEvent) =
     # event must not be a modifier key
     proc resetBox() =
@@ -387,12 +391,11 @@ wClass(wBlockPanel of wSDLPanel):
     of StateNone:
       case event.getEventType
       of wEvent_MouseMove:
-        when not defined(noHover):
-          if self.mMouseData.pzState == PZStateNone:
-            if self.evaluateHovering(event):
-              self.refresh(false)
-          else:
-            discard
+        if self.mMouseData.pzState == PZStateNone:
+          if self.evaluateHovering(event):
+            self.refresh(false)
+        else:
+          discard
       of wEvent_LeftDown:
         SetFocus(self.mHwnd) # Selects region so it captures keyboard
         self.mMouseData.clickPos = event.mousePos
