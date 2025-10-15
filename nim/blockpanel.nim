@@ -125,6 +125,9 @@ wClass(wBlockPanel of wSDLPanel):
       let 
         prect = rect.bbox.toPRect(vp)
         cprect = self.clampRectSize(prect)
+      if cprect.w == 0 or cprect.h == 0:
+        return nil
+      let
         surface = createRGBSurface(0, cprect.w, cprect.h, 32, rmask, gmask, bmask, amask)
         swRenderer = createSoftwareRenderer(surface)
       swRenderer.renderDBComp(vp, rect, cprect, zero=true)
@@ -148,8 +151,8 @@ wClass(wBlockPanel of wSDLPanel):
       componentsVisible.add(rect)
       let pTexture: TexturePtr = self.getFromTextureCache(rect.id)
       if pTexture.isNil:
-        raise newException(ValueError, &"Texture pointer is nil from getFromTextureCache: {getError()}")
-      dstRect = rect.bbox.toPRect(vp)
+        echo "pTexture is nil"
+        dstRect = rect.bbox.toPRect(vp)
       self.sdlRenderer.copy(pTexture, nil, addr dstRect)
   
   proc renderToScreen(self: wBlockPanel) =
@@ -506,7 +509,7 @@ Rendering options for SDL and pixie
 
     # Draw various boxes and text, then done
     self.updateDestinationBox()
-    self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), DarkOrchid)
+    # self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), DarkOrchid)
     self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
@@ -535,7 +538,8 @@ Rendering options for SDL and pixie
     self.mGrid.ySpace = 10
     self.mGrid.visible = true
     self.mGrid.originVisible = true
-    self.mViewPort.doZoom(-2401)
+    self.mViewPort.doZoom(0)
+    self.mViewPort.zctrl.density = 1.0
     self.mViewPort.pan = (400, 400)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
