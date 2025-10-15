@@ -4,21 +4,6 @@ import wNim/[wTypes]
 import rects, colors
 export rects, tables
 
-# TODO: Find a way to partition blocks into different regions
-# TODO: Each region has a list of the blocks that are in it
-# TODO: Each region is maybe split into further regions.
-# TODO: The idea is that you can find a block in O(log(n)) time
-# TODO: rather than O(n) time, when searching by x,y coordinate
-# TODO: This is maybe where a proper database comes into play.
-# if leftedge in set_11_00
-#    if leftedge in set_10_00
-#      do stuff
-#    else # in set_01_00
-# else # in set_00_11
-#    if leftedge in set_00_10:
-#      do stuff
-#    else # in set_00_01:
-#      do stuff
 
 # TODO: Migrate move, rotate, etc., to this module
 # TODO: instead of doing them individually where needed
@@ -34,7 +19,7 @@ type
   SomeComps* = RectTable | seq[(CompID, DBComp)]
 
 const
-  QTY* = 200
+  QTY* = 20
   
 var
   componentsVisible*: seq[DBComp]

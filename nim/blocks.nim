@@ -3,6 +3,9 @@ import wNim/[wApp, wWindow, wUtils]
 import mainframe, sdlframes, db
 import concurrent, anneal
 
+# TODO: options for text, hover, qty, bbox, dstrect, testrect
+# TODO: buttons for above
+
 
 when compileOption("profiler"):
   echo "profiling"
