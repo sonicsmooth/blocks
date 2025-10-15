@@ -185,7 +185,7 @@ proc `==`*(a, b: DBComp): bool =
 proc pos*(comp: DBComp): WPoint = (comp.x, comp.y)
 # proc invalidateBbox*(comp: DBComp) = 
 #   comp.mBbox = (0,0,0,0)
-proc bbox*(rect: DBComp, rot: bool=true): WRect  =
+proc bbox*(rect: DBComp, rot: bool=true): WRect {.inline.} =
   # Conversion from DBComp to WRect.
   # This is basis of upper/lower/left/right/edge/bounding box functions
   # Looks at rotation, then returns barebones rectangle x,y,w,h with

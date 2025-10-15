@@ -514,9 +514,11 @@ Rendering options for SDL and pixie
 
     # Draw various boxes and text, then done
     self.updateDestinationBox()
-    # self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), DarkOrchid)
-    # self.updateBoundingBox()
-    # self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
+    if gAppOpts.enableDstRect:
+      self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), DarkOrchid)
+    if gAppOpts.enableBbox:
+      self.updateBoundingBox()
+      self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
                                       penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
