@@ -162,6 +162,18 @@ proc `$`*(rect: DBComp): string =
   for k, val in rect[].fieldPairs:
     strs.add(k & ": " & $val)
   result = strs.join(", ")
+# proc `x`*(comp: DBComp): WType = 
+#   echo "x getter"
+#   comp.x
+# proc `x=`*(comp: var DBComp, val: WType) = 
+#   echo "x setter"
+#   comp.x = val
+# proc `y`*(comp: DBComp): WType = comp.y
+# proc `y=`*(comp: var DBComp, val: WType) = comp.y = val
+# proc `w`*(comp: DBComp): WType = comp.w
+# proc `w=`*(comp: var DBComp, val: WType) = comp.w = val
+# proc `h`*(comp: DBComp): WType = comp.h
+# proc `h=`*(comp: var DBComp, val: WType) = comp.h = val
 proc `==`*(a, b: DBComp): bool =
   # Don't include id, just position, size and rotation
   a.x == b.x and
@@ -171,8 +183,8 @@ proc `==`*(a, b: DBComp): bool =
   a.origin == b.origin and
   a.rot == b.rot
 proc pos*(comp: DBComp): WPoint = (comp.x, comp.y)
-proc invalidateBbox(comp: DBComp) = 
-  comp.mBbox = (0,0,0,0)
+# proc invalidateBbox*(comp: DBComp) = 
+#   comp.mBbox = (0,0,0,0)
 proc bbox*(rect: DBComp, rot: bool=true): WRect  =
   # Conversion from DBComp to WRect.
   # This is basis of upper/lower/left/right/edge/bounding box functions
@@ -180,33 +192,32 @@ proc bbox*(rect: DBComp, rot: bool=true): WRect  =
   # lowerleft origin in world space.
   # TODO: Use rotation/translation matrix with shortcuts for 0/90/180/270
   # TODO: cache or memoize WRect either in DBComp or in some other table
-  if rect.mBbox.w == 0 or rect.mBbox.h == 0:
-    let
-      (w, h)   = (rect.w, rect.h)
-      (x, y)   = (rect.x, rect.y)
-      (ox, oy) = (rect.origin.x, rect.origin.y)
-    var outx, outy, outw, outh: WType
-    if rect.rot == R0 or rot == false:
-      outx = x - ox
-      outy = y - oy
-      outw = w
-      outh = h
-    elif rect.rot == R90:
-      outx = x + oy - h
-      outy = y - ox
-      outw = h
-      outh = w
-    elif rect.rot == R180:
-      outx = x + ox - w
-      outy = y + oy - h
-      outw = w
-      outh = h
-    elif rect.rot == R270:
-      outx = x - oy
-      outy = y + ox - w
-      outw = h
-      outh = w
-    rect.mBbox = (outx, outy, outw, outh)
+  let
+    (w, h)   = (rect.w, rect.h)
+    (x, y)   = (rect.x, rect.y)
+    (ox, oy) = (rect.origin.x, rect.origin.y)
+  var outx, outy, outw, outh: WType
+  if rect.rot == R0 or rot == false:
+    outx = x - ox
+    outy = y - oy
+    outw = w
+    outh = h
+  elif rect.rot == R90:
+    outx = x + oy - h
+    outy = y - ox
+    outw = h
+    outh = w
+  elif rect.rot == R180:
+    outx = x + ox - w
+    outy = y + oy - h
+    outw = w
+    outh = h
+  elif rect.rot == R270:
+    outx = x - oy
+    outy = y + ox - w
+    outw = h
+    outh = w
+  rect.mBbox = (outx, outy, outw, outh)
   rect.mBbox
 proc bboxes*[T:DBComp](rects: openArray[T]): seq[WRect] =
   for rect in rects:
@@ -248,11 +259,9 @@ proc ids*(rects: openArray[DBComp]): seq[CompID] =
 proc moveRectBy*(rect: DBComp, delta: WPoint) =
   rect.x += delta.x
   rect.y += delta.y
-  rect.invalidateBbox()
 proc moveRectTo*(rect: DBComp, pos: WPoint) = 
   rect.x = pos.x
   rect.y = pos.y
-  rect.invalidateBbox()
 proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp = 
   # Creat a DBComp with random position, size, color
   var rw: WType
@@ -288,7 +297,6 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
 proc rotate*(rect: DBComp, amt: Rotation) =
   # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
-  rect.invalidateBbox()
 proc rotate*(rect: DBComp, orient: Orientation) =
   # Rotate to either 0 or 90 based on aspect ratio and 
   # given orientation
@@ -298,7 +306,6 @@ proc rotate*(rect: DBComp, orient: Orientation) =
   else:
     if orient == Horizontal: rect.rot = R90
     else: rect.rot = R0
-  rect.invalidateBbox()
 
 # Procs for rects
 proc pos*(rect: SomeRect): auto  = (x: rect.x, y: rect.y)

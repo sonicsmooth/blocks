@@ -1,7 +1,7 @@
 import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
-import rects, colors
+import rects, colors, appopts
 export rects, tables
 
 
@@ -18,8 +18,8 @@ type
   PosTable* = Table[CompID, PosRot] # meant to have value semantics
   SomeComps* = RectTable | seq[(CompID, DBComp)]
 
-const
-  QTY* = 20
+# const
+#   QTY* = 20
   
 var
   componentsVisible*: seq[DBComp]
@@ -122,7 +122,8 @@ proc rectInRects*(table: RectTable, compId: CompID): seq[CompID] =
 
 proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
-  when defined(testRects):
+  #when defined(testRects):
+  if qty == 1:
     table[ 1] = DBComp(id:  1, x: 0, y:  0, w: 52, h: 102, origin: (0, 0), rot: R0, selected: false, penColor: Red, fillColor: Lavender)
     # table[ 2] = DBComp(id:  2, x: 1, y: 10, w: 5, h: 5, origin: (1, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
     # table[ 3] = DBComp(id:  3, x: 2, y: 20, w: 5, h: 5, origin: (2, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
