@@ -71,8 +71,8 @@ const
   MaxTemp = 100.0
   MinTemp = 0.0
   TempStep = 1.0
-  MinProb = 0.1   # low end of probability distribution function
-  MaxProb = 10.0  # high end of probability distribution function
+  # MinProb = 0.1   # low end of probability distribution function
+  # MaxProb = 10.0  # high end of probability distribution function
 
 var
   gAnnealComms*: array[numThreads, AnnealComm]
