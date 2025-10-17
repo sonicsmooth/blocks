@@ -432,8 +432,9 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         # TODO: maybe implement shift-move to snap to Tiny
         let 
-          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=Minor)
-          newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=Minor)
+          scale = if self.mGrid.visible: Minor else: None
+          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=scale)
+          newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=scale)
           delta: WPoint = newSnap - lastSnap
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
@@ -443,7 +444,7 @@ wClass(wBlockPanel of wSDLPanel):
           #   let newPos = self.mGrid.snap(gDb[id].pos + delta)
           #   self.moveRectTo(id, newPos)
         else: # Snap pos to nearest grid point
-          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, vp, scale=Minor)
+          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, vp, scale=scale)
           self.moveRectTo(hitid, newPos)
         self.mMouseData.lastPos = event.mousePos
         self.refresh(false)

@@ -1,4 +1,4 @@
-import std/[strformat]
+import std/[strformat, tables]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 import mainpanel, userMessages
@@ -10,39 +10,45 @@ type
   wMainFrame* = ref object of wFrame
     mMainPanel*: wMainPanel
     #mMenuBar: wMenuBar
+    #mStatusBar: wStatusBar
     mToolBar: wToolBar
   MenuID = enum
-    idTool1 = wIdUser, idGridShow, idGridSetting, idNew, idOpen, idClose, idExit, idHelp, idAbout
+    idTool1 = wIdUser, idGridShow, idGridSetting, idNew, idOpen, idSave, idClose, idExit, idHelp, idAbout
 
-
-# const resource1 = staticRead(r"images/1.png")
-# const resource2 = staticRead(r"images/2.png")
-# const resource3 = staticRead(r"images/3.png")
-# const resource4 = staticRead(r"images/4.png")
-# const resource5 = staticRead(r"images/5.png")
-
-# let img1 = Image(resource1).scale(36, 36)
-# let img2 = Image(resource2).scale(36, 36)
-# let img3 = Image(resource3).scale(36, 36)
-# let img4 = Image(resource4).scale(36, 36)
-# let img5 = Image(resource5).scale(36, 36)
 
 
 const
   pth = r"icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
   res = [staticRead(pth & r"New document.bmp"),
          staticRead(pth & r"Folder.bmp"),
+         staticRead(pth & r"Save.bmp"),
          staticRead(pth & r"Close.bmp"),
          staticRead(pth & r"Exit.bmp"),
          staticRead(pth & r"Info.bmp"),
          staticRead(pth & r"Help book.bmp"),
          staticRead(r"icons/grid.bmp"),
          staticRead(r"icons/gridgears.bmp")]
-var gBMPs64: seq[wBitmap]
-var gBMPs32: seq[wBitmap]
-for i in res:
-  gBMPs64.add(Bitmap(Image(i).scale(64, 64)))
-  gBMPs32.add(Bitmap(Image(i).scale(32, 32)))
+let
+  bmpNewSm    = Bitmap(Image(res[0]).scale(16, 16))
+  bmpOpenSm   = Bitmap(Image(res[1]).scale(16, 16))
+  bmpSaveSm   = Bitmap(Image(res[2]).scale(16, 16))
+  bmpCloseSm  = Bitmap(Image(res[3]).scale(16, 16))
+  bmpExitSm   = Bitmap(Image(res[4]).scale(16, 16))
+  bmpInfoSm   = Bitmap(Image(res[5]).scale(16, 16))
+  bmpHelpSm   = Bitmap(Image(res[6]).scale(16, 16))
+  bmpGridSm   = Bitmap(Image(res[7]).scale(16, 16))
+  bmpGearsSm  = Bitmap(Image(res[8]).scale(16, 16))
+
+  bmpNewBg    = Bitmap(Image(res[0]).scale(32, 32))
+  bmpOpenBg   = Bitmap(Image(res[1]).scale(32, 32))
+  bmpSaveBg   = Bitmap(Image(res[2]).scale(32, 32))
+  bmpCloseBg  = Bitmap(Image(res[3]).scale(32, 32))
+  bmpExitBg   = Bitmap(Image(res[4]).scale(32, 32))
+  bmpInfoBg   = Bitmap(Image(res[5]).scale(32, 32))
+  bmpHelpBg   = Bitmap(Image(res[6]).scale(32, 32))
+  bmpGridBg   = Bitmap(Image(res[7]).scale(32, 32))
+  bmpGearsBg  = Bitmap(Image(res[8]).scale(32, 32))
+
 
 
 wClass(wMainFrame of wFrame):
@@ -76,6 +82,25 @@ wClass(wMainFrame of wFrame):
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
 
+  proc onToolEvent(self: wMainFrame, event: wEvent) =
+    let evtStr = $MenuID(event.id)
+    case event.id
+    of idNew: stdout.write("new")
+    of idOpen: stdout.write("open")
+    of idSave: stdout.write("save")
+    of idClose: self.delete()
+    of idExit: self.delete()
+    of idHelp: stdout.write("help")
+    of idAbout: stdout.write("about")
+    of idGridShow:
+      stdout.write("grid show: ")
+      echo self.mToolBar.toolState(idGridShow)
+      self.mMainPanel.mBlockPanel.mGrid.visible = self.mToolBar.toolState(idGridShow)
+      self.mMainPanel.mBlockPanel.refresh(false)
+    of idGridSetting: stdout.write("grid setting")
+    else: stdout.write("default")
+    echo evtStr
+
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()
@@ -87,23 +112,27 @@ wClass(wMainFrame of wFrame):
     # img1 = Image(resource1).scale(sz, sz)
     # img2 = Image(resource2).scale(sz, sz)
     result = ToolBar(self,style=wTbFlat)
+    result.addTool(idNew, "", bmpNewBg, "New", "New")
+    result.addTool(idOpen, "", bmpOpenBg, "Open", "Open")
+    result.addTool(idSave, "", bmpSaveBg, "Save", "Save")
     result.addSeparator()
-    result.addCheckTool(idGridShow, "", gBMPs64[6], "Toggle grid", "Toggle grid")
+    result.addCheckTool(idGridShow, "", bmpGridBg, "Toggle grid", "Toggle grid")
+    result.addTool(idGridSetting, "", bmpGearsBg, "Grid settings", "Grid settings")
     result.addSeparator()
-    result.addTool(idGridSetting, "", gBMPs64[7], "Grid settings", "Grid settings")
-    result.addSeparator()
+    result.addTool(idClose, "", bmpCloseBg, "Close", "Close")
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     var menu1 = Menu()
     var menu2 = Menu()
     result = MenuBar(self)
-    menu1.append(idNew, "New", bitmap=gBMPs32[0])
-    menu1.append(idOpen, "Open", bitmap=gBMPs32[1])
-    menu1.append(idClose, "Close", bitmap=gBMPs32[2])
+    menu1.append(idNew, "New", bitmap=bmpNewSm)
+    menu1.append(idOpen, "Open", bitmap=bmpOpenSm)
+    menu1.append(idSave, "Save", bitmap=bmpSaveSm)
+    menu1.append(idClose, "Close", bitmap=bmpCloseSm)
     menu1.appendSeparator()
-    menu1.append(idExit, "Exit", bitmap=gBMPs32[3])
-    menu2.append(idAbout, "About", bitmap=gBMPs32[4])
-    menu2.append(idHelp, "Help", bitmap=gBMPs32[5])
+    menu1.append(idExit, "Exit", bitmap=bmpExitSm)
+    menu2.append(idAbout, "About", bitmap=bmpInfoSm)
+    menu2.append(idHelp, "Help", bitmap=bmpHelpSm)
     result.append(menu1, "File")
     result.append(menu2, "Help")
 
@@ -127,6 +156,7 @@ wClass(wMainFrame of wFrame):
     self.size = (newWidth, newHeight)
     self.mStatusBar.setStatusWidths([-1, -1, 600])
     self.mToolBar.backgroundColor = self.mMainPanel.backgroundColor * 19 / 20
+    self.mToolBar.toggleTool(idGridShow)
     
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
@@ -138,6 +168,7 @@ wClass(wMainFrame of wFrame):
 
     # # Connect Events
     self.wEvent_Size     do (event: wEvent): self.onResize(event)
+    self.wEvent_tool     do (event: wEvent): self.onToolEvent(event)
     self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
     self.USER_MOUSE_MOVE do (event: wEvent): self.onUserMouseNotify(event)
     self.USER_SLIDER     do (event: wEvent): self.onUserSliderNotify(event)
