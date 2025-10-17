@@ -7,7 +7,7 @@ import wNim/wTypes
 
 
 type
-  Scale* = enum Tiny, Minor, Major
+  Scale* = enum None, Tiny, Minor, Major
   Grid* = object
     xSpace*: WType = 10
     ySpace*: WType = 10
@@ -42,6 +42,8 @@ proc minDelta*[T](grid: Grid, vp: ViewPort, scale: Scale): tuple[x,y: T] =
     let minorX: float = max(xSpace / stpScale, 1.0)
     let minorY: float = max(ySpace / stpScale, 1.0)
     case scale
+    of None:
+      (1, 1)
     of Tiny: 
       let
         tinyX: float = max(minorX / vp.zctrl.base.float, 1.0)
@@ -59,6 +61,8 @@ proc minDelta*[T](grid: Grid, vp: ViewPort, scale: Scale): tuple[x,y: T] =
       minorX: float = xSpace.float / stpScale
       minorY: float = ySpace.float / stpScale
     case scale
+    of None:
+      (0.0, 0.0)
     of Tiny:
       (minorX, minorY) * (1.0 / vp.zctrl.base.float)
     of Minor:
@@ -71,8 +75,12 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: ViewPort, scale: Sc
   # Returns same type of point as is passed in.
   # If this is a WPoint, and that is integer-based, then
   # rounding will occur in implicit conversion
+  let md = minDelta[WType](grid, vp, scale)
+  when WType is SomeFloat:
+    if md == (0.0, 0.0): return pt
+  elif WType is Someinteger:
+    if md == (1, 1): return pt
   let
-    md = minDelta[WType](grid, vp, scale)
     xcnt:  float = (pt[0] / md.x).round
     ycnt:  float = (pt[1] / md.y).round
     xsnap: float = xcnt * md.x.float
