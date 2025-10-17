@@ -124,7 +124,7 @@ proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
     lines = txt.splitLines
     maxLine = longestLine(lines)
 
-  discard sizeText(fnt, maxLine, addr txtSzW, addr txtSzH)
+  discard sizeText(fnt, maxLine.cstring, addr txtSzW, addr txtSzH)
   txtSzH *= lines.len
   let dstRect: PRect = (sz.x - txtSzW - marg, 
                         sz.y - txtSzH - marg, 
