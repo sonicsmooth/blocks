@@ -2,6 +2,7 @@ import std/[strformat, tables]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 import mainpanel, userMessages
+import aboutframe
 import viewport
 export mainpanel
 
@@ -52,6 +53,8 @@ let
 
 
 wClass(wMainFrame of wFrame):
+  proc showHelpWindow(self: wMainFrame)
+
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = 
       (event.size.width, 
@@ -91,9 +94,9 @@ wClass(wMainFrame of wFrame):
     of idClose: self.delete()
     of idExit: self.delete()
     of idHelp: stdout.write("help")
-    of idAbout: stdout.write("about")
+    of idAbout:
+      self.showHelpWindow()
     of idGridShow:
-      stdout.write("grid show: ")
       echo self.mToolBar.toolState(idGridShow)
       self.mMainPanel.mBlockPanel.mGrid.visible = self.mToolBar.toolState(idGridShow)
       self.mMainPanel.mBlockPanel.refresh(false)
@@ -101,6 +104,11 @@ wClass(wMainFrame of wFrame):
     else: stdout.write("default")
     echo evtStr
 
+  proc showHelpWindow(self: wMainFrame) =
+    let f = AboutFrame(self)
+    f.show()
+
+  
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()
