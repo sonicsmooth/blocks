@@ -2,7 +2,7 @@ import std/[strformat, tables]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 import mainpanel, userMessages
-import aboutframe
+import aboutframe, gridctrlpanel
 import viewport
 export mainpanel
 
@@ -13,12 +13,16 @@ type
     #mMenuBar: wMenuBar
     #mStatusBar: wStatusBar
     mToolBar: wToolBar
+    #mReBar: wReBar
   MenuID = enum
     idTool1 = wIdUser, idGridShow, idGridSetting, idNew, idOpen, idSave, idClose, idExit, idHelp, idAbout
-
+  BandID = enum
+    idFileBand, idGridBand, idCloseBand
 
 
 const
+  small = 16
+  big = 32
   pth = r"icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
   res = [staticRead(pth & r"New document.bmp"),
          staticRead(pth & r"Folder.bmp"),
@@ -27,28 +31,39 @@ const
          staticRead(pth & r"Exit.bmp"),
          staticRead(pth & r"Info.bmp"),
          staticRead(pth & r"Help book.bmp"),
+         staticRead(pth & r"Add.bmp"),
          staticRead(r"icons/grid.bmp"),
          staticRead(r"icons/gridgears.bmp")]
 let
-  bmpNewSm    = Bitmap(Image(res[0]).scale(16, 16))
-  bmpOpenSm   = Bitmap(Image(res[1]).scale(16, 16))
-  bmpSaveSm   = Bitmap(Image(res[2]).scale(16, 16))
-  bmpCloseSm  = Bitmap(Image(res[3]).scale(16, 16))
-  bmpExitSm   = Bitmap(Image(res[4]).scale(16, 16))
-  bmpInfoSm   = Bitmap(Image(res[5]).scale(16, 16))
-  bmpHelpSm   = Bitmap(Image(res[6]).scale(16, 16))
-  bmpGridSm   = Bitmap(Image(res[7]).scale(16, 16))
-  bmpGearsSm  = Bitmap(Image(res[8]).scale(16, 16))
+  imgLstSm = ImageList(small, small)
+  imgLstBg = ImageList(big, big)
 
-  bmpNewBg    = Bitmap(Image(res[0]).scale(32, 32))
-  bmpOpenBg   = Bitmap(Image(res[1]).scale(32, 32))
-  bmpSaveBg   = Bitmap(Image(res[2]).scale(32, 32))
-  bmpCloseBg  = Bitmap(Image(res[3]).scale(32, 32))
-  bmpExitBg   = Bitmap(Image(res[4]).scale(32, 32))
-  bmpInfoBg   = Bitmap(Image(res[5]).scale(32, 32))
-  bmpHelpBg   = Bitmap(Image(res[6]).scale(32, 32))
-  bmpGridBg   = Bitmap(Image(res[7]).scale(32, 32))
-  bmpGearsBg  = Bitmap(Image(res[8]).scale(32, 32))
+for r in res:
+  imgLstSm.add(Image(r).scale(small, small))
+  imgLstBg.add(Image(r).scale(big, big))
+
+let
+  bmpNewSm    = imgLstSm.getBitmap(0)
+  bmpOpenSm   = imgLstSm.getBitmap(1)
+  bmpSaveSm   = imgLstSm.getBitmap(2)
+  bmpCloseSm  = imgLstSm.getBitmap(3)
+  bmpExitSm   = imgLstSm.getBitmap(4)
+  bmpInfoSm   = imgLstSm.getBitmap(5)
+  bmpHelpSm   = imgLstSm.getBitmap(6)
+  bmpAddSm    = imgLstSm.getBitmap(7)
+  bmpGridSm   = imgLstSm.getBitmap(8)
+  bmpGearsSm  = imgLstSm.getBitmap(9)
+
+  bmpNewBg    = imgLstBg.getBitmap(0)
+  bmpOpenBg   = imgLstBg.getBitmap(1)
+  bmpSaveBg   = imgLstBg.getBitmap(2)
+  bmpCloseBg  = imgLstBg.getBitmap(3)
+  bmpExitBg   = imgLstBg.getBitmap(4)
+  bmpInfoBg   = imgLstBg.getBitmap(5)
+  bmpHelpBg   = imgLstBg.getBitmap(6)
+  bmpAddBg    = imgLstBg.getBitmap(7)
+  bmpGridBg   = imgLstBg.getBitmap(8)
+  bmpGearsBg  = imgLstBg.getBitmap(9)
 
 
 
@@ -59,8 +74,8 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.size = 
       (event.size.width, 
        event.size.height - 
-       self.mStatusBar.size.height -
-       self.mToolBar.size.height)
+       self.mRebar.size.height -
+       self.mStatusBar.size.height)
 
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
     let sz = (LOWORD(event.lParam).WORD, 
@@ -97,9 +112,11 @@ wClass(wMainFrame of wFrame):
     of idAbout:
       self.showHelpWindow()
     of idGridShow:
-      echo self.mToolBar.toolState(idGridShow)
-      self.mMainPanel.mBlockPanel.mGrid.visible = self.mToolBar.toolState(idGridShow)
-      self.mMainPanel.mBlockPanel.refresh(false)
+      discard
+      # echo self.mToolBar.toolState(idGridShow)
+      # let tb = self.mRebar.
+      # self.mMainPanel.mBlockPanel.mGrid.visible = self.mToolBar.toolState(idGridShow)
+      # self.mMainPanel.mBlockPanel.refresh(false)
     of idGridSetting: stdout.write("grid setting")
     else: stdout.write("default")
     echo evtStr
@@ -116,19 +133,6 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.forceRedraw()
     self.mMainPanel.mBlockPanel.forceRedraw()
 
-  proc setupToolBar(self: wMainFrame): wToolBar =
-    # img1 = Image(resource1).scale(sz, sz)
-    # img2 = Image(resource2).scale(sz, sz)
-    result = ToolBar(self,style=wTbFlat)
-    result.addTool(idNew, "", bmpNewBg, "New", "New")
-    result.addTool(idOpen, "", bmpOpenBg, "Open", "Open")
-    result.addTool(idSave, "", bmpSaveBg, "Save", "Save")
-    result.addSeparator()
-    result.addCheckTool(idGridShow, "", bmpGridBg, "Toggle grid", "Toggle grid")
-    result.addTool(idGridSetting, "", bmpGearsBg, "Grid settings", "Grid settings")
-    result.addSeparator()
-    result.addTool(idClose, "", bmpCloseBg, "Close", "Close")
-
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     var menu1 = Menu()
     var menu2 = Menu()
@@ -144,13 +148,43 @@ wClass(wMainFrame of wFrame):
     result.append(menu1, "File")
     result.append(menu2, "Help")
 
+  proc setupReBar(self: wMainFrame): wReBar =
+    # Set up three things in the rebar:
+      # 1. Basic file new/open toolbar
+      # 2. Grid controls panel
+      # 3. Close toolbar
+
+    # 1. Basic file new/open toolbar
+    let rebar = ReBar(self)
+    let tb1 = ToolBar(rebar)
+    rebar.setImageList(imgLstBg)
+    tb1.addTool(idNew, "", bmpNewBg, "New", "New")
+    tb1.addTool(idOpen, "", bmpOpenBg, "Open", "Open")
+    let bid1 = rebar.addBand(tb1)
+    
+    # 2. Grid controls    
+    let gpanel = GridControlPanel(rebar, size=(200, 40))
+    let butt = Button(gpanel, 0, "Click")
+    let bid2 = rebar.addBand(gpanel)
+    
+    # 3. Close
+    let tb3 = ToolBar(rebar)
+    tb3.addTool(idClose, "", bmpCloseBg, "Close", "Close")
+    rebar.addBand()
+    let bid3 = rebar.addBand(tb3)
+    rebar.setBandWidth(bid3, 32)
+    rebar.setBandWidth(bid2, 200)
+    rebar.setBandWidth(bid1, 64)
+
+    return rebar
+
 
   proc init*(self: wMainFrame, newBlockSz: wSize) = 
     wFrame(self).init(title="Blocks Frame")
     
     # Create controls
     self.mMenuBar     = setupMenuBar(self)
-    self.mToolBar     = setupToolBar(self)
+    self.mReBar       = setupRebar(self)
     self.mMainPanel   = MainPanel(self)
     self.mStatusBar   = StatusBar(self)
 
@@ -162,9 +196,9 @@ wClass(wMainFrame of wFrame):
 
     # Do stuff
     self.size = (newWidth, newHeight)
-    self.mStatusBar.setStatusWidths([-1, -1, 600])
-    self.mToolBar.backgroundColor = self.mMainPanel.backgroundColor * 19 / 20
-    self.mToolBar.toggleTool(idGridShow)
+    self.mStatusBar.setStatusWidths([-1, -1, -1])
+    #self.mToolBar.toggleTool(idGridShow)
+    #self.mToolBar.backgroundColor = self.mMainPanel.backgroundColor * 19 / 20
     
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size
