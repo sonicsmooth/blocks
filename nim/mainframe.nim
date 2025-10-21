@@ -12,7 +12,7 @@ type
     mMainPanel*: wMainPanel
     #mMenuBar: wMenuBar
     #mStatusBar: wStatusBar
-    #mToolBar: wToolBar
+    mBandToolBars: seq[wToolBar]
     #mReBar: wReBar
   MenuID = enum
     idTool1 = wIdUser, idGridShow, idGridSetting, idNew, idOpen, idSave, idClose, idExit, idHelp, idAbout
@@ -72,15 +72,9 @@ wClass(wMainFrame of wFrame):
 
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = self.clientSize
-    # self.mMainPanel.size = 
-    #   (event.size.width, 
-    #    event.size.height - 
-    #    self.mRebar.size.height -
-    #    self.mStatusBar.size.height)
 
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
-    let sz = (LOWORD(event.lParam).WORD, 
-              HIWORD(event.lParam).WORD)
+    let sz = (LOWORD(event.lParam).int, HIWORD(event.lParam).int)
     self.mStatusBar.setStatusText($sz, index=1)
 
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
@@ -103,28 +97,27 @@ wClass(wMainFrame of wFrame):
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
     let evtStr = $MenuID(event.id)
+    echo evtStr
     case event.id
-    of idNew: stdout.write("new")
-    of idOpen: stdout.write("open")
-    of idSave: stdout.write("save")
+    of idNew: echo "new"
+    of idOpen: echo "open"
+    of idSave: echo "save"
     of idClose: self.delete()
     of idExit: self.delete()
-    of idHelp: stdout.write("help")
+    of idHelp: echo "help"
     of idAbout:
       self.showHelpWindow()
     of idGridShow:
-      discard
-      # echo self.mToolBar.toolState(idGridShow)
-      # let tb = self.mRebar.
-      # self.mMainPanel.mBlockPanel.mGrid.visible = self.mToolBar.toolState(idGridShow)
-      # self.mMainPanel.mBlockPanel.refresh(false)
+      # We know this comes from the second toolbar in the rebar
+      let state = self.mBandToolbars[1].toolState(idGridShow)
+      self.mMainPanel.mBlockPanel.mGrid.visible = state
+      self.mMainPanel.mBlockPanel.refresh(false)
     of idGridSetting:
       stdout.write("grid setting")
       let f = Frame(self, "Grid Settings", size=(485, 285))
       let p = GridControlPanel(f)
       f.show()
     else: stdout.write("default")
-    echo evtStr
 
   proc showHelpWindow(self: wMainFrame) =
     let f = AboutFrame(self)
@@ -154,40 +147,44 @@ wClass(wMainFrame of wFrame):
     result.append(menu2, "Help")
 
   proc setupReBar(self: wMainFrame): wReBar =
-    # Set up three things in the rebar:
-      # 1. Basic file new/open toolbar
-      # 2. Grid controls panel
-      # 3. Close toolbar
+    # Set up three things in the rebar
+
+    let rebar = ReBar(self)
+    #rebar.setImageList(imgLstBg)
 
     # 1. Basic file new/open toolbar
-    let rebar = ReBar(self)
     let tb1 = ToolBar(rebar)
-    rebar.setImageList(imgLstBg)
-    tb1.addTool(idNew, "", bmpNewBg, "New", "New")
-    tb1.addTool(idOpen, "", bmpOpenBg, "Open", "Open")
-    let bid1 = rebar.addBand(tb1)
+    tb1.addTool(idNew, "New", bmpNewBg)
+    tb1.addTool(idOpen, "Open", bmpOpenBg)
+    tb1.addTool(idSave, "Open", bmpSaveBg)
+    self.mBandToolBars.add(tb1)
     
     # 2. Grid controls    
     let tb2 = ToolBar(rebar)
-    rebar.setImageList(imgLstBg)
-    tb2.addtool(idGridShow, "Grid Show", bmpGridBg, "Show Grid")
-    tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg, "Grid Settings")
-    let bid2 = rebar.addBand(tb2)
+    tb2.addChecktool(idGridShow, "Grid Show", bmpGridBg)
+    tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg)
+    self.mBandToolBars.add(tb2)
     
     # 3. Close
     let tb3 = ToolBar(rebar)
-    tb3.addTool(idClose, "", bmpCloseBg, "Close", "Close")
-    rebar.addBand()
+    tb3.addTool(idClose, "Close", bmpCloseBg)
+    self.mBandToolBars.add(tb3)
+
+    # Put toolbars things in rebar
+    let bid1 = rebar.addBand(tb1)
+    let bid2 = rebar.addBand(tb2)
+    let _    = rebar.addBand()
     let bid3 = rebar.addBand(tb3)
     rebar.setBandWidth(bid3, 32)
     rebar.setBandWidth(bid2, 200)
     rebar.setBandWidth(bid1, 64)
 
+    rebar.disableDrag()
     return rebar
 
 
-  proc init*(self: wMainFrame, newBlockSz: wSize) = 
-    wFrame(self).init(title="Blocks Frame")
+  proc init*(self: wMainFrame, size: wSize) = 
+    wFrame(self).init(title="Blocks Frame", size=size)
     
     # Create controls
     self.mMenuBar     = setupMenuBar(self)
@@ -195,14 +192,7 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel   = MainPanel(self)
     self.mStatusBar   = StatusBar(self)
 
-    let
-      otherWidth  = self.size.width  - self.mMainPanel.mBlockPanel.clientSize.width
-      otherHeight = self.size.height - self.mMainPanel.mBlockPanel.clientSize.height
-      newWidth    = newBlockSz.width  + otherWidth
-      newHeight   = newBlockSz.height + otherHeight + 23
-
     # Do stuff
-    self.size = (newWidth, newHeight)
     self.mStatusBar.setStatusWidths([-1, -1, -1])
     #self.mToolBar.toggleTool(idGridShow)
     #self.mToolBar.backgroundColor = self.mMainPanel.backgroundColor * 19 / 20
@@ -212,12 +202,11 @@ wClass(wMainFrame of wFrame):
     let sldrVal = self.mMainPanel.mSldr.value
     let tmpStr = &"temperature: {sldrVal}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-    self.mStatusBar.setStatusText($newBlockSz, index=1)
     self.mMainPanel.randomizeRectsAll()
 
-    # # Connect Events
+    # Connect Events
     self.wEvent_Size     do (event: wEvent): self.onResize(event)
-    self.wEvent_tool     do (event: wEvent): self.onToolEvent(event)
+    self.wEvent_Tool     do (event: wEvent): self.onToolEvent(event)
     self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
     self.USER_MOUSE_MOVE do (event: wEvent): self.onUserMouseNotify(event)
     self.USER_SLIDER     do (event: wEvent): self.onUserSliderNotify(event)
