@@ -12,7 +12,7 @@ type
     mMainPanel*: wMainPanel
     #mMenuBar: wMenuBar
     #mStatusBar: wStatusBar
-    mToolBar: wToolBar
+    #mToolBar: wToolBar
     #mReBar: wReBar
   MenuID = enum
     idTool1 = wIdUser, idGridShow, idGridSetting, idNew, idOpen, idSave, idClose, idExit, idHelp, idAbout
@@ -71,11 +71,12 @@ wClass(wMainFrame of wFrame):
   proc showHelpWindow(self: wMainFrame)
 
   proc onResize(self: wMainFrame, event: wEvent) =
-    self.mMainPanel.size = 
-      (event.size.width, 
-       event.size.height - 
-       self.mRebar.size.height -
-       self.mStatusBar.size.height)
+    self.mMainPanel.size = self.clientSize
+    # self.mMainPanel.size = 
+    #   (event.size.width, 
+    #    event.size.height - 
+    #    self.mRebar.size.height -
+    #    self.mStatusBar.size.height)
 
   proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
     let sz = (LOWORD(event.lParam).WORD, 
@@ -117,7 +118,11 @@ wClass(wMainFrame of wFrame):
       # let tb = self.mRebar.
       # self.mMainPanel.mBlockPanel.mGrid.visible = self.mToolBar.toolState(idGridShow)
       # self.mMainPanel.mBlockPanel.refresh(false)
-    of idGridSetting: stdout.write("grid setting")
+    of idGridSetting:
+      stdout.write("grid setting")
+      let f = Frame(self, "Grid Settings", size=(485, 285))
+      let p = GridControlPanel(f)
+      f.show()
     else: stdout.write("default")
     echo evtStr
 
@@ -163,9 +168,11 @@ wClass(wMainFrame of wFrame):
     let bid1 = rebar.addBand(tb1)
     
     # 2. Grid controls    
-    let gpanel = GridControlPanel(rebar, size=(200, 40))
-    let butt = Button(gpanel, 0, "Click")
-    let bid2 = rebar.addBand(gpanel)
+    let tb2 = ToolBar(rebar)
+    rebar.setImageList(imgLstBg)
+    tb2.addtool(idGridShow, "Grid Show", bmpGridBg, "Show Grid")
+    tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg, "Grid Settings")
+    let bid2 = rebar.addBand(tb2)
     
     # 3. Close
     let tb3 = ToolBar(rebar)
