@@ -29,7 +29,7 @@ when isMainModule:
     
     # Main data and window
     let app = App()
-    let init_size = (800, 800)
+    let init_size = (1200, 800)
     let frame = MainFrame(init_size)
     
     # Go App!
