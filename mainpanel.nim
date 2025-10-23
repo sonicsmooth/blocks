@@ -9,14 +9,13 @@ export blockpanel
 type
   wMainPanel* = ref object of wPanel
     mBlockPanel*: wBlockPanel
-    mSpnr: wSpinCtrl
-    mTxt:  wStaticText
-    mChk:  wCheckBox
-    mBox1: wStaticBox
-    #mBox2: wStaticBox
-    mCTRb1:     wRadioButton # Compact type radio button
-    mCTRb2:     wRadioButton # Compact type radio button
-    mCTRb3:     wRadioButton # Compact type radio button
+    mSpnr:  wSpinCtrl
+    mTxt:   wStaticText
+    mChk:   wCheckBox
+    mBox1:  wStaticBox
+    mCTRb1: wRadioButton # Compact type radio button
+    mCTRb2: wRadioButton # Compact type radio button
+    mCTRb3: wRadioButton # Compact type radio button
     mAStratRb1: wRadioButton # Anneal strategy radio button
     mAStratRb2: wRadioButton # Anneal strategy radio button
     mAStratRb3: wRadioButton # Anneal strategy radio button
@@ -210,28 +209,20 @@ wClass(wMainPanel of wPanel):
     self.delegate1DButtonCompact(Y, Ascending)
   proc onButtonCompact↑(self: wMainPanel) =
     self.delegate1DButtonCompact(Y, Descending)
-
   proc onButtonCompact←↑(self: wMainPanel) =
     self.delegate2DButtonCompact((X, Y, Ascending, Descending))
-
   proc onButtonCompact←↓(self: wMainPanel) =
     self.delegate2DButtonCompact((X, Y, Ascending, Ascending))
-
   proc onButtonCompact→↑(self: wMainPanel) =
     self.delegate2DButtonCompact((X, Y, Descending, Descending))
-
   proc onButtonCompact→↓(self: wMainPanel) =
     self.delegate2DButtonCompact((X, Y, Descending, Ascending))
-
   proc onButtonCompact↑←(self: wMainPanel) =
     self.delegate2DButtonCompact((Y, X, Descending, Ascending))
-
   proc onButtonCompact↑→(self: wMainPanel) =
     self.delegate2DButtonCompact((Y, X, Descending, Descending))
-
   proc onButtonCompact↓←(self: wMainPanel) =
     self.delegate2DButtonCompact((Y, X, Ascending, Ascending))
-
   proc onButtonCompact↓→(self: wMainPanel) =
     self.delegate2DButtonCompact((Y, X, Ascending, Descending))
 
@@ -258,7 +249,6 @@ wClass(wMainPanel of wPanel):
     self.mSpnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
     self.mTxt       = StaticText(self, label="Qty", style=wSpRight)
     self.mBox1      = StaticBox(self, label="Strat and func")
-    #self.mBox2      = StaticBox(self, label="Anneal Perturb Func")
     self.mCTRb1     = RadioButton(self, label="None", style=wRbGroup)
     self.mCTRb2     = RadioButton(self, label="Anneal")
     self.mCTRb3     = RadioButton(self, label="Stack" )

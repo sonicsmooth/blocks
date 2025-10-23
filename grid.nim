@@ -3,16 +3,20 @@ import sdl2
 import colors
 from arange import arange
 import viewport, pointmath
+import appinit
 import wNim/wTypes
 
 
 type
   Scale* = enum None, Tiny, Minor, Major
+  DotsOrLines* = enum Dots, Lines
   Grid* = object
     xSpace*: WType = 10
     ySpace*: WType = 10
     visible*: bool = true
     originVisible*: bool = true
+    dotsOrLines*: DotsOrLines = Lines
+
 
 const
   alphaOffset = 20 
