@@ -1,0 +1,16 @@
+{
+  "appInits": {
+    "gridSpecs": {
+      "xSpace": "10",
+      "ySpace": 10.5,
+      "visible": true,
+      "dotsOrLines": "lines",
+      "_comment": "dots, lines"
+    },
+    "panelSpecs": {
+      "qty": 20,
+      "compactType": "none",
+      "_comment": "none, anneal, stack"
+    }
+  }
+}

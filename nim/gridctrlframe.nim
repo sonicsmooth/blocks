@@ -1,31 +1,35 @@
 import wNim
+from winim/inc/winbase import MulDiv
 
+# Create a panel to hold some controls,
+# then place it in a frame
 
 type
   CtrlID = enum
     idSpaceX = wIdUser, idSpaceY, idDivisions, idDensity,
     idSnap, idDynamic,
     idVisible, idDots, idLines
-    
-
-  wGridControlPanel* = ref object of wPanel
-    mBox*:         wStaticBox
-    mTxtInterval*: wStaticText
-    mTxtX*:        wStaticText
-    mTxtY*:        wStaticText
-    mTxtBeh*:      wStaticText
-    mTxtDivs*:     wStaticText
-    mTxtDens*:     wStaticText
-    mTxtApp*:      wStaticText
-    mCbSnap*:      wCheckBox
-    mCbVisible*:   wCheckBox
-    mCbDynamic*:   wCheckBox
-    mRbDots*:      wRadioButton
-    mRbLines*:     wRadioButton
-    mSpinSizeX*:   wSpinCtrl 
-    mSpinSizeY*:   wSpinCtrl 
-    mSpinDivs*:    wSpinCtrl
-    mSpinDensity*: wSpinCtrl
+  wGridControlPanel = ref object of wPanel
+    mFirstLayout: bool
+    mBox:         wStaticBox
+    mTxtInterval: wStaticText
+    mTxtX:        wStaticText
+    mTxtY:        wStaticText
+    mTxtBeh:      wStaticText
+    mTxtDivs:     wStaticText
+    mTxtDens:     wStaticText
+    mTxtApp:      wStaticText
+    mCbSnap:      wCheckBox
+    mCbVisible:   wCheckBox
+    mCbDynamic:   wCheckBox
+    mRbDots:      wRadioButton
+    mRbLines:     wRadioButton
+    mSpinSizeX:   wSpinCtrl 
+    mSpinSizeY:   wSpinCtrl 
+    mSpinDivs:    wSpinCtrl
+    mSpinDensity: wSpinCtrl
+  wGridControlFrame* = ref object of wFrame
+    mPanel: wGridControlPanel
 
 proc edges(w: wWindow): tuple[left, right, top, bot: int] =
   (left:  w.position.x,
@@ -39,14 +43,13 @@ proc moveby(w: wWindow, dx, dy: int) =
 wClass(wGridControlPanel of wPanel):
   proc layout(self: wGridControlPanel) =
     let
-      marg = 8
-      hspc = 16
-      vspc = 8
-      spwidth = 60
+      marg = self.dpiScale(8)
+      hspc = self.dpiScale(16)
+      vspc = self.dpiScale(8)
+      spwidth = self.dpiScale(60)
     var t, b, l, r: int
 
     self.mBox.position = (marg, marg)
-    self.mBox.size = (self.size.width - marg*2, self.size.height - marg*2)
     (l,r,t,b) = edges(self.mBox)
 
     # First row
@@ -107,8 +110,8 @@ wClass(wGridControlPanel of wPanel):
     (l,r,t,b) = edges(self.mRbLines)
 
     # Minor text adjustments
-    let vadj1 = 5
-    let vadj2 = 4
+    let vadj1 = self.dpiScale(5)
+    let vadj2 = self.dpiScale(2)
     self.mTxtInterval.moveby(0, vadj1)
     self.mTxtBeh.moveby(0, vadj1)
     self.mTxtApp.moveby(0, vadj1)
@@ -124,6 +127,10 @@ wClass(wGridControlPanel of wPanel):
     let bw = dr - xl + 2*marg
     let bh = ib - xt +  vspc*2 + marg
     self.mBox.size = (bw, bh)
+
+    if not self.mFirstLayout:
+      self.parent.size = (bw + marg*4, bh + marg*7)
+      self.mFirstLayout = true
 
   proc onResize(self: wGridControlPanel) =
     self.layout()
@@ -163,10 +170,20 @@ wClass(wGridControlPanel of wPanel):
     self.mCbSnap.wEvent_CheckBox        do (event: wEvent): self.onSnap(event)
     self.mCbVisible.wEvent_CheckBox     do (event: wEvent): self.onVisible(event)
 
+wClass(wGridControlFrame of wFrame):
+  proc init*(self: wGridControlFrame, owner: wWindow) =
+    let
+      w = self.dpiScale(450)
+      h = self.dpiScale(240)
+      sz: wSize = (w, h)
+    wFrame(self).init(owner, title="Grid Settings", size=sz, style=wDefaultFrameStyle)
+    self.mPanel = GridControlPanel(self)
+
 when isMainModule:
-  let 
-    app = App()
-    f = Frame(nil, "Test Frame", size=(454, 250))
-    p = GridControlPanel(f)
-  f.show()
-  app.mainLoop()
+    wSetSystemDPIAware()
+    echo "DPI: ", wAppGetDpi()
+    let 
+      app = App()
+      f1 = GridControlFrame(nil)
+    f1.show()
+    app.mainLoop()

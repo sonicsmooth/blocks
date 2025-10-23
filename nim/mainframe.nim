@@ -1,9 +1,11 @@
 import std/[strformat, tables]
+
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
-import mainpanel, userMessages
-import aboutframe, gridctrlpanel
+from winim/inc/winbase import MulDiv
+import appinit, userMessages
 import viewport
+import mainpanel, aboutframe, gridctrlframe
 export mainpanel
 
 
@@ -21,8 +23,6 @@ type
 
 
 const
-  small = 16
-  big = 32
   pth = r"icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
   res = [staticRead(pth & r"New document.bmp"),
          staticRead(pth & r"Folder.bmp"),
@@ -35,6 +35,8 @@ const
          staticRead(r"icons/grid.bmp"),
          staticRead(r"icons/gridgears.bmp")]
 let
+  small = MulDiv(16, wAppGetDpi(), 96)
+  big = MulDiv(32, wAppGetDpi(), 96)
   imgLstSm = ImageList(small, small)
   imgLstBg = ImageList(big, big)
 
@@ -68,7 +70,6 @@ let
 
 
 wClass(wMainFrame of wFrame):
-  proc showHelpWindow(self: wMainFrame)
 
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = self.clientSize
@@ -106,7 +107,8 @@ wClass(wMainFrame of wFrame):
     of idExit: self.delete()
     of idHelp: echo "help"
     of idAbout:
-      self.showHelpWindow()
+      let f = AboutFrame(self)
+      f.show()
     of idGridShow:
       # We know this comes from the second toolbar in the rebar
       let state = self.mBandToolbars[1].toolState(idGridShow)
@@ -114,14 +116,10 @@ wClass(wMainFrame of wFrame):
       self.mMainPanel.mBlockPanel.refresh(false)
     of idGridSetting:
       stdout.write("grid setting")
-      let f = Frame(self, "Grid Settings", size=(485, 285))
-      let p = GridControlPanel(f)
+      let f = GridControlFrame(self)
       f.show()
     else: stdout.write("default")
 
-  proc showHelpWindow(self: wMainFrame) =
-    let f = AboutFrame(self)
-    f.show()
 
   
   proc show*(self: wMainFrame) =
@@ -162,6 +160,7 @@ wClass(wMainFrame of wFrame):
     # 2. Grid controls    
     let tb2 = ToolBar(rebar)
     tb2.addChecktool(idGridShow, "Grid Show", bmpGridBg)
+    tb2.toggleTool(idGridShow, gGridSpecs["visible"].getBool)
     tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg)
     self.mBandToolBars.add(tb2)
     
@@ -194,8 +193,6 @@ wClass(wMainFrame of wFrame):
 
     # Do stuff
     self.mStatusBar.setStatusWidths([-1, -1, -1])
-    #self.mToolBar.toggleTool(idGridShow)
-    #self.mToolBar.backgroundColor = self.mMainPanel.backgroundColor * 19 / 20
     
     # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
     # finally rendered at the proper size

@@ -1,6 +1,9 @@
 import wnim, winim
 import pixie
 
+# No wPanel here, just draw directly
+# to frame client area
+
 
 type
   wAboutFrame* = ref object of wFrame
