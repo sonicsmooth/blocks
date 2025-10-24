@@ -1,5 +1,5 @@
 import std/[os, parseopt, strutils, strformat]
-
+import appinit
 
 type
   AppOpts* = ref object
@@ -11,6 +11,9 @@ type
     compQty*: int = 1
 
 ## GLOBAL VAR FOR USE EVERYWHERE
+## TODO: Do something here with the .json file
+## To load up defaults which can be overridden by
+## cmd line args
 var
   gAppOpts*: AppOpts
 
@@ -28,7 +31,10 @@ proc showAppHelp*(opts: AppOpts) =
     echo "    ", k, " = ", v
 
 proc parseAppOptions*(): AppOpts = 
-  result = AppOpts()
+  #result = AppOpts()
+  # Start with values in json file, then override 
+  # with command line values
+  result = gAppOptsJ["AppOpts"].to(AppOpts)
   for kind, key, val in getopt():
     case kind
     of cmdArgument:

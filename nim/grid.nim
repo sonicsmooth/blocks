@@ -1,4 +1,4 @@
-import std/[math, sequtils, strformat, sugar]
+import std/[math, sequtils]
 import sdl2
 import colors
 from arange import arange
@@ -10,17 +10,19 @@ import wNim/wTypes
 type
   Scale* = enum None, Tiny, Minor, Major
   DotsOrLines* = enum Dots, Lines
-  Grid* = object
-    xSpace*: WType = 10
+  Grid* = ref object
+    xSpace*: WType = 10 #TODO leave as defaults
     ySpace*: WType = 10
     visible*: bool = true
     originVisible*: bool = true
+    snap*: bool = true
+    dynamic*: bool = true
     dotsOrLines*: DotsOrLines = Lines
-
 
 const
   alphaOffset = 20 
   stepAlphas = arange(60 .. 255, alphaOffset).toSeq
+
 proc lineAlpha(step: int): int =
   let idx = max(0, step - alphaOffset)
   if idx < stepAlphas.len:
@@ -28,13 +30,13 @@ proc lineAlpha(step: int): int =
   else:
     result = 255
 
-proc toWorldF(pt: PxPoint, vp: ViewPort): tuple[x,y: float] =
+proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
   let
     x = ((pt.x - vp.pan.x).float / vp.zoom)
     y = ((pt.y - vp.pan.y).float / vp.zoom)
   (x, y)
 
-proc minDelta*[T](grid: Grid, vp: ViewPort, scale: Scale): tuple[x,y: T] =
+proc minDelta*[T](grid: Grid, vp: Viewport, scale: Scale): tuple[x,y: T] =
   # Return minimum grid spacing
   # When zoom in, stepScale returns a large value
   let 
@@ -74,7 +76,7 @@ proc minDelta*[T](grid: Grid, vp: ViewPort, scale: Scale): tuple[x,y: T] =
     of Major:
       (minorX, minorY) * vp.zctrl.base.float
 
-proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: ViewPort, scale: Scale): T =
+proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: Viewport, scale: Scale): T =
   # Round to nearest minor grid point
   # Returns same type of point as is passed in.
   # If this is a WPoint, and that is integer-based, then
@@ -91,7 +93,7 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: ViewPort, scale: Sc
     ysnap: float = ycnt * md.y.float
   (xsnap, ysnap)
 
-proc draw*(grid: Grid, vp: ViewPort, rp: RendererPtr, size: wSize) =
+proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels
   let
     upperLeft: PxPoint = (0, 0)
@@ -141,4 +143,19 @@ proc draw*(grid: Grid, vp: ViewPort, rp: RendererPtr, size: wSize) =
     rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
     rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
 
-  
+proc newGrid*(): Grid = 
+  result = new Grid
+  result.xSpace = gGridSpecsJ["xSpace"].getInt
+  result.ySpace = gGridSpecsJ["ySpace"].getInt
+  result.visible = gGridSpecsJ["visible"].getBool
+  result.originVisible = gGridSpecsJ["originVisible"].getBool
+  result.snap = gGridSpecsJ["snap"].getBool
+  result.dynamic = gGridSpecsJ["dynamic"].getBool
+  result.dotsOrLines = 
+    if gGridSpecsJ["dotsOrLines"].getStr == "dots": Dots
+    elif gGridSpecsJ["dotsOrLines"].getStr == "lines": Lines
+    else: raise newException(ValueError, "Select dots or lines")
+
+when isMainModule:
+  let gr = newGrid()
+  echo gr[]

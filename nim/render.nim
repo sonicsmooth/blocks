@@ -41,9 +41,9 @@ proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBComp*(rp: RendererPtr, vp: ViewPort, rect: DBComp, prect: PRect, zero: bool) =
+proc renderDBComp*(rp: RendererPtr, vp: Viewport, rect: DBComp, prect: PRect, zero: bool) =
   # Draw rectangle on SDL2 renderer
-  # vp is ViewPort, used for zoom
+  # vp is Viewport, used for zoom
   # rect is database object
   # prect is target rectangle with same aspect ratio as rect
   # zero is whether the object should be rendered at upper left corner of target

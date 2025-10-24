@@ -354,7 +354,7 @@ proc top*(rect: SomeRect): auto = rect.upperLeft.y
 proc bottom*(rect: SomeRect): auto = rect.lowerLeft.y
 proc left*(rect: SomeRect): auto = rect.lowerLeft.x
 proc right*(rect: SomeRect): auto = rect.lowerRight.x
-proc toWRect*(rect: PRect, vp: ViewPort): WRect =
+proc toWRect*(rect: PRect, vp: Viewport): WRect =
   # Converts from screen/pixel space to world space
   # PRect has x,y in upper left, so choose lower left then convert
   when WType is SomeFloat:
@@ -367,7 +367,7 @@ proc toWRect*(rect: PRect, vp: ViewPort): WRect =
      y: (rect.y + rect.h).toWorldY(vp),
      w: (rect.w.float / vp.zoom).round.WType,
      h: (rect.h.float / vp.zoom).round.WType)
-proc toPRect*(rect: WRect, vp: ViewPort): PRect  = 
+proc toPRect*(rect: WRect, vp: Viewport): PRect  = 
   # Output's origin is upper left of rectangle
   let
     origin = rect.upperLeft.toPixel(vp)
