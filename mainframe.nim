@@ -162,7 +162,7 @@ wClass(wMainFrame of wFrame):
     let tb2 = ToolBar(result)
     tb2.addChecktool(idGridShow, "Grid Show", bmpGridBg)
     # Read from init file
-    tb2.toggleTool(idGridShow, gGridSpecs["visible"].getBool)
+    tb2.toggleTool(idGridShow, gGridSpecsJ["visible"].getBool)
     tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg)
     self.mBandToolBars.add(tb2)
     
