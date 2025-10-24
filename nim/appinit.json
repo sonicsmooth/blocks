@@ -2,6 +2,7 @@
   "appInits": {
     "AppOpts": {
       "_comment": "not implemented",
+      "appHelp": false,
       "enableBbox": false,
       "enableDstRect": false,
       "enableText": true,

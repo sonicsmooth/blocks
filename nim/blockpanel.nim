@@ -366,7 +366,7 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseWheel:
         # Keep mouse location in the same spot during zoom.
         let oldvp = self.mViewport
-        self.mViewport.doZoom(event.wheelRotation, self.mGrid.zctrl)
+        self.mViewport.doZoom(event.wheelRotation)
         let pxDelta = doAdaptivePan(oldvp, self.mViewport, event.mousePos)
         self.mViewport.doPan(pxDelta)
         self.clearTextureCache()
@@ -544,7 +544,7 @@ Rendering options for SDL and pixie
     self.backgroundColor = wLightBlue
     self.mGrid = newGrid()
     let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
-    self.mViewport = newViewport(pan=(400,400), clicks=0, zoomCtrl=zc)
+    self.mViewport = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)

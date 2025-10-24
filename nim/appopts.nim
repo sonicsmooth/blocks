@@ -34,7 +34,7 @@ proc parseAppOptions*(): AppOpts =
   #result = AppOpts()
   # Start with values in json file, then override 
   # with command line values
-  result = gAppOptsJ["AppOpts"].to(AppOpts)
+  result = gAppOptsJ.to(AppOpts)
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
