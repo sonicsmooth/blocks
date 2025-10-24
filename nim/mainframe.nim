@@ -107,11 +107,6 @@ wClass(wMainFrame of wFrame):
         defaultDir=getCurrentDir(),
         defaultFile="hello.txt",
         style=wFdMultiple)
-      echo f.directory
-      echo f.message
-
-      let s = f.display()
-      echo s
     of idSave: echo "save"
     of idClose: self.delete()
     of idExit: self.delete()

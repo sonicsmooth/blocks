@@ -9,19 +9,19 @@ type
   CtrlID = enum
     idSpaceX = wIdUser, idSpaceY, idDivisions, idDensity,
     idSnap, idDynamic,
-    idVisible, idDots, idLines
+    idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
     mFirstLayout: bool
     mGrid:        Grid
     mZctrl:       ZoomCtrl
-    mBox:         wStaticBox
-    mTxtInterval: wStaticText
+    mBDone:       wButton
+    mIntervalBox: wStaticbox
+    mBehaviorBox: wStaticBox
+    mAppearanceBox: wStaticBox
     mTxtX:        wStaticText
     mTxtY:        wStaticText
-    mTxtBeh:      wStaticText
     mTxtDivs:     wStaticText
     mTxtDens:     wStaticText
-    mTxtApp:      wStaticText
     mCbSnap:      wCheckBox
     mCbVisible:   wCheckBox
     mCbDynamic:   wCheckBox
@@ -46,93 +46,92 @@ proc moveby(w: wWindow, dx, dy: int) =
 wClass(wGridControlPanel of wPanel):
   proc layout(self: wGridControlPanel) =
     let
-      marg = self.dpiScale(8)
+      hmarg = self.parent.margin.left + self.dpiScale(8)
+      vmarg = self.parent.margin.up + self.dpiscale(24)
       hspc = self.dpiScale(16)
-      vspc = self.dpiScale(8)
+      vspc = self.dpiScale(24)
       spwidth = self.dpiScale(60)
+      buttWidth = self.dpiScale(120)
+      buttHeight = self.dpiScale(30)
     var t, b, l, r: int
 
-    self.mBox.position = (marg, marg)
-    (l,r,t,b) = edges(self.mBox)
-
     # First row
-    self.mTxtInterval.position = (l + marg, t + vspc*2)
-    (l,r,t,b) = edges(self.mTxtInterval)
-
-    self.mTxtX.position = (l + marg, b)
+    self.mTxtX.position = (hmarg, vmarg)
     (l,r,t,b) = edges(self.mTxtX)
 
-    self.mSpinSizeX.position = (r, t)
+    self.mSpinSizeX.position = (r, vmarg)
     self.mSpinSizeX.size = (spwidth, self.mSpinSizeX.size.height)
     (l,r,t,b) = edges(self.mSpinSizeX)
 
-    self.mTxtY.position = (r + hspc, t)
+    self.mTxtY.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtY)
 
-    self.mSpinSizeY.position = (r, t)
+    self.mSpinSizeY.position = (r, vmarg)
     self.mSpinSizeY.size = (spwidth, self.mSpinSizeY.size.height)
     (l,r,t,b) = edges(self.mSpinSizeY)
 
-    self.mTxtDivs.position = (r + hspc, t)
+    self.mTxtDivs.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtDivs)
 
-    self.mSpinDivs.position = (r, t)
+    self.mSpinDivs.position = (r, vmarg)
     self.mSpinDivs.size = (spwidth, self.mSpinDivs.size.height)
     (l,r,t,b) = edges(self.mSpinDivs)
 
-    self.mTxtDens.position = (r + hspc, t)
+    self.mTxtDens.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtDens)
 
-    self.mSpinDensity.position = (r, t)
+    self.mSpinDensity.position = (r, vmarg)
     self.mSpinDensity.size = (spwidth, self.mSpinDensity.size.height)
-    (l,r,t,b) = edges(self.mSpinDensity)
 
-    # Second row
-    l = self.mBox.position.x
-    self.mTxtBeh.position = (l + marg, b + vspc*2)
-    (l,r,t,b) = edges(self.mTxtBeh)
+    self.mIntervalBox.contain(self.mTxtX, self.mSpinSizeX, self.mTxtY, self.mSpinSizeY,
+                              self.mTxtDivs, self.mSpinDivs, self.mTxtDens, self.mSpinDensity)
+    (l,r,t,b) = edges(self.mIntervalBox)
 
-    self.mCbSnap.position = (l + marg, b)
-    (l,r,t,b) = edges(self.mCbSnap)
+    # Second box (second row)
+    let secondrowtop = b + vspc
+    self.mCbSnap.position = (hmarg, secondrowtop)
+    (_,r,t,_) = edges(self.mCbSnap)
 
-    self.mCbDynamic.position = (r + hspc, t)
-    (l,r,t,b) = edges(self.mCbDynamic)
+    self.mCbDynamic.position = (r + hspc, secondrowtop)
+    self.mBehaviorBox.contain(self.mCbSnap, self.mCbDynamic)
+
+    (l,r,t,b) = edges(self.mBehaviorBox)
     
-    # Third row
-    l = self.mBox.position.x
-    self.mTxtApp.position = (l + marg, b + vspc*2)
-    (l,r,t,b) = edges(self.mTxtApp)
-
-    self.mCbVisible.position = (l + marg, b)
+    # Third box (second row)
+    self.mCbVisible.position = (r + hspc*3+8, secondrowtop)
     (l,r,t,b) = edges(self.mCbVisible)
 
-    self.mRbDots.position = (r + hspc, t)
+    self.mRbDots.position = (r + hspc, secondrowtop)
     (l,r,t,b) = edges(self.mRbDots)
     
-    self.mRbLines.position = (r + hspc, t)
+    self.mRbLines.position = (r + hspc, secondrowtop)
     (l,r,t,b) = edges(self.mRbLines)
+
+    self.mAppearanceBox.contain(self.mCbVisible, self.mRbDots, self.mRbLines)
+    
+    (l,r,t,b) = edges(self.mAppearanceBox)
+    let rightmost = r
+
+    # Done button
+    self.mBDone.position = (rightmost - buttWidth, b + vspc div 2 + self.dpiScale(12))
+    self.mBDone.size = (buttWidth, buttHeight)
+    (l,r,t,b) = edges(self.mBDone)
 
     # Minor text adjustments
     let vadj1 = self.dpiScale(5)
     let vadj2 = self.dpiScale(2)
-    self.mTxtInterval.moveby(0, vadj1)
-    self.mTxtBeh.moveby(0, vadj1)
-    self.mTxtApp.moveby(0, vadj1)
     self.mTxtX.moveby(0, vadj2)
     self.mTxtY.moveby(0, vadj2)
     self.mTxtDivs.moveby(0, vadj2)
     self.mTxtDens.moveby(0, vadj2)
 
-    # Finalize box size
-    let (xl,xr,xt,xb) = edges(self.mTxtInterval)
-    let (dl,dr,dt,tb) = edges(self.mSpinDensity)
-    let (il,ir,it,ib) = edges(self.mRbLines)
-    let bw = dr - xl + 2*marg
-    let bh = ib - xt +  vspc*2 + marg
-    self.mBox.size = (bw, bh)
-
+    # Finalize frame size, then gray rectangle
+    let (ibxl,ibxr,ibxt,ibxb) = edges(self.mIntervalBox)
+    let (abxl,ablr,abxt,abxb) = edges(self.mBDone)
+    let frameW = self.mIntervalBox.size.width + 2*hmarg + self.dpiScale(12)
+    let frameH = abxb - ibxt + self.dpiScale(60) + self.parent.margin.up + self.parent.margin.down
     if not self.mFirstLayout:
-      self.parent.size = (bw + marg*4, bh + marg*7)
+      self.parent.size = (frameW, frameH)
       self.mFirstLayout = true
 
   proc onResize(self: wGridControlPanel) =
@@ -145,6 +144,25 @@ wClass(wGridControlPanel of wPanel):
     # Do something here that broadcasts the visibility value back to grid
     self.mGrid.visible = event.value.bool
     
+  proc onPaint(self: wGridControlPanel, event: wEvent) = 
+    var dc = PaintDC(self)
+    let
+      sz = self.size
+      hmarg = self.parent.margin.left + self.dpiScale(8)
+      vmarg = self.parent.margin.up + self.dpiscale(24)
+      hspc = self.dpiScale(16)
+      vspc = self.dpiScale(24)
+      spwidth = self.dpiScale(60)
+      buttWidth = self.dpiScale(120)
+      buttHeight = self.dpiScale(30)
+
+    # Rectangle behind button
+    dc.setBrush(Brush(0xf0f0f0.wColor))
+    dc.setPen(Pen(0xf0f0f0.wColor))
+    let barheight = buttHeight +  self.dpiScale(20)
+    dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
+
+
   proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
     wPanel(self).init(parent)
 
@@ -152,14 +170,15 @@ wClass(wGridControlPanel of wPanel):
     let style = wDefault #wBorderSimple
     self.mGrid        = gr
     self.mZctrl       = zc
-    self.mBox         = StaticBox(self, 0, "Grid Controls")
-    self.mTxtInterval = StaticText(self, 0, "Interval")
+    self.mBDone        = Button(self, idDone, "Done")
+    self.mIntervalBox = StaticBox(self, 0, "Interval")
+    self.mBehaviorBox = StaticBox(self, 0, "Behavior")
+    self.mAppearanceBox = StaticBox(self, 0, "Appearance")
+
     self.mTxtX        = StaticText(self, 0, "X")
     self.mTxtY        = StaticText(self, 0, "Y")
-    self.mTxtBeh      = StaticText(self, 0, "Behavior")
     self.mTxtDivs     = StaticText(self, 0, "Divisions")
     self.mTxtDens     = StaticText(self, 0, "Density")
-    self.mTxtApp      = StaticText(self, 0, "Appearance:")
     self.mCbSnap      = CheckBox(self, idSnap, "Snap")
     self.mCbVisible   = CheckBox(self, idVisible, "Visible")
     self.mCbDynamic   = CheckBox(self, idDynamic, "Dynamic Grid")
@@ -179,12 +198,16 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines.setValue(self.mGrid.dotsOrLines == Lines)
     self.mSpinDivs.setValue($self.mZctrl.base)
     self.mSpinDensity.setValue($self.mZctrl.density)
+    
+    self.backgroundColor = 0xffffff
     self.layout()
 
     # Connect events
     self.wEvent_Size                    do (event: wEvent): self.onResize()
+    self.wEvent_Paint                   do (event: wEvent): self.onPaint(event)
     self.mCbSnap.wEvent_CheckBox        do (event: wEvent): self.onSnap(event)
     self.mCbVisible.wEvent_CheckBox     do (event: wEvent): self.onVisible(event)
+    self.mBDone.wEvent_Button           do(): self.parent.delete()
 
 wClass(wGridControlFrame of wFrame):
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
@@ -192,7 +215,9 @@ wClass(wGridControlFrame of wFrame):
       w = self.dpiScale(450)
       h = self.dpiScale(240)
       sz: wSize = (w, h)
-    wFrame(self).init(owner, title="Grid Settings", size=sz, style=wDefaultFrameStyle)
+    wFrame(self).init(owner, title="Grid Settings", size=sz,)# style=wDefaultDialogStyle)
+    self.margin = self.dpiScale(6)
+    self.backgroundColor = 0xf0f0f0
     self.mPanel = GridControlPanel(self, gr, zc)
 
 when isMainModule:
