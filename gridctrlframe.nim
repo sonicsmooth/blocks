@@ -55,6 +55,8 @@ wClass(wGridControlPanel of wPanel):
       buttHeight = self.dpiScale(30)
     var t, b, l, r: int
 
+    # TODO: investigate using setBuddy
+
     # First row
     self.mTxtX.position = (hmarg, vmarg)
     (l,r,t,b) = edges(self.mTxtX)
@@ -133,17 +135,9 @@ wClass(wGridControlPanel of wPanel):
     if not self.mFirstLayout:
       self.parent.size = (frameW, frameH)
       self.mFirstLayout = true
-
   proc onResize(self: wGridControlPanel) =
     self.layout()
-
-  proc onSnap(self: wGridControlPanel, event: wEvent) =
-    echo "snap"
-
-  proc onVisible(self: wGridControlPanel, event: wEvent) =
-    # Do something here that broadcasts the visibility value back to grid
-    self.mGrid.visible = event.value.bool
-    
+   
   proc onPaint(self: wGridControlPanel, event: wEvent) = 
     var dc = PaintDC(self)
     let
@@ -161,6 +155,26 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(0xf0f0f0.wColor))
     let barheight = buttHeight +  self.dpiScale(20)
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
+
+  proc spinSize(self: wGridControlPanel, event: wEvent) =
+    echo self.mSpinSizeX.value, ", ", self.mSpinSizeY.value
+  proc spinDivDense(self: wGridControlPanel, event: wEvent) =
+    let d = event.spinDelta
+    echo self.mSpinDivs.value + d, ", ", self.mSpinDensity.value + d
+  proc onSnap(self: wGridControlPanel, event: wEvent) =
+    echo "snap: ", self.mCbSnap.value
+  proc onDynamic(self: wGridControlPanel, event: wEvent) =
+    echo "dynamic: ", self.mCbDynamic.value
+  proc onVisible(self: wGridControlPanel, event: wEvent) =
+    # Do something here that broadcasts the visibility value back to grid
+    let val = self.mCbVisible.value
+    echo "visible: ", val
+    self.mGrid.visible = val
+    self.mRbDots.enable(val)
+    self.mRbLines.enable(val)
+  proc dotsOrLines(self: wGridControlPanel, event: wEvent) =
+    echo self.mRbDots.value, ", ", self.mRbLines.value
+
 
 
   proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
@@ -203,11 +217,18 @@ wClass(wGridControlPanel of wPanel):
     self.layout()
 
     # Connect events
-    self.wEvent_Size                    do (event: wEvent): self.onResize()
-    self.wEvent_Paint                   do (event: wEvent): self.onPaint(event)
-    self.mCbSnap.wEvent_CheckBox        do (event: wEvent): self.onSnap(event)
-    self.mCbVisible.wEvent_CheckBox     do (event: wEvent): self.onVisible(event)
-    self.mBDone.wEvent_Button           do(): self.parent.delete()
+    self.wEvent_Size                 do (event: wEvent): self.onResize()
+    self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
+    self.mSpinSizeX.wEvent_Spin      do (event: wEvent): self.spinSize(event)
+    self.mSpinSizeY.wEvent_Spin      do (event: wEvent): self.spinSize(event)
+    self.mSpinDivs.wEvent_Spin       do (event: wEvent): self.spinDivDense(event)
+    self.mSpinDensity.wEvent_Spin    do (event: wEvent): self.spinDivDense(event)
+    self.mCbSnap.wEvent_CheckBox     do (event: wEvent): self.onSnap(event)
+    self.mCbDynamic.wEvent_CheckBox  do (event: wEvent): self.onDynamic(event)
+    self.mCbVisible.wEvent_CheckBox  do (event: wEvent): self.onVisible(event)
+    self.mRbDots.wEvent_RadioButton  do (event: wEvent): self.dotsOrLines(event)
+    self.mRblines.wEvent_RadioButton do (event: wEvent): self.dotsOrLines(event)
+    self.mBDone.wEvent_Button        do(): self.parent.delete()
 
 wClass(wGridControlFrame of wFrame):
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
