@@ -1,4 +1,4 @@
-import std/math
+import std/[math, json]
 
 # Type conversion to world coordinate types.
 # This is not pan/zoom.  See viewport for pan/zoom.
@@ -56,7 +56,9 @@ converter toPxPoint*[T:SomeNumber](pt: tuple[x, y: T]): PxPoint =
 converter toPxSize*[T:SomeNumber](pt: tuple[w, h: T]): PxSize  =
   (pt[0], pt[1]) # toPxType is called implicitly for each part of tuple
 
-
+proc getPxPoint*(jn: JsonNode): PxPoint =
+  echo "Parsing node: ", jn.getStr
+  (999, 999)
 
 when isMainModule:
   when WType is int:

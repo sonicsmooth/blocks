@@ -1,13 +1,34 @@
 {
   "appInits": {
-    "gridSpecs": {
-      "xSpace": "10",
-      "ySpace": 10.5,
+    "AppOpts": {
+      "_comment": "not implemented",
+      "enableBbox": false,
+      "enableDstRect": false,
+      "enableText": true,
+      "enableHover": true,
+      "compQty": 1
+    },
+    "Viewport": {
+      "pan": "(400, 400)",
+      "zClicks": 0,
+      "zctrl": {
+        "base": 4,
+        "clickDiv": 2400,
+        "maxPwr": 5,
+        "density": 1.0
+      }
+    },
+    "Grid": {
+      "xSpace": 10,
+      "ySpace": 10,
       "visible": true,
+      "originVisible": true,
+      "snap": true,
+      "dynamic": true,
       "dotsOrLines": "lines",
       "_comment": "dots, lines"
     },
-    "panelSpecs": {
+    "MainPanel": {
       "qty": 20,
       "compactType": "none",
       "_comment": "none, anneal, stack"

@@ -40,7 +40,7 @@ type
     mSelectBox*: PRect
     mText*: string
     mGrid*: Grid
-    mViewPort*: ViewPort
+    mViewport*: Viewport
  
   Command = enum
     CmdEscape
@@ -126,7 +126,7 @@ wClass(wBlockPanel of wSDLPanel):
     let 
       rect = gDb[id]
       key = (id, rect.selected, rect.hovering)
-      vp = self.mViewPort
+      vp = self.mViewport
     if self.mTextureCache.hasKey(key):
       self.mTextureCache[key]
     else:
@@ -149,7 +149,7 @@ wClass(wBlockPanel of wSDLPanel):
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer
     let
-      vp = self.mViewPort
+      vp = self.mViewport
       sz: PxSize = self.size
       screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
     var dstRect: PRect
@@ -166,7 +166,7 @@ wClass(wBlockPanel of wSDLPanel):
   proc renderToScreen(self: wBlockPanel) =
     # Render blocks to screen using default renderer
     let
-      vp = self.mViewPort
+      vp = self.mViewport
       sz: PxSize = self.size
       screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
     for rect in gDb.values:
@@ -182,7 +182,7 @@ wClass(wBlockPanel of wSDLPanel):
       marg = 25
       (w, h) = self.size
     let pdstrect: PRect = (marg, marg, w - 2*marg, h - 2*marg)
-    self.mDstRect = pdstrect.toWRect(self.mViewPort)
+    self.mDstRect = pdstrect.toWRect(self.mViewport)
 
   proc updateBoundingBox(self: wBlockPanel) =
     self.mAllBbox = gDb.boundingBox()
@@ -241,7 +241,7 @@ wClass(wBlockPanel of wSDLPanel):
     if gAppOpts.enableHover:
       let
         cleared = gDb.clearRectHovering()
-        newset = gDb.setRectHovering(gDb.ptInRects(event.mousePos, self.mViewPort))
+        newset = gDb.setRectHovering(gDb.ptInRects(event.mousePos, self.mViewport))
       len(cleared) > 0 or len(newset) > 0
     else:
       false
@@ -278,9 +278,9 @@ wClass(wBlockPanel of wSDLPanel):
       let
         md: WPoint = 
           if event.shiftDown:
-            minDelta[WType](self.mGrid, self.mViewPort, scale=Tiny)
+            minDelta[WType](self.mGrid, self.mViewport, scale=Tiny)
           else:
-            minDelta[WType](self.mGrid, self.mViewPort, scale=Minor)
+            minDelta[WType](self.mGrid, self.mViewport, scale=Minor)
         moveby: WPoint = md .* moveTable[event.keyCode]
       self.moveRectsBy(sel, moveBy)
       resetBox()
@@ -351,7 +351,7 @@ wClass(wBlockPanel of wSDLPanel):
 
 
     let 
-      vp = self.mViewPort
+      vp = self.mViewport
       wmp = event.mousePos.toWorld(vp)
     
     case self.mMouseData.pzState:
@@ -365,10 +365,10 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         # Keep mouse location in the same spot during zoom.
-        let oldvp = self.mViewPort
-        self.mViewPort.doZoom(event.wheelRotation)
-        let pxDelta = doAdaptivePan(oldvp, self.mViewPort, event.mousePos)
-        self.mViewPort.doPan(pxDelta)
+        let oldvp = self.mViewport
+        self.mViewport.doZoom(event.wheelRotation, self.mGrid.zctrl)
+        let pxDelta = doAdaptivePan(oldvp, self.mViewport, event.mousePos)
+        self.mViewport.doPan(pxDelta)
         self.clearTextureCache()
         self.refresh(false)
       else:
@@ -378,7 +378,7 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         let deltaPx: PxPoint = event.mousePos - self.mMouseData.lastPos
         self.mMouseData.lastPos = event.mousePos
-        self.mViewPort.doPan(deltaPx)
+        self.mViewport.doPan(deltaPx)
         self.refresh(false)
       of wEvent_RightUp:
         self.mMouseData.pzState = PZStateNone
@@ -505,7 +505,7 @@ Rendering options for SDL and pixie
     
     # Draw grid
     if self.mGrid.visible:
-      self.mGrid.draw(self.mViewPort, self.sdlRenderer, self.size)
+      self.mGrid.draw(self.mViewport, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
     when defined(noTextureCache):
@@ -516,22 +516,22 @@ Rendering options for SDL and pixie
     # Draw various boxes and text, then done
     self.updateDestinationBox()
     if gAppOpts.enableDstRect:
-      self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewPort), DarkOrchid)
+      self.sdlRenderer.renderOutlineRect(self.mDstRect.toPRect(self.mViewport), DarkOrchid)
     if gAppOpts.enableBbox:
       self.updateBoundingBox()
-      self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewPort).grow(1), Green)
+      self.sdlRenderer.renderOutlineRect(self.mAllBbox.toPRect(self.mViewport).grow(1), Green)
     self.sdlRenderer.renderFilledRect(self.mSelectBox,
                                       fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
                                       penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
     var txt: string
-    txt &= &"pan: {self.mViewPort.pan}\n"
-    txt &= &"zClicks: {self.mViewPort.zClicks}\n"
-    txt &= &"level: {self.mViewPort.zCtrl.logStep}\n"
-    txt &= &"rawZoom: {self.mViewPort.rawZoom:.3f}\n"
-    txt &= &"zoom: {self.mViewPort.zoom:.3f}\n"
-    txt &= &"tinyDelta: {minDelta[WType](self.mGrid, self.mViewPort, scale=Tiny)}\n"
-    txt &= &"minorDelta: {minDelta[WType](self.mGrid, self.mViewPort, scale=Minor)}\n"
-    txt &= &"majorDelta: {minDelta[WType](self.mGrid, self.mViewPort, scale=Major)}\n"
+    txt &= &"pan: {self.mViewport.pan}\n"
+    txt &= &"zClicks: {self.mViewport.zClicks}\n"
+    txt &= &"level: {self.mViewport.zCtrl.logStep}\n"
+    txt &= &"rawZoom: {self.mViewport.rawZoom:.3f}\n"
+    txt &= &"zoom: {self.mViewport.zoom:.3f}\n"
+    txt &= &"tinyDelta: {minDelta[WType](self.mGrid, self.mViewport, scale=Tiny)}\n"
+    txt &= &"minorDelta: {minDelta[WType](self.mGrid, self.mViewport, scale=Minor)}\n"
+    txt &= &"majorDelta: {minDelta[WType](self.mGrid, self.mViewport, scale=Major)}\n"
     
     self.sdlRenderer.renderText(self.sdlWindow, txt)
     self.sdlRenderer.present()
@@ -542,14 +542,9 @@ Rendering options for SDL and pixie
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    #self.mDstRect = (-100, -100, 200, 200)
-    self.mGrid.xSpace = 10
-    self.mGrid.ySpace = 10
-    self.mGrid.visible = true
-    self.mGrid.originVisible = true
-    self.mViewPort.doZoom(0)
-    self.mViewPort.zctrl.density = 1.0
-    self.mViewPort.pan = (400, 400)
+    self.mGrid = newGrid()
+    let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
+    self.mViewport = newViewport(pan=(400,400), clicks=0, zoomCtrl=zc)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)

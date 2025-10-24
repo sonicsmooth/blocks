@@ -1,5 +1,6 @@
 import wNim
 from winim/inc/winbase import MulDiv
+import appinit, grid, viewport
 
 # Create a panel to hold some controls,
 # then place it in a frame
@@ -11,6 +12,8 @@ type
     idVisible, idDots, idLines
   wGridControlPanel = ref object of wPanel
     mFirstLayout: bool
+    mGrid:        Grid
+    mZctrl:       ZoomCtrl
     mBox:         wStaticBox
     mTxtInterval: wStaticText
     mTxtX:        wStaticText
@@ -139,13 +142,16 @@ wClass(wGridControlPanel of wPanel):
     echo "snap"
 
   proc onVisible(self: wGridControlPanel, event: wEvent) =
-    echo "visible"
-
-  proc init*(self: wGridControlPanel, parent: wWindow) =
+    # Do something here that broadcasts the visibility value back to grid
+    self.mGrid.visible = event.value.bool
+    
+  proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
     wPanel(self).init(parent)
 
     # Create controls
     let style = wDefault #wBorderSimple
+    self.mGrid        = gr
+    self.mZctrl       = zc
     self.mBox         = StaticBox(self, 0, "Grid Controls")
     self.mTxtInterval = StaticText(self, 0, "Interval")
     self.mTxtX        = StaticText(self, 0, "X")
@@ -159,10 +165,20 @@ wClass(wGridControlPanel of wPanel):
     self.mCbDynamic   = CheckBox(self, idDynamic, "Dynamic Grid")
     self.mRbDots      = RadioButton(self, idDots, "Dots")
     self.mRbLines     = RadioButton(self, idLines, "Lines")
-    self.mSpinSizeX   = SpinCtrl(self, idSpaceX, "10")
-    self.mSpinSizeY   = SpinCtrl(self, idSpaceY, "10")
-    self.mSpinDivs    = SpinCtrl(self, idDivisions, "5")
-    self.mSpinDensity = SpinCtrl(self, idDensity, "1.0")
+    self.mSpinSizeX   = SpinCtrl(self, idSpaceX, "")
+    self.mSpinSizeY   = SpinCtrl(self, idSpaceY, "")
+    self.mSpinDivs    = SpinCtrl(self, idDivisions, "")
+    self.mSpinDensity = SpinCtrl(self, idDensity, "")
+    
+    self.mSpinSizeX.setValue($self.mGrid.xSpace)
+    self.mSpinSizeY.setValue($self.mGrid.ySpace)
+    self.mCbVisible.setValue(self.mGrid.visible)
+    self.mCbSnap.setValue(self.mGrid.snap)
+    self.mCbDynamic.setValue(self.mGrid.dynamic)
+    self.mRbDots.setValue(self.mGrid.dotsOrLines == Dots)
+    self.mRbLines.setValue(self.mGrid.dotsOrLines == Lines)
+    self.mSpinDivs.setValue($self.mZctrl.base)
+    self.mSpinDensity.setValue($self.mZctrl.density)
     self.layout()
 
     # Connect events
@@ -171,19 +187,25 @@ wClass(wGridControlPanel of wPanel):
     self.mCbVisible.wEvent_CheckBox     do (event: wEvent): self.onVisible(event)
 
 wClass(wGridControlFrame of wFrame):
-  proc init*(self: wGridControlFrame, owner: wWindow) =
+  proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
     let
       w = self.dpiScale(450)
       h = self.dpiScale(240)
       sz: wSize = (w, h)
     wFrame(self).init(owner, title="Grid Settings", size=sz, style=wDefaultFrameStyle)
-    self.mPanel = GridControlPanel(self)
+    self.mPanel = GridControlPanel(self, gr, zc)
 
 when isMainModule:
+  try:
     wSetSystemDPIAware()
-    echo "DPI: ", wAppGetDpi()
-    let 
+    let
       app = App()
-      f1 = GridControlFrame(nil)
+      zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
+      gr = newGrid()
+      f1 = GridControlFrame(nil, gr, zc)
+
     f1.show()
     app.mainLoop()
+  except Exception as e:
+    echo e.msg
+    echo e.getStackTrace()

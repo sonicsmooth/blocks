@@ -18,9 +18,6 @@ type
   PosTable* = Table[CompID, PosRot] # meant to have value semantics
   SomeComps* = RectTable | seq[(CompID, DBComp)]
 
-# const
-#   QTY* = 20
-  
 var
   componentsVisible*: seq[DBComp]
 
@@ -79,7 +76,7 @@ proc ptInRects*(table: SomeComps, pt: WPoint): seq[CompID] =
     if isPointInRect(pt, comp.bbox):
       result.add(id)
 
-proc ptInRects*(table: SomeComps, pt: PxPoint, vp: ViewPort): seq[CompID] = 
+proc ptInRects*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] = 
   # Returns seq of DBComp IDs from table if pt in comp's bbox
   # Pre-select by checking without converting every rect
   let wpt = pt.toWorld(vp)
@@ -105,7 +102,7 @@ proc rectInRects*(table: SomeComps, rect: WRect): seq[CompID] =
        isRectOverRect(rect, dbcomp.bbox):
       result.add(id)
 
-proc rectInRects*(table: SomeComps, rect: PRect, vp: ViewPort): seq[CompID] =
+proc rectInRects*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
   for id, dbcomp in table:
     let tpr = dbcomp.bbox.toPRect(vp)

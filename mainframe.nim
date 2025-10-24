@@ -82,7 +82,7 @@ wClass(wMainFrame of wFrame):
     # event can contain either client or screen coordinates
     # so ignore wparam and lparam.  Just grab  mouse pos directly
     let mousePxPos = screenToClient(self.mMainPanel.mBlockPanel, wGetMousePosition())
-    let mouseWPos: WPoint = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewPort)
+    let mouseWPos: WPoint = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewport)
     when WType is SomeFloat:
       let mwpx = &"{mouseWPos.x:0.4f}"
       let mwpy = &"{mouseWPos.y:0.4f}"
@@ -115,8 +115,10 @@ wClass(wMainFrame of wFrame):
       self.mMainPanel.mBlockPanel.mGrid.visible = state
       self.mMainPanel.mBlockPanel.refresh(false)
     of idGridSetting:
-      stdout.write("grid setting")
-      let f = GridControlFrame(self)
+      let
+        gr = self.mMainPanel.mBlockPanel.mGrid
+        zc = self.mMainPanel.mBlockPanel.mViewport.zctrl
+      let f = GridControlFrame(self, gr, zc)
       f.show()
     else: stdout.write("default")
 
@@ -147,39 +149,37 @@ wClass(wMainFrame of wFrame):
   proc setupReBar(self: wMainFrame): wReBar =
     # Set up three things in the rebar
 
-    let rebar = ReBar(self)
-    #rebar.setImageList(imgLstBg)
+    result = ReBar(self)
 
     # 1. Basic file new/open toolbar
-    let tb1 = ToolBar(rebar)
+    let tb1 = ToolBar(result)
     tb1.addTool(idNew, "New", bmpNewBg)
     tb1.addTool(idOpen, "Open", bmpOpenBg)
     tb1.addTool(idSave, "Open", bmpSaveBg)
     self.mBandToolBars.add(tb1)
     
     # 2. Grid controls    
-    let tb2 = ToolBar(rebar)
+    let tb2 = ToolBar(result)
     tb2.addChecktool(idGridShow, "Grid Show", bmpGridBg)
+    # Read from init file
     tb2.toggleTool(idGridShow, gGridSpecs["visible"].getBool)
     tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg)
     self.mBandToolBars.add(tb2)
     
     # 3. Close
-    let tb3 = ToolBar(rebar)
+    let tb3 = ToolBar(result)
     tb3.addTool(idClose, "Close", bmpCloseBg)
     self.mBandToolBars.add(tb3)
 
     # Put toolbars things in rebar
-    let bid1 = rebar.addBand(tb1)
-    let bid2 = rebar.addBand(tb2)
-    let _    = rebar.addBand()
-    let bid3 = rebar.addBand(tb3)
-    rebar.setBandWidth(bid3, 32)
-    rebar.setBandWidth(bid2, 200)
-    rebar.setBandWidth(bid1, 64)
-
-    rebar.disableDrag()
-    return rebar
+    let bid1 = result.addBand(tb1)
+    let bid2 = result.addBand(tb2)
+    let _    = result.addBand()
+    let bid3 = result.addBand(tb3)
+    result.setBandWidth(bid3, 32)
+    result.setBandWidth(bid2, 200)
+    result.setBandWidth(bid1, 64)
+    result.disableDrag()
 
 
   proc init*(self: wMainFrame, size: wSize) = 
