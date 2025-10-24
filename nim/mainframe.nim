@@ -1,4 +1,4 @@
-import std/[strformat, tables]
+import std/[os, strformat, tables]
 
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
@@ -101,7 +101,17 @@ wClass(wMainFrame of wFrame):
     echo evtStr
     case event.id
     of idNew: echo "new"
-    of idOpen: echo "open"
+    of idOpen:
+      let f = FileDialog(self, 
+        message="My dialog", 
+        defaultDir=getCurrentDir(),
+        defaultFile="hello.txt",
+        style=wFdMultiple)
+      echo f.directory
+      echo f.message
+
+      let s = f.display()
+      echo s
     of idSave: echo "save"
     of idClose: self.delete()
     of idExit: self.delete()
@@ -155,7 +165,7 @@ wClass(wMainFrame of wFrame):
     let tb1 = ToolBar(result)
     tb1.addTool(idNew, "New", bmpNewBg)
     tb1.addTool(idOpen, "Open", bmpOpenBg)
-    tb1.addTool(idSave, "Open", bmpSaveBg)
+    tb1.addTool(idSave, "Save", bmpSaveBg)
     self.mBandToolBars.add(tb1)
     
     # 2. Grid controls    
