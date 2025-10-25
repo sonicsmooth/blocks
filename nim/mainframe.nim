@@ -3,8 +3,9 @@ import std/[os, strformat, tables]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
+import winim/inc/windef
 import appinit, userMessages
-import viewport
+import viewport, utils
 import mainpanel, aboutframe, gridctrlframe
 export mainpanel
 
@@ -116,10 +117,12 @@ wClass(wMainFrame of wFrame):
       f.show()
     of idGridShow:
       # We know this comes from the second toolbar in the rebar
+      echo "gridshow"
       let state = self.mBandToolbars[1].toolState(idGridShow)
       self.mMainPanel.mBlockPanel.mGrid.visible = state
       self.mMainPanel.mBlockPanel.refresh(false)
     of idGridSetting:
+      echo "grid setting"
       let
         gr = self.mMainPanel.mBlockPanel.mGrid
         zc = self.mMainPanel.mBlockPanel.mViewport.zctrl
@@ -207,11 +210,12 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.randomizeRectsAll()
 
     # Connect Events
-    self.wEvent_Size     do (event: wEvent): self.onResize(event)
-    self.wEvent_Tool     do (event: wEvent): self.onToolEvent(event)
-    self.USER_SIZE       do (event: wEvent): self.onUserSizeNotify(event)
-    self.USER_MOUSE_MOVE do (event: wEvent): self.onUserMouseNotify(event)
-    self.USER_SLIDER     do (event: wEvent): self.onUserSliderNotify(event)
+    self.connect(wEvent_Size)        do (event: wEvent): self.onResize(event)
+    self.connect(wEvent_Tool)        do (event: wEvent): self.onToolEvent(event)
+    self.connect(idSize.UINT)        do (event: wEvent): self.onUserSizeNotify(event)
+    self.connect(idMouseMove.UINT)   do (event: wEvent): self.onUserMouseNotify(event)
+    self.connect(idSlider.UINT)      do (event: wEvent): self.onUserSliderNotify(event)
+    self.connect(idGridVisible.UINT) do (event: wEvent): displayParams(event.wParam, event.lParam)
   
 when isMainModule:
     # Main data and window

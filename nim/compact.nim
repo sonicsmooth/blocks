@@ -2,7 +2,7 @@ import std/[algorithm, locks, sugar, tables]
 import sequtils
 import wnim
 import wnim/wTypes
-import winim/inc/winuser
+import winim/inc/[winuser, windef]
 import concurrent
 import recttable, userMessages
 
@@ -253,5 +253,5 @@ proc compactWorker*(arg: CompactArg) {.thread.} =
   {.gcsafe.}:
     withLock(gLock):
       iterCompact(arg.pRectTable[], arg.direction, arg.dstRect)
-  PostMessage(arg.window.mHwnd, USER_ALG_UPDATE, 0, 0)
+  PostMessage(arg.window.mHwnd, idAlgUpdate.UINT, 0, 0)
   

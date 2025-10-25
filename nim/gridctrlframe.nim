@@ -1,6 +1,8 @@
 import wNim
 from winim/inc/winbase import MulDiv
+import winim
 import appinit, grid, viewport
+import userMessages
 
 # Create a panel to hold some controls,
 # then place it in a frame
@@ -11,7 +13,7 @@ type
     idSnap, idDynamic,
     idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
-    mFirstLayout: bool
+    mOwner:       wWindow # app main window to where messages will be sent
     mGrid:        Grid
     mZctrl:       ZoomCtrl
     mBDone:       wButton
@@ -31,6 +33,7 @@ type
     mSpinSizeY:   wSpinCtrl 
     mSpinDivs:    wSpinCtrl
     mSpinDensity: wSpinCtrl
+    mFirstLayout: bool
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
 
@@ -142,18 +145,12 @@ wClass(wGridControlPanel of wPanel):
     var dc = PaintDC(self)
     let
       sz = self.size
-      hmarg = self.parent.margin.left + self.dpiScale(8)
-      vmarg = self.parent.margin.up + self.dpiscale(24)
-      hspc = self.dpiScale(16)
-      vspc = self.dpiScale(24)
-      spwidth = self.dpiScale(60)
-      buttWidth = self.dpiScale(120)
       buttHeight = self.dpiScale(30)
+      barheight = buttHeight +  self.dpiScale(20)
 
     # Rectangle behind button
     dc.setBrush(Brush(0xf0f0f0.wColor))
     dc.setPen(Pen(0xf0f0f0.wColor))
-    let barheight = buttHeight +  self.dpiScale(20)
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
   proc spinSize(self: wGridControlPanel, event: wEvent) =
@@ -168,20 +165,20 @@ wClass(wGridControlPanel of wPanel):
   proc onVisible(self: wGridControlPanel, event: wEvent) =
     # Do something here that broadcasts the visibility value back to grid
     let val = self.mCbVisible.value
-    echo "visible: ", val
     self.mGrid.visible = val
     self.mRbDots.enable(val)
     self.mRbLines.enable(val)
+    SendMessage(self.mOwner.mHwnd, idGridVisible.UINT, 0.WPARAM, val.LPARAM)
   proc dotsOrLines(self: wGridControlPanel, event: wEvent) =
     echo self.mRbDots.value, ", ", self.mRbLines.value
 
 
 
-  proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
+  proc init*(self: wGridControlPanel, parent, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
     wPanel(self).init(parent)
 
     # Create controls
-    let style = wDefault #wBorderSimple
+    self.mOwner       = owner
     self.mGrid        = gr
     self.mZctrl       = zc
     self.mBDone        = Button(self, idDone, "Done")
@@ -213,7 +210,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDivs.setValue($self.mZctrl.base)
     self.mSpinDensity.setValue($self.mZctrl.density)
     
-    self.backgroundColor = 0xffffff
+    self.backgroundColor = 0xf0f0f0
     self.layout()
 
     # Connect events
@@ -238,8 +235,8 @@ wClass(wGridControlFrame of wFrame):
       sz: wSize = (w, h)
     wFrame(self).init(owner, title="Grid Settings", size=sz,)# style=wDefaultDialogStyle)
     self.margin = self.dpiScale(6)
-    self.backgroundColor = 0xf0f0f0
-    self.mPanel = GridControlPanel(self, gr, zc)
+    self.backgroundColor = 0xd0d0d0
+    self.mPanel = GridControlPanel(self, owner, gr, zc)
 
 when isMainModule:
   try:
