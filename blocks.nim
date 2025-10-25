@@ -3,8 +3,6 @@ import wNim/[wApp, wWindow, wUtils]
 import appopts, mainframe, sdlframes, db
 import concurrent, anneal
 
-# TODO: buttons for above
-
 
 when isMainModule:
   when compileOption("profiler"):

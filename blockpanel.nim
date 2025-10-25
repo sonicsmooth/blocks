@@ -190,7 +190,7 @@ wClass(wBlockPanel of wSDLPanel):
   proc onResize(self: wBlockPanel, event: wEvent) =
     # Post user message so top frame can show new size
     let hWnd = GetAncestor(self.handle, GA_ROOT)
-    SendMessage(hWnd, USER_SIZE, event.mWparam, event.mLparam)
+    SendMessage(hWnd, idSize.UINT, event.mWparam, event.mLparam)
 
   proc updateRatio*(self: wBlockPanel) =
     if gDb.len == 0:
@@ -345,9 +345,8 @@ wClass(wBlockPanel of wSDLPanel):
     # Send mouse message for x,y position
     if event.eventType == wEvent_MouseMove or
        event.eventType == wEvent_MouseWheel:
-      #displayParams(event.wParam, event.lParam)
       let hWnd = GetAncestor(self.handle, GA_ROOT)
-      SendMessage(hWnd, USER_MOUSE_MOVE, event.mWparam, event.lParam)
+      SendMessage(hWnd, idMouseMove.UINT, event.mWparam, event.lParam)
 
 
     let 
