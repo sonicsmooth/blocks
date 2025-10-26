@@ -10,6 +10,7 @@ import wNim/wTypes
 type
   Scale* = enum None, Tiny, Minor, Major
   DotsOrLines* = enum Dots, Lines
+  # TODO: When these change they should trigger a refresh right away
   Grid* = ref object
     xSpace*: WType = 10 #TODO leave as defaults
     ySpace*: WType = 10

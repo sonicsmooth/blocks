@@ -4,9 +4,10 @@ import winim/inc/winuser
 # threads or from one frame to another
 
 type
-  UserIDs* = enum
+  UserMsgID* = enum
     idMouseMove = WM_USER,
-    idSize, idSlider, idAlgUpdate, idGridVisible
+    idSize, idSlider, idAlgUpdate, idGridShow,
+    idSubFrameClosing
 
 const
   ALG_NO_INIT_BMP*  = 0
