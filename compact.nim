@@ -253,5 +253,5 @@ proc compactWorker*(arg: CompactArg) {.thread.} =
   {.gcsafe.}:
     withLock(gLock):
       iterCompact(arg.pRectTable[], arg.direction, arg.dstRect)
-  PostMessage(arg.window.mHwnd, idAlgUpdate.UINT, 0, 0)
+  PostMessage(arg.window.mHwnd, idMsgAlgUpdate.UINT, 0, 0)
   

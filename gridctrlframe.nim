@@ -175,7 +175,7 @@ wClass(wGridControlPanel of wPanel):
     self.mGrid.visible = val
     self.mRbDots.enable(val)
     self.mRbLines.enable(val)
-    self.sendMessageToRoot(idGridShow, 0, val.LPARAM)
+    self.sendMessageToRoot(idMsgGridShow, 0, val.LPARAM)
   proc dotsOrLines(self: wGridControlPanel, event: wEvent) =
     echo self.mRbDots.value, ", ", self.mRbLines.value
 
@@ -236,7 +236,7 @@ wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
     #echo &"closing from 0x{self.mHwnd:08x}"
     if self.mOwner.isnil: return
-    SendMessage(self.mOwner.mHwnd, idSubFrameClosing.UINT, self.mHwnd.WPARAM, 0)
+    SendMessage(self.mOwner.mHwnd, idMsgSubFrameClosing.UINT, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
     let
