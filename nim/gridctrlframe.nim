@@ -153,11 +153,11 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(0xf0f0f0.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  proc sendMessageToRoot(self: wGridControlPanel, msg: UserMsgID, wp, lp: int) =
+  proc sendMessageToRoot(self: wGridControlPanel, msg: UINT, wp, lp: int) =
       let owner = wGridControlFrame(self.parent).mOwner
       if owner.isNil: return
       echo &"Sending {msg} to {owner.mHwnd}"
-      SendMessage(owner.mHwnd, msg.UINT, wp.WPARAM, lp.LPARAM)
+      SendMessage(owner.mHwnd, msg, wp.WPARAM, lp.LPARAM)
    
 
   proc spinSize(self: wGridControlPanel, event: wEvent) =
@@ -236,7 +236,7 @@ wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
     #echo &"closing from 0x{self.mHwnd:08x}"
     if self.mOwner.isnil: return
-    SendMessage(self.mOwner.mHwnd, idMsgSubFrameClosing.UINT, self.mHwnd.WPARAM, 0)
+    SendMessage(self.mOwner.mHwnd, idMsgSubFrameClosing, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
     let
