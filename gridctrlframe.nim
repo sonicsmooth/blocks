@@ -1,3 +1,4 @@
+import std/strformat
 import wNim
 from winim/inc/winbase import MulDiv
 import winim
@@ -13,7 +14,6 @@ type
     idSnap, idDynamic,
     idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
-    mOwner:       wWindow # app main window to where messages will be sent
     mGrid:        Grid
     mZctrl:       ZoomCtrl
     mBDone:       wButton
@@ -36,6 +36,7 @@ type
     mFirstLayout: bool
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
+    mOwner: wWindow # app main window to where messages will be sent
 
 proc edges(w: wWindow): tuple[left, right, top, bot: int] =
   (left:  w.position.x,
@@ -140,7 +141,6 @@ wClass(wGridControlPanel of wPanel):
       self.mFirstLayout = true
   proc onResize(self: wGridControlPanel) =
     self.layout()
-   
   proc onPaint(self: wGridControlPanel, event: wEvent) = 
     var dc = PaintDC(self)
     let
@@ -152,6 +152,13 @@ wClass(wGridControlPanel of wPanel):
     dc.setBrush(Brush(0xf0f0f0.wColor))
     dc.setPen(Pen(0xf0f0f0.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
+
+  proc sendMessageToRoot(self: wGridControlPanel, msg: UserMsgID, wp, lp: int) =
+      let owner = wGridControlFrame(self.parent).mOwner
+      if owner.isNil: return
+      echo &"Sending {msg} to {owner.mHwnd}"
+      SendMessage(owner.mHwnd, msg.UINT, wp.WPARAM, lp.LPARAM)
+   
 
   proc spinSize(self: wGridControlPanel, event: wEvent) =
     echo self.mSpinSizeX.value, ", ", self.mSpinSizeY.value
@@ -168,17 +175,15 @@ wClass(wGridControlPanel of wPanel):
     self.mGrid.visible = val
     self.mRbDots.enable(val)
     self.mRbLines.enable(val)
-    SendMessage(self.mOwner.mHwnd, idGridVisible.UINT, 0.WPARAM, val.LPARAM)
+    self.sendMessageToRoot(idGridShow, 0, val.LPARAM)
   proc dotsOrLines(self: wGridControlPanel, event: wEvent) =
     echo self.mRbDots.value, ", ", self.mRbLines.value
 
 
 
-  proc init*(self: wGridControlPanel, parent, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
+  proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
     wPanel(self).init(parent)
-
     # Create controls
-    self.mOwner       = owner
     self.mGrid        = gr
     self.mZctrl       = zc
     self.mBDone        = Button(self, idDone, "Done")
@@ -225,18 +230,25 @@ wClass(wGridControlPanel of wPanel):
     self.mCbVisible.wEvent_CheckBox  do (event: wEvent): self.onVisible(event)
     self.mRbDots.wEvent_RadioButton  do (event: wEvent): self.dotsOrLines(event)
     self.mRblines.wEvent_RadioButton do (event: wEvent): self.dotsOrLines(event)
-    self.mBDone.wEvent_Button        do(): self.parent.delete()
+    self.mBDone.wEvent_Button        do(): self.parent.destroy()
 
 wClass(wGridControlFrame of wFrame):
+  proc onDestroy(self: wGridControlFrame) = 
+    #echo &"closing from 0x{self.mHwnd:08x}"
+    if self.mOwner.isnil: return
+    SendMessage(self.mOwner.mHwnd, idSubFrameClosing.UINT, self.mHwnd.WPARAM, 0)
+
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
     let
       w = self.dpiScale(450)
       h = self.dpiScale(240)
       sz: wSize = (w, h)
     wFrame(self).init(owner, title="Grid Settings", size=sz,)# style=wDefaultDialogStyle)
+    self.mOwner = owner
     self.margin = self.dpiScale(6)
     self.backgroundColor = 0xd0d0d0
-    self.mPanel = GridControlPanel(self, owner, gr, zc)
+    self.mPanel = GridControlPanel(self, gr, zc)
+    self.wEvent_Destroy do(): self.onDestroy()
 
 when isMainModule:
   try:
@@ -246,7 +258,6 @@ when isMainModule:
       zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
       gr = newGrid()
       f1 = GridControlFrame(nil, gr, zc)
-
     f1.show()
     app.mainLoop()
   except Exception as e:

@@ -15,12 +15,14 @@ template paramSplit*(x: LPARAM|WPARAM): auto =
   (LOWORD(x).WORD,
    HIWORD(x).WORD)
 
-proc displayParams*(wp: WPARAM, lp: LPARAM) =
+proc displayParams*(event: wEvent) =
   # Do stuff with param values
   # Show full decimal, then hex, then signed decimal
   # WPARAM and LPARAM are int64, but only the bottom
   # 32 bits get filled
   let
+    wp = event.mWParam
+    lp = event.mLParam
     wpuhi = (wp.shr(16).uint16)
     wpulo = (wp.uint16)
     wpshi = cast[int16](wpuhi)
@@ -33,7 +35,6 @@ proc displayParams*(wp: WPARAM, lp: LPARAM) =
   stdout.write(&"wparam: 0x{wpuhi:04x}_{wpulo:04x} -> ({wpslo}, {wpshi}), ")
   stdout.write(&"lparam: 0x{lpuhi:04x}_{lpulo:04x} -> ({lpslo}, {lpshi})")
   stdout.write('\n')
-
 
 
 

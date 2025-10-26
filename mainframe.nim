@@ -96,7 +96,12 @@ wClass(wMainFrame of wFrame):
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-
+  proc onGridShow(self: wMainFrame, event: wEvent) =
+    echo "recceived ongridshow"
+    let state: bool = event.mLparam.bool
+    self.mMainPanel.mBlockPanel.mGrid.visible = state
+    self.mBandToolbars[1].toggleTool(MenuId.idGridShow, state)
+    self.mMainPanel.mBlockPanel.refresh(false)
   proc onToolEvent(self: wMainFrame, event: wEvent) =
     let evtStr = $MenuID(event.id)
     echo evtStr
@@ -115,14 +120,12 @@ wClass(wMainFrame of wFrame):
     of idAbout:
       let f = AboutFrame(self)
       f.show()
-    of idGridShow:
+    of MenuID.idGridShow:
       # We know this comes from the second toolbar in the rebar
-      echo "gridshow"
-      let state = self.mBandToolbars[1].toolState(idGridShow)
+      let state = self.mBandToolbars[1].toolState(MenuID.idGridShow)
       self.mMainPanel.mBlockPanel.mGrid.visible = state
       self.mMainPanel.mBlockPanel.refresh(false)
     of idGridSetting:
-      echo "grid setting"
       let
         gr = self.mMainPanel.mBlockPanel.mGrid
         zc = self.mMainPanel.mBlockPanel.mViewport.zctrl
@@ -168,9 +171,9 @@ wClass(wMainFrame of wFrame):
     
     # 2. Grid controls    
     let tb2 = ToolBar(result)
-    tb2.addChecktool(idGridShow, "Grid Show", bmpGridBg)
+    tb2.addChecktool(MenuID.idGridShow, "Grid Show", bmpGridBg)
     # Read from init file
-    tb2.toggleTool(idGridShow, gGridSpecsJ["visible"].getBool)
+    tb2.toggleTool(MenuID.idGridShow, gGridSpecsJ["visible"].getBool)
     tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg)
     self.mBandToolBars.add(tb2)
     
@@ -210,12 +213,15 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.randomizeRectsAll()
 
     # Connect Events
-    self.connect(wEvent_Size)        do (event: wEvent): self.onResize(event)
-    self.connect(wEvent_Tool)        do (event: wEvent): self.onToolEvent(event)
-    self.connect(idSize.UINT)        do (event: wEvent): self.onUserSizeNotify(event)
-    self.connect(idMouseMove.UINT)   do (event: wEvent): self.onUserMouseNotify(event)
-    self.connect(idSlider.UINT)      do (event: wEvent): self.onUserSliderNotify(event)
-    self.connect(idGridVisible.UINT) do (event: wEvent): displayParams(event.wParam, event.lParam)
+    echo &"Events connected to {self.mHwnd}"
+    self.connect(wEvent_Size)            do (event: wEvent): self.onResize(event)
+    self.connect(wEvent_Tool)            do (event: wEvent): self.onToolEvent(event)
+    self.connect(UserMsgId.idSize.UINT)            do (event: wEvent): self.onUserSizeNotify(event)
+    self.connect(UserMsgId.idMouseMove.UINT)       do (event: wEvent): self.onUserMouseNotify(event)
+    self.connect(UserMsgId.idSlider.UINT)          do (event: wEvent): self.onUserSliderNotify(event)
+    self.connect(UserMsgId.idGridShow.UINT)        do (event: wEvent): self.onGridShow(event)
+    self.connect(UserMsgId.idSubFrameClosing.UINT) do (event: wEvent): echo "received closing"; displayParams(event)
+
   
 when isMainModule:
     # Main data and window
