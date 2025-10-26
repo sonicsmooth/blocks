@@ -187,10 +187,11 @@ wClass(wBlockPanel of wSDLPanel):
   proc updateBoundingBox(self: wBlockPanel) =
     self.mAllBbox = gDb.boundingBox()
 
-  proc onResize(self: wBlockPanel, event: wEvent) =
-    # Post user message so top frame can show new size
-    let hWnd = GetAncestor(self.handle, GA_ROOT)
-    SendMessage(hWnd, idSize.UINT, event.mWparam, event.mLparam)
+  # proc onResize(self: wBlockPanel, event: wEvent) =
+  #   # Post user message so top frame can show new size
+  #   discard
+  #   let hWnd = GetAncestor(self.handle, GA_ROOT)
+  #   SendMessage(hWnd, idMsgSize.UINT, event.mWparam, event.mLparam)
 
   proc updateRatio*(self: wBlockPanel) =
     if gDb.len == 0:
@@ -346,7 +347,7 @@ wClass(wBlockPanel of wSDLPanel):
     if event.eventType == wEvent_MouseMove or
        event.eventType == wEvent_MouseWheel:
       let hWnd = GetAncestor(self.handle, GA_ROOT)
-      SendMessage(hWnd, idMouseMove.UINT, event.mWparam, event.lParam)
+      SendMessage(hWnd, idMsgMouseMove.UINT, event.mWparam, event.lParam)
 
 
     let 
@@ -545,7 +546,7 @@ Rendering options for SDL and pixie
     let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
     self.mViewport = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
 
-    self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
+    #self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
     self.wEvent_MouseMove            do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
     self.wEvent_LeftDown             do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)

@@ -17,10 +17,11 @@ type
     #mStatusBar: wStatusBar
     mBandToolBars: seq[wToolBar]
     #mReBar: wReBar
-  MenuID = enum
-    idTool1 = wIdUser, idGridShow, idGridSetting, idNew, idOpen, idSave, idClose, idExit, idHelp, idAbout
-  BandID = enum
-    idFileBand, idGridBand, idCloseBand
+  MenuCmdID = enum
+    idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
+              idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
+              idCmdExit, idCmdHelp, idCmdAbout
+
 
 
 const
@@ -74,11 +75,12 @@ wClass(wMainFrame of wFrame):
 
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = self.clientSize
+    self.mStatusBar.setStatusText($self.clientSize, index=1)
 
-  proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
-    let sz = (LOWORD(event.lParam).int, HIWORD(event.lParam).int)
-    self.mStatusBar.setStatusText($sz, index=1)
-
+  # proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
+  #   let sz = (LOWORD(event.lParam).int, HIWORD(event.lParam).int)
+  #   self.mStatusBar.setStatusText($sz, index=1)
+  
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
     # event can contain either client or screen coordinates
     # so ignore wparam and lparam.  Just grab  mouse pos directly
@@ -92,40 +94,43 @@ wClass(wMainFrame of wFrame):
       let mwpy = &"{mouseWPos.y}"
     let txt = &"Pixel: {mousePxPos}; World: ({mwpx}, {mwpy})"
     self.mStatusBar.setStatusText(txt, index=2)
-
+  
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
+
   proc onGridShow(self: wMainFrame, event: wEvent) =
     echo "recceived ongridshow"
     let state: bool = event.mLparam.bool
     self.mMainPanel.mBlockPanel.mGrid.visible = state
-    self.mBandToolbars[1].toggleTool(MenuId.idGridShow, state)
+    self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
     self.mMainPanel.mBlockPanel.refresh(false)
+
   proc onToolEvent(self: wMainFrame, event: wEvent) =
-    let evtStr = $MenuID(event.id)
+    let evtStr = $MenuCmdID(event.id)
     echo evtStr
     case event.id
-    of idNew: echo "new"
-    of idOpen:
+    of idCmdNew: echo "new"
+    of idCmdOpen:
       let f = FileDialog(self, 
         message="My dialog", 
         defaultDir=getCurrentDir(),
         defaultFile="hello.txt",
         style=wFdMultiple)
-    of idSave: echo "save"
-    of idClose: self.delete()
-    of idExit: self.delete()
-    of idHelp: echo "help"
-    of idAbout:
+    of idCmdSave: echo "save"
+    of idCmdClose: self.destroy()
+    of idCmdExit: self.destroy()
+    of idCmdHelp: echo "help"
+    of idCmdAbout:
       let f = AboutFrame(self)
       f.show()
-    of MenuID.idGridShow:
+    of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar
-      let state = self.mBandToolbars[1].toolState(MenuID.idGridShow)
+      let state = self.mBandToolbars[1].toolState(idCmdGridShow)
       self.mMainPanel.mBlockPanel.mGrid.visible = state
       self.mMainPanel.mBlockPanel.refresh(false)
-    of idGridSetting:
+      # Broadcast everywhere
+    of idCmdGridSetting:
       let
         gr = self.mMainPanel.mBlockPanel.mGrid
         zc = self.mMainPanel.mBlockPanel.mViewport.zctrl
@@ -143,17 +148,18 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.forceRedraw()
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
+    # Main menu at top of frame
     var menu1 = Menu()
     var menu2 = Menu()
     result = MenuBar(self)
-    menu1.append(idNew, "New", bitmap=bmpNewSm)
-    menu1.append(idOpen, "Open", bitmap=bmpOpenSm)
-    menu1.append(idSave, "Save", bitmap=bmpSaveSm)
-    menu1.append(idClose, "Close", bitmap=bmpCloseSm)
+    menu1.append(idCmdNew, "New", bitmap=bmpNewSm)
+    menu1.append(idCmdOpen, "Open", bitmap=bmpOpenSm)
+    menu1.append(idCmdSave, "Save", bitmap=bmpSaveSm)
+    menu1.append(idCmdClose, "Close", bitmap=bmpCloseSm)
     menu1.appendSeparator()
-    menu1.append(idExit, "Exit", bitmap=bmpExitSm)
-    menu2.append(idAbout, "About", bitmap=bmpInfoSm)
-    menu2.append(idHelp, "Help", bitmap=bmpHelpSm)
+    menu1.append(idCmdExit, "Exit", bitmap=bmpExitSm)
+    menu2.append(idCmdAbout, "About", bitmap=bmpInfoSm)
+    menu2.append(idCmdHelp, "Help", bitmap=bmpHelpSm)
     result.append(menu1, "File")
     result.append(menu2, "Help")
 
@@ -164,22 +170,22 @@ wClass(wMainFrame of wFrame):
 
     # 1. Basic file new/open toolbar
     let tb1 = ToolBar(result)
-    tb1.addTool(idNew, "New", bmpNewBg)
-    tb1.addTool(idOpen, "Open", bmpOpenBg)
-    tb1.addTool(idSave, "Save", bmpSaveBg)
+    tb1.addTool(idCmdNew, "New", bmpNewBg)
+    tb1.addTool(idCmdOpen, "Open", bmpOpenBg)
+    tb1.addTool(idCmdSave, "Save", bmpSaveBg)
     self.mBandToolBars.add(tb1)
     
     # 2. Grid controls    
     let tb2 = ToolBar(result)
-    tb2.addChecktool(MenuID.idGridShow, "Grid Show", bmpGridBg)
+    tb2.addChecktool(idCmdGridShow, "Grid Show", bmpGridBg)
     # Read from init file
-    tb2.toggleTool(MenuID.idGridShow, gGridSpecsJ["visible"].getBool)
-    tb2.addtool(idGridSetting, "Grid settings", bmpGearsBg)
+    tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
+    tb2.addtool(idCmdGridSetting, "Grid settings", bmpGearsBg)
     self.mBandToolBars.add(tb2)
     
     # 3. Close
     let tb3 = ToolBar(result)
-    tb3.addTool(idClose, "Close", bmpCloseBg)
+    tb3.addTool(idCmdClose, "Close", bmpCloseBg)
     self.mBandToolBars.add(tb3)
 
     # Put toolbars things in rebar
@@ -216,11 +222,11 @@ wClass(wMainFrame of wFrame):
     echo &"Events connected to {self.mHwnd}"
     self.connect(wEvent_Size)            do (event: wEvent): self.onResize(event)
     self.connect(wEvent_Tool)            do (event: wEvent): self.onToolEvent(event)
-    self.connect(UserMsgId.idSize.UINT)            do (event: wEvent): self.onUserSizeNotify(event)
-    self.connect(UserMsgId.idMouseMove.UINT)       do (event: wEvent): self.onUserMouseNotify(event)
-    self.connect(UserMsgId.idSlider.UINT)          do (event: wEvent): self.onUserSliderNotify(event)
-    self.connect(UserMsgId.idGridShow.UINT)        do (event: wEvent): self.onGridShow(event)
-    self.connect(UserMsgId.idSubFrameClosing.UINT) do (event: wEvent): echo "received closing"; displayParams(event)
+    #self.connect(idMsgSize.UINT)            do (event: wEvent): self.onUserSizeNotify(event)
+    self.connect(idMsgMouseMove.UINT)       do (event: wEvent): self.onUserMouseNotify(event)
+    self.connect(idMsgSlider.UINT)          do (event: wEvent): self.onUserSliderNotify(event)
+    self.connect(idMsgGridShow.UINT)        do (event: wEvent): self.onGridShow(event)
+    self.connect(idMsgSubFrameClosing.UINT) do (event: wEvent): echo "received closing"; displayParams(event)
 
   
 when isMainModule:
