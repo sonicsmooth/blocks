@@ -184,7 +184,7 @@ wClass(wMainPanel of wPanel):
   proc onSlider(self: wMainPanel, event: wEvent) =
     let pos = event.scrollPos
     let hWnd = GetAncestor(self.handle, GA_ROOT)
-    SendMessage(hwnd, idMsgSlider.UINT, pos, pos)
+    SendMessage(hwnd, idMsgSlider, pos, pos)
   proc onButtonrandomizeAll(self: wMainPanel) =
     self.randomizeRectsAll(self.mSpnr.value)
     self.mBlockPanel.updateRatio()

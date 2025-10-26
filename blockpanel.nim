@@ -191,7 +191,7 @@ wClass(wBlockPanel of wSDLPanel):
   #   # Post user message so top frame can show new size
   #   discard
   #   let hWnd = GetAncestor(self.handle, GA_ROOT)
-  #   SendMessage(hWnd, idMsgSize.UINT, event.mWparam, event.mLparam)
+  #   SendMessage(hWnd, idMsgSize, event.mWparam, event.mLparam)
 
   proc updateRatio*(self: wBlockPanel) =
     if gDb.len == 0:
@@ -347,7 +347,7 @@ wClass(wBlockPanel of wSDLPanel):
     if event.eventType == wEvent_MouseMove or
        event.eventType == wEvent_MouseWheel:
       let hWnd = GetAncestor(self.handle, GA_ROOT)
-      SendMessage(hWnd, idMsgMouseMove.UINT, event.mWparam, event.lParam)
+      SendMessage(hWnd, idMsgMouseMove, event.mWparam, event.lParam)
 
 
     let 

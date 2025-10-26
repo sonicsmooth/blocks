@@ -222,11 +222,11 @@ wClass(wMainFrame of wFrame):
     echo &"Events connected to {self.mHwnd}"
     self.connect(wEvent_Size)            do (event: wEvent): self.onResize(event)
     self.connect(wEvent_Tool)            do (event: wEvent): self.onToolEvent(event)
-    #self.connect(idMsgSize.UINT)            do (event: wEvent): self.onUserSizeNotify(event)
-    self.connect(idMsgMouseMove.UINT)       do (event: wEvent): self.onUserMouseNotify(event)
-    self.connect(idMsgSlider.UINT)          do (event: wEvent): self.onUserSliderNotify(event)
-    self.connect(idMsgGridShow.UINT)        do (event: wEvent): self.onGridShow(event)
-    self.connect(idMsgSubFrameClosing.UINT) do (event: wEvent): echo "received closing"; displayParams(event)
+    #self.connect(idMsgSize)            do (event: wEvent): self.onUserSizeNotify(event)
+    self.connect(idMsgMouseMove)       do (event: wEvent): self.onUserMouseNotify(event)
+    self.connect(idMsgSlider)          do (event: wEvent): self.onUserSliderNotify(event)
+    self.connect(idMsgGridShow)        do (event: wEvent): self.onGridShow(event)
+    self.connect(idMsgSubFrameClosing) do (event: wEvent): echo "received closing"; displayParams(event)
 
   
 when isMainModule:

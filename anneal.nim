@@ -223,7 +223,7 @@ proc update(hwnd: HWND, threadIdx: int, ids: seq[CompID], delay: int) =
   # Sends update message and waits for response
   {.gcsafe.}:
     gAnnealComms[threadIdx].idChan.send(ids)
-  PostMessage(hwnd, idMsgAlgUpdate.UINT, 0, threadIdx)
+  PostMessage(hwnd, idMsgAlgUpdate, 0, threadIdx)
   {.gcsafe.}:
     discard gAnnealComms[threadIdx].ackChan.recv()
   if delay > 0:
