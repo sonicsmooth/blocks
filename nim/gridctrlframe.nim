@@ -1,4 +1,4 @@
-import std/strformat
+import std/[strformat, sugar]
 import wNim
 from winim/inc/winbase import MulDiv
 import winim
@@ -173,7 +173,7 @@ wClass(wGridControlPanel of wPanel):
   proc onDynamic(self: wGridControlPanel, event: wEvent) =
     echo "dynamic: ", self.mCbDynamic.value
 
-  proc onCmdVisible(self: wGridControlPanel, event: wEvent) =
+  proc onCmdGridShow(self: wGridControlPanel, event: wEvent) =
     # Read state from button and broadcast to everyone
     let state = self.mCbVisible.value
     self.mGrid.visible = state
@@ -181,7 +181,7 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines.enable(state)
     sendToListeners(idMsgGridShow, self.mHwnd, state.LPARAM)
 
-  proc onMsgVisible(self: wGridControlPanel, event: wEvent) =
+  proc onMsgGridShow(self: wGridControlPanel, event: wEvent) =
     # Accept the message and update state
     let state = event.lParam.bool
     self.mCbVisible.setValue(state)
@@ -244,9 +244,9 @@ wClass(wGridControlPanel of wPanel):
     self.mCbDynamic.wEvent_CheckBox  do (event: wEvent): self.onDynamic(event)
 
     # Respond to button, listen to msg
-    self.mCbVisible.connect(wEvent_CheckBox) do (event: wEvent): self.onCmdVisible(event)
-    self.mCbVisible.registerListener(idMsgGridShow)
-    self.mCbVisible.connect(idMsgGridShow) do (event: wEvent): self.onMsgVisible(event)
+    self.mCbVisible.wEvent_CheckBox do (event: wEvent): self.onCmdGridShow(event)
+    self.registerListener(idMsgGridShow, (w:wWindow,e:wEvent)=>(onMsgGridShow(w.wGridControlPanel,e)))
+    #self.mCbVisible.connect(idMsgGridShow) do (event: wEvent): self.onMsgVisible(event)
 
 
     self.mRbDots.wEvent_RadioButton  do (event: wEvent): self.dotsOrLines(event)
