@@ -3,7 +3,7 @@ import wNim
 from winim/inc/winbase import MulDiv
 import winim
 import appinit, grid, viewport
-import userMessages
+import routing
 
 # Create a panel to hold some controls,
 # then place it in a frame
@@ -14,26 +14,26 @@ type
     idSnap, idDynamic,
     idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
-    mGrid:        Grid
-    mZctrl:       ZoomCtrl
-    mBDone:       wButton
-    mIntervalBox: wStaticbox
-    mBehaviorBox: wStaticBox
+    mGrid:          Grid
+    mZctrl:         ZoomCtrl
+    mBDone:         wButton
+    mIntervalBox:   wStaticbox
+    mBehaviorBox:   wStaticBox
     mAppearanceBox: wStaticBox
-    mTxtX:        wStaticText
-    mTxtY:        wStaticText
-    mTxtDivs:     wStaticText
-    mTxtDens:     wStaticText
-    mCbSnap:      wCheckBox
-    mCbVisible:   wCheckBox
-    mCbDynamic:   wCheckBox
-    mRbDots:      wRadioButton
-    mRbLines:     wRadioButton
-    mSpinSizeX:   wSpinCtrl 
-    mSpinSizeY:   wSpinCtrl 
-    mSpinDivs:    wSpinCtrl
-    mSpinDensity: wSpinCtrl
-    mFirstLayout: bool
+    mTxtX:          wStaticText
+    mTxtY:          wStaticText
+    mTxtDivs:       wStaticText
+    mTxtDens:       wStaticText
+    mCbSnap:        wCheckBox
+    mCbVisible:     wCheckBox
+    mCbDynamic:     wCheckBox
+    mRbDots:        wRadioButton
+    mRbLines:       wRadioButton
+    mSpinSizeX:     wSpinCtrl 
+    mSpinSizeY:     wSpinCtrl 
+    mSpinDivs:      wSpinCtrl
+    mSpinDensity:   wSpinCtrl
+    mFirstLayout:   bool
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
     mOwner: wWindow # app main window to where messages will be sent
@@ -153,29 +153,44 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(0xf0f0f0.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  proc sendMessageToRoot(self: wGridControlPanel, msg: UINT, wp, lp: int) =
-      let owner = wGridControlFrame(self.parent).mOwner
-      if owner.isNil: return
-      echo &"Sending {msg} to {owner.mHwnd}"
-      SendMessage(owner.mHwnd, msg, wp.WPARAM, lp.LPARAM)
+  # proc sendMessageToRoot(self: wGridControlPanel, msg: UINT, wp, lp: int) =
+  #     let owner = wGridControlFrame(self.parent).mOwner
+  #     if owner.isNil: return
+  #     echo &"Sending {msg} to {owner.mHwnd}"
+  #     SendMessage(owner.mHwnd, msg, wp.WPARAM, lp.LPARAM)
    
 
   proc spinSize(self: wGridControlPanel, event: wEvent) =
     echo self.mSpinSizeX.value, ", ", self.mSpinSizeY.value
+
   proc spinDivDense(self: wGridControlPanel, event: wEvent) =
     let d = event.spinDelta
     echo self.mSpinDivs.value + d, ", ", self.mSpinDensity.value + d
+
   proc onSnap(self: wGridControlPanel, event: wEvent) =
     echo "snap: ", self.mCbSnap.value
+
   proc onDynamic(self: wGridControlPanel, event: wEvent) =
     echo "dynamic: ", self.mCbDynamic.value
-  proc onVisible(self: wGridControlPanel, event: wEvent) =
-    # Do something here that broadcasts the visibility value back to grid
-    let val = self.mCbVisible.value
-    self.mGrid.visible = val
-    self.mRbDots.enable(val)
-    self.mRbLines.enable(val)
-    self.sendMessageToRoot(idMsgGridShow, 0, val.LPARAM)
+
+  proc onCmdVisible(self: wGridControlPanel, event: wEvent) =
+    # Read state from button and broadcast to everyone
+    let state = self.mCbVisible.value
+    self.mGrid.visible = state
+    self.mRbDots.enable(state)
+    self.mRbLines.enable(state)
+    sendToListeners(idMsgGridShow, self.mHwnd, state.LPARAM)
+
+  proc onMsgVisible(self: wGridControlPanel, event: wEvent) =
+    # Accept the message and update state
+    let state = event.lParam.bool
+    self.mCbVisible.setValue(state)
+    self.mRbDots.enable(state)
+    self.mRbLines.enable(state)
+    self.mGrid.visible = state
+
+
+
   proc dotsOrLines(self: wGridControlPanel, event: wEvent) =
     echo self.mRbDots.value, ", ", self.mRbLines.value
 
@@ -227,14 +242,19 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDensity.wEvent_Spin    do (event: wEvent): self.spinDivDense(event)
     self.mCbSnap.wEvent_CheckBox     do (event: wEvent): self.onSnap(event)
     self.mCbDynamic.wEvent_CheckBox  do (event: wEvent): self.onDynamic(event)
-    self.mCbVisible.wEvent_CheckBox  do (event: wEvent): self.onVisible(event)
+
+    # Respond to button, listen to msg
+    self.mCbVisible.connect(wEvent_CheckBox) do (event: wEvent): self.onCmdVisible(event)
+    self.mCbVisible.registerListener(idMsgGridShow)
+    self.mCbVisible.connect(idMsgGridShow) do (event: wEvent): self.onMsgVisible(event)
+
+
     self.mRbDots.wEvent_RadioButton  do (event: wEvent): self.dotsOrLines(event)
     self.mRblines.wEvent_RadioButton do (event: wEvent): self.dotsOrLines(event)
     self.mBDone.wEvent_Button        do(): self.parent.destroy()
 
 wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
-    #echo &"closing from 0x{self.mHwnd:08x}"
     if self.mOwner.isnil: return
     SendMessage(self.mOwner.mHwnd, idMsgSubFrameClosing, self.mHwnd.WPARAM, 0)
 

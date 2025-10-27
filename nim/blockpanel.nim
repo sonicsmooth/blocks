@@ -347,8 +347,7 @@ wClass(wBlockPanel of wSDLPanel):
     if event.eventType == wEvent_MouseMove or
        event.eventType == wEvent_MouseWheel:
       let hWnd = GetAncestor(self.handle, GA_ROOT)
-      SendMessage(hWnd, idMsgMouseMove, event.mWparam, event.lParam)
-
+      SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
 
     let 
       vp = self.mViewport
