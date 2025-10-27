@@ -1,4 +1,4 @@
-import std/[os, strformat, tables]
+import std/[os, strformat, sugar, tables]
 
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
@@ -222,11 +222,9 @@ wClass(wMainFrame of wFrame):
     self.connect(idMsgSubFrameClosing) do (event: wEvent): displayParams(event)
 
     # Participate in observables/listeners
-    # Respond to buttons and send message
-    self.connect(wEvent_Tool) do (event: wEvent): self.onToolEvent(event)
-    # Respond to dialog box
-    self.registerListener(idMsgGridShow)
-    self.connect(idMsgGridShow) do (event: wEvent): self.onMsgGridShow(event)
+    # Respond to buttons & send msg; respond to incoming message
+    self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
+    self.registerListener(idMsgGridShow, (w:wWindow,e:wEvent)=>onMsgGridShow(w.wMainFrame,e))
   
 when isMainModule:
     # Main data and window
