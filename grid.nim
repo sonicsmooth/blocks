@@ -15,6 +15,8 @@ type
     xSpace*: WType = 10 #TODO leave as defaults
     ySpace*: WType = 10
     visible*: bool = true
+
+    # Source variables
     originVisible*: bool = true
     snap*: bool = true
     dynamic*: bool = true

@@ -4,7 +4,7 @@ import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
 import winim/inc/windef
-import appinit, userMessages
+import appinit, routing
 import viewport, utils
 import mainpanel, aboutframe, gridctrlframe
 export mainpanel
@@ -99,8 +99,8 @@ wClass(wMainFrame of wFrame):
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
 
-  proc onGridShow(self: wMainFrame, event: wEvent) =
-    echo "recceived ongridshow"
+  proc onMsgGridShow(self: wMainFrame, event: wEvent) =
+    echo "received ongridshow from: ", event.wParam
     let state: bool = event.mLparam.bool
     self.mMainPanel.mBlockPanel.mGrid.visible = state
     self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
@@ -108,35 +108,32 @@ wClass(wMainFrame of wFrame):
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
     let evtStr = $MenuCmdID(event.id)
-    echo evtStr
     case event.id
-    of idCmdNew: echo "new"
+    of idCmdNew: discard
     of idCmdOpen:
-      let f = FileDialog(self, 
-        message="My dialog", 
-        defaultDir=getCurrentDir(),
-        defaultFile="hello.txt",
-        style=wFdMultiple)
-    of idCmdSave: echo "save"
+      let f = FileDialog(self, defaultDir=getCurrentDir(), style=wFdMultiple)
+      f.show()
+    of idCmdSave: discard
     of idCmdClose: self.destroy()
     of idCmdExit: self.destroy()
-    of idCmdHelp: echo "help"
+    of idCmdHelp: discard
     of idCmdAbout:
+      echo "about"
       let f = AboutFrame(self)
       f.show()
     of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar
       let state = self.mBandToolbars[1].toolState(idCmdGridShow)
-      self.mMainPanel.mBlockPanel.mGrid.visible = state
-      self.mMainPanel.mBlockPanel.refresh(false)
-      # Broadcast everywhere
+      echo "this hwnd: ", self.mHwnd
+      sendToListeners(idMsgGridShow, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
       let
         gr = self.mMainPanel.mBlockPanel.mGrid
         zc = self.mMainPanel.mBlockPanel.mViewport.zctrl
       let f = GridControlFrame(self, gr, zc)
       f.show()
-    else: stdout.write("default")
+    else:
+      discard
 
 
   
@@ -165,7 +162,6 @@ wClass(wMainFrame of wFrame):
 
   proc setupReBar(self: wMainFrame): wReBar =
     # Set up three things in the rebar
-
     result = ReBar(self)
 
     # 1. Basic file new/open toolbar
@@ -221,13 +217,16 @@ wClass(wMainFrame of wFrame):
     # Connect Events
     echo &"Events connected to {self.mHwnd}"
     self.connect(wEvent_Size)            do (event: wEvent): self.onResize(event)
-    self.connect(wEvent_Tool)            do (event: wEvent): self.onToolEvent(event)
-    #self.connect(idMsgSize)            do (event: wEvent): self.onUserSizeNotify(event)
     self.connect(idMsgMouseMove)       do (event: wEvent): self.onUserMouseNotify(event)
     self.connect(idMsgSlider)          do (event: wEvent): self.onUserSliderNotify(event)
-    self.connect(idMsgGridShow)        do (event: wEvent): self.onGridShow(event)
-    self.connect(idMsgSubFrameClosing) do (event: wEvent): echo "received closing"; displayParams(event)
+    self.connect(idMsgSubFrameClosing) do (event: wEvent): displayParams(event)
 
+    # Participate in observables/listeners
+    # Respond to buttons and send message
+    self.connect(wEvent_Tool) do (event: wEvent): self.onToolEvent(event)
+    # Respond to dialog box
+    self.registerListener(idMsgGridShow)
+    self.connect(idMsgGridShow) do (event: wEvent): self.onMsgGridShow(event)
   
 when isMainModule:
     # Main data and window
