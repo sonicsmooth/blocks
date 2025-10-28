@@ -197,6 +197,7 @@ wClass(wMainFrame of wFrame):
 
   proc init*(self: wMainFrame, size: wSize) = 
     wFrame(self).init(title="Blocks Frame", size=size)
+    echo "Main frame is ", $self.mHwnd
     
     # Create controls
     self.mMenuBar     = setupMenuBar(self)
@@ -215,11 +216,10 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.randomizeRectsAll()
 
     # Connect Events
-    echo &"Events connected to {self.mHwnd}"
-    self.connect(wEvent_Size)            do (event: wEvent): self.onResize(event)
-    self.connect(idMsgMouseMove)       do (event: wEvent): self.onUserMouseNotify(event)
-    self.connect(idMsgSlider)          do (event: wEvent): self.onUserSliderNotify(event)
-    self.connect(idMsgSubFrameClosing) do (event: wEvent): displayParams(event)
+    self.wEvent_Size          do (event: wEvent): self.onResize(event)
+    self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
+    self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
+    self.idMsgSubFrameClosing do (event: wEvent): displayParams(event)
 
     # Participate in observables/listeners
     # Respond to buttons & send msg; respond to incoming message
