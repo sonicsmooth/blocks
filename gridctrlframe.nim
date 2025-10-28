@@ -38,6 +38,11 @@ type
     mPanel: wGridControlPanel
     mOwner: wWindow # app main window to where messages will be sent
 
+const
+  frameBackgroundColor = 0xebebeb
+  panelBackgroundColor = 0xf0f0f0
+  buttonAreaColor = 0xf5f5f5
+
 proc edges(w: wWindow): tuple[left, right, top, bot: int] =
   (left:  w.position.x,
     right: w.position.x + w.size.width,
@@ -119,7 +124,7 @@ wClass(wGridControlPanel of wPanel):
     let rightmost = r
 
     # Done button
-    self.mBDone.position = (rightmost - buttWidth, b + vspc div 2 + self.dpiScale(12))
+    self.mBDone.position = (rightmost - buttWidth, b + vspc div 2 + self.dpiScale(6))
     self.mBDone.size = (buttWidth, buttHeight)
     (l,r,t,b) = edges(self.mBDone)
 
@@ -134,8 +139,8 @@ wClass(wGridControlPanel of wPanel):
     # Finalize frame size, then gray rectangle
     let (ibxl,ibxr,ibxt,ibxb) = edges(self.mIntervalBox)
     let (abxl,ablr,abxt,abxb) = edges(self.mBDone)
-    let frameW = self.mIntervalBox.size.width + 2*hmarg + self.dpiScale(12)
-    let frameH = abxb - ibxt + self.dpiScale(60) + self.parent.margin.up + self.parent.margin.down
+    let frameW = self.mIntervalBox.size.width + 2*hmarg + self.dpiScale(6)
+    let frameH = abxb - ibxt + self.parent.margin.up + self.parent.margin.down + self.dpiScale(50) 
     if not self.mFirstLayout:
       self.parent.size = (frameW, frameH)
       self.mFirstLayout = true
@@ -149,21 +154,14 @@ wClass(wGridControlPanel of wPanel):
       barheight = buttHeight +  self.dpiScale(20)
 
     # Rectangle behind button
-    dc.setBrush(Brush(0xf0f0f0.wColor))
-    dc.setPen(Pen(0xf0f0f0.wColor))
+    dc.setBrush(Brush(buttonAreaColor.wColor))
+    dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  # proc sendMessageToRoot(self: wGridControlPanel, msg: UINT, wp, lp: int) =
-  #     let owner = wGridControlFrame(self.parent).mOwner
-  #     if owner.isNil: return
-  #     echo &"Sending {msg} to {owner.mHwnd}"
-  #     SendMessage(owner.mHwnd, msg, wp.WPARAM, lp.LPARAM)
-   
-
-  proc spinSize(self: wGridControlPanel, event: wEvent) =
+  proc onSpinSize(self: wGridControlPanel, event: wEvent) =
     echo self.mSpinSizeX.value, ", ", self.mSpinSizeY.value
 
-  proc spinDivDense(self: wGridControlPanel, event: wEvent) =
+  proc onSpinDivDense(self: wGridControlPanel, event: wEvent) =
     let d = event.spinDelta
     echo self.mSpinDivs.value + d, ", ", self.mSpinDensity.value + d
 
@@ -189,6 +187,9 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines.enable(state)
     self.mGrid.visible = state
 
+  # proc onStaticColor(self: wGridControlPanel, event: wEvent) = 
+  #   let hdc = event.mWparam.HDC
+  #   SetBkColor(hdc, panelBackgroundColor)
 
 
   proc dotsOrLines(self: wGridControlPanel, event: wEvent) =
@@ -198,6 +199,8 @@ wClass(wGridControlPanel of wPanel):
 
   proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
     wPanel(self).init(parent)
+    echo "Grid control panel is ", self.mHwnd
+    self.backgroundColor = panelBackgroundColor
     # Create controls
     self.mGrid        = gr
     self.mZctrl       = zc
@@ -220,6 +223,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDivs    = SpinCtrl(self, idDivisions, "")
     self.mSpinDensity = SpinCtrl(self, idDensity, "")
     
+
     self.mSpinSizeX.setValue($self.mGrid.xSpace)
     self.mSpinSizeY.setValue($self.mGrid.ySpace)
     self.mCbVisible.setValue(self.mGrid.visible)
@@ -230,28 +234,32 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDivs.setValue($self.mZctrl.base)
     self.mSpinDensity.setValue($self.mZctrl.density)
     
-    self.backgroundColor = 0xf0f0f0
     self.layout()
 
     # Connect events
-    self.wEvent_Size                 do (event: wEvent): self.onResize()
-    self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
-    self.mSpinSizeX.wEvent_Spin      do (event: wEvent): self.spinSize(event)
-    self.mSpinSizeY.wEvent_Spin      do (event: wEvent): self.spinSize(event)
-    self.mSpinDivs.wEvent_Spin       do (event: wEvent): self.spinDivDense(event)
-    self.mSpinDensity.wEvent_Spin    do (event: wEvent): self.spinDivDense(event)
-    self.mCbSnap.wEvent_CheckBox     do (event: wEvent): self.onSnap(event)
-    self.mCbDynamic.wEvent_CheckBox  do (event: wEvent): self.onDynamic(event)
-
+    self.wEvent_Size        do (event: wEvent): self.onResize()
+    self.wEvent_Paint       do (event: wEvent): self.onPaint(event)
+    self.wEvent_Spin        do (event: wEvent): self.onSpinSize(event)
+    self.wEvent_Spin        do (event: wEvent): self.onSpinSize(event)
+    self.wEvent_Spin        do (event: wEvent): self.onSpinDivDense(event)
+    self.wEvent_Spin        do (event: wEvent): self.onSpinDivDense(event)
+    self.wEvent_CheckBox    do (event: wEvent): self.onSnap(event)
+    self.wEvent_CheckBox    do (event: wEvent): self.onDynamic(event)
+    # self.WM_CTLCOLORSTATIC  do (event: wEvent): self.onStaticColor(event)
+    # self.WM_CTLCOLOREDIT    do (event: wEvent): self.onStaticColor(event)
+    # self.WM_CTLCOLORBTN     do (event: wEvent): self.onStaticColor(event)
+    # self.WM_CTLCOLORDLG     do (event: wEvent): self.onStaticColor(event)
+    # self.WM_CTLCOLORLISTBOX do (event: wEvent): self.onStaticColor(event)
+    
     # Respond to button, listen to msg
     self.mCbVisible.wEvent_CheckBox do (event: wEvent): self.onCmdGridShow(event)
     self.registerListener(idMsgGridShow, (w:wWindow,e:wEvent)=>(onMsgGridShow(w.wGridControlPanel,e)))
-    #self.mCbVisible.connect(idMsgGridShow) do (event: wEvent): self.onMsgVisible(event)
-
+    self.wEvent_Destroy do(): self.deregisterListener()
 
     self.mRbDots.wEvent_RadioButton  do (event: wEvent): self.dotsOrLines(event)
     self.mRblines.wEvent_RadioButton do (event: wEvent): self.dotsOrLines(event)
     self.mBDone.wEvent_Button        do(): self.parent.destroy()
+
 
 wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
@@ -263,12 +271,15 @@ wClass(wGridControlFrame of wFrame):
       w = self.dpiScale(450)
       h = self.dpiScale(240)
       sz: wSize = (w, h)
-    wFrame(self).init(owner, title="Grid Settings", size=sz,)# style=wDefaultDialogStyle)
+    let style = wModalFrame
+    wFrame(self).init(owner, title="Grid Settings", size=sz, style=style)
+    echo "Grid control frame is ", self.mHwnd
     self.mOwner = owner
     self.margin = self.dpiScale(6)
-    self.backgroundColor = 0xd0d0d0
+    self.backgroundColor = frameBackgroundColor
     self.mPanel = GridControlPanel(self, gr, zc)
     self.wEvent_Destroy do(): self.onDestroy()
+
 
 when isMainModule:
   try:
