@@ -41,7 +41,7 @@ proc newViewport*(pan: PxPoint, clicks: int, zCtrl: ZoomCtrl): Viewport =
   # zctrl must be passed already properly formed by caller
   let j = gViewportJ
   result = new Viewport
-  result.pan = if j.contains("pan"): j["pan"].getPxPoint else: pan
+  result.pan = if j.contains("pan"): j["pan"].toPxPoint else: pan
   result.zClicks = if j.contains("zClicks"): j["zClicks"].getInt else: clicks
   result.zctrl = zCtrl
   # The doZoom call updates values in result, including result.zctrl.
