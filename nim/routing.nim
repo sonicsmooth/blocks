@@ -39,7 +39,8 @@ proc registerListener*(listener: wWindow, msg: int32, callback: MsgProc) =
 proc deregisterListener*(listener: wWindow) = 
   var keysToDelete: seq[int32] = @[]
   let handle:HANDLE = listener.mHwnd
-  echo gEventListeners
+  when defined(debug):
+    echo gEventListeners
   for msg, handles in gEventListeners:
     if handle in handles:
       gEventListeners[msg].excl(handle)
@@ -52,6 +53,7 @@ proc sendToListeners*(msg: int32, wp: WPARAM, lp: LPARAM) =
   # msg is the message
   # wp is usually the hwnd of the sender
   # lp is usually the value to be sent
+  if msg notin gEventListeners:
+    return
   for handle in gEventListeners[msg]:
-    echo "sending to: ", handle
     SendMessage(handle, msg, wp, lp)

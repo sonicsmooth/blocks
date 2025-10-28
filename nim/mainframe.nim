@@ -100,7 +100,8 @@ wClass(wMainFrame of wFrame):
     self.mStatusBar.setStatusText(tmpStr, index=0)
 
   proc onMsgGridShow(self: wMainFrame, event: wEvent) =
-    echo "received ongridshow from: ", event.wParam
+    when defined(debug):
+      echo "received ongridshow from: ", event.wParam
     let state: bool = event.mLparam.bool
     self.mMainPanel.mBlockPanel.mGrid.visible = state
     self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
@@ -118,13 +119,11 @@ wClass(wMainFrame of wFrame):
     of idCmdExit: self.destroy()
     of idCmdHelp: discard
     of idCmdAbout:
-      echo "about"
       let f = AboutFrame(self)
       f.show()
     of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar
       let state = self.mBandToolbars[1].toolState(idCmdGridShow)
-      echo "this hwnd: ", self.mHwnd
       sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
       let
@@ -197,7 +196,8 @@ wClass(wMainFrame of wFrame):
 
   proc init*(self: wMainFrame, size: wSize) = 
     wFrame(self).init(title="Blocks Frame", size=size)
-    echo "Main frame is ", $self.mHwnd
+    when defined(debug):
+      echo "Main frame is ", $self.mHwnd
     
     # Create controls
     self.mMenuBar     = setupMenuBar(self)
@@ -219,12 +219,12 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Size          do (event: wEvent): self.onResize(event)
     self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
     self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
-    self.idMsgSubFrameClosing do (event: wEvent): displayParams(event)
 
     # Participate in observables/listeners
     # Respond to buttons & send msg; respond to incoming message
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
     self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>onMsgGridShow(w.wMainFrame,e))
+    #self.registerListener(idMsgSubFrameClosing, (w:wWindow,e:wEvent)=>displayParams(e))
   
 when isMainModule:
     # Main data and window

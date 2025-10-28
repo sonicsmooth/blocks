@@ -33,10 +33,8 @@ type
     mSpinSizeY:     wSpinCtrl 
     mSpinDivisions:      wSpinCtrl
     mSpinDensity:   wSpinCtrl
-    mFirstLayout:   bool
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
-    mOwner: wWindow # app main window to where messages will be sent
 
 const
   frameBackgroundColor = 0xebebeb
@@ -141,9 +139,7 @@ wClass(wGridControlPanel of wPanel):
     let (abxl,ablr,abxt,abxb) = edges(self.mBDone)
     let frameW = self.mIntervalBox.size.width + 2*hmarg + self.dpiScale(6)
     let frameH = abxb - ibxt + self.parent.margin.up + self.parent.margin.down + self.dpiScale(50) 
-    if not self.mFirstLayout:
-      self.parent.size = (frameW, frameH)
-      self.mFirstLayout = true
+    self.parent.size = (frameW, frameH)
   proc onResize(self: wGridControlPanel) =
     self.layout()
   proc onPaint(self: wGridControlPanel, event: wEvent) = 
@@ -160,16 +156,20 @@ wClass(wGridControlPanel of wPanel):
 
   # Respond to controls
   proc onCmdSpinSizeX(self: wGridControlPanel, event: wEvent) =
-    echo "Spin size X = ", self.mSpinSizeX.value
+    when defined(debug):
+      echo "Spin size X = ", self.mSpinSizeX.value
 
   proc onCmdSpinSizeY(self: wGridControlPanel, event: wEvent) =
-    echo "Spin size Y = ", self.mSpinSizeY.value
+    when defined(debug):
+      echo "Spin size Y = ", self.mSpinSizeY.value
 
   proc onCmdSpinDivisions(self: wGridControlPanel, event: wEvent) =
-    echo "spin divisions = ", self.mSpinDivisions.value + event.spinDelta
+    when defined(debug):
+      echo "spin divisions = ", self.mSpinDivisions.value + event.spinDelta
 
   proc onCmdSpinDensity(self: wGridControlPanel, event: wEvent) =
-    echo "spin density = ", self.mSpinDensity.value + event.spinDelta
+    when defined(debug):
+      echo "spin density = ", self.mSpinDensity.value + event.spinDelta
 
   proc onCmdSnap(self: wGridControlPanel, event: wEvent) =
     let state = self.mCbSnap.value
@@ -194,18 +194,21 @@ wClass(wGridControlPanel of wPanel):
 
   # Respond to incoming messages
   proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
-    echo "onMsgGridSnap"
+    when defined(debug):
+      echo "onMsgGridSnap"
     let state = event.lParam.bool
     self.mCbSnap.setValue(state)
     self.mGrid.snap = state
 
   proc onMsgGridDynamic(self: wGridControlPanel, event: wEvent) =
-    echo "onMsgGridDynamic"
+    when defined(debug):
+      echo "onMsgGridDynamic"
     let state = event.lParam.bool
     self.mCbDynamic.setValue(state)
 
   proc onMsgGridVisible(self: wGridControlPanel, event: wEvent) =
-    echo "onMsgGridVisible"
+    when defined(debug):
+      echo "onMsgGridVisible"
     # Accept the message and update state
     # This responds to self-messages
     let state = event.lParam.bool
@@ -216,19 +219,22 @@ wClass(wGridControlPanel of wPanel):
 
   proc onMsgGridDots(self: wGridControlPanel, event: wEvent) =
     # We only get this when state is true
-    echo "onMsgGridDots"
-    echo event.lParam
+    when defined(debug):
+      echo "onMsgGridDots"
+      echo event.lParam
 
   proc onMsgGridLines(self: wGridControlPanel, event: wEvent) =
     # We only get this when state is true
-    echo "onMsgGridLines"
-    echo event.lParam
+    when defined(debug):
+      echo "onMsgGridLines"
+      echo event.lParam
 
 
 
   proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
     wPanel(self).init(parent)
-    echo "Grid control panel is ", self.mHwnd
+    when defined(debug):
+      echo "Grid control panel is ", self.mHwnd
     self.backgroundColor = panelBackgroundColor
     # Create controls
     self.mGrid          = gr
@@ -294,8 +300,7 @@ wClass(wGridControlPanel of wPanel):
 
 wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
-    if self.mOwner.isnil: return
-    SendMessage(self.mOwner.mHwnd, idMsgSubFrameClosing, self.mHwnd.WPARAM, 0)
+    sendToListeners(idMsgSubFrameClosing, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
     let
@@ -304,8 +309,8 @@ wClass(wGridControlFrame of wFrame):
       sz: wSize = (w, h)
     let style = wModalFrame
     wFrame(self).init(owner, title="Grid Settings", size=sz, style=style)
-    echo "Grid control frame is ", self.mHwnd
-    self.mOwner = owner
+    when defined(debug):
+      echo "Grid control frame is ", self.mHwnd
     self.margin = self.dpiScale(6)
     self.backgroundColor = frameBackgroundColor
     self.mPanel = GridControlPanel(self, gr, zc)
