@@ -23,7 +23,7 @@
       "xSpace": 10,
       "ySpace": 10,
       "visible": true,
-      "originVisible": false,
+      "originVisible": true,
       "snap": true,
       "dynamic": true,
       "dotsOrLines": "lines",
