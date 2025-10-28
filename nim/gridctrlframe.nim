@@ -187,10 +187,6 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines.enable(state)
     self.mGrid.visible = state
 
-  # proc onStaticColor(self: wGridControlPanel, event: wEvent) = 
-  #   let hdc = event.mWparam.HDC
-  #   SetBkColor(hdc, panelBackgroundColor)
-
 
   proc dotsOrLines(self: wGridControlPanel, event: wEvent) =
     echo self.mRbDots.value, ", ", self.mRbLines.value
@@ -202,11 +198,11 @@ wClass(wGridControlPanel of wPanel):
     echo "Grid control panel is ", self.mHwnd
     self.backgroundColor = panelBackgroundColor
     # Create controls
-    self.mGrid        = gr
-    self.mZctrl       = zc
-    self.mBDone        = Button(self, idDone, "Done")
-    self.mIntervalBox = StaticBox(self, 0, "Interval")
-    self.mBehaviorBox = StaticBox(self, 0, "Behavior")
+    self.mGrid          = gr
+    self.mZctrl         = zc
+    self.mBDone         = Button(self, idDone, "Done")
+    self.mIntervalBox   = StaticBox(self, 0, "Interval")
+    self.mBehaviorBox   = StaticBox(self, 0, "Behavior")
     self.mAppearanceBox = StaticBox(self, 0, "Appearance")
 
     self.mTxtX        = StaticText(self, 0, "X")
@@ -245,11 +241,6 @@ wClass(wGridControlPanel of wPanel):
     self.wEvent_Spin        do (event: wEvent): self.onSpinDivDense(event)
     self.wEvent_CheckBox    do (event: wEvent): self.onSnap(event)
     self.wEvent_CheckBox    do (event: wEvent): self.onDynamic(event)
-    # self.WM_CTLCOLORSTATIC  do (event: wEvent): self.onStaticColor(event)
-    # self.WM_CTLCOLOREDIT    do (event: wEvent): self.onStaticColor(event)
-    # self.WM_CTLCOLORBTN     do (event: wEvent): self.onStaticColor(event)
-    # self.WM_CTLCOLORDLG     do (event: wEvent): self.onStaticColor(event)
-    # self.WM_CTLCOLORLISTBOX do (event: wEvent): self.onStaticColor(event)
     
     # Respond to button, listen to msg
     self.mCbVisible.wEvent_CheckBox do (event: wEvent): self.onCmdGridShow(event)
