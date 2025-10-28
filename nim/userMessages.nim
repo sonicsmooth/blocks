@@ -6,7 +6,7 @@ import winim/inc/winuser
 # type
 #   UserMsgID* {.size: sizeof(int32).} = enum 
 #     idMsgMouseMove = WM_USER,
-#     idMsgSize, idMsgSlider, idMsgAlgUpdate, idMsgGridShow,
+#     idMsgSize, idMsgSlider, idMsgAlgUpdate, idMsgGridVisible,
 #     idMsgSubFrameClosing
 
 const
@@ -14,8 +14,18 @@ const
   idMsgSize*            = WM_USER + 1
   idMsgSlider*          = WM_USER + 2
   idMsgAlgUpdate*       = WM_USER + 3
-  idMsgGridShow*        = WM_USER + 4
-  idMsgSubFrameClosing* = WM_USER + 5
+  
+  # Grid Control
+  idMsgGridSnap*        = WM_USER + 4
+  idMsgGridDynamic*     = WM_USER + 5
+  idMsgGridVisible*     = WM_USER + 6
+  idMsgGridDots*        = WM_USER + 7
+  idMsgGridLines*       = WM_USER + 8
+  
+  # Frames
+  idMsgSubFrameClosing* = WM_USER + 9
 
+  
+  # Random thread stuff
   ALG_NO_INIT_BMP*  = 0
   ALG_INIT_BMP*     = 10

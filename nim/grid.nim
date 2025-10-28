@@ -42,6 +42,7 @@ proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
 proc minDelta*[T](grid: Grid, vp: Viewport, scale: Scale): tuple[x,y: T] =
   # Return minimum grid spacing
   # When zoom in, stepScale returns a large value
+  # When grid.snap is false, returns minimum
   let 
     stpScale: float = pow(vp.zctrl.base.float, vp.zctrl.logStep.float)
     xSpace: float = grid.xSpace.float
@@ -110,24 +111,25 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
     worldStepMajor = minDelta[WType](grid, vp, scale=Major)
 
   # Minor lines
-  rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPx)).toColor)
-  for xwf in arange(worldStart.x .. worldEnd.x, worldStep.x.float):
-    let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
-    rp.drawLine(xpx, 0, xpx, size.height - 1)
+  if grid.visible:
+    rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPx)).toColor)
+    for xwf in arange(worldStart.x .. worldEnd.x, worldStep.x.float):
+      let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
+      rp.drawLine(xpx, 0, xpx, size.height - 1)
 
-  for ywf in arange(worldStart.y .. worldEnd.y, worldStep.y.float):
-    let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
-    rp.drawLine(0, ypx, size.width - 1, ypx)
+    for ywf in arange(worldStart.y .. worldEnd.y, worldStep.y.float):
+      let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
+      rp.drawLine(0, ypx, size.width - 1, ypx)
 
-  # Major lines
-  rp.setDrawColor(Black.toColor)
-  for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
-    let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
-    rp.drawLine(xpx, 0, xpx, size.height - 1)
+    # Major lines
+    rp.setDrawColor(Black.toColor)
+    for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
+      let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
+      rp.drawLine(xpx, 0, xpx, size.height - 1)
 
-  for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
-    let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
-    rp.drawLine(0, ypx, size.width - 1, ypx)
+    for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
+      let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
+      rp.drawLine(0, ypx, size.width - 1, ypx)
 
   if grid.originVisible:
     let
