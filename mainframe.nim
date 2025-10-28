@@ -125,7 +125,7 @@ wClass(wMainFrame of wFrame):
       # We know this comes from the second toolbar in the rebar
       let state = self.mBandToolbars[1].toolState(idCmdGridShow)
       echo "this hwnd: ", self.mHwnd
-      sendToListeners(idMsgGridShow, self.mHwnd.WPARAM, state.LPARAM)
+      sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
       let
         gr = self.mMainPanel.mBlockPanel.mGrid
@@ -224,7 +224,7 @@ wClass(wMainFrame of wFrame):
     # Participate in observables/listeners
     # Respond to buttons & send msg; respond to incoming message
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
-    self.registerListener(idMsgGridShow, (w:wWindow,e:wEvent)=>onMsgGridShow(w.wMainFrame,e))
+    self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>onMsgGridShow(w.wMainFrame,e))
   
 when isMainModule:
     # Main data and window

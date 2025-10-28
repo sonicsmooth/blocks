@@ -431,7 +431,7 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         # TODO: maybe implement shift-move to snap to Tiny
         let 
-          scale = if self.mGrid.visible: Minor else: None
+          scale = if self.mGrid.snap: Minor else: None
           lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=scale)
           newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=scale)
           delta: WPoint = newSnap - lastSnap
@@ -503,8 +503,7 @@ Rendering options for SDL and pixie
     self.sdlRenderer.clear()
     
     # Draw grid
-    if self.mGrid.visible:
-      self.mGrid.draw(self.mViewport, self.sdlRenderer, self.size)
+    self.mGrid.draw(self.mViewport, self.sdlRenderer, self.size)
 
     # Try a few methods to draw rectangles
     when defined(noTextureCache):
