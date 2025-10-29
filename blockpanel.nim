@@ -364,10 +364,7 @@ wClass(wBlockPanel of wSDLPanel):
         self.mMouseData.pzState = PZStateNone
       of wEvent_MouseWheel:
         # Keep mouse location in the same spot during zoom.
-        let oldvp = self.mViewport
-        self.mViewport.doZoom(event.wheelRotation)
-        let pxDelta = doAdaptivePan(oldvp, self.mViewport, event.mousePos)
-        self.mViewport.doPan(pxDelta)
+        doAdaptivePanZoom(self.mViewport, event.wheelRotation, event.mousePos)
         self.clearTextureCache()
         self.refresh(false)
       else:
