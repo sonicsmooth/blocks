@@ -175,14 +175,13 @@ wClass(wGridControlPanel of wPanel):
   proc onCmdSpinTxtDivisions(self: wGridControlPanel, event: wEvent) =
     var valf: float
     let nchars = parseBiggestFloat(self.mSpinDivisions.text, valf)
-    if nchars == 0:
-      when defined(debug):
+    when defined(debug):
+      if nchars == 0:
         echo &"could not parse \"{self.mSpinDivisions.text}\""
     let finalval = clamp(valf.round.int, self.mSpinDivisions.range)
     when defined(debug):
       echo &"Division spinner sending val={finalval}"
     sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
-
 
   proc onCmdSpinDensity(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
@@ -222,7 +221,7 @@ wClass(wGridControlPanel of wPanel):
       echo "onMsgGridSnap"
     let state = event.lParam.bool
     self.mCbSnap.setValue(state)
-    self.mGrid.snap = state
+    self.mGrid.mSnap = state
 
   proc onMsgGridDynamic(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
@@ -239,7 +238,7 @@ wClass(wGridControlPanel of wPanel):
     self.mCbVisible.setValue(state)
     self.mRbDots.enable(state)
     self.mRbLines.enable(state)
-    self.mGrid.visible = state
+    self.mGrid.mVisible = state
 
   proc onMsgGridDots(self: wGridControlPanel, event: wEvent) =
     # We only get this when state is true
@@ -255,14 +254,14 @@ wClass(wGridControlPanel of wPanel):
 
 
 
-  proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid, zc: ZoomCtrl) =
+  proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid) =
     wPanel(self).init(parent)
     when defined(debug):
       echo "Grid control panel is ", self.mHwnd
     self.backgroundColor = panelBackgroundColor
     # Create controls
     self.mGrid          = gr
-    self.mZctrl         = zc
+    self.mZctrl         = gr.mZctrl
     self.mBDone         = Button(self, idDone, "Done")
     self.mIntervalBox   = StaticBox(self, 0, "Interval")
     self.mBehaviorBox   = StaticBox(self, 0, "Behavior")
@@ -282,18 +281,18 @@ wClass(wGridControlPanel of wPanel):
     self.mRbDots        = RadioButton(self, idDots, "Dots")
     self.mRbLines       = RadioButton(self, idLines, "Lines")
 
-    self.mSpinSizeX.setValue($self.mGrid.xSpace)
+    self.mSpinSizeX.setValue($self.mGrid.majorXSpace)
     self.mSpinSizeX.setRange(1 .. 1000)
-    self.mSpinSizeY.setValue($self.mGrid.ySpace)
+    self.mSpinSizeY.setValue($self.mGrid.majorYSpace)
     self.mSpinSizeY.setRange(1 .. 1000)
     self.mSpinDivisions.setValue($self.mZctrl.base)
     self.mSpinDivisions.setRange(2 .. 10)
     self.mSpinDensity.setValue($self.mZctrl.density)
-    self.mCbSnap.setValue(self.mGrid.snap)
-    self.mCbVisible.setValue(self.mGrid.visible)
-    self.mCbDynamic.setValue(self.mGrid.dynamic)
-    self.mRbDots.setValue(self.mGrid.dotsOrLines == Dots)
-    self.mRbLines.setValue(self.mGrid.dotsOrLines == Lines)
+    self.mCbSnap.setValue(self.mGrid.mSnap)
+    self.mCbVisible.setValue(self.mGrid.mVisible)
+    self.mCbDynamic.setValue(self.mGrid.mDynamic)
+    self.mRbDots.setValue(self.mGrid.mDotsOrLines == Dots)
+    self.mRbLines.setValue(self.mGrid.mDotsOrLines == Lines)
     
     self.layout()
 
@@ -334,7 +333,7 @@ wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
     sendToListeners(idMsgSubFrameClosing, self.mHwnd.WPARAM, 0)
 
-  proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid, zc: ZoomCtrl) =
+  proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid) =
     let
       w = self.dpiScale(450)
       h = self.dpiScale(240)
@@ -345,7 +344,7 @@ wClass(wGridControlFrame of wFrame):
       echo "Grid control frame is ", self.mHwnd
     self.margin = self.dpiScale(6)
     self.backgroundColor = frameBackgroundColor
-    self.mPanel = GridControlPanel(self, gr, zc)
+    self.mPanel = GridControlPanel(self, gr)
     self.wEvent_Destroy do(): self.onDestroy()
 
 
@@ -355,8 +354,8 @@ when isMainModule:
     let
       app = App()
       zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
-      gr = newGrid()
-      f1 = GridControlFrame(nil, gr, zc)
+      gr = newGrid(zc)
+      f1 = GridControlFrame(nil, gr)
     f1.show()
     app.mainLoop()
   except Exception as e:

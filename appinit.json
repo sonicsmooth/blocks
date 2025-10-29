@@ -20,8 +20,8 @@
       }
     },
     "Grid": {
-      "xSpace": 10,
-      "ySpace": 10,
+      "majorXSpace": 100,
+      "majorYSpace": 100,
       "visible": true,
       "originVisible": true,
       "snap": true,

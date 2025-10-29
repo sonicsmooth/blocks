@@ -431,7 +431,7 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseMove:
         # TODO: maybe implement shift-move to snap to Tiny
         let 
-          scale = if self.mGrid.snap: Minor else: None
+          scale = if self.mGrid.mSnap: Minor else: None
           lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=scale)
           newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=scale)
           delta: WPoint = newSnap - lastSnap
@@ -440,7 +440,7 @@ wClass(wBlockPanel of wSDLPanel):
           self.moveRectsBy(sel, delta)
           # Todo: make snap-to-grid proc like this
           # for id in sel:
-          #   let newPos = self.mGrid.snap(gDb[id].pos + delta)
+          #   let newPos = self.mGrid.mSnap(gDb[id].pos + delta)
           #   self.moveRectTo(id, newPos)
         else: # Snap pos to nearest grid point
           let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, vp, scale=scale)
@@ -540,8 +540,8 @@ Rendering options for SDL and pixie
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    self.mGrid = newGrid()
     let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
+    self.mGrid = newGrid(zc)
     self.mViewport = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
 
     #self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
