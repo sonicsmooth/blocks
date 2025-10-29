@@ -1,4 +1,4 @@
-import std/[strformat, sugar]
+import std/[math, strformat, sugar, strutils, parseutils]
 import wNim
 from winim/inc/winbase import MulDiv
 import winim
@@ -31,7 +31,7 @@ type
     mRbLines:       wRadioButton
     mSpinSizeX:     wSpinCtrl 
     mSpinSizeY:     wSpinCtrl 
-    mSpinDivisions:      wSpinCtrl
+    mSpinDivisions: wSpinCtrl
     mSpinDensity:   wSpinCtrl
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
@@ -164,8 +164,18 @@ wClass(wGridControlPanel of wPanel):
       echo "Spin size Y = ", self.mSpinSizeY.value
 
   proc onCmdSpinDivisions(self: wGridControlPanel, event: wEvent) =
+    let
+      val = self.mSpinDivisions.value
+      delta = event.spinDelta
+      finalval = clamp(val + delta, self.mSpinDivisions.range)
     when defined(debug):
-      echo "spin divisions = ", self.mSpinDivisions.value + event.spinDelta
+      echo &"Division spinner sending val={finalval}"
+    sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
+
+  proc onCmdSpinTxtDivisions(self: wGridControlPanel, event: wEvent) =
+    echo "cmdTxtDivisions"
+    var txtvalf: float
+    discard parseBiggestFloat(self.mSpinDivisions.text, txtvalf)
 
   proc onCmdSpinDensity(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
@@ -193,6 +203,13 @@ wClass(wGridControlPanel of wPanel):
     sendToListeners(idMsgGridLines, self.mHwnd, state.LPARAM)
 
   # Respond to incoming messages
+  proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
+    when defined(debug):
+      echo &"onMsgGridDivisions receiving {event.lParam}"
+    let val = event.lParam
+    self.mSpinDivisions.value = $val
+    self.mZctrl.base = val
+
   proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
       echo "onMsgGridSnap"
@@ -244,23 +261,26 @@ wClass(wGridControlPanel of wPanel):
     self.mBehaviorBox   = StaticBox(self, 0, "Behavior")
     self.mAppearanceBox = StaticBox(self, 0, "Appearance")
 
-    self.mTxtX        = StaticText(self, 0, "X")
-    self.mTxtY        = StaticText(self, 0, "Y")
-    self.mTxtDivs     = StaticText(self, 0, "Divisions")
-    self.mTxtDens     = StaticText(self, 0, "Density")
-    self.mSpinSizeX   = SpinCtrl(self, idSpaceX, "")
-    self.mSpinSizeY   = SpinCtrl(self, idSpaceY, "")
-    self.mSpinDivisions    = SpinCtrl(self, idDivisions, "")
-    self.mSpinDensity = SpinCtrl(self, idDensity, "")
-    self.mCbSnap      = CheckBox(self, idSnap, "Snap")
-    self.mCbVisible   = CheckBox(self, idVisible, "Visible")
-    self.mCbDynamic   = CheckBox(self, idDynamic, "Dynamic Grid")
-    self.mRbDots      = RadioButton(self, idDots, "Dots")
-    self.mRbLines     = RadioButton(self, idLines, "Lines")
+    self.mTxtX          = StaticText(self, 0, "X")
+    self.mTxtY          = StaticText(self, 0, "Y")
+    self.mTxtDivs       = StaticText(self, 0, "Divisions")
+    self.mTxtDens       = StaticText(self, 0, "Density")
+    self.mSpinSizeX     = SpinCtrl(self, idSpaceX, "", style=wSpArrowKeys)
+    self.mSpinSizeY     = SpinCtrl(self, idSpaceY, "", style=wSpArrowKeys)
+    self.mSpinDivisions = SpinCtrl(self, idDivisions, "", style=wSpArrowKeys)
+    self.mSpinDensity   = SpinCtrl(self, idDensity, "", style=wSpArrowKeys)
+    self.mCbSnap        = CheckBox(self, idSnap, "Snap")
+    self.mCbVisible     = CheckBox(self, idVisible, "Visible")
+    self.mCbDynamic     = CheckBox(self, idDynamic, "Dynamic Grid")
+    self.mRbDots        = RadioButton(self, idDots, "Dots")
+    self.mRbLines       = RadioButton(self, idLines, "Lines")
 
     self.mSpinSizeX.setValue($self.mGrid.xSpace)
+    self.mSpinSizeX.setRange(1 .. 1000)
     self.mSpinSizeY.setValue($self.mGrid.ySpace)
+    self.mSpinSizeY.setRange(1 .. 1000)
     self.mSpinDivisions.setValue($self.mZctrl.base)
+    self.mSpinDivisions.setRange(2 .. 10)
     self.mSpinDensity.setValue($self.mZctrl.density)
     self.mCbSnap.setValue(self.mGrid.snap)
     self.mCbVisible.setValue(self.mGrid.visible)
@@ -276,8 +296,12 @@ wClass(wGridControlPanel of wPanel):
 
     # Respond to controls
     self.mSpinSizeX.wEvent_Spin     do (event: wEvent): self.onCmdSpinSizeX(event)
+    self.mSpinSizeX.wEvent_TextEnter do (event: wEvent): self.onCmdSpinSizeX(event)
     self.mSpinSizeY.wEvent_Spin     do (event: wEvent): self.onCmdSpinSizeY(event)
-    self.mSpinDivisions.wEvent_Spin do (event: wEvent): self.onCmdSpinDivisions(event)
+    self.mSpinSizeY.wEvent_TextEnter do (event: wEvent): self.onCmdSpinSizeY(event)
+    self.mSpinDivisions.wEvent_SpinUp do (event: wEvent): self.onCmdSpinDivisions(event)
+    self.mSpinDivisions.wEvent_SpinDown do (event: wEvent): self.onCmdSpinDivisions(event)
+    self.mSpinDivisions.wEvent_TextEnter do (event: wEvent): self.onCmdSpinTxtDivisions(event)
     self.mSpinDensity.wEvent_Spin   do (event: wEvent): self.onCmdSpinDensity(event)
 
     self.mCbSnap.wEvent_CheckBox     do (event: wEvent): self.onCmdSnap(event)
@@ -287,6 +311,7 @@ wClass(wGridControlPanel of wPanel):
     self.mRblines.wEvent_RadioButton do (event: wEvent): self.onCmdLines(event)
 
     # Update controls from outside messages
+    self.registerListener(idMsgGridDivisions, (w:wWindow,e:wEvent)=>(onMsgGridDivisions(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridSnap,    (w:wWindow,e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDynamic, (w:wWindow,e:wEvent)=>(onMsgGridDynamic(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>(onMsgGridVisible(w.wGridControlPanel, e)))
