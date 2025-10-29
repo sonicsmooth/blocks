@@ -99,12 +99,19 @@ wClass(wMainFrame of wFrame):
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
 
-  proc onMsgGridShow(self: wMainFrame, event: wEvent) =
+  proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
     when defined(debug):
       echo "received ongridshow from: ", event.wParam
     let state: bool = event.mLparam.bool
     self.mMainPanel.mBlockPanel.mGrid.visible = state
     self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
+    self.mMainPanel.mBlockPanel.refresh(false)
+
+  proc onMsgGridDivisions(self: wMainFrame, event: wEvent) =
+    when defined(debug):
+      echo "received ongriddivisions from: ", event.wParam
+    let val = event.mLparam
+    self.mMainPanel.mBlockPanel.mViewport.zCtrl.base = val
     self.mMainPanel.mBlockPanel.refresh(false)
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
@@ -223,7 +230,8 @@ wClass(wMainFrame of wFrame):
     # Participate in observables/listeners
     # Respond to buttons & send msg; respond to incoming message
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
-    self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>onMsgGridShow(w.wMainFrame,e))
+    self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>onMsgGridVisible(w.wMainFrame,e))
+    self.registerListener(idMsgGridDivisions, (w:wWindow,e:wEvent)=>onMsgGridDivisions(w.wMainFrame,e))
     #self.registerListener(idMsgSubFrameClosing, (w:wWindow,e:wEvent)=>displayParams(e))
   
 when isMainModule:
