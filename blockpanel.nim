@@ -279,9 +279,9 @@ wClass(wBlockPanel of wSDLPanel):
       let
         md: WPoint = 
           if event.shiftDown:
-            minDelta[WType](self.mGrid, self.mViewport, scale=Tiny)
+            minDelta[WType](self.mGrid, scale=Tiny)
           else:
-            minDelta[WType](self.mGrid, self.mViewport, scale=Minor)
+            minDelta[WType](self.mGrid, scale=Minor)
         moveby: WPoint = md .* moveTable[event.keyCode]
       self.moveRectsBy(sel, moveBy)
       resetBox()
@@ -432,8 +432,8 @@ wClass(wBlockPanel of wSDLPanel):
         # TODO: maybe implement shift-move to snap to Tiny
         let 
           scale = if self.mGrid.mSnap: Minor else: None
-          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, vp, scale=scale)
-          newSnap: WPoint = wmp.snap(self.mGrid, vp, scale=scale)
+          lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, scale=scale)
+          newSnap: WPoint = wmp.snap(self.mGrid, scale=scale)
           delta: WPoint = newSnap - lastSnap
         if event.ctrlDown and hitid in sel:
           # Group move should snap by grid amount even if not on grid to start
@@ -443,7 +443,7 @@ wClass(wBlockPanel of wSDLPanel):
           #   let newPos = self.mGrid.mSnap(gDb[id].pos + delta)
           #   self.moveRectTo(id, newPos)
         else: # Snap pos to nearest grid point
-          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, vp, scale=scale)
+          let newPos = (gDb[hitid].pos + delta).snap(self.mGrid, scale=scale)
           self.moveRectTo(hitid, newPos)
         self.mMouseData.lastPos = event.mousePos
         self.refresh(false)
@@ -527,9 +527,10 @@ Rendering options for SDL and pixie
     txt &= &"level: {self.mViewport.zCtrl.logStep}\n"
     txt &= &"rawZoom: {self.mViewport.rawZoom:.3f}\n"
     txt &= &"zoom: {self.mViewport.zoom:.3f}\n"
-    txt &= &"tinyDelta: {minDelta[WType](self.mGrid, self.mViewport, scale=Tiny)}\n"
-    txt &= &"minorDelta: {minDelta[WType](self.mGrid, self.mViewport, scale=Minor)}\n"
-    txt &= &"majorDelta: {minDelta[WType](self.mGrid, self.mViewport, scale=Major)}\n"
+    txt &= &"smoothDelta: {minDelta[WType](self.mGrid, scale=None)}\n"
+    txt &= &"tinyDelta: {minDelta[WType](self.mGrid, scale=Tiny)}\n"
+    txt &= &"minorDelta: {minDelta[WType](self.mGrid, scale=Minor)}\n"
+    txt &= &"majorDelta: {minDelta[WType](self.mGrid, scale=Major)}\n"
     
     self.sdlRenderer.renderText(self.sdlWindow, txt)
     self.sdlRenderer.present()

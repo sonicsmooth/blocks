@@ -1,4 +1,4 @@
-import std/[math, sequtils]
+import std/[math, sequtils, sugar]
 import sdl2
 import colors
 from arange import arange
@@ -42,21 +42,29 @@ proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
 
 proc `majorXSpace`*(grid: Grid): WType =
   grid.mMajorXSpace
+
 proc `majorYSpace`*(grid: Grid): WType =
   grid.mMajorXSpace
 
-# proc `majorXSpace=`(grid: Grid, zctrl: ZoomCtrl, val: WType):
-#   when Wtype is SomeInteger:
-#     discard
-#   elif WType is SomeFloat:
-#     mMinorXSpace = 
+proc `majorXSpace=`(grid: Grid, val: WType) =
+  when Wtype is SomeInteger:
+    grid.mMinorXSpace = val div grid.mZctrl.base
+  elif WType is SomeFloat:
+    grid.mMinorXSpace = val / grid.mZctrl.base
 
-proc minDelta*[T](grid: Grid, vp: Viewport, scale: Scale): tuple[x,y: T] =
+proc `majorYSpace=`(grid: Grid, val: WType) =
+  when Wtype is SomeInteger:
+    grid.mMinorYSpace = val div grid.mZctrl.base
+  elif WType is SomeFloat:
+    grid.mMinorYSpace = val / grid.mZctrl.base
+
+proc minDelta*[T](grid: Grid, scale: Scale): tuple[x,y: T] =
   # Return minimum grid spacing
   # When zoom in, stepScale returns a large value
   # When grid.snap is false, returns minimum
-  let 
-    stpScale: float = pow(vp.zctrl.base.float, vp.zctrl.logStep.float)
+  let
+    zc = grid.mZctrl
+    stpScale: float = pow(zc.base.float, zc.logStep.float)
     minorXSpace: float = grid.mMinorXSpace.float
     minorYSpace: float = grid.mMinorYSpace.float
   when T is SomeInteger:
@@ -68,15 +76,15 @@ proc minDelta*[T](grid: Grid, vp: Viewport, scale: Scale): tuple[x,y: T] =
       (1, 1)
     of Tiny: 
       let
-        tinyX: float = max(minorX / vp.zctrl.base.float, 1.0)
-        tinyY: float = max(minorY / vp.zctrl.base.float, 1.0)
+        tinyX: float = max(minorX / zc.base.float, 1.0)
+        tinyY: float = max(minorY / zc.base.float, 1.0)
       (tinyX.round.int, tinyY.round.int)
     of Minor:
       (minorX.round.int, minorY.round.int)
     of Major:
       let
-        majorX: float = minorX * vp.zctrl.base.float
-        majorY: float = minorY * vp.zctrl.base.float
+        majorX: float = minorX.round * zc.base.float
+        majorY: float = minorY.round * zc.base.float
       (majorX.round.int, majorY.round.int)
   elif T is SomeFloat:
     let 
@@ -86,18 +94,18 @@ proc minDelta*[T](grid: Grid, vp: Viewport, scale: Scale): tuple[x,y: T] =
     of None:
       (0.0, 0.0)
     of Tiny:
-      (minorX, minorY) * (1.0 / vp.zctrl.base.float)
+      (minorX, minorY) * (1.0 / zc.base.float)
     of Minor:
       (minorX, minorY)
     of Major:
-      (minorX, minorY) * vp.zctrl.base.float
+      (minorX, minorY) * zc.base.float
 
-proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, vp: Viewport, scale: Scale): T =
+proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
   # Round to nearest minor grid point
   # Returns same type of point as is passed in.
   # If this is a WPoint, and that is integer-based, then
   # rounding will occur in implicit conversion
-  let md = minDelta[WType](grid, vp, scale)
+  let md = minDelta[WType](grid, scale)
   when WType is SomeFloat:
     if md == (0.0, 0.0): return pt
   elif WType is Someinteger:
@@ -113,27 +121,32 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels
   let
     upperLeft: PxPoint = (0, 0)
-    worldStart = upperLeft.toWorldF(vp).snap(grid, vp, scale=Minor)
-    worldEnd   = (size.width - 1, size.height - 1).toWorldF(vp).snap(grid, vp, scale=Minor)
-    worldStep  = minDelta[WType](grid, vp, scale=Minor)
-    xStepPx    = (worldStep.x.float * vp.zoom).round.int
+    lowerRight: PxPoint = (size.width - 1, size.height - 1)
 
-    worldStartMajor = upperLeft.toWorldF(vp).snap(grid, vp, scale=Major)
-    worldEndMajor = (size.width - 1, size.height - 1).toWorldF(vp).snap(grid, vp, scale=Major)
-    worldStepMajor = minDelta[WType](grid, vp, scale=Major)
 
   # Minor lines
   if grid.mVisible:
-    rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPx)).toColor)
-    for xwf in arange(worldStart.x .. worldEnd.x, worldStep.x.float):
+    let
+      worldStartMinor = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
+      worldEndMinor   = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
+      worldStepMinor  = minDelta[WType](grid, scale=Minor)
+      xStepPxColor    = (worldStepMinor.x.float * vp.zoom).round.int
+    dump worldStepMinor
+    rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+    for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
       let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
       rp.drawLine(xpx, 0, xpx, size.height - 1)
 
-    for ywf in arange(worldStart.y .. worldEnd.y, worldStep.y.float):
+    for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
       let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
       rp.drawLine(0, ypx, size.width - 1, ypx)
 
     # Major lines
+    let
+      worldStartMajor = upperLeft.toWorldF(vp).snap(grid, scale=Major)
+      worldEndMajor = lowerRight.toWorldF(vp).snap(grid, scale=Major)
+      worldStepMajor = minDelta[WType](grid, scale=Major)
+    dump worldStepMajor
     rp.setDrawColor(Black.toColor)
     for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
       let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
@@ -146,7 +159,7 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
   if grid.mOriginVisible:
     let
       extent: PxType = 25.0 * vp.zoom
-      o = (0, 0).toPixel(vp)
+      o: PxPoint = (0, 0).toPixel(vp)
         
     rp.setDrawColor(colors.DarkRed.toColor())
 
@@ -165,8 +178,10 @@ proc newGrid*(zc: ZoomCtrl): Grid =
   result.mZctrl = zc
   # result.minorXSpace = gGridSpecsJ["minorXSpace"].getInt
   # result.minorYSpace = gGridSpecsJ["minorYSpace"].getInt
-  result.mMajorXSpace = gGridSpecsJ["majorXSpace"].getInt
-  result.mMajorYSpace = gGridSpecsJ["majorYSpace"].getInt
+  # result.mMajorXSpace = gGridSpecsJ["majorXSpace"].getInt
+  # result.mMajorYSpace = gGridSpecsJ["majorYSpace"].getInt
+  result.majorXSpace = gGridSpecsJ["majorXSpace"].getInt
+  result.majorYSpace = gGridSpecsJ["majorYSpace"].getInt
   result.mVisible = gGridSpecsJ["visible"].getBool
   result.mOriginVisible = gGridSpecsJ["originVisible"].getBool
   result.mSnap = gGridSpecsJ["snap"].getBool
