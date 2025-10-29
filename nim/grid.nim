@@ -12,15 +12,16 @@ type
   DotsOrLines* = enum Dots, Lines
   # TODO: When these change they should trigger a refresh right away
   Grid* = ref object
-    xSpace*: WType = 10 #TODO leave as defaults
-    ySpace*: WType = 10
-    visible*: bool = true
-
-    # Source variables
-    originVisible*: bool = true
-    snap*: bool = true
-    dynamic*: bool = true
-    dotsOrLines*: DotsOrLines = Lines
+    mMinorXSpace: WType
+    mMinorYSpace: WType
+    mMajorXSpace: WType
+    mMajorYSpace: WType
+    mVisible*:       bool = true
+    mOriginVisible*: bool = true
+    mSnap*:          bool = true
+    mDynamic*:       bool = true
+    mDotsOrLines*: DotsOrLines = Lines
+    mZctrl*:       ZoomCtrl
 
 const
   alphaOffset = 20 
@@ -39,18 +40,29 @@ proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
     y = ((pt.y - vp.pan.y).float / vp.zoom)
   (x, y)
 
+proc `majorXSpace`*(grid: Grid): WType =
+  grid.mMajorXSpace
+proc `majorYSpace`*(grid: Grid): WType =
+  grid.mMajorXSpace
+
+# proc `majorXSpace=`(grid: Grid, zctrl: ZoomCtrl, val: WType):
+#   when Wtype is SomeInteger:
+#     discard
+#   elif WType is SomeFloat:
+#     mMinorXSpace = 
+
 proc minDelta*[T](grid: Grid, vp: Viewport, scale: Scale): tuple[x,y: T] =
   # Return minimum grid spacing
   # When zoom in, stepScale returns a large value
   # When grid.snap is false, returns minimum
   let 
     stpScale: float = pow(vp.zctrl.base.float, vp.zctrl.logStep.float)
-    xSpace: float = grid.xSpace.float
-    ySpace: float = grid.ySpace.float
+    minorXSpace: float = grid.mMinorXSpace.float
+    minorYSpace: float = grid.mMinorYSpace.float
   when T is SomeInteger:
     # Compute minor grid first, then others
-    let minorX: float = max(xSpace / stpScale, 1.0)
-    let minorY: float = max(ySpace / stpScale, 1.0)
+    let minorX: float = max(minorXSpace / stpScale, 1.0)
+    let minorY: float = max(minorYSpace / stpScale, 1.0)
     case scale
     of None:
       (1, 1)
@@ -68,8 +80,8 @@ proc minDelta*[T](grid: Grid, vp: Viewport, scale: Scale): tuple[x,y: T] =
       (majorX.round.int, majorY.round.int)
   elif T is SomeFloat:
     let 
-      minorX: float = xSpace.float / stpScale
-      minorY: float = ySpace.float / stpScale
+      minorX: float = minorXSpace.float / stpScale
+      minorY: float = minorYSpace.float / stpScale
     case scale
     of None:
       (0.0, 0.0)
@@ -111,7 +123,7 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
     worldStepMajor = minDelta[WType](grid, vp, scale=Major)
 
   # Minor lines
-  if grid.visible:
+  if grid.mVisible:
     rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPx)).toColor)
     for xwf in arange(worldStart.x .. worldEnd.x, worldStep.x.float):
       let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
@@ -131,7 +143,7 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
       let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
       rp.drawLine(0, ypx, size.width - 1, ypx)
 
-  if grid.originVisible:
+  if grid.mOriginVisible:
     let
       extent: PxType = 25.0 * vp.zoom
       o = (0, 0).toPixel(vp)
@@ -148,19 +160,23 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
     rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
     rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
 
-proc newGrid*(): Grid = 
+proc newGrid*(zc: ZoomCtrl): Grid = 
   result = new Grid
-  result.xSpace = gGridSpecsJ["xSpace"].getInt
-  result.ySpace = gGridSpecsJ["ySpace"].getInt
-  result.visible = gGridSpecsJ["visible"].getBool
-  result.originVisible = gGridSpecsJ["originVisible"].getBool
-  result.snap = gGridSpecsJ["snap"].getBool
-  result.dynamic = gGridSpecsJ["dynamic"].getBool
-  result.dotsOrLines = 
+  result.mZctrl = zc
+  # result.minorXSpace = gGridSpecsJ["minorXSpace"].getInt
+  # result.minorYSpace = gGridSpecsJ["minorYSpace"].getInt
+  result.mMajorXSpace = gGridSpecsJ["majorXSpace"].getInt
+  result.mMajorYSpace = gGridSpecsJ["majorYSpace"].getInt
+  result.mVisible = gGridSpecsJ["visible"].getBool
+  result.mOriginVisible = gGridSpecsJ["originVisible"].getBool
+  result.mSnap = gGridSpecsJ["snap"].getBool
+  result.mDynamic = gGridSpecsJ["dynamic"].getBool
+  result.mDotsOrLines = 
     if gGridSpecsJ["dotsOrLines"].getStr == "dots": Dots
     elif gGridSpecsJ["dotsOrLines"].getStr == "lines": Lines
     else: raise newException(ValueError, "Select dots or lines")
 
 when isMainModule:
-  let gr = newGrid()
+  let zc = newZoomCtrl(base=4, clickDiv=2400, maxPwr=3, density=1.0)
+  let gr = newGrid(zc)
   echo gr[]

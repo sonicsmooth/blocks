@@ -103,7 +103,7 @@ wClass(wMainFrame of wFrame):
     when defined(debug):
       echo "received ongridshow from: ", event.wParam
     let state: bool = event.mLparam.bool
-    self.mMainPanel.mBlockPanel.mGrid.visible = state
+    self.mMainPanel.mBlockPanel.mGrid.mVisible = state
     self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
     self.mMainPanel.mBlockPanel.refresh(false)
 
@@ -135,8 +135,7 @@ wClass(wMainFrame of wFrame):
     of idCmdGridSetting:
       let
         gr = self.mMainPanel.mBlockPanel.mGrid
-        zc = self.mMainPanel.mBlockPanel.mViewport.zctrl
-      let f = GridControlFrame(self, gr, zc)
+        f = GridControlFrame(self, gr)
       f.show()
     else:
       discard
