@@ -173,9 +173,16 @@ wClass(wGridControlPanel of wPanel):
     sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
 
   proc onCmdSpinTxtDivisions(self: wGridControlPanel, event: wEvent) =
-    echo "cmdTxtDivisions"
-    var txtvalf: float
-    discard parseBiggestFloat(self.mSpinDivisions.text, txtvalf)
+    var valf: float
+    let nchars = parseBiggestFloat(self.mSpinDivisions.text, valf)
+    if nchars == 0:
+      when defined(debug):
+        echo &"could not parse \"{self.mSpinDivisions.text}\""
+    let finalval = clamp(valf.round.int, self.mSpinDivisions.range)
+    when defined(debug):
+      echo &"Division spinner sending val={finalval}"
+    sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
+
 
   proc onCmdSpinDensity(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
