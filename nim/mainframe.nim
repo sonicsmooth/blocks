@@ -20,7 +20,7 @@ type
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
-              idCmdExit, idCmdHelp, idCmdAbout
+              idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout
 
 
 
@@ -72,15 +72,10 @@ let
 
 
 wClass(wMainFrame of wFrame):
-
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = self.clientSize
     self.mStatusBar.setStatusText($self.clientSize, index=1)
 
-  # proc onUserSizeNotify(self: wMainFrame, event: wEvent) =
-  #   let sz = (LOWORD(event.lParam).int, HIWORD(event.lParam).int)
-  #   self.mStatusBar.setStatusText($sz, index=1)
-  
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
     # event can contain either client or screen coordinates
     # so ignore wparam and lparam.  Just grab  mouse pos directly
@@ -125,6 +120,9 @@ wClass(wMainFrame of wFrame):
     of idCmdClose: self.destroy()
     of idCmdExit: self.destroy()
     of idCmdHelp: discard
+    of idCmdInfo:
+      echo self.mMainPanel.mBlockPanel.mGrid[]
+      echo self.mMainPanel.mBlockPanel.mGrid.mZctrl[]
     of idCmdAbout:
       let f = AboutFrame(self)
       f.show()
@@ -186,6 +184,7 @@ wClass(wMainFrame of wFrame):
     
     # 3. Close
     let tb3 = ToolBar(result)
+    tb3.addTool(idCmdInfo, "Info", bmpInfoBg)
     tb3.addTool(idCmdClose, "Close", bmpCloseBg)
     self.mBandToolBars.add(tb3)
 
