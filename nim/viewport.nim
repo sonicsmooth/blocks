@@ -4,77 +4,109 @@ import world
 import pointmath
 export world
 
+# TODO: allow user to set zoom level directly,
+# then proc determines closest clicks value.
+# User should be able to re-achieve the same zoom
+# level after going up and down, which means
+# extreme click limits may not be reached, or may
+# be exceeded.  If the user's requested zoom
+# level doesn't allow an integer click value, then
+# zoom value is still respected, but the ZoomCtrl
+# is "inconsistent", which means the zoom level
+# will be re-reached if the user zooms up and down
 
 type
   ZoomCtrl* = ref object
-    base*:     int   # Base of zoom and minor grid size
-    clickDiv*: int   # how many zClicks for every power of zoomBase (log)
-    maxPwr:    int   # maximum rawZoom is base ^ maxPwr
-    density*:  float # scales entire image without affecting grid
-    logStep*:  int   # each log controls the big and small grid
+    mBase:     int   # Base of zoom and minor grid size
+    mClickDiv: int   # how many zClicks for every power of zoomBase (log)
+    mMaxPwr:   int   # maximum rawZoom is base ^ maxPwr
+    mDensity:  float # scales entire image without affecting grid
+    mLogStep:  int   # each log controls the big and small grid
 
   Viewport* = ref object
     # These are controlled by user
-    pan*:     PxPoint #= (0, 0)
-    zClicks*: int   #= 0 # counts wheel zClicks; there are div zClicks between levels
-    zctrl*:   ZoomCtrl
+    mPan*:     PxPoint #= (0, 0)
+    mZclicks*: int   #= 0 # counts wheel zClicks; there are div zClicks between levels
+    mZctrl*:   ZoomCtrl
     # These are calculated at runtime
-    rawZoom*: float #= 1.0 # zoom before density applied
-    zoom*:    float #= 1.0 # final zoom value after density
+    mRawZoom*: float #= 1.0 # zoom before density applied
+    mZoom*:    float #= 1.0 # final zoom value after density
 
-proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
-  # Values in json file override arg values
+proc base*(zctrl: ZoomCtrl): int =  zctrl.mBase
+# Only change base through grid.setDivisions!!
+proc `base=`*(zctrl: ZoomCtrl, val: int) = zctrl.mBase = val
+proc clickDiv*(zctrl: ZoomCtrl): int =  zctrl.mClickDiv
+proc maxPwr*(zctrl: ZoomCtrl): int =  zctrl.mMaxPwr
+proc density*(zctrl: ZoomCtrl): float =  zctrl.mDensity
+proc logStep*(zctrl: ZoomCtrl): int =  zctrl.mLogStep
+
+
+proc newZoomCtrl*(): ZoomCtrl =
+  # Fill values from from json
   # The "to" macro doesn't work because the logStep field is
   # not included in the json.  The logStep value is calculated
   # at runtime, so it shouldn't be specified in the json file.
   let j = gViewportJ["zctrl"]
   result = new ZoomCtrl
-  result.base     = if j.contains("base"): j["base"].getInt      else: base
-  result.clickDiv = if j.contains("clickDiv"): j["clickDiv"].getInt  else: clickDiv
-  result.maxPwr   = if j.contains("maxPwr"): j["maxPwr"].getInt    else: maxPwr
-  result.density  = if j.contains("density"): j["density"].getFloat else: density
+  result.mBase     = j["base"].getInt
+  result.mClickDiv = j["clickDiv"].getInt
+  result.mMaxPwr   = j["maxPwr"].getInt
+  result.mDensity  = j["density"].getFloat
+
+proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
+  # Fill values from args
   # logstep is calculated by doZoom
+  result = new ZoomCtrl
+  result.mBase     = base
+  result.mClickDiv = clickDiv
+  result.mMaxPwr   = maxPwr
+  result.mDensity  = density
+
+
+proc pan*(vp: Viewport): PxPoint = vp.mPan
+proc zClicks*(vp: Viewport): int = vp.mZclicks
+proc zCtrl*(vp: Viewport): ZoomCtrl = vp.mZctrl
+proc rawZoom*(vp: Viewport): float = vp.mRawZoom
+proc zoom*(vp: Viewport): float = vp.mZoom
 
 proc doZoom*(vp: var Viewport, delta: int)
-proc newViewport*(pan: PxPoint, clicks: int, zCtrl: ZoomCtrl): Viewport =
-  # Values in json file override arg values except zctrl
+
+proc newViewport*(): Viewport = 
+  # Fill in values from json
   # zctrl must be passed already properly formed by caller
+  # The doZoom call updates values in result, including result.zctrl.
   let j = gViewportJ
   result = new Viewport
-  result.pan = if j.contains("pan"): j["pan"].toPxPoint else: pan
-  result.zClicks = if j.contains("zClicks"): j["zClicks"].getInt else: clicks
-  result.zctrl = zCtrl
+  result.mPan = j["pan"].toPxPoint
+  result.mZclicks = j["zClicks"].getInt
+  result.mZctrl = newZoomCtrl()
+  doZoom(result, 0) 
+
+proc newViewport*(pan: PxPoint, clicks: int, zCtrl: ZoomCtrl): Viewport =
+  # Fill in values from args
+  # zctrl must be passed already properly formed by caller
+  result = new Viewport
+  result.mPan = pan
+  result.mZclicks = clicks
+  result.mZctrl = zCtrl
   # The doZoom call updates values in result, including result.zctrl.
   doZoom(result, 0) 
 
 proc doPan*(vp: var Viewport, delta: PxPoint) = 
   # Just pan by the pixel amount
-  vp.pan += delta
+  vp.mPan += delta
 
 proc doZoom*(vp: var Viewport, delta: int) = 
   # Calculate new zoom factor
   # inputs to calc: pan, zclicks, zctrl
   # outputs from calc: rawZoom, zoom
   let
-    maxzClicks =  vp.zctrl.clickDiv * vp.zctrl.maxPwr
-  vp.zClicks = clamp(vp.zClicks + delta, -maxzClicks, maxzClicks)
-  vp.rawZoom = pow(vp.zctrl.base.float, vp.zClicks / vp.zctrl.clickDiv )
-  vp.zoom = vp.rawZoom * vp.zctrl.density
-  vp.zctrl.logStep = (vp.zClicks / vp.zctrl.clickDiv).floor.int
+    maxzClicks =  vp.mZctrl.clickDiv * vp.mZctrl.maxPwr
+  vp.mZclicks = clamp(vp.mZclicks + delta, -maxzClicks, maxzClicks)
+  vp.mRawZoom = pow(vp.mZctrl.mBase.float, vp.mZclicks / vp.mZctrl.mClickDiv )
+  vp.mZoom = vp.mRawZoom * vp.mZctrl.density
+  vp.mZctrl.mLogStep = (vp.mZclicks / vp.mZctrl.mClickDiv).floor.int
 
-# proc doAdaptivePan*(vp1, vp2: Viewport, mousePos: PxPoint): PxPoint =
-#   # Keep mouse location in the same spot during zoom.
-#   # Mouse position is the same before and after because it's just the wheel event
-#   # We want world position to be the same so it looks like things aren't moving
-#   # Set world1 = world2 = (mp-p1)/z1 = (mp-p2)/z2
-#   # Solve for p2 = mp-(mp-p1)*(z2/z1)
-#   # pan delta = p2-p1 = mp(1-zr) + p1(zr-1) where mp is mousePos in pixels
-#   # and zr is ratio of zooms after/before
-#   let
-#     pan = vp1.pan
-#     zr = vp2.zoom / vp1.zoom
-#   (x: (mousePos.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
-#    y: (mousePos.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0)))
 proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
   # Keep mouse location in the same spot during zoom.
   # Mouse position is the same before and after because it's just the wheel event
@@ -85,9 +117,9 @@ proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
   # and zr is ratio of zooms after/before
   let
     vp1 = vp[] # make a local copy because Viewport is a reference type
-    pan = vp1.pan
+    pan = vp1.mPan
   vp.doZoom(zoomClicks)
-  let zr = vp.zoom / vp1.zoom
+  let zr = vp.mZoom / vp1.mZoom
   vp.doPan((x: (mousePos.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
             y: (mousePos.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0))))
 
@@ -96,11 +128,11 @@ proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
 # pixel = world * zoom + pan.  Flip zoom for y
 proc toPixelX*[T:SomeNumber](x: T, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
-  (x.float * vp.zoom + vp.pan.x.float)
+  (x.float * vp.mZoom + vp.mPan.x.float)
 
 proc toPixelY*[T:SomeNumber](y: T, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
-  (y.float * (-vp.zoom) + vp.pan.y.float) # add extra to offset down by 1
+  (y.float * (-vp.mZoom) + vp.mPan.y.float) # add extra to offset down by 1
 
 proc toPixel*[T:SomePoint](pt: T, vp: Viewport): PxPoint =
   (pt[0].toPixelX(vp), pt[1].toPixelY(vp))
@@ -110,10 +142,10 @@ proc toPixel*[T:SomePoint](pt: T, vp: Viewport): PxPoint =
 # world = (pixel - pan) / zoom.  Flip zoom for y
 proc toWorldX*(x: PxType, vp: Viewport): WType =
   # Implicit conversion to WType which includes rounding if needed
-  (x - vp.pan.x).float / vp.zoom
+  (x - vp.mPan.x).float / vp.mZoom
 
 proc toWorldY*(y: PxType, vp: Viewport): WType =
-  (y - vp.pan.y).float / (-vp.zoom)
+  (y - vp.mPan.y).float / (-vp.mZoom)
 
 proc toWorld*[T: SomePoint](pt: T, vp: Viewport): WPoint =
   (pt[0].toWorldX(vp), pt[1].toWorldY(vp))
@@ -132,7 +164,8 @@ when isMainModule:
     let wpty: WType = 10
     let wpt1: WPoint = (wptx, wpty)
     let wpt2: WPoint = (20, 20)
-    var vp: Viewport = Viewport(pan: (400, 400), zoom: 1.0)
+    let zc: ZoomCtrl = newZoomCtrl()
+    var vp: Viewport = newViewport(pan=(400,400), clicks=0, zc)
     assert toPixelX(wptx, vp) == 410
     assert toPixelY(wpty, vp) == 390
     assert toPixel(wpt1, vp) == (x: 410, y: 390)
@@ -141,7 +174,7 @@ when isMainModule:
     assert toWorld((402, 398), vp) == (2, 2)
     assert wpt1.toPixel(vp).toWorld(vp) == wpt1
     assert wpt2.toPixel(vp).toWorld(vp) == wpt2
-    vp.zoom = 1.2
+    vp.mZoom = 1.2
     assert wptx.toPixelX(vp) == 412
     assert wpty.toPixelY(vp) == 388
     assert toPixel(wpt1, vp) == (x: 412, y: 388)

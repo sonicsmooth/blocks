@@ -16,15 +16,17 @@ const
   idMsgAlgUpdate*       = WM_USER + 3
   
   # Grid Control
-  idMsgGridDivisions*   = WM_USER + 4
-  idMsgGridSnap*        = WM_USER + 5
-  idMsgGridDynamic*     = WM_USER + 6
-  idMsgGridVisible*     = WM_USER + 7
-  idMsgGridDots*        = WM_USER + 8
-  idMsgGridLines*       = WM_USER + 9
+  idMsgGridSizeX*       = WM_USER + 4
+  idMsgGridSizeY*       = WM_USER + 5
+  idMsgGridDivisions*   = WM_USER + 6
+  idMsgGridSnap*        = WM_USER + 7
+  idMsgGridDynamic*     = WM_USER + 8
+  idMsgGridVisible*     = WM_USER + 9
+  idMsgGridDots*        = WM_USER + 10
+  idMsgGridLines*       = WM_USER + 11
   
   # Frames
-  idMsgSubFrameClosing* = WM_USER + 10
+  idMsgSubFrameClosing* = WM_USER + 12
 
   
   # Random thread stuff
