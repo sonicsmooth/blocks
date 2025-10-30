@@ -6,7 +6,7 @@ from winim/inc/winbase import MulDiv
 import winim/inc/windef
 import appinit, routing
 import viewport, utils
-import mainpanel, aboutframe, gridctrlframe
+import mainpanel, aboutframe, gridctrlframe, grid
 export mainpanel
 
 
@@ -21,8 +21,6 @@ type
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
               idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout
-
-
 
 const
   pth = r"icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
@@ -103,10 +101,15 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.refresh(false)
 
   proc onMsgGridDivisions(self: wMainFrame, event: wEvent) =
+    let gr = self.mMainPanel.mBlockPanel.mGrid
+    let index = event.mLparam
+    let val = gr.allowedDivisions()[index]
     when defined(debug):
-      echo "received ongriddivisions from: ", event.wParam
-    let val = event.mLparam
-    self.mMainPanel.mBlockPanel.mViewport.zCtrl.base = val
+      echo &"received ongriddivisions index={index}, value={val}"
+    let success = gr.setDivisions(val)
+    if not success:
+      echo "could not set divisions"
+    self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
     self.mMainPanel.mBlockPanel.refresh(false)
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
