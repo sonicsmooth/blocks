@@ -60,7 +60,7 @@ proc `majorYSpace=`(grid: Grid, val: WType) =
 
 proc minDelta*[T](grid: Grid, scale: Scale): tuple[x,y: T] =
   # Return minimum grid spacing
-  # When zoom in, stepScale returns a large value
+  # When zoom in, stpScale is a large value
   # When grid.snap is false, returns minimum
   let
     zc = grid.mZctrl
