@@ -156,18 +156,35 @@ wClass(wGridControlPanel of wPanel):
 
   # Respond to controls
   proc onCmdSpinSizeX(self: wGridControlPanel, event: wEvent) =
+    let
+      val = self.mSpinSizeX.value
+      delta = event.spinDelta
+      finalval = clamp(val + delta, self.mSpinSizeX.range)
     when defined(debug):
-      echo "Spin size X = ", self.mSpinSizeX.value
+      echo &"SizeX spinner sending val={finalval}"
+    sendToListeners(idMsgGridSizeX, self.mHwnd.WPARAM, finalval.LPARAM)
 
   proc onCmdSpinSizeY(self: wGridControlPanel, event: wEvent) =
+    let
+      val = self.mSpinSizeY.value
+      delta = event.spinDelta
+      finalval = clamp(val + delta, self.mSpinSizeY.range)
     when defined(debug):
-      echo "Spin size Y = ", self.mSpinSizeY.value
+      echo &"SizeY spinner sending val={finalval}"
+    sendToListeners(idMsgGridSizeY, self.mHwnd.WPARAM, finalval.LPARAM)
 
   proc onCmdSpinDivisions(self: wGridControlPanel, event: wEvent) =
     let
-      val = self.mSpinDivisions.value
+      gr = self.mGrid
       delta = event.spinDelta
-      finalval = clamp(val + delta, self.mSpinDivisions.range)
+      val = self.mSpinDivisions.value.int8
+      nextval = if delta > 0: gr.divNextUp(val) else: gr.divNextDown(val)
+      finalval = if nextval == 0: val else: nextval
+    #echo "next finalval: ", finalval
+    #self.mSpinDivisions.setValue(finalval)
+    #self.mSpinDivisions.setTitle($finalval)
+    #echo &"newly set val: {self.mSpinDivisions.value}"
+    #cho &"newly set title: {self.mSpinDivisions.title}"
     when defined(debug):
       echo &"Division spinner sending val={finalval}"
     sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
@@ -209,12 +226,32 @@ wClass(wGridControlPanel of wPanel):
     sendToListeners(idMsgGridLines, self.mHwnd, state.LPARAM)
 
   # Respond to incoming messages
-  proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
+  proc onMsgGridSizeX(self: wGridControlPanel, event: wEvent) =
+    # Set major grid size; minor grid size will adjust
     when defined(debug):
-      echo &"onMsgGridDivisions receiving {event.lParam}"
+      echo &"onMsgGridSizeX receiving {event.lParam}"
     let val = event.lParam
-    self.mSpinDivisions.value = $val
-    self.mZctrl.base = val
+    self.mSpinSizeX.title = $val
+
+  proc onMsgGridSizeY(self: wGridControlPanel, event: wEvent) =
+    # Set major grid size; minor grid size will adjust
+    when defined(debug):
+      echo &"onMsgGridSizeY receiving {event.lParam}"
+    let val = event.lParam
+    self.mSpinSizeY.title = $val
+
+  proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
+    let val = event.lParam
+    when defined(debug):
+      echo &"onMsgGridDivisions receiving {val}"
+    self.mSpinDivisions.title = "cats"
+    #self.mSpinDivisions.setValue(val)
+    echo &"new value: {self.mSpinDivisions.value}"
+    echo &"new title: {self.mSpinDivisions.title}"
+    let success = self.mGrid.setDivisions(val.int8)
+    if not success:
+      echo "Cannot set divisions"
+    #self.mZctrl.base = val
 
   proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
@@ -317,13 +354,14 @@ wClass(wGridControlPanel of wPanel):
     self.mRblines.wEvent_RadioButton do (event: wEvent): self.onCmdLines(event)
 
     # Update controls from outside messages
+    self.registerListener(idMsgGridSizeX,     (w:wWindow,e:wEvent)=>(onMsgGridSizeX(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridSizeY,     (w:wWindow,e:wEvent)=>(onMsgGridSizeY(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDivisions, (w:wWindow,e:wEvent)=>(onMsgGridDivisions(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridSnap,    (w:wWindow,e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDynamic, (w:wWindow,e:wEvent)=>(onMsgGridDynamic(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>(onMsgGridVisible(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDots,    (w:wWindow,e:wEvent)=>(onMsgGridDots(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridLines,   (w:wWindow,e:wEvent)=>(onMsgGridLines(w.wGridControlPanel, e)))
-
+    self.registerListener(idMsgGridSnap,      (w:wWindow,e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDynamic,   (w:wWindow,e:wEvent)=>(onMsgGridDynamic(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridVisible,   (w:wWindow,e:wEvent)=>(onMsgGridVisible(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDots,      (w:wWindow,e:wEvent)=>(onMsgGridDots(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridLines,     (w:wWindow,e:wEvent)=>(onMsgGridLines(w.wGridControlPanel, e)))
 
     self.mBDone.wEvent_Button        do(): self.parent.destroy()
     self.wEvent_Destroy do(): self.deregisterListener()
@@ -356,6 +394,7 @@ when isMainModule:
       zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
       gr = newGrid(zc)
       f1 = GridControlFrame(nil, gr)
+    echo gr[]
     f1.show()
     app.mainLoop()
   except Exception as e:

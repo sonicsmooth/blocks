@@ -1,4 +1,4 @@
-import std/[math, sequtils, sugar, strformat]
+import std/[algorithm, math, sequtils, strformat]
 import sdl2
 import colors
 from arange import arange
@@ -33,30 +33,72 @@ proc lineAlpha(step: int): int =
     result = stepAlphas[idx]
   else:
     result = 255
-
 proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
   let
     x = ((pt.x - vp.pan.x).float / vp.zoom)
     y = ((pt.y - vp.pan.y).float / vp.zoom)
   (x, y)
 
-proc `majorXSpace`*(grid: Grid): WType =
-  grid.mMajorXSpace
+proc majorXSpace*(grid: Grid): WType = grid.mMajorXSpace
+proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
+proc minorXSpace*(grid: Grid): WType = grid.mMinorXSpace
+proc minorYSpace*(grid: Grid): WType = grid.mMinorYSpace
 
-proc `majorYSpace`*(grid: Grid): WType =
-  grid.mMajorXSpace
-
-proc `majorXSpace=`(grid: Grid, val: WType) =
+proc `majorXSpace=`*(grid: Grid, val: WType) =
   when Wtype is SomeInteger:
     grid.mMinorXSpace = val div grid.mZctrl.base
   elif WType is SomeFloat:
     grid.mMinorXSpace = val / grid.mZctrl.base
+  grid.mMajorXSpace = grid.mMinorXSpace * grid.mZctrl.base
 
-proc `majorYSpace=`(grid: Grid, val: WType) =
+proc `majorYSpace=`*(grid: Grid, val: WType) =
   when Wtype is SomeInteger:
     grid.mMinorYSpace = val div grid.mZctrl.base
   elif WType is SomeFloat:
     grid.mMinorYSpace = val / grid.mZctrl.base
+  grid.mMajorYSpace = grid.mMinorYSpace * grid.mZctrl.base
+
+proc newGrid*(zc: ZoomCtrl): Grid
+proc allowedDivisions*(grid: Grid): seq[int8] =
+  # Return list of allowable divisions,
+  # that is, which values in 2..10 divide
+  # major grid space evenly.  If the result
+  # for X and Y are different, then return
+  # the intersection
+  var xset, yset: set[int8]
+  for d in int8(2) .. int8(10):
+    if grid.mMajorXSpace mod d == 0: xset.incl(d)
+    if grid.mMajorYSpace mod d == 0: yset.incl(d)
+  (xset * yset).toSeq
+
+proc setDivisions*(grid: Grid, val: int8): bool =
+  # Change grid's zctrl's base aka divsions, and update
+  # minor grid size to ensure major grid size stays the
+  # same.  Return true/false if base can/cannot be set
+  # exactly.
+  result = val in grid.allowedDivisions()
+  if result:
+    grid.mZctrl.base = val
+    grid.mMinorXSpace = grid.mMinorXSpace div val
+    grid.mMinorYSpace = grid.mMinorYSpace div val
+
+proc divNextUp*(grid: Grid, val: int8): int8 =
+  # Return next higher allowable division from val
+  for d in grid.allowedDivisions:
+    if d > val:
+      echo &"{val} up to {d}"
+      return d
+  echo &"{val} up to 0"
+  return 0
+
+proc divNextDown*(grid: Grid, val: int8): int8 =
+  # Return next higher allowable division from val
+  for d in grid.allowedDivisions.reversed:
+    if d < val:
+      echo &"{val} down to {d}"
+      return d
+  echo &"{val} down to 0"
+  return 0
 
 proc minDelta*[T](grid: Grid, scale: Scale): tuple[x,y: T] =
   # Return minimum grid spacing
