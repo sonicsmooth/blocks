@@ -31,7 +31,8 @@ type
     mRbLines:       wRadioButton
     mSpinSizeX:     wSpinCtrl 
     mSpinSizeY:     wSpinCtrl 
-    mSpinDivisions: wSpinCtrl
+    #mSpinDivisions: wSpinCtrl
+    mCbDivisions:   wComboBox
     mSpinDensity:   wSpinCtrl
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
@@ -82,9 +83,13 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtDivs.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtDivs)
 
-    self.mSpinDivisions.position = (r, vmarg)
-    self.mSpinDivisions.size = (spwidth, self.mSpinDivisions.size.height)
-    (l,r,t,b) = edges(self.mSpinDivisions)
+    # self.mSpinDivisions.position = (r, vmarg)
+    # self.mSpinDivisions.size = (spwidth, self.mSpinDivisions.size.height)
+    # (l,r,t,b) = edges(self.mSpinDivisions)
+
+    self.mCbDivisions.position = (r, vmarg)
+    self.mCbDivisions.size = (spwidth, self.mCbDivisions.size.height)
+    (l,r,t,b) = edges(self.mCbDivisions)
 
     self.mTxtDens.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtDens)
@@ -92,8 +97,10 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDensity.position = (r, vmarg)
     self.mSpinDensity.size = (spwidth, self.mSpinDensity.size.height)
 
+    # self.mIntervalBox.contain(self.mTxtX, self.mSpinSizeX, self.mTxtY, self.mSpinSizeY,
+    #                           self.mTxtDivs, self.mSpinDivisions, self.mTxtDens, self.mSpinDensity)
     self.mIntervalBox.contain(self.mTxtX, self.mSpinSizeX, self.mTxtY, self.mSpinSizeY,
-                              self.mTxtDivs, self.mSpinDivisions, self.mTxtDens, self.mSpinDensity)
+                              self.mTxtDivs, self.mCbDivisions, self.mTxtDens, self.mSpinDensity)
     (l,r,t,b) = edges(self.mIntervalBox)
 
     # Second box (second row)
@@ -173,32 +180,24 @@ wClass(wGridControlPanel of wPanel):
       echo &"SizeY spinner sending val={finalval}"
     sendToListeners(idMsgGridSizeY, self.mHwnd.WPARAM, finalval.LPARAM)
 
-  proc onCmdSpinDivisions(self: wGridControlPanel, event: wEvent) =
-    let
-      gr = self.mGrid
-      delta = event.spinDelta
-      val = self.mSpinDivisions.value.int8
-      nextval = if delta > 0: gr.divNextUp(val) else: gr.divNextDown(val)
-      finalval = if nextval == 0: val else: nextval
-    #echo "next finalval: ", finalval
-    #self.mSpinDivisions.setValue(finalval)
-    #self.mSpinDivisions.setTitle($finalval)
-    #echo &"newly set val: {self.mSpinDivisions.value}"
-    #cho &"newly set title: {self.mSpinDivisions.title}"
-    when defined(debug):
-      echo &"Division spinner sending val={finalval}"
-    sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
 
-  proc onCmdSpinTxtDivisions(self: wGridControlPanel, event: wEvent) =
-    var valf: float
-    let nchars = parseBiggestFloat(self.mSpinDivisions.text, valf)
-    when defined(debug):
-      if nchars == 0:
-        echo &"could not parse \"{self.mSpinDivisions.text}\""
-    let finalval = clamp(valf.round.int, self.mSpinDivisions.range)
-    when defined(debug):
-      echo &"Division spinner sending val={finalval}"
-    sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
+  # proc onCmdSpinTxtDivisions(self: wGridControlPanel, event: wEvent) =
+  #   var valf: float
+  #   let nchars = parseBiggestFloat(self.mSpinDivisions.text, valf)
+  #   when defined(debug):
+  #     if nchars == 0:
+  #       echo &"could not parse \"{self.mSpinDivisions.text}\""
+  #   let finalval = clamp(valf.round.int, self.mSpinDivisions.range)
+  #   when defined(debug):
+  #     echo &"Division spinner sending val={finalval}"
+  #   sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
+
+  proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
+    let index = self.mCbDivisions.selection
+    # when defined(debug):
+    #   echo &"Division Combobox sending index={index}"
+    sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, index.LPARAM)
+
 
   proc onCmdSpinDensity(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
@@ -241,17 +240,11 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinSizeY.title = $val
 
   proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
-    let val = event.lParam
-    when defined(debug):
-      echo &"onMsgGridDivisions receiving {val}"
-    self.mSpinDivisions.title = "cats"
-    #self.mSpinDivisions.setValue(val)
-    echo &"new value: {self.mSpinDivisions.value}"
-    echo &"new title: {self.mSpinDivisions.title}"
-    let success = self.mGrid.setDivisions(val.int8)
-    if not success:
-      echo "Cannot set divisions"
-    #self.mZctrl.base = val
+    let index = event.lParam
+    let valstr = self.mCbDivisions[index]
+    # when defined(debug):
+    #   echo &"onMsgGridDivisions receiving index={index} -> {valstr}"
+    self.mCbDivisions.select(index)
 
   proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
@@ -310,7 +303,7 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtDens       = StaticText(self, 0, "Density")
     self.mSpinSizeX     = SpinCtrl(self, idSpaceX, "", style=wSpArrowKeys)
     self.mSpinSizeY     = SpinCtrl(self, idSpaceY, "", style=wSpArrowKeys)
-    self.mSpinDivisions = SpinCtrl(self, idDivisions, "", style=wSpArrowKeys)
+    self.mCbDivisions   = ComboBox(self, idDivisions, choices=gr.allowedDivisionsStr)
     self.mSpinDensity   = SpinCtrl(self, idDensity, "", style=wSpArrowKeys)
     self.mCbSnap        = CheckBox(self, idSnap, "Snap")
     self.mCbVisible     = CheckBox(self, idVisible, "Visible")
@@ -322,8 +315,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinSizeX.setRange(1 .. 1000)
     self.mSpinSizeY.setValue($self.mGrid.majorYSpace)
     self.mSpinSizeY.setRange(1 .. 1000)
-    self.mSpinDivisions.setValue($self.mZctrl.base)
-    self.mSpinDivisions.setRange(2 .. 10)
+    self.mCbDivisions.select(2)
     self.mSpinDensity.setValue($self.mZctrl.density)
     self.mCbSnap.setValue(self.mGrid.mSnap)
     self.mCbVisible.setValue(self.mGrid.mVisible)
@@ -342,9 +334,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinSizeX.wEvent_TextEnter do (event: wEvent): self.onCmdSpinSizeX(event)
     self.mSpinSizeY.wEvent_Spin     do (event: wEvent): self.onCmdSpinSizeY(event)
     self.mSpinSizeY.wEvent_TextEnter do (event: wEvent): self.onCmdSpinSizeY(event)
-    self.mSpinDivisions.wEvent_SpinUp do (event: wEvent): self.onCmdSpinDivisions(event)
-    self.mSpinDivisions.wEvent_SpinDown do (event: wEvent): self.onCmdSpinDivisions(event)
-    self.mSpinDivisions.wEvent_TextEnter do (event: wEvent): self.onCmdSpinTxtDivisions(event)
+    self.mCbDivisions.wEvent_ComboBox do (event: wEvent): self.onCmdCbDivisions(event)
     self.mSpinDensity.wEvent_Spin   do (event: wEvent): self.onCmdSpinDensity(event)
 
     self.mCbSnap.wEvent_CheckBox     do (event: wEvent): self.onCmdSnap(event)
