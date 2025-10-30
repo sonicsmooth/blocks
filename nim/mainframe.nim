@@ -122,6 +122,7 @@ wClass(wMainFrame of wFrame):
     of idCmdHelp: discard
     of idCmdInfo:
       echo self.mMainPanel.mBlockPanel.mGrid[]
+      echo self.mMainPanel.mBlockPanel.mViewport[]
       echo self.mMainPanel.mBlockPanel.mGrid.mZctrl[]
     of idCmdAbout:
       let f = AboutFrame(self)

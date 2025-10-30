@@ -84,15 +84,12 @@ proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
   # pan delta = p2-p1 = mp(1-zr) + p1(zr-1) where mp is mousePos in pixels
   # and zr is ratio of zooms after/before
   let
-    vp1 = vp[] # make a local copy
+    vp1 = vp[] # make a local copy because Viewport is a reference type
     pan = vp1.pan
   vp.doZoom(zoomClicks)
-  let
-    vp2 = vp
-    zr = vp2.zoom / vp1.zoom
-    pxDelta = (x: (mousePos.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
-               y: (mousePos.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0)))
-  vp.doPan(pxDelta)
+  let zr = vp.zoom / vp1.zoom
+  vp.doPan((x: (mousePos.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
+            y: (mousePos.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0))))
 
 
 # Convert from anything to pixels through viewport

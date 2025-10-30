@@ -1,4 +1,4 @@
-import std/[math, sequtils, sugar]
+import std/[math, sequtils, sugar, strformat]
 import sdl2
 import colors
 from arange import arange
@@ -109,7 +109,11 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
   when WType is SomeFloat:
     if md == (0.0, 0.0): return pt
   elif WType is Someinteger:
-    if md == (1, 1): return pt
+    if md == (1, 1): 
+      when T is SomeFloat:
+        return pt.round
+    elif T is SomeInteger:
+        return pt
   let
     xcnt:  float = (pt[0] / md.x).round
     ycnt:  float = (pt[1] / md.y).round
@@ -123,15 +127,13 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
     upperLeft: PxPoint = (0, 0)
     lowerRight: PxPoint = (size.width - 1, size.height - 1)
 
-
   # Minor lines
   if grid.mVisible:
     let
-      worldStartMinor = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
-      worldEndMinor   = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
-      worldStepMinor  = minDelta[WType](grid, scale=Minor)
-      xStepPxColor    = (worldStepMinor.x.float * vp.zoom).round.int
-    dump worldStepMinor
+      worldStartMinor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
+      worldEndMinor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
+      worldStepMinor:  tuple[x, y: WType] = minDelta[WType](grid, scale=Minor)
+      xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
     rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
     for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
       let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
@@ -143,10 +145,9 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
 
     # Major lines
     let
-      worldStartMajor = upperLeft.toWorldF(vp).snap(grid, scale=Major)
-      worldEndMajor = lowerRight.toWorldF(vp).snap(grid, scale=Major)
-      worldStepMajor = minDelta[WType](grid, scale=Major)
-    dump worldStepMajor
+      worldStartMajor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Major)
+      worldEndMajor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Major)
+      worldStepMajor:  tuple[x, y: WType] = minDelta[WType](grid, scale=Major)
     rp.setDrawColor(Black.toColor)
     for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
       let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
