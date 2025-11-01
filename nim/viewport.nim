@@ -1,4 +1,4 @@
-import std/math
+import std/[math, strformat]
 import appinit
 import world
 import pointmath
@@ -37,13 +37,16 @@ type
 
 proc base*(zctrl: ZoomCtrl): int =  zctrl.mBase
 # Only change base through grid.setDivisions!!
-proc `base=`*(zctrl: ZoomCtrl, val: int) = zctrl.mBase = val
+proc `base=`*(zctrl: ZoomCtrl, val: int) = 
+  let oldbase = zctrl.base
+  zctrl.mBase = val
+  echo &"base changing {oldbase} -> {zctrl.base}"
 proc clickDiv*(zctrl: ZoomCtrl): int =  zctrl.mClickDiv
 proc maxPwr*(zctrl: ZoomCtrl): int =  zctrl.mMaxPwr
 proc density*(zctrl: ZoomCtrl): float =  zctrl.mDensity
 proc logStep*(zctrl: ZoomCtrl): int =  zctrl.mLogStep
 
-
+# TODO: Move ZoomCtrl to another file
 proc newZoomCtrl*(): ZoomCtrl =
   # Fill values from from json
   # The "to" macro doesn't work because the logStep field is
@@ -69,7 +72,7 @@ proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
 proc doZoom*(vp: var Viewport, delta: int)
 
 proc pan*(vp: Viewport): PxPoint = vp.mPan
-proc zClicks*(vp: Viewport): int = vp.mZclicks
+proc zClicks*(vp: Viewport): float = vp.mZclicks
 proc zCtrl*(vp: Viewport): ZoomCtrl = vp.mZctrl
 proc rawZoom*(vp: Viewport): float = vp.mRawZoom
 proc zoom*(vp: Viewport): float = vp.mZoom
