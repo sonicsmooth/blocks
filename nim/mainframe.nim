@@ -102,14 +102,17 @@ wClass(wMainFrame of wFrame):
 
   proc onMsgGridDivisions(self: wMainFrame, event: wEvent) =
     let gr = self.mMainPanel.mBlockPanel.mGrid
+    var vp = self.mMainPanel.mBlockPanel.mViewport
     let index = event.mLparam
     let val = gr.allowedDivisions()[index]
+    let oldZoom: float = vp.zoom
     when defined(debug):
       echo &"received ongriddivisions index={index}, value={val}"
     let success = gr.setDivisions(val)
     if not success:
       echo "could not set divisions"
-    self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
+    #vp.doZoom(0)
+    vp.zoom = oldZoom # force zoom to previous value
     self.mMainPanel.mBlockPanel.refresh(false)
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
