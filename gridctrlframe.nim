@@ -194,8 +194,6 @@ wClass(wGridControlPanel of wPanel):
 
   proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
-    # when defined(debug):
-    #   echo &"Division Combobox sending index={index}"
     sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, index.LPARAM)
 
 
@@ -240,11 +238,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinSizeY.title = $val
 
   proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
-    let index = event.lParam
-    let valstr = self.mCbDivisions[index]
-    # when defined(debug):
-    #   echo &"onMsgGridDivisions receiving index={index} -> {valstr}"
-    self.mCbDivisions.select(index)
+    self.mCbDivisions.select(event.lParam)
 
   proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
     when defined(debug):

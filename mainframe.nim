@@ -108,11 +108,19 @@ wClass(wMainFrame of wFrame):
     let oldZoom: float = vp.zoom
     when defined(debug):
       echo &"received ongriddivisions index={index}, value={val}"
+    echo "\n"
+    echo "Old vp"
+    echo vp[]
+    echo ""
     let success = gr.setDivisions(val)
+    echo ""
+    echo "Intermediate vp"
+    echo vp[]
     if not success:
       echo "could not set divisions"
-    #vp.doZoom(0)
     vp.zoom = oldZoom # force zoom to previous value
+    echo "New vp"
+    echo vp[]
     self.mMainPanel.mBlockPanel.refresh(false)
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =

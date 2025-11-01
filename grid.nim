@@ -1,4 +1,4 @@
-import std/[algorithm, enumerate, math, sequtils, strformat]
+import std/[algorithm, math, sequtils, strformat]
 import sdl2
 import colors
 from arange import arange
@@ -45,11 +45,15 @@ proc minorXSpace*(grid: Grid): WType = grid.mMinorXSpace
 proc minorYSpace*(grid: Grid): WType = grid.mMinorYSpace
 
 proc `majorXSpace=`*(grid: Grid, val: WType) =
+  # Find major space closest to val such that the
+  # ratio to the minor space is exactly correct
+  let oldspace = grid.mMajorXSpace
   when Wtype is SomeInteger:
     grid.mMinorXSpace = val div grid.mZctrl.base
   elif WType is SomeFloat:
     grid.mMinorXSpace = val / grid.mZctrl.base
   grid.mMajorXSpace = grid.mMinorXSpace * grid.mZctrl.base
+  echo &"majorXSpace changing from {oldspace} -> {val} -> {grid.mMajorXSpace}"
 
 proc `majorYSpace=`*(grid: Grid, val: WType) =
   when Wtype is SomeInteger:
