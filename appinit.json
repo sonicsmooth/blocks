@@ -11,7 +11,7 @@
     },
     "Viewport": {
       "pan": "(400, 400)",
-      "zClicks": 0,
+      "zClicks": 0.0,
       "zctrl": {
         "base": 4,
         "clickDiv": 2400,
