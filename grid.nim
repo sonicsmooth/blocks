@@ -106,6 +106,19 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
   when WType is SomeInteger:
     let
       divs: float = grid.mDivisions.float
+      # Tiny is independent
+      tinyNaturalX: float = grid.mMajorXSpace.float * stpScale / (divs^2)
+      tinyNaturalY: float = grid.mMajorYSpace.float * stpScale / (divs^2)
+      tinyRoundX: float = tinyNaturalX.round
+      tinyRoundY: float = tinyNaturalY.round
+      tinyIsZeroX: bool = tinyRoundX == 0.0
+      tinyIsZeroY: bool = tinyRoundY == 0.0
+      tinyFinalX: float = if tinyIsZeroX: 1.0 
+                          else: tinyRoundX
+      tinyFinalY: float = if tinyIsZeroY: 1.0 
+                          else: tinyRoundY
+
+      # Minor is independent
       minorNaturalX: float = grid.mMajorXSpace.float * stpScale / divs
       minorNaturalY: float = grid.mMajorYSpace.float * stpScale / divs
       minorRoundX: float = minorNaturalX.round
@@ -119,6 +132,7 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
       minorFinalY: float = if minorIsZeroY: 1
                            else: minorRoundY
 
+      # Major depends on minor
       majorNaturalX: float = grid.mMajorXSpace.float * stpScale
       majorNaturalY: float = grid.mMajorYSpace.float * stpScale
       majorRoundX: float = majorNaturalX.round
@@ -129,17 +143,6 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
       majorFinalY: float = if minorIsZeroY: 1
                            elif minorIsRoundedY: minorFinalY * divs
                            else: majorRoundY
-
-      tinyNaturalX: float = grid.mMajorXSpace.float * stpScale / (divs^2)
-      tinyNaturalY: float = grid.mMajorYSpace.float * stpScale / (divs^2)
-      tinyRoundX: float = tinyNaturalX.round
-      tinyRoundY: float = tinyNaturalY.round
-      tinyIsZeroX: bool = tinyRoundX == 0.0
-      tinyIsZeroY: bool = tinyRoundY == 0.0
-      tinyFinalX: float = if tinyIsZeroX: 1.0 
-                          else: tinyRoundX
-      tinyFinalY: float = if tinyIsZeroY: 1.0 
-                          else: tinyRoundY
 
     case scale
     of None: (1, 1)
