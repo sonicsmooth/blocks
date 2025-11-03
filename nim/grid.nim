@@ -90,35 +90,75 @@ proc setDivisions*(grid: Grid, val: int8): bool =
     grid.mMinorXSpace = grid.mMajorXSpace div val
     grid.mMinorYSpace = grid.mMajorYSpace div val
 
-proc minDelta*[T](grid: Grid, scale: Scale): tuple[x,y: T] =
-  # Return minimum grid spacing
-  # When zoom in, stpScale is a large value
-  # When grid.snap is false, returns minimum
+# proc minDelta*[T](grid: Grid, scale: Scale): tuple[x,y: T] =
+#   # Return minimum grid spacing
+#   # When zoom in, stpScale is a large value
+#   # When grid.snap is false, returns minimum
+#   let
+#     zc = grid.mZctrl
+#     stpScale: float = pow(zc.base.float, zc.logStep.float)
+#     minorXSpace: float = grid.mMinorXSpace.float
+#     minorYSpace: float = grid.mMinorYSpace.float
+#   when T is SomeInteger:
+#     # Compute minor grid first, then others
+#     let minorX: float = max(minorXSpace / stpScale, 1.0)
+#     let minorY: float = max(minorYSpace / stpScale, 1.0)
+#     case scale
+#     of None:
+#       (1, 1)
+#     of Tiny: 
+#       let
+#         tinyX: float = max(minorX / zc.base.float, 1.0)
+#         tinyY: float = max(minorY / zc.base.float, 1.0)
+#       (tinyX.round.int, tinyY.round.int)
+#     of Minor:
+#       (minorX.round.int, minorY.round.int)
+#     of Major:
+#       let
+#         majorX: float = minorX.round * zc.base.float
+#         majorY: float = minorY.round * zc.base.float
+#       (majorX.round.int, majorY.round.int)
+#   elif T is SomeFloat:
+#     let 
+#       minorX: float = minorXSpace.float / stpScale
+#       minorY: float = minorYSpace.float / stpScale
+#     case scale
+#     of None:
+#       (0.0, 0.0)
+#     of Tiny:
+#       (minorX, minorY) * (1.0 / zc.base.float)
+#     of Minor:
+#       (minorX, minorY)
+#     of Major:
+#       (minorX, minorY) * zc.base.float
+
+proc minDelta*(grid: Grid, scale: Scale): WPoint =
+  # Return minimum grid spacing.
+  # Return type T i
+  # When zoomed in far, stpScale is a large value
+  # scale lets you return different sizes
   let
     zc = grid.mZctrl
     stpScale: float = pow(zc.base.float, zc.logStep.float)
-    minorXSpace: float = grid.mMinorXSpace.float
-    minorYSpace: float = grid.mMinorYSpace.float
-  when T is SomeInteger:
-    # Compute minor grid first, then others
-    let minorX: float = max(minorXSpace / stpScale, 1.0)
-    let minorY: float = max(minorYSpace / stpScale, 1.0)
+    majorX: float = grid.mMajorXSpace.float / stpScale
+    majorY: float = grid.mMajorYSpace.float / stpScale
+  when WType is SomeInteger:
     case scale
     of None:
       (1, 1)
     of Tiny: 
       let
-        tinyX: float = max(minorX / zc.base.float, 1.0)
-        tinyY: float = max(minorY / zc.base.float, 1.0)
+        tinyX: float = max(majorX / (zc.base.float^2), 1.0)
+        tinyY: float = max(majorY / (zc.base.float^2), 1.0)
       (tinyX.round.int, tinyY.round.int)
     of Minor:
+      let
+        minorX: float = max(majorX / (zc.base.float), 1.0)
+        minorY: float = max(majorY / (zc.base.float), 1.0)
       (minorX.round.int, minorY.round.int)
     of Major:
-      let
-        majorX: float = minorX.round * zc.base.float
-        majorY: float = minorY.round * zc.base.float
       (majorX.round.int, majorY.round.int)
-  elif T is SomeFloat:
+  elif WType is SomeFloat:
     let 
       minorX: float = minorXSpace.float / stpScale
       minorY: float = minorYSpace.float / stpScale
@@ -126,18 +166,18 @@ proc minDelta*[T](grid: Grid, scale: Scale): tuple[x,y: T] =
     of None:
       (0.0, 0.0)
     of Tiny:
-      (minorX, minorY) * (1.0 / zc.base.float)
+      (majorX, majorY) * (1.0 / zc.base.float^2)
     of Minor:
-      (minorX, minorY)
+      (majorX, majorY) * (1.0 / zc.base.float)
     of Major:
-      (minorX, minorY) * zc.base.float
+      (majorX, majorY)
 
 proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
   # Round to nearest minor grid point
   # Returns same type of point as is passed in.
   # If this is a WPoint, and that is integer-based, then
   # rounding will occur in implicit conversion
-  let md = minDelta[WType](grid, scale)
+  let md = minDelta(grid, scale)
   when WType is SomeFloat:
     if md == (0.0, 0.0): return pt
   elif WType is Someinteger:
@@ -161,25 +201,25 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
 
   # Minor lines
   if grid.mVisible:
-    let
-      worldStartMinor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
-      worldEndMinor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
-      worldStepMinor:  tuple[x, y: WType] = minDelta[WType](grid, scale=Minor)
-      xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
-    rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
-    for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
-      let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
-      rp.drawLine(xpx, 0, xpx, size.height - 1)
+    # let
+    #   worldStartMinor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
+    #   worldEndMinor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
+    #   worldStepMinor:  tuple[x, y: WType] = minDelta(grid, scale=Minor)
+    #   xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
+    # rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+    # for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
+    #   let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
+    #   rp.drawLine(xpx, 0, xpx, size.height - 1)
 
-    for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
-      let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
-      rp.drawLine(0, ypx, size.width - 1, ypx)
+    # for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
+    #   let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
+    #   rp.drawLine(0, ypx, size.width - 1, ypx)
 
     # Major lines
     let
       worldStartMajor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Major)
       worldEndMajor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Major)
-      worldStepMajor:  tuple[x, y: WType] = minDelta[WType](grid, scale=Major)
+      worldStepMajor:  tuple[x, y: WType] = minDelta(grid, scale=Major)
     rp.setDrawColor(Black.toColor)
     for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
       let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int

@@ -279,9 +279,9 @@ wClass(wBlockPanel of wSDLPanel):
       let
         md: WPoint = 
           if event.shiftDown:
-            minDelta[WType](self.mGrid, scale=Tiny)
+            minDelta(self.mGrid, scale=Tiny)
           else:
-            minDelta[WType](self.mGrid, scale=Minor)
+            minDelta(self.mGrid, scale=Minor)
         moveby: WPoint = md .* moveTable[event.keyCode]
       self.moveRectsBy(sel, moveBy)
       resetBox()
@@ -524,10 +524,13 @@ Rendering options for SDL and pixie
     txt &= &"level: {self.mViewport.zCtrl.logStep}\n"
     txt &= &"rawZoom: {self.mViewport.rawZoom:.3f}\n"
     txt &= &"zoom: {self.mViewport.zoom:.3f}\n"
-    txt &= &"smoothDelta: {minDelta[WType](self.mGrid, scale=None)}\n"
-    txt &= &"tinyDelta: {minDelta[WType](self.mGrid, scale=Tiny)}\n"
-    txt &= &"minorDelta: {minDelta[WType](self.mGrid, scale=Minor)}\n"
-    txt &= &"majorDelta: {minDelta[WType](self.mGrid, scale=Major)}\n"
+    txt &= &"smoothDelta: {minDelta(self.mGrid, scale=None)}\n"
+    txt &= &"tinyDelta: {minDelta(self.mGrid, scale=Tiny)}\n"
+    txt &= &"minorDelta: {minDelta(self.mGrid, scale=Minor)}\n"
+    let majdelt = minDelta(self.mGrid, scale=Major)
+    let pxwidth = (majdelt.x.float * self.mViewport.zoom).round.int
+    txt &= &"majorDelta: {majdelt}\n"
+    txt &= &"majorPx: {pxwidth}"
     
     self.sdlRenderer.renderText(self.sdlWindow, txt)
     self.sdlRenderer.present()
