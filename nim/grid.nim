@@ -1,4 +1,4 @@
-import std/[algorithm, math, sequtils, strformat]
+import std/[algorithm, math, sequtils, strformat, sugar]
 import sdl2
 import colors
 from arange import arange
@@ -94,43 +94,67 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.
   # Return type T i
-  # When zoomed in far, stpScale is a large value and divisions are small.
-  # When zoomed out, stpScale is small and divisions are large
+  # When zoomed in far, stpScale is small and spacings are small.
+  # When zoomed out, stpScale is large and spacings are large
   # scale lets you return different sizes
   let
     zc = grid.mZctrl
-    stpScale: float = pow(zc.base.float, zc.logStep.float)
-    majorX: float = grid.mMajorXSpace.float / stpScale
-    majorY: float = grid.mMajorYSpace.float / stpScale
+    stpScale: float = pow(zc.base.float, -zc.logStep.float)
+  
+
+
   when WType is SomeInteger:
+    let
+      divs: float = grid.mDivisions.float
+      minorNaturalX: float = grid.mMajorXSpace.float * stpScale / divs
+      minorNaturalY: float = grid.mMajorYSpace.float * stpScale / divs
+      minorRoundX: float = minorNaturalX.round
+      minorRoundY: float = minorNaturalY.round
+      minorIsRoundedX: bool = minorNaturalX != minorRoundX
+      minorIsRoundedY: bool = minorNaturalY != minorRoundY
+      minorIsZeroX: bool = minorRoundX == 0.0
+      minorIsZeroY: bool = minorRoundY == 0.0
+      minorFinalX: float = if minorIsZeroX: 1.0
+                           else: minorRoundX
+      minorFinalY: float = if minorIsZeroY: 1
+                           else: minorRoundY
+
+      majorNaturalX: float = grid.mMajorXSpace.float * stpScale
+      majorNaturalY: float = grid.mMajorYSpace.float * stpScale
+      majorRoundX: float = majorNaturalX.round
+      majorRoundY: float = majorNaturalY.round
+      majorFinalX: float = if minorIsZeroX: 1.0
+                           elif minorIsRoundedX: minorFinalX * divs
+                           else: majorRoundX
+      majorFinalY: float = if minorIsZeroY: 1
+                           elif minorIsRoundedY: minorFinalY * divs
+                           else: majorRoundY
+
+      tinyNaturalX: float = grid.mMajorXSpace.float * stpScale / (divs^2)
+      tinyNaturalY: float = grid.mMajorYSpace.float * stpScale / (divs^2)
+      tinyRoundX: float = tinyNaturalX.round
+      tinyRoundY: float = tinyNaturalY.round
+      tinyIsZeroX: bool = tinyRoundX == 0.0
+      tinyIsZeroY: bool = tinyRoundY == 0.0
+      tinyFinalX: float = if tinyIsZeroX: 1.0 
+                          else: tinyRoundX
+      tinyFinalY: float = if tinyIsZeroY: 1.0 
+                          else: tinyRoundY
+
     case scale
-    of None:
-      (1, 1)
-    of Tiny: 
-      let
-        tinyX: float = max(majorX / (grid.mDivisions.float^2), 1.0)
-        tinyY: float = max(majorY / (grid.mDivisions.float^2), 1.0)
-      (tinyX.round.int, tinyY.round.int)
-    of Minor:
-      let
-        minorX: float = max(majorX / (grid.mDivisions.float), 1.0)
-        minorY: float = max(majorY / (grid.mDivisions.float), 1.0)
-      (minorX.round.int, minorY.round.int)
-    of Major:
-      (majorX.round.int, majorY.round.int)
+    of None: (1, 1)
+    of Tiny: (tinyFinalX.WType, tinyFinalY.WType)
+    of Minor: (minorFinalX.WType, minorFinalY.WType)
+    of Major: (majorFinalX.WType, majorFinalY.WType)
   elif WType is SomeFloat:
     let 
-      minorX: float = minorXSpace.float / stpScale
-      minorY: float = minorYSpace.float / stpScale
+      tinyX: float = majorXSpace.float * stpScale
+      tinyY: float = majorYSpace.float * stpScale
     case scale
-    of None:
-      (0.0, 0.0)
-    of Tiny:
-      (majorX, majorY) * (1.0 / grid.mDivisions.float^2)
-    of Minor:
-      (majorX, majorY) * (1.0 / grid.mDivisions.float)
-    of Major:
-      (majorX, majorY)
+    of None: (0.0, 0.0)
+    of Tiny: (tinyX, tinyY)
+    of Minor: (tinyX, tinyY) * grid.mDivisions.float
+    of Major: (tinyX, tinyY) * grid.mDivisions.float^2
 
 proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
   # Round to nearest minor grid point
