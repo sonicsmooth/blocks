@@ -108,6 +108,7 @@ wClass(wMainFrame of wFrame):
     when defined(debug):
       echo &"received ongriddivisions index={index}, value={val}"
     let success = (gr.divisions = val)
+    vp.doZoom(0)
     if not success:
       echo "could not set divisions"
     self.mMainPanel.mBlockPanel.refresh(false)
