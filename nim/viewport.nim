@@ -14,9 +14,6 @@ export world
 # zoom value is still respected, but the ZoomCtrl
 # is "inconsistent", which means the zoom level
 # will be re-reached if the user zooms up and down
-# TODO: When changing base, the viewport may change the
-# zoom clicks to keep the zoom stable.  This may require 
-# an inconsistent state, or a float for zoom clicks.
 
 type
   ZoomCtrl* = ref object
@@ -52,12 +49,11 @@ proc newZoomCtrl*(): ZoomCtrl =
   # The "to" macro doesn't work because the logStep field is
   # not included in the json.  The logStep value is calculated
   # at runtime, so it shouldn't be specified in the json file.
-  let j = gViewportJ["zctrl"]
   result = new ZoomCtrl
-  result.mBase     = j["base"].getInt
-  result.mClickDiv = j["clickDiv"].getInt
-  result.mMaxPwr   = j["maxPwr"].getInt
-  result.mDensity  = j["density"].getFloat
+  result.mBase     = gZctrlJ["base"].getInt
+  result.mClickDiv = gZctrlJ["clickDiv"].getInt
+  result.mMaxPwr   = gZctrlJ["maxPwr"].getInt
+  result.mDensity  = gZctrlJ["density"].getFloat
 
 proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
   # Fill values from args

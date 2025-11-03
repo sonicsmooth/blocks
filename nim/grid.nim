@@ -16,6 +16,7 @@ type
     mMinorYSpace: WType
     mMajorXSpace: WType
     mMajorYSpace: WType
+    mDivisions: int
     mVisible*:       bool = true
     mOriginVisible*: bool = true
     mSnap*:          bool = true
@@ -24,7 +25,7 @@ type
     mZctrl*:       ZoomCtrl
 
 const
-  alphaOffset = 20 
+  alphaOffset = 20
   stepAlphas = arange(60 .. 255, alphaOffset).toSeq
 
 proc lineAlpha(step: int): int =
@@ -49,27 +50,27 @@ proc `majorXSpace=`*(grid: Grid, val: WType) =
   # ratio to the minor space is exactly correct
   let oldspace = grid.mMajorXSpace
   when Wtype is SomeInteger:
-    grid.mMinorXSpace = val div grid.mZctrl.base
+    grid.mMinorXSpace = val div grid.mDivisions
   elif WType is SomeFloat:
-    grid.mMinorXSpace = val / grid.mZctrl.base
-  grid.mMajorXSpace = grid.mMinorXSpace * grid.mZctrl.base
+    grid.mMinorXSpace = val / grid.mDivisions
+  grid.mMajorXSpace = grid.mMinorXSpace * grid.mDivisions
   echo &"majorXSpace changing from {oldspace} -> {val} -> {grid.mMajorXSpace}"
 
 proc `majorYSpace=`*(grid: Grid, val: WType) =
   when Wtype is SomeInteger:
-    grid.mMinorYSpace = val div grid.mZctrl.base
+    grid.mMinorYSpace = val div grid.mDivisions
   elif WType is SomeFloat:
-    grid.mMinorYSpace = val / grid.mZctrl.base
-  grid.mMajorYSpace = grid.mMinorYSpace * grid.mZctrl.base
+    grid.mMinorYSpace = val / grid.mDivisions
+  grid.mMajorYSpace = grid.mMinorYSpace * grid.mDivisions
 
-proc allowedDivisions*(grid: Grid): seq[int8] =
-  # Return list of allowable divisions,
-  # that is, which values in 2..16 divide
-  # major grid space evenly.  If the result
-  # for X and Y are different, then return
-  # the intersection
-  var xset, yset: set[int8]
-  for d in int8(2) .. int8(16):
+proc allowedDivisions*(grid: Grid): seq[range[2..16]] =
+  # Return list of allowable divisions, i.e., which
+  # values in 2..16 divide major grid space evenly.
+  # If the result for X and Y are different, then
+  # return the intersection.  Typically the values
+  # are 2,4,5,8,10,16.
+  var xset, yset: set[range[2..16]]
+  for d in 2 .. 16:
     if grid.mMajorXSpace mod d == 0: xset.incl(d)
     if grid.mMajorYSpace mod d == 0: yset.incl(d)
   (xset * yset).toSeq
@@ -78,64 +79,22 @@ proc allowedDivisionsStr*(grid: Grid): seq[string] =
   for d in grid.allowedDivisions:
     result.add($d)
 
-proc setDivisions*(grid: Grid, val: int8): bool =
+proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
   # Change grid's zctrl's base aka divsions, and update
   # minor grid size to ensure major grid size stays the
   # same.  Return true/false if base can/cannot be set
   # exactly.
-  echo &"Set Divisions: {val}"
   result = val in grid.allowedDivisions()
   if result:
-    grid.mZctrl.base = val
+    grid.mDivisions = val
     grid.mMinorXSpace = grid.mMajorXSpace div val
     grid.mMinorYSpace = grid.mMajorYSpace div val
-
-# proc minDelta*[T](grid: Grid, scale: Scale): tuple[x,y: T] =
-#   # Return minimum grid spacing
-#   # When zoom in, stpScale is a large value
-#   # When grid.snap is false, returns minimum
-#   let
-#     zc = grid.mZctrl
-#     stpScale: float = pow(zc.base.float, zc.logStep.float)
-#     minorXSpace: float = grid.mMinorXSpace.float
-#     minorYSpace: float = grid.mMinorYSpace.float
-#   when T is SomeInteger:
-#     # Compute minor grid first, then others
-#     let minorX: float = max(minorXSpace / stpScale, 1.0)
-#     let minorY: float = max(minorYSpace / stpScale, 1.0)
-#     case scale
-#     of None:
-#       (1, 1)
-#     of Tiny: 
-#       let
-#         tinyX: float = max(minorX / zc.base.float, 1.0)
-#         tinyY: float = max(minorY / zc.base.float, 1.0)
-#       (tinyX.round.int, tinyY.round.int)
-#     of Minor:
-#       (minorX.round.int, minorY.round.int)
-#     of Major:
-#       let
-#         majorX: float = minorX.round * zc.base.float
-#         majorY: float = minorY.round * zc.base.float
-#       (majorX.round.int, majorY.round.int)
-#   elif T is SomeFloat:
-#     let 
-#       minorX: float = minorXSpace.float / stpScale
-#       minorY: float = minorYSpace.float / stpScale
-#     case scale
-#     of None:
-#       (0.0, 0.0)
-#     of Tiny:
-#       (minorX, minorY) * (1.0 / zc.base.float)
-#     of Minor:
-#       (minorX, minorY)
-#     of Major:
-#       (minorX, minorY) * zc.base.float
 
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.
   # Return type T i
-  # When zoomed in far, stpScale is a large value
+  # When zoomed in far, stpScale is a large value and divisions are small.
+  # When zoomed out, stpScale is small and divisions are large
   # scale lets you return different sizes
   let
     zc = grid.mZctrl
@@ -148,13 +107,13 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
       (1, 1)
     of Tiny: 
       let
-        tinyX: float = max(majorX / (zc.base.float^2), 1.0)
-        tinyY: float = max(majorY / (zc.base.float^2), 1.0)
+        tinyX: float = max(majorX / (grid.mDivisions.float^2), 1.0)
+        tinyY: float = max(majorY / (grid.mDivisions.float^2), 1.0)
       (tinyX.round.int, tinyY.round.int)
     of Minor:
       let
-        minorX: float = max(majorX / (zc.base.float), 1.0)
-        minorY: float = max(majorY / (zc.base.float), 1.0)
+        minorX: float = max(majorX / (grid.mDivisions.float), 1.0)
+        minorY: float = max(majorY / (grid.mDivisions.float), 1.0)
       (minorX.round.int, minorY.round.int)
     of Major:
       (majorX.round.int, majorY.round.int)
@@ -166,9 +125,9 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
     of None:
       (0.0, 0.0)
     of Tiny:
-      (majorX, majorY) * (1.0 / zc.base.float^2)
+      (majorX, majorY) * (1.0 / grid.mDivisions.float^2)
     of Minor:
-      (majorX, majorY) * (1.0 / zc.base.float)
+      (majorX, majorY) * (1.0 / grid.mDivisions.float)
     of Major:
       (majorX, majorY)
 
@@ -201,19 +160,19 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
 
   # Minor lines
   if grid.mVisible:
-    # let
-    #   worldStartMinor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
-    #   worldEndMinor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
-    #   worldStepMinor:  tuple[x, y: WType] = minDelta(grid, scale=Minor)
-    #   xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
-    # rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
-    # for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
-    #   let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
-    #   rp.drawLine(xpx, 0, xpx, size.height - 1)
+    let
+      worldStartMinor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
+      worldEndMinor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
+      worldStepMinor:  tuple[x, y: WType] = minDelta(grid, scale=Minor)
+      xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
+    rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+    for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
+      let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
+      rp.drawLine(xpx, 0, xpx, size.height - 1)
 
-    # for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
-    #   let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
-    #   rp.drawLine(0, ypx, size.width - 1, ypx)
+    for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
+      let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
+      rp.drawLine(0, ypx, size.width - 1, ypx)
 
     # Major lines
     let
@@ -249,10 +208,8 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
 proc newGrid*(zc: ZoomCtrl): Grid = 
   result = new Grid
   result.mZctrl = zc
-  # result.minorXSpace = gGridSpecsJ["minorXSpace"].getInt
-  # result.minorYSpace = gGridSpecsJ["minorYSpace"].getInt
-  # result.mMajorXSpace = gGridSpecsJ["majorXSpace"].getInt
-  # result.mMajorYSpace = gGridSpecsJ["majorYSpace"].getInt
+  #`divisions=`(result, gGridSpecsJ["divisions"].getInt)
+  result.divisions = gGridSpecsJ["divisions"].getInt
   result.majorXSpace = gGridSpecsJ["majorXSpace"].getInt
   result.majorYSpace = gGridSpecsJ["majorYSpace"].getInt
   result.mVisible = gGridSpecsJ["visible"].getBool

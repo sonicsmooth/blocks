@@ -17,5 +17,6 @@ let
   appInits = parseFile("appinit.json")["appInits"]
   gAppOptsJ*: JsonNode = appInits["AppOpts"]
   gViewportJ*: JsonNode = appInits["Viewport"]
+  gZctrlJ*: JsonNode = appInits["Zctrl"]
   gGridSpecsJ*: JsonNode = appInits["Grid"]
   gPanelSpecsJ*: JsonNode = appInits["MainPanel"]
