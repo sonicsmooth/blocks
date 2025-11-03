@@ -35,9 +35,7 @@ type
 proc base*(zctrl: ZoomCtrl): int =  zctrl.mBase
 # Only change base through grid.setDivisions!!
 proc `base=`*(zctrl: ZoomCtrl, val: int) = 
-  let oldbase = zctrl.base
   zctrl.mBase = val
-  echo &"base changing {oldbase} -> {zctrl.base}"
 proc clickDiv*(zctrl: ZoomCtrl): int =  zctrl.mClickDiv
 proc maxPwr*(zctrl: ZoomCtrl): int =  zctrl.mMaxPwr
 proc density*(zctrl: ZoomCtrl): float =  zctrl.mDensity

@@ -86,6 +86,7 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
   # exactly.
   result = val in grid.allowedDivisions()
   if result:
+    grid.mZctrl.base = val
     grid.mDivisions = val
     grid.mMinorXSpace = grid.mMajorXSpace div val
     grid.mMinorYSpace = grid.mMajorYSpace div val
