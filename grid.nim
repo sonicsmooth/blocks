@@ -16,11 +16,10 @@ type
     mMinorYSpace: WType
     mMajorXSpace: WType
     mMajorYSpace: WType
-    mDivisions: int
-    mVisible*:       bool = true
-    mOriginVisible*: bool = true
-    mSnap*:          bool = true
-    mDynamic*:       bool = true
+    mDivisions:      int
+    mVisible*:       bool
+    mOriginVisible*: bool
+    mSnap*:          bool
     mDotsOrLines*: DotsOrLines = Lines
     mZctrl*:       ZoomCtrl
 
@@ -236,14 +235,12 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
 proc newGrid*(zc: ZoomCtrl): Grid = 
   result = new Grid
   result.mZctrl = zc
-  #`divisions=`(result, gGridSpecsJ["divisions"].getInt)
   result.divisions = gGridSpecsJ["divisions"].getInt
   result.majorXSpace = gGridSpecsJ["majorXSpace"].getInt
   result.majorYSpace = gGridSpecsJ["majorYSpace"].getInt
   result.mVisible = gGridSpecsJ["visible"].getBool
   result.mOriginVisible = gGridSpecsJ["originVisible"].getBool
   result.mSnap = gGridSpecsJ["snap"].getBool
-  result.mDynamic = gGridSpecsJ["dynamic"].getBool
   result.mDotsOrLines = 
     if gGridSpecsJ["dotsOrLines"].getStr == "dots": Dots
     elif gGridSpecsJ["dotsOrLines"].getStr == "lines": Lines

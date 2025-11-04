@@ -17,16 +17,16 @@
       "base": 4,
       "clickDiv": 2400,
       "maxPwr": 5,
-      "density": 1.0
+      "density": 1.0,
+      "dynamic": true
     },
     "Grid": {
-      "majorXSpace": 160,
-      "majorYSpace": 160,
+      "majorXSpace": 150,
+      "majorYSpace": 150,
       "divisions": 5,
       "visible": true,
       "originVisible": true,
       "snap": true,
-      "dynamic": true,
       "dotsOrLines": "lines",
       "_comment": "dots, lines"
     },

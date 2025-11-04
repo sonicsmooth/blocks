@@ -31,7 +31,6 @@ type
     mRbLines:       wRadioButton
     mSpinSizeX:     wSpinCtrl 
     mSpinSizeY:     wSpinCtrl 
-    #mSpinDivisions: wSpinCtrl
     mCbDivisions:   wComboBox
     mSpinDensity:   wSpinCtrl
   wGridControlFrame* = ref object of wFrame
@@ -83,10 +82,6 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtDivs.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtDivs)
 
-    # self.mSpinDivisions.position = (r, vmarg)
-    # self.mSpinDivisions.size = (spwidth, self.mSpinDivisions.size.height)
-    # (l,r,t,b) = edges(self.mSpinDivisions)
-
     self.mCbDivisions.position = (r, vmarg)
     self.mCbDivisions.size = (spwidth, self.mCbDivisions.size.height)
     (l,r,t,b) = edges(self.mCbDivisions)
@@ -97,8 +92,6 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDensity.position = (r, vmarg)
     self.mSpinDensity.size = (spwidth, self.mSpinDensity.size.height)
 
-    # self.mIntervalBox.contain(self.mTxtX, self.mSpinSizeX, self.mTxtY, self.mSpinSizeY,
-    #                           self.mTxtDivs, self.mSpinDivisions, self.mTxtDens, self.mSpinDensity)
     self.mIntervalBox.contain(self.mTxtX, self.mSpinSizeX, self.mTxtY, self.mSpinSizeY,
                               self.mTxtDivs, self.mCbDivisions, self.mTxtDens, self.mSpinDensity)
     (l,r,t,b) = edges(self.mIntervalBox)
@@ -252,6 +245,7 @@ wClass(wGridControlPanel of wPanel):
       echo "onMsgGridDynamic"
     let state = event.lParam.bool
     self.mCbDynamic.setValue(state)
+    self.mGrid.mZctrl.dynamic = state
 
   proc onMsgGridVisible(self: wGridControlPanel, event: wEvent) =
     when defined(debug):
@@ -313,7 +307,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDensity.setValue($self.mZctrl.density)
     self.mCbSnap.setValue(self.mGrid.mSnap)
     self.mCbVisible.setValue(self.mGrid.mVisible)
-    self.mCbDynamic.setValue(self.mGrid.mDynamic)
+    self.mCbDynamic.setValue(self.mGrid.mZctrl.dynamic)
     self.mRbDots.setValue(self.mGrid.mDotsOrLines == Dots)
     self.mRbLines.setValue(self.mGrid.mDotsOrLines == Lines)
     
