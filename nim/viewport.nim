@@ -22,6 +22,7 @@ type
     mMaxPwr:   int   # maximum rawZoom is base ^ maxPwr
     mDensity:  float # scales entire image without affecting grid
     mLogStep:  int   # each log controls the big and small grid
+    mDynamic:  bool  # Whether the grids change scale
 
   Viewport* = ref object
     # These are controlled by user
@@ -36,10 +37,13 @@ proc base*(zctrl: ZoomCtrl): int =  zctrl.mBase
 # Only change base through grid.setDivisions!!
 proc `base=`*(zctrl: ZoomCtrl, val: int) = 
   zctrl.mBase = val
-proc clickDiv*(zctrl: ZoomCtrl): int =  zctrl.mClickDiv
-proc maxPwr*(zctrl: ZoomCtrl): int =  zctrl.mMaxPwr
-proc density*(zctrl: ZoomCtrl): float =  zctrl.mDensity
-proc logStep*(zctrl: ZoomCtrl): int =  zctrl.mLogStep
+proc clickDiv*(zctrl: ZoomCtrl): int = zctrl.mClickDiv
+proc maxPwr*(zctrl: ZoomCtrl): int = zctrl.mMaxPwr
+proc density*(zctrl: ZoomCtrl): float = zctrl.mDensity
+proc logStep*(zctrl: ZoomCtrl): int = zctrl.mLogStep
+proc dynamic*(zctrl: ZoomCtrl): bool = zctrl.mDynamic
+proc `dynamic=`*(zctrl: var ZoomCtrl, val: bool) =
+  zctrl.mDynamic = val
 
 # TODO: Move ZoomCtrl to another file
 proc newZoomCtrl*(): ZoomCtrl =
@@ -52,6 +56,8 @@ proc newZoomCtrl*(): ZoomCtrl =
   result.mClickDiv = gZctrlJ["clickDiv"].getInt
   result.mMaxPwr   = gZctrlJ["maxPwr"].getInt
   result.mDensity  = gZctrlJ["density"].getFloat
+  result.mDynamic  = gZctrlJ["dynamic"].getBool
+
 
 proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
   # Fill values from args
