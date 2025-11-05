@@ -286,7 +286,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinSizeY.setRange(1 .. 1000)
     self.mCbDivisions.select(2)
     self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
-    self.mSliderDensity.setRange(1 .. 200) # from .01 to 2.0
+    self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
     self.mCbSnap.setValue(self.mGrid.mSnap)
     self.mCbVisible.setValue(self.mGrid.mVisible)
     self.mCbDynamic.setValue(self.mGrid.mZctrl.dynamic)
