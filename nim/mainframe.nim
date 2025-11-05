@@ -134,7 +134,6 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.refresh(false)
   proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
     let mag = event.lParam.float / 100.0
-    echo $event.lParam, " -> ", mag
     self.mMainPanel.mBlockPanel.mGrid.mZctrl.density = mag
     self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
     self.mMainPanel.mBlockPanel.refresh(false)
@@ -162,10 +161,12 @@ wClass(wMainFrame of wFrame):
     let val = event.lParam.bool
     if val: self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Dots
     else:   self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Lines
+    self.mMainPanel.mBlockPanel.refresh(false)
   proc onMsgGridLines(self: wMainFrame, event: wEvent) =
     let val = event.lParam.bool
     if val: self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Lines
     else:   self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Dots
+    self.mMainPanel.mBlockPanel.refresh(false)
   #--
   proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
     self.mGridCtrlFrameShowing = false

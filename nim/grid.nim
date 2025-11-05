@@ -187,41 +187,77 @@ proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
     y = ((pt.y - vp.pan.y).float / vp.zoom)
   (x, y)
 
+
 proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels
   let
     upperLeft: PxPoint = (0, 0)
     lowerRight: PxPoint = (size.width - 1, size.height - 1)
 
-  # Minor lines
   if grid.mVisible:
     let
       worldStartMinor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
       worldEndMinor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
       worldStepMinor:  tuple[x, y: WType] = minDelta(grid, scale=Minor)
-      xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
-    rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
-    for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
-      let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
-      rp.drawLine(xpx, 0, xpx, size.height - 1)
-
-    for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
-      let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
-      rp.drawLine(0, ypx, size.width - 1, ypx)
-
-    # Major lines
-    let
       worldStartMajor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Major)
       worldEndMajor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Major)
       worldStepMajor:  tuple[x, y: WType] = minDelta(grid, scale=Major)
-    rp.setDrawColor(Black.toColor)
-    for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
-      let xpx = (xwf * vp.zoom + vp.pan.x.float).round.int
-      rp.drawLine(xpx, 0, xpx, size.height - 1)
+      xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
 
-    for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
-      let ypx = (ywf * vp.zoom + vp.pan.y.float).round.int
-      rp.drawLine(0, ypx, size.width - 1, ypx)
+    # Minor lines
+    if grid.mDotsOrLines == Lines:
+      rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+      for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
+        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
+        rp.drawLine(xpx, 0, xpx, size.height - 1)
+
+      for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
+        let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
+        rp.drawLine(0, ypx, size.width - 1, ypx)
+
+    elif grid.mDotsOrLines == Dots:
+      var pts: seq[sdl2.Point]
+      rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+      for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
+        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
+        for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
+          let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
+          pts.add((xpx-1.cint, ypx-1.cint))
+          pts.add((xpx-1.cint, ypx       ))
+          pts.add((xpx,        ypx-1.cint))
+          pts.add((xpx,        ypx       ))
+      rp.drawPoints(cast[ptr sdl2.Point](pts[0].addr), pts.len.cint)
+
+
+    # Major lines
+    if grid.mDotsOrLines == Lines:
+      rp.setDrawColor(Black.toColor)
+      for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
+        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
+        rp.drawLine(xpx, 0, xpx, size.height - 1)
+
+      for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
+        let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
+        rp.drawLine(0, ypx, size.width - 1, ypx)
+    
+    elif grid.mDotsOrLines == Dots:
+      var pts: seq[sdl2.Point]
+      rp.setDrawColor(Black.toColor)
+      for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
+        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
+        for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
+          let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
+          pts.add((xpx-1, ypx-1))
+          pts.add((xpx-0, ypx-1))
+          pts.add((xpx+1, ypx-1))
+          pts.add((xpx-1, ypx-0))
+          pts.add((xpx-0, ypx-0))
+          pts.add((xpx+1, ypx-0))
+          pts.add((xpx-1, ypx+1))
+          pts.add((xpx-0, ypx+1))
+          pts.add((xpx+1, ypx+1))
+      rp.drawPoints(cast[ptr sdl2.Point](pts[0].addr), pts.len.cint)
+
 
   if grid.mOriginVisible:
     let
