@@ -216,17 +216,17 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
         rp.drawLine(0, ypx, size.width - 1, ypx)
 
     elif grid.mDotsOrLines == Dots:
-      var pts: seq[sdl2.Point]
+      var pts: seq[Point]
       rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
       for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
         for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
           let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
-          pts.add((xpx-1.cint, ypx-1.cint))
-          pts.add((xpx-1.cint, ypx       ))
-          pts.add((xpx,        ypx-1.cint))
-          pts.add((xpx,        ypx       ))
-      rp.drawPoints(cast[ptr sdl2.Point](pts[0].addr), pts.len.cint)
+          pts.add((xpx-1, ypx-1))
+          pts.add((xpx-1, ypx  ))
+          pts.add((xpx,   ypx-1))
+          pts.add((xpx,   ypx  ))
+      rp.drawPoints(cast[ptr Point](pts[0].addr), pts.len.cint)
 
 
     # Major lines
@@ -241,7 +241,7 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
         rp.drawLine(0, ypx, size.width - 1, ypx)
     
     elif grid.mDotsOrLines == Dots:
-      var pts: seq[sdl2.Point]
+      var pts: seq[Point]
       rp.setDrawColor(Black.toColor)
       for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
@@ -256,7 +256,7 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
           pts.add((xpx-1, ypx+1))
           pts.add((xpx-0, ypx+1))
           pts.add((xpx+1, ypx+1))
-      rp.drawPoints(cast[ptr sdl2.Point](pts[0].addr), pts.len.cint)
+      rp.drawPoints(cast[ptr Point](pts[0].addr), pts.len.cint)
 
 
   if grid.mOriginVisible:

@@ -37,9 +37,9 @@ type
     mPanel: wGridControlPanel
 
 const
-  frameBackgroundColor = 0xebebeb
-  panelBackgroundColor = 0xf0f0f0
-  buttonAreaColor = 0xf5f5f5
+  frameBackgroundColor = 0xf0f0f0
+  panelBackgroundColor = 0xf9f9f9
+  buttonAreaColor = 0xf0f0f0
 
 var gFrameShowing: bool
 
@@ -51,22 +51,6 @@ proc edges(w: wWindow): tuple[left, right, top, bot: int] =
 
 proc moveby(w: wWindow, dx, dy: int) =
   w.position = (w.position.x + dx, w.position.y + dy)
-
-# proc toDensity*(d: float): SpDensity =
-#   echo "float toDensity"
-#   (d * 100.0).round.SpDensity
-
-# proc toDensity*(s: string): SpDensity = 
-#   echo "string toDensity"
-#   s.parseFloat.toDensity
-
-# proc toFloat*(d: SpDensity): float =
-#   echo "SpDensity to float"
-#   d.float / 100.0
-
-# proc toString*(d: SpDensity): string = 
-#   echo "SpDensity to string"
-#   $d.toFloat
 
 
 wClass(wGridControlPanel of wPanel):
@@ -171,7 +155,7 @@ wClass(wGridControlPanel of wPanel):
     let
       sz = self.size
       buttHeight = self.dpiScale(30)
-      barheight = buttHeight +  self.dpiScale(20)
+      barheight = buttHeight +  self.dpiScale(16)
 
     # Rectangle behind button
     dc.setBrush(Brush(buttonAreaColor.wColor))
@@ -347,7 +331,7 @@ wClass(wGridControlFrame of wFrame):
       sz: wSize = (self.dpiScale(450), self.dpiScale(240))
       style = wModalFrame
     wFrame(self).init(owner, title="Grid Settings", size=sz, style=style)
-    self.margin = self.dpiScale(6)
+    self.margin = self.dpiScale(12)
     self.backgroundColor = frameBackgroundColor
     self.mPanel = GridControlPanel(self, gr)
     self.wEvent_Destroy do(): self.onDestroy()
