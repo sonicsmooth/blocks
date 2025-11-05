@@ -1,14 +1,13 @@
-import std/[math, strformat, sugar, strutils, parseutils]
-import wNim
-from winim/inc/winbase import MulDiv
-import winim
-import appinit, grid, viewport
+import std/[math, sugar, strutils, parseutils]
+import wNim, winim
+import grid, viewport
 import routing
 
 # Create a panel to hold some controls,
 # then place it in a frame
 
 type
+  #SpDensity* = distinct int
   CtrlID = enum
     idSpaceX = wIdUser, idSpaceY, idDivisions, idDensity,
     idSnap, idDynamic, idBaseSync,
@@ -33,7 +32,7 @@ type
     mSpinSizeX:     wSpinCtrl 
     mSpinSizeY:     wSpinCtrl 
     mCbDivisions:   wComboBox
-    mSpinDensity:   wSpinCtrl
+    mSliderDensity:   wSlider
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
 
@@ -50,6 +49,23 @@ proc edges(w: wWindow): tuple[left, right, top, bot: int] =
 
 proc moveby(w: wWindow, dx, dy: int) =
   w.position = (w.position.x + dx, w.position.y + dy)
+
+# proc toDensity*(d: float): SpDensity =
+#   echo "float toDensity"
+#   (d * 100.0).round.SpDensity
+
+# proc toDensity*(s: string): SpDensity = 
+#   echo "string toDensity"
+#   s.parseFloat.toDensity
+
+# proc toFloat*(d: SpDensity): float =
+#   echo "SpDensity to float"
+#   d.float / 100.0
+
+# proc toString*(d: SpDensity): string = 
+#   echo "SpDensity to string"
+#   $d.toFloat
+
 
 wClass(wGridControlPanel of wPanel):
   proc layout(self: wGridControlPanel) =
@@ -90,11 +106,11 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtDens.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtDens)
 
-    self.mSpinDensity.position = (r, vmarg)
-    self.mSpinDensity.size = (spwidth, self.mSpinDensity.size.height)
+    self.mSliderDensity.position = (r, vmarg)
+    self.mSliderDensity.size = (spwidth, self.mSliderDensity.size.height)
 
     self.mIntervalBox.contain(self.mTxtX, self.mSpinSizeX, self.mTxtY, self.mSpinSizeY,
-                              self.mTxtDivs, self.mCbDivisions, self.mTxtDens, self.mSpinDensity)
+                              self.mTxtDivs, self.mCbDivisions, self.mTxtDens, self.mSliderDensity)
     (l,r,t,b) = edges(self.mIntervalBox)
 
     # Second box (second row)
@@ -130,7 +146,6 @@ wClass(wGridControlPanel of wPanel):
     (l,r,t,b) = edges(self.mBDone)
 
     # Minor text adjustments
-    let vadj1 = self.dpiScale(5)
     let vadj2 = self.dpiScale(2)
     self.mTxtX.moveby(0, vadj2)
     self.mTxtY.moveby(0, vadj2)
@@ -138,8 +153,8 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtDens.moveby(0, vadj2)
 
     # Finalize frame size, then gray rectangle
-    let (ibxl,ibxr,ibxt,ibxb) = edges(self.mIntervalBox)
-    let (abxl,ablr,abxt,abxb) = edges(self.mBDone)
+    let (_,_,ibxt,_) = edges(self.mIntervalBox)
+    let (_,_,_,abxb) = edges(self.mBDone)
     let frameW = self.mBehaviorBox.size.width + 
                  self.mAppearanceBox.size.width + 
                  hspc + 2 * hmarg + self.dpiScale(6)
@@ -180,8 +195,8 @@ wClass(wGridControlPanel of wPanel):
   proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
     sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, index.LPARAM)
-  proc onCmdSpinDensity(self: wGridControlPanel, event: wEvent) =
-    let finalval = self.mSpinDensity.value + event.spinDelta
+  proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
+    let finalval = self.mSliderDensity.getValue()
     sendToListeners(idMsgGridDensity, self.mHWnd.WPARAM, finalval.LPARAM)
   #---
   proc onCmdSnap(self: wGridControlPanel, event: wEvent) =
@@ -213,7 +228,7 @@ wClass(wGridControlPanel of wPanel):
   proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
   proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
-    self.mSpinDensity.setValue($event.lParam)
+    self.mSliderDensity.setValue(event.lParam)
   #--
   proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
     self.mCbSnap.value = event.lParam.bool
@@ -238,8 +253,6 @@ wClass(wGridControlPanel of wPanel):
 
   proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid) =
     wPanel(self).init(parent)
-    when defined(debug):
-      echo "Grid control panel is ", self.mHwnd
     self.backgroundColor = panelBackgroundColor
     # Create controls
     self.mGrid          = gr
@@ -252,11 +265,11 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtX          = StaticText(self, 0, "X")
     self.mTxtY          = StaticText(self, 0, "Y")
     self.mTxtDivs       = StaticText(self, 0, "Divisions")
-    self.mTxtDens       = StaticText(self, 0, "Density")
+    self.mTxtDens       = StaticText(self, 0, "Magnification")
     self.mSpinSizeX     = SpinCtrl(self, idSpaceX, "", style=wSpArrowKeys)
     self.mSpinSizeY     = SpinCtrl(self, idSpaceY, "", style=wSpArrowKeys)
     self.mCbDivisions   = ComboBox(self, idDivisions, choices=gr.allowedDivisionsStr)
-    self.mSpinDensity   = SpinCtrl(self, idDensity, "", style=wSpArrowKeys)
+    self.mSliderDensity   = Slider(self, idDensity)
     self.mCbSnap        = CheckBox(self, idSnap, "Snap")
     self.mCbVisible     = CheckBox(self, idVisible, "Visible")
     self.mCbDynamic     = CheckBox(self, idDynamic, "Dynamic")
@@ -264,12 +277,14 @@ wClass(wGridControlPanel of wPanel):
     self.mRbDots        = RadioButton(self, idDots, "Dots")
     self.mRbLines       = RadioButton(self, idLines, "Lines")
 
+    
     self.mSpinSizeX.setValue($self.mGrid.majorXSpace)
     self.mSpinSizeX.setRange(1 .. 1000)
     self.mSpinSizeY.setValue($self.mGrid.majorYSpace)
     self.mSpinSizeY.setRange(1 .. 1000)
     self.mCbDivisions.select(2)
-    self.mSpinDensity.setValue($self.mZctrl.density)
+    self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
+    self.mSliderDensity.setRange(1 .. 200) # from .01 to 2.0
     self.mCbSnap.setValue(self.mGrid.mSnap)
     self.mCbVisible.setValue(self.mGrid.mVisible)
     self.mCbDynamic.setValue(self.mGrid.mZctrl.dynamic)
@@ -289,8 +304,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinSizeY.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeY(event)
     self.mSpinSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdSpinSizeY(event)
     self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisions(event)
-    self.mSpinDensity.wEvent_Spin      do (event: wEvent): self.onCmdSpinDensity(event)
-    self.mSpinDensity.wEvent_TextEnter do (event: wEvent): self.onCmdSpinDensity(event)
+    self.mSliderDensity.wEvent_Slider  do (event: wEvent): self.onCmdSliderDensity(event)
     #--
     self.mCbSnap.wEvent_CheckBox      do (event: wEvent): self.onCmdSnap(event)
     self.mCbDynamic.wEvent_CheckBox   do (event: wEvent): self.onCmdDynamic(event)
@@ -322,21 +336,6 @@ wClass(wGridControlPanel of wPanel):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
     sendToListeners(idMsgSubFrameClosing, self.mHwnd.WPARAM, 0)
@@ -359,7 +358,8 @@ when isMainModule:
     wSetSystemDPIAware()
     let
       app = App()
-      zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
+      zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, 
+                       density=1.0, dynamic=true, baseSync=true)
       gr = newGrid(zc)
       f1 = GridControlFrame(nil, gr)
     echo gr[]

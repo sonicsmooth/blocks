@@ -132,7 +132,11 @@ wClass(wMainFrame of wFrame):
     #self.mMainPanel.mBlockPanel.mViewport.zoom = oldzoom
     self.mMainPanel.mBlockPanel.refresh(false)
   proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
-    self.mMainPanel.mBlockPanel.mGrid.mZctrl.density = event.lParam.float
+    let mag = event.lParam.float / 100.0
+    echo $event.lParam, " -> ", mag
+    self.mMainPanel.mBlockPanel.mGrid.mZctrl.density = mag
+    self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
+    self.mMainPanel.mBlockPanel.refresh(false)
   #--
   proc onMsgGridSnap(self: wMainFrame, event: wEvent) =
     self.mMainPanel.mBlockPanel.mGrid.mSnap = event.lParam.bool
