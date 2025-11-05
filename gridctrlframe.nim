@@ -41,6 +41,8 @@ const
   panelBackgroundColor = 0xf0f0f0
   buttonAreaColor = 0xf5f5f5
 
+var gFrameShowing: bool
+
 proc edges(w: wWindow): tuple[left, right, top, bot: int] =
   (left:  w.position.x,
     right: w.position.x + w.size.width,
@@ -269,7 +271,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinSizeX     = SpinCtrl(self, idSpaceX, "", style=wSpArrowKeys)
     self.mSpinSizeY     = SpinCtrl(self, idSpaceY, "", style=wSpArrowKeys)
     self.mCbDivisions   = ComboBox(self, idDivisions, choices=gr.allowedDivisionsStr)
-    self.mSliderDensity   = Slider(self, idDensity)
+    self.mSliderDensity = Slider(self, idDensity)
     self.mCbSnap        = CheckBox(self, idSnap, "Snap")
     self.mCbVisible     = CheckBox(self, idVisible, "Visible")
     self.mCbDynamic     = CheckBox(self, idDynamic, "Dynamic")
@@ -338,14 +340,12 @@ wClass(wGridControlPanel of wPanel):
 
 wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) = 
-    sendToListeners(idMsgSubFrameClosing, self.mHwnd.WPARAM, 0)
+    sendToListeners(idMsgGridCtrlFrameClosing, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid) =
     let
-      w = self.dpiScale(450)
-      h = self.dpiScale(240)
-      sz: wSize = (w, h)
-    let style = wModalFrame
+      sz: wSize = (self.dpiScale(450), self.dpiScale(240))
+      style = wModalFrame
     wFrame(self).init(owner, title="Grid Settings", size=sz, style=style)
     self.margin = self.dpiScale(6)
     self.backgroundColor = frameBackgroundColor
