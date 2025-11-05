@@ -132,7 +132,6 @@ proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool
     # table[10] = DBComp(id: 10, x: 10, y: 20, w: 5, h: 5, origin: (4, 4), rot: R90,  selected: false, penColor: Red, fillColor: Blue)
     # table[11] = DBComp(id: 11, x: 20, y: 20, w: 5, h: 5, origin: (4, 4), rot: R180, selected: false, penColor: Red, fillColor: Blue)
     # table[12] = DBComp(id: 12, x: 30, y: 20, w: 5, h: 5, origin: (4, 4), rot: R270, selected: false, penColor: Red, fillColor: Blue)
-
   else:
     for i in 1..qty:
       let rid = i.CompID

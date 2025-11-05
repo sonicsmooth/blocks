@@ -12,6 +12,7 @@ export mainpanel
 
 type
   wMainFrame* = ref object of wFrame
+    mGridCtrlFrameShowing: bool
     mMainPanel*: wMainPanel
     #mMenuBar: wMenuBar
     #mStatusBar: wStatusBar
@@ -112,10 +113,10 @@ wClass(wMainFrame of wFrame):
       let state = self.mBandToolbars[1].toolState(idCmdGridShow)
       sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
-      let
-        gr = self.mMainPanel.mBlockPanel.mGrid
-        f = GridControlFrame(self, gr)
-      f.show()
+      if not self.mGridCtrlFrameShowing:
+        let gr = self.mMainPanel.mBlockPanel.mGrid
+        GridControlFrame(self, gr).show()
+        self.mGridCtrlFrameShowing = true
     else:
       discard
 
@@ -165,6 +166,9 @@ wClass(wMainFrame of wFrame):
     let val = event.lParam.bool
     if val: self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Lines
     else:   self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Dots
+  #--
+  proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
+    self.mGridCtrlFrameShowing = false
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     # Main menu at top of frame
@@ -265,10 +269,7 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idMsgGridDots,    (w:wWindow,e:wEvent)=>onMsgGridDots(w.wMainFrame,e))
     self.registerListener(idMsgGridLines,   (w:wWindow,e:wEvent)=>onMsgGridLines(w.wMainFrame,e))
     
-    
-    
-    
-    #self.registerListener(idMsgSubFrameClosing, (w:wWindow,e:wEvent)=>displayParams(e))
+    self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow,e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame,e))
   
 when isMainModule:
     # Main data and window
