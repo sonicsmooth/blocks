@@ -35,13 +35,11 @@ proc minorYSpace*(grid: Grid): WType = grid.mMinorYSpace
 proc `majorXSpace=`*(grid: Grid, val: WType) =
   # Find major space closest to val such that the
   # ratio to the minor space is exactly correct
-  let oldspace = grid.mMajorXSpace
   when Wtype is SomeInteger:
     grid.mMinorXSpace = val div grid.mDivisions
   elif WType is SomeFloat:
     grid.mMinorXSpace = val / grid.mDivisions
   grid.mMajorXSpace = grid.mMinorXSpace * grid.mDivisions
-  echo &"majorXSpace changing from {oldspace} -> {val} -> {grid.mMajorXSpace}"
 proc `majorYSpace=`*(grid: Grid, val: WType) =
   when Wtype is SomeInteger:
     grid.mMinorYSpace = val div grid.mDivisions
@@ -242,9 +240,9 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
     rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
     rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
 
-proc newGrid*(zc: ZoomCtrl): Grid = 
+proc newGrid*(zCtrl: ZoomCtrl): Grid = 
   result = new Grid
-  result.mZctrl = zc
+  result.mZctrl = zCtrl
   result.divisions = gGridSpecsJ["divisions"].getInt
   result.majorXSpace = gGridSpecsJ["majorXSpace"].getInt
   result.majorYSpace = gGridSpecsJ["majorYSpace"].getInt

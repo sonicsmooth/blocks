@@ -19,15 +19,20 @@ proc density*(zctrl: ZoomCtrl): float = zctrl.mDensity
 proc logStep*(zctrl: ZoomCtrl): int = zctrl.mLogStep
 proc dynamic*(zctrl: ZoomCtrl): bool = zctrl.mDynamic
 proc baseSync*(zctrl: ZoomCtrl): bool = zctrl.mBaseSync
-# Only change base from grid.divisions= or grid.updateBase
-proc `base=`*(zctrl: ZoomCtrl, val: int) = zctrl.mBase = val
-proc `clickDiv=`*(zctrl: var ZoomCtrl, val: int) = zctrl.mClickDiv = val
-proc `maxPwr=`*(zctrl: var ZoomCtrl, val: int) = zctrl.mMaxPwr = val
-proc `density=`*(zctrl: var ZoomCtrl, val: float) = zctrl.mDensity = val
-# Only change logStep from viewport.doZoom
+proc `base=`*(zctrl: ZoomCtrl, val: int) = 
+  # Only change base from grid.divisions= or grid.updateBase
+  zctrl.mBase = val
+proc `clickDiv=`*(zctrl: var ZoomCtrl, val: int) = 
+  zctrl.mClickDiv = val
+proc `maxPwr=`*(zctrl: var ZoomCtrl, val: int) = 
+  zctrl.mMaxPwr = val
+proc `density=`*(zctrl: var ZoomCtrl, val: float) = 
+  zctrl.mDensity = val
 proc updateLogStep*(zctrl: var ZoomCtrl, zclicks: float) = 
+  # Only call this proc from viewport.doZoom
   zctrl.mLogStep = (zclicks / zctrl.mClickDiv.float).floor.int
-proc `dynamic=`*(zctrl: var ZoomCtrl, val: bool) = zctrl.mDynamic = val
+proc `dynamic=`*(zctrl: var ZoomCtrl, val: bool) = 
+  zctrl.mDynamic = val
 proc `baseSync=`*(zctrl: var ZoomCtrl, val: bool) =
   # If val is true be sure to call grid.updateBase afterwards
   zctrl.mBaseSync = val
@@ -43,8 +48,10 @@ proc newZoomCtrl*(): ZoomCtrl =
   result.mMaxPwr   = gZctrlJ["maxPwr"].getInt
   result.mDensity  = gZctrlJ["density"].getFloat
   result.mDynamic  = gZctrlJ["dynamic"].getBool
+  result.mBaseSync = gZctrlJ["baseSync"].getBool
 
-proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
+proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float,
+                 dynamic, baseSync: bool): ZoomCtrl =
   # Fill values from args
   # logstep is calculated by doZoom
   result = new ZoomCtrl
@@ -52,3 +59,5 @@ proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
   result.mClickDiv = clickDiv
   result.mMaxPwr   = maxPwr
   result.mDensity  = density
+  result.mDynamic  = dynamic
+  result.mBaseSync = baseSync
