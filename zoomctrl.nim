@@ -4,11 +4,11 @@ import appinit
 
 type
   ZoomCtrl* = ref object
-    mBase:     int   # Base of zoom and minor grid size
-    mClickDiv: int   # how many zClicks for every power of zoomBase (log)
+    mBase:     int   # Logarithmic base for zoom
+    mClickDiv: int   # how many zClicks for every power of zoomBase
     mMaxPwr:   int   # maximum rawZoom is base ^ maxPwr
-    mDensity:  float # scales entire image without affecting grid
-    mLogStep:  int   # each log controls the big and small grid
+    mDensity:  float # scales entire image
+    mLogStep:  int   # the floor integer log_base of rawzoom
     mDynamic:  bool  # Whether the grids change scale
     mBaseSync: bool  # Whether the base is synced to divisions
 
