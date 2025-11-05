@@ -127,7 +127,7 @@ wClass(wGridControlPanel of wPanel):
     let rightmost = r
 
     # Done button
-    self.mBDone.position = (rightmost - buttWidth, b + vspc div 2 + self.dpiScale(6))
+    self.mBDone.position = (rightmost - buttWidth, b + vspc div 2 + self.dpiScale(8))
     self.mBDone.size = (buttWidth, buttHeight)
     (l,r,t,b) = edges(self.mBDone)
 
@@ -144,7 +144,7 @@ wClass(wGridControlPanel of wPanel):
     let frameW = self.mBehaviorBox.size.width + 
                  self.mAppearanceBox.size.width + 
                  hspc + 2 * hmarg + self.dpiScale(6)
-    let frameH = abxb - ibxt + self.parent.margin.up + self.parent.margin.down + self.dpiScale(50) 
+    let frameH = abxb - ibxt + self.parent.margin.up + self.parent.margin.down + self.dpiScale(58) 
     self.parent.size = (frameW, frameH)
 
   proc onResize(self: wGridControlPanel) =
@@ -154,8 +154,8 @@ wClass(wGridControlPanel of wPanel):
     var dc = PaintDC(self)
     let
       sz = self.size
-      buttHeight = self.dpiScale(30)
-      barheight = buttHeight +  self.dpiScale(16)
+      buttHeight = self.dpiScale(24)
+      barheight = buttHeight +  self.dpiScale(28)
 
     # Rectangle behind button
     dc.setBrush(Brush(buttonAreaColor.wColor))
@@ -331,7 +331,10 @@ wClass(wGridControlFrame of wFrame):
       sz: wSize = (self.dpiScale(450), self.dpiScale(240))
       style = wModalFrame
     wFrame(self).init(owner, title="Grid Settings", size=sz, style=style)
-    self.margin = self.dpiScale(12)
+    self.marginLeft  = self.dpiScale(12)
+    self.marginRight = self.dpiScale(12)
+    self.marginUp    = self.dpiScale(12)
+    self.marginDown  = self.dpiScale(0)
     self.backgroundColor = frameBackgroundColor
     self.mPanel = GridControlPanel(self, gr)
     self.wEvent_Destroy do(): self.onDestroy()
