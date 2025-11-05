@@ -1,4 +1,4 @@
-import std/[algorithm, math, sequtils, strformat, sugar]
+import std/[algorithm, math, sequtils, strformat]
 import sdl2
 import colors
 from arange import arange
@@ -27,23 +27,11 @@ const
   alphaOffset = 20
   stepAlphas = arange(60 .. 255, alphaOffset).toSeq
 
-proc lineAlpha(step: int): int =
-  let idx = max(0, step - alphaOffset)
-  if idx < stepAlphas.len:
-    result = stepAlphas[idx]
-  else:
-    result = 255
-proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
-  let
-    x = ((pt.x - vp.pan.x).float / vp.zoom)
-    y = ((pt.y - vp.pan.y).float / vp.zoom)
-  (x, y)
 
 proc majorXSpace*(grid: Grid): WType = grid.mMajorXSpace
 proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
 proc minorXSpace*(grid: Grid): WType = grid.mMinorXSpace
 proc minorYSpace*(grid: Grid): WType = grid.mMinorYSpace
-
 proc `majorXSpace=`*(grid: Grid, val: WType) =
   # Find major space closest to val such that the
   # ratio to the minor space is exactly correct
@@ -54,7 +42,6 @@ proc `majorXSpace=`*(grid: Grid, val: WType) =
     grid.mMinorXSpace = val / grid.mDivisions
   grid.mMajorXSpace = grid.mMinorXSpace * grid.mDivisions
   echo &"majorXSpace changing from {oldspace} -> {val} -> {grid.mMajorXSpace}"
-
 proc `majorYSpace=`*(grid: Grid, val: WType) =
   when Wtype is SomeInteger:
     grid.mMinorYSpace = val div grid.mDivisions
@@ -77,7 +64,7 @@ proc allowedDivisions*(grid: Grid): seq[range[2..16]] =
 proc allowedDivisionsStr*(grid: Grid): seq[string] =
   for d in grid.allowedDivisions:
     result.add($d)
-
+proc divisions*(grid: Grid): int = grid.mDivisions
 proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
   # Change grid's zctrl's base aka divsions, and update
   # minor grid size to ensure major grid size stays the
@@ -85,10 +72,19 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
   # exactly.
   result = val in grid.allowedDivisions()
   if result:
-    grid.mZctrl.base = val
+    if grid.mZCtrl.baseSync:
+      grid.mZctrl.base = val
     grid.mDivisions = val
-    grid.mMinorXSpace = grid.mMajorXSpace div val
-    grid.mMinorYSpace = grid.mMajorYSpace div val
+    when WType is SomeInteger:
+      grid.mMinorXSpace = grid.mMajorXSpace div val
+      grid.mMinorYSpace = grid.mMajorYSpace div val
+    elif WType is SomeFloat:
+      grid.mMinorXSpace = grid.mMajorXSpace / val.float
+      grid.mMinorYSpace = grid.mMajorYSpace / val.float
+
+proc updateBase*(grid: var Grid) =
+  if grid.mZctrl.baseSync:
+    grid.mZctrl.base = grid.mDivisions
 
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.
@@ -99,12 +95,10 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
   let
     zc = grid.mZctrl
     stpScale: float = pow(zc.base.float, -zc.logStep.float)
-  
-
+    divs: float = grid.mDivisions.float
 
   when WType is SomeInteger:
     let
-      divs: float = grid.mDivisions.float
       # Tiny is independent
       tinyNaturalX: float = grid.mMajorXSpace.float * stpScale / (divs^2)
       tinyNaturalY: float = grid.mMajorYSpace.float * stpScale / (divs^2)
@@ -150,13 +144,17 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
     of Major: (majorFinalX.WType, majorFinalY.WType)
   elif WType is SomeFloat:
     let 
-      tinyX: float = majorXSpace.float * stpScale
-      tinyY: float = majorYSpace.float * stpScale
+      majorX: float = grid.mMajorXSpace * stpScale
+      majorY: float = grid.mMajorYSpace * stpScale
+      minorX: float = grid.mMajorXSpace * stpScale / divs
+      minorY: float = grid.mMajorYSpace * stpScale / divs
+      tinyX:  float = grid.mMajorXSpace * stpScale / (divs^2)
+      tinyY:  float = grid.mMajorYSpace * stpScale / (divs^2)
     case scale
     of None: (0.0, 0.0)
     of Tiny: (tinyX, tinyY)
-    of Minor: (tinyX, tinyY) * grid.mDivisions.float
-    of Major: (tinyX, tinyY) * grid.mDivisions.float^2
+    of Minor: (minorX, minorY)
+    of Major: (majorX, majorY)
 
 proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
   # Round to nearest minor grid point
@@ -178,6 +176,18 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
     xsnap: float = xcnt * md.x.float
     ysnap: float = ycnt * md.y.float
   (xsnap, ysnap)
+
+proc lineAlpha(step: int): int =
+  let idx = max(0, step - alphaOffset)
+  if idx < stepAlphas.len:
+    result = stepAlphas[idx]
+  else:
+    result = 255
+proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
+  let
+    x = ((pt.x - vp.pan.x).float / vp.zoom)
+    y = ((pt.y - vp.pan.y).float / vp.zoom)
+  (x, y)
 
 proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels

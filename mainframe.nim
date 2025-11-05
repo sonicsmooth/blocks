@@ -73,7 +73,6 @@ wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
     self.mMainPanel.size = self.clientSize
     self.mStatusBar.setStatusText($self.clientSize, index=1)
-
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
     # event can contain either client or screen coordinates
     # so ignore wparam and lparam.  Just grab  mouse pos directly
@@ -87,32 +86,9 @@ wClass(wMainFrame of wFrame):
       let mwpy = &"{mouseWPos.y}"
     let txt = &"Pixel: {mousePxPos}; World: ({mwpx}, {mwpy})"
     self.mStatusBar.setStatusText(txt, index=2)
-  
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
-
-  proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
-    when defined(debug):
-      echo "received ongridshow from: ", event.wParam
-    let state: bool = event.mLparam.bool
-    self.mMainPanel.mBlockPanel.mGrid.mVisible = state
-    self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
-    self.mMainPanel.mBlockPanel.refresh(false)
-
-  proc onMsgGridDivisions(self: wMainFrame, event: wEvent) =
-    var gr = self.mMainPanel.mBlockPanel.mGrid
-    var vp = self.mMainPanel.mBlockPanel.mViewport
-    let index = event.mLparam
-    let val = gr.allowedDivisions()[index]
-    when defined(debug):
-      echo &"received ongriddivisions index={index}, value={val}"
-    let success = (gr.divisions = val)
-    vp.doZoom(0)
-    if not success:
-      echo "could not set divisions"
-    self.mMainPanel.mBlockPanel.refresh(false)
-
   proc onToolEvent(self: wMainFrame, event: wEvent) =
     let evtStr = $MenuCmdID(event.id)
     case event.id
@@ -144,13 +120,45 @@ wClass(wMainFrame of wFrame):
       discard
 
 
-  
-  proc show*(self: wMainFrame) =
-    # Need to call forcredraw a couple times after show
-    # So we're just hiding it in an overloaded show()
-    wFrame.show(self)
-    self.mMainPanel.mBlockPanel.forceRedraw()
-    self.mMainPanel.mBlockPanel.forceRedraw()
+  proc onMsgGridSizeX(self: wMainFrame, event: wEvent) =
+    # TODO: update divisions list
+    self.mMainPanel.mBlockPanel.mGrid.majorXSpace = event.lParam.WType
+  proc onMsgGridSizeY(self: wMainFrame, event: wEvent) =
+    self.mMainPanel.mBlockPanel.mGrid.majorYSpace = event.lParam.WType
+  proc onMsgGridDivisions(self: wMainFrame, event: wEvent) =
+    var gr = self.mMainPanel.mBlockPanel.mGrid
+    gr.divisions = gr.allowedDivisions()[event.mLparam]
+    #self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
+    #self.mMainPanel.mBlockPanel.mViewport.zoom = oldzoom
+    self.mMainPanel.mBlockPanel.refresh(false)
+  proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
+    self.mMainPanel.mBlockPanel.mGrid.mZctrl.density = event.lParam.float
+  #--
+  proc onMsgGridSnap(self: wMainFrame, event: wEvent) =
+    self.mMainPanel.mBlockPanel.mGrid.mSnap = event.lParam.bool
+  proc onMsgGridDynamic(self: wMainFrame, event: wEvent) =
+    self.mMainPanel.mBlockPanel.mGrid.mZctrl.dynamic = event.lParam.bool
+  proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
+    var gr = self.mMainPanel.mBlockPanel.mGrid
+    let val = event.lParam.bool
+    gr.mZctrl.baseSync = val
+    if val:
+      # special case to update base
+      self.mMainPanel.mBlockPanel.mGrid.updateBase()
+  #--
+  proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
+    let state = event.mLparam.bool
+    self.mMainPanel.mBlockPanel.mGrid.mVisible = state
+    self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
+    self.mMainPanel.mBlockPanel.refresh(false)
+  proc onMsgGridDots(self: wMainFrame, event: wEvent) =
+    let val = event.lParam.bool
+    if val: self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Dots
+    else:   self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Lines
+  proc onMsgGridLines(self: wMainFrame, event: wEvent) =
+    let val = event.lParam.bool
+    if val: self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Lines
+    else:   self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Dots
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     # Main menu at top of frame
@@ -167,7 +175,6 @@ wClass(wMainFrame of wFrame):
     menu2.append(idCmdHelp, "Help", bitmap=bmpHelpSm)
     result.append(menu1, "File")
     result.append(menu2, "Help")
-
   proc setupReBar(self: wMainFrame): wReBar =
     # Set up three things in the rebar
     result = ReBar(self)
@@ -202,8 +209,12 @@ wClass(wMainFrame of wFrame):
     result.setBandWidth(bid2, 200)
     result.setBandWidth(bid1, 64)
     result.disableDrag()
-
-
+  proc show*(self: wMainFrame) =
+    # Need to call forcredraw a couple times after show
+    # So we're just hiding it in an overloaded show()
+    wFrame.show(self)
+    self.mMainPanel.mBlockPanel.forceRedraw()
+    self.mMainPanel.mBlockPanel.forceRedraw()
   proc init*(self: wMainFrame, size: wSize) = 
     wFrame(self).init(title="Blocks Frame", size=size)
     when defined(debug):
@@ -231,10 +242,26 @@ wClass(wMainFrame of wFrame):
     self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
 
     # Participate in observables/listeners
-    # Respond to buttons & send msg; respond to incoming message
+    # Respond to buttons & send msg
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
-    self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>onMsgGridVisible(w.wMainFrame,e))
+    
+    # Respond to incoming messages
+    self.registerListener(idMsgGridSizeX,     (w:wWindow,e:wEvent)=>onMsgGridSizeX(w.wMainFrame,e))
+    self.registerListener(idMsgGridSizeY,     (w:wWindow,e:wEvent)=>onMsgGridSizeY(w.wMainFrame,e))
     self.registerListener(idMsgGridDivisions, (w:wWindow,e:wEvent)=>onMsgGridDivisions(w.wMainFrame,e))
+    self.registerListener(idMsgGridDensity,   (w:wWindow,e:wEvent)=>onMsgGridDensity(w.wMainFrame,e))
+    #---
+    self.registerListener(idMsgGridSnap,     (w:wWindow,e:wEvent)=>onMsgGridSnap(w.wMainFrame,e))
+    self.registerListener(idMsgGridDynamic,  (w:wWindow,e:wEvent)=>onMsgGridDynamic(w.wMainFrame,e))
+    self.registerListener(idMsgGridBaseSync, (w:wWindow,e:wEvent)=>onMsgGridBaseSync(w.wMainFrame,e))
+    #--
+    self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>onMsgGridVisible(w.wMainFrame,e))
+    self.registerListener(idMsgGridDots,    (w:wWindow,e:wEvent)=>onMsgGridDots(w.wMainFrame,e))
+    self.registerListener(idMsgGridLines,   (w:wWindow,e:wEvent)=>onMsgGridLines(w.wMainFrame,e))
+    
+    
+    
+    
     #self.registerListener(idMsgSubFrameClosing, (w:wWindow,e:wEvent)=>displayParams(e))
   
 when isMainModule:

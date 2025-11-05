@@ -39,6 +39,7 @@ proc displayParams*(event: wEvent) =
 
 
 proc excl*[T](s: var seq[T], item: T) =
+  # Remove all instances of an item from a sequence
   # Not order preserving because it uses del
   # Use delete to preserve order
   while item in s:

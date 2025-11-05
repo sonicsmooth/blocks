@@ -1,8 +1,9 @@
-import std/[math, strformat]
+import std/[math]
 import appinit
 import world
 import pointmath
-export world
+import zoomctrl
+export world, zoomctrl
 
 # TODO: allow user to set zoom level directly,
 # then proc determines closest clicks value.
@@ -16,57 +17,16 @@ export world
 # will be re-reached if the user zooms up and down
 
 type
-  ZoomCtrl* = ref object
-    mBase:     int   # Base of zoom and minor grid size
-    mClickDiv: int   # how many zClicks for every power of zoomBase (log)
-    mMaxPwr:   int   # maximum rawZoom is base ^ maxPwr
-    mDensity:  float # scales entire image without affecting grid
-    mLogStep:  int   # each log controls the big and small grid
-    mDynamic:  bool  # Whether the grids change scale
-
   Viewport* = ref object
     # These are controlled by user
-    mPan*:     PxPoint #= (0, 0)
-    mZclicks*: float   #= 0 # counts wheel zClicks; there are div zClicks between levels
-    mZctrl*:   ZoomCtrl
+    mPan:     PxPoint
+    mZclicks: float   # counts wheel zClicks; there are div zClicks between levels
+    mZctrl:   ZoomCtrl
+
     # These are calculated at runtime
-    mRawZoom*: float #= 1.0 # zoom before density applied
-    mZoom*:    float #= 1.0 # final zoom value after density
+    mRawZoom: float # zoom before density applied
+    mZoom:    float # final zoom value after density
 
-proc base*(zctrl: ZoomCtrl): int =  zctrl.mBase
-# Only change base through grid.setDivisions!!
-proc `base=`*(zctrl: ZoomCtrl, val: int) = 
-  zctrl.mBase = val
-proc clickDiv*(zctrl: ZoomCtrl): int = zctrl.mClickDiv
-proc maxPwr*(zctrl: ZoomCtrl): int = zctrl.mMaxPwr
-proc density*(zctrl: ZoomCtrl): float = zctrl.mDensity
-proc logStep*(zctrl: ZoomCtrl): int = zctrl.mLogStep
-proc dynamic*(zctrl: ZoomCtrl): bool = zctrl.mDynamic
-proc `dynamic=`*(zctrl: var ZoomCtrl, val: bool) =
-  zctrl.mDynamic = val
-
-# TODO: Move ZoomCtrl to another file
-proc newZoomCtrl*(): ZoomCtrl =
-  # Fill values from from json
-  # The "to" macro doesn't work because the logStep field is
-  # not included in the json.  The logStep value is calculated
-  # at runtime, so it shouldn't be specified in the json file.
-  result = new ZoomCtrl
-  result.mBase     = gZctrlJ["base"].getInt
-  result.mClickDiv = gZctrlJ["clickDiv"].getInt
-  result.mMaxPwr   = gZctrlJ["maxPwr"].getInt
-  result.mDensity  = gZctrlJ["density"].getFloat
-  result.mDynamic  = gZctrlJ["dynamic"].getBool
-
-
-proc newZoomCtrl*(base, clickDiv, maxPwr: int, density: float): ZoomCtrl =
-  # Fill values from args
-  # logstep is calculated by doZoom
-  result = new ZoomCtrl
-  result.mBase     = base
-  result.mClickDiv = clickDiv
-  result.mMaxPwr   = maxPwr
-  result.mDensity  = density
 
 # forward decl
 proc doZoom*(vp: var Viewport, delta: int)
@@ -118,9 +78,9 @@ proc doZoom*(vp: var Viewport, delta: int) =
   let
     maxzClicks =  vp.mZctrl.clickDiv * vp.mZctrl.maxPwr
   vp.mZclicks = clamp(vp.mZclicks + delta.float, -maxzClicks.float, maxzClicks.float)
-  vp.mRawZoom = pow(vp.mZctrl.mBase.float, vp.mZclicks / vp.mZctrl.mClickDiv )
+  vp.mRawZoom = pow(vp.mZctrl.base.float, vp.mZclicks / vp.mZctrl.clickDiv )
   vp.mZoom = vp.mRawZoom * vp.mZctrl.density
-  vp.mZctrl.mLogStep = (vp.mZclicks / vp.mZctrl.mClickDiv).floor.int
+  vp.mZctrl.updateLogStep(vp.mZclicks)
 
 proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
   # Keep mouse location in the same spot during zoom.

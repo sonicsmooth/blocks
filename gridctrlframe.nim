@@ -11,7 +11,7 @@ import routing
 type
   CtrlID = enum
     idSpaceX = wIdUser, idSpaceY, idDivisions, idDensity,
-    idSnap, idDynamic,
+    idSnap, idDynamic, idBaseSync,
     idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
     mGrid:          Grid     # reference to the grid under control
@@ -27,6 +27,7 @@ type
     mCbSnap:        wCheckBox
     mCbVisible:     wCheckBox
     mCbDynamic:     wCheckBox
+    mCbBaseSync:    wCheckBox
     mRbDots:        wRadioButton
     mRbLines:       wRadioButton
     mSpinSizeX:     wSpinCtrl 
@@ -102,12 +103,14 @@ wClass(wGridControlPanel of wPanel):
     (_,r,t,_) = edges(self.mCbSnap)
 
     self.mCbDynamic.position = (r + hspc, secondrowtop)
-    self.mBehaviorBox.contain(self.mCbSnap, self.mCbDynamic)
+    (l,r,t,b) = edges(self.mCbDynamic)
 
+    self.mCbBaseSync.position = (r + hspc, secondrowtop)
+    self.mBehaviorBox.contain(self.mCbSnap, self.mCbDynamic, self.mCbBaseSync)
     (l,r,t,b) = edges(self.mBehaviorBox)
     
     # Third box (second row)
-    self.mCbVisible.position = (r + hspc*3+8, secondrowtop)
+    self.mCbVisible.position = (r + hspc + self.dpiScale(8), secondrowtop)
     (l,r,t,b) = edges(self.mCbVisible)
 
     self.mRbDots.position = (r + hspc, secondrowtop)
@@ -137,11 +140,15 @@ wClass(wGridControlPanel of wPanel):
     # Finalize frame size, then gray rectangle
     let (ibxl,ibxr,ibxt,ibxb) = edges(self.mIntervalBox)
     let (abxl,ablr,abxt,abxb) = edges(self.mBDone)
-    let frameW = self.mIntervalBox.size.width + 2*hmarg + self.dpiScale(6)
+    let frameW = self.mBehaviorBox.size.width + 
+                 self.mAppearanceBox.size.width + 
+                 hspc + 2 * hmarg + self.dpiScale(6)
     let frameH = abxb - ibxt + self.parent.margin.up + self.parent.margin.down + self.dpiScale(50) 
     self.parent.size = (frameW, frameH)
+
   proc onResize(self: wGridControlPanel) =
     self.layout()
+
   proc onPaint(self: wGridControlPanel, event: wEvent) = 
     var dc = PaintDC(self)
     let
@@ -154,121 +161,78 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  # Respond to controls
+  # Read state from controls and broadcast message to listeners
+  # Don't do anything else
+  # TODO: text inputs for spinners
+  # TODO: small txt units
   proc onCmdSpinSizeX(self: wGridControlPanel, event: wEvent) =
     let
       val = self.mSpinSizeX.value
       delta = event.spinDelta
       finalval = clamp(val + delta, self.mSpinSizeX.range)
-    when defined(debug):
-      echo &"SizeX spinner sending val={finalval}"
     sendToListeners(idMsgGridSizeX, self.mHwnd.WPARAM, finalval.LPARAM)
-
   proc onCmdSpinSizeY(self: wGridControlPanel, event: wEvent) =
     let
       val = self.mSpinSizeY.value
       delta = event.spinDelta
       finalval = clamp(val + delta, self.mSpinSizeY.range)
-    when defined(debug):
-      echo &"SizeY spinner sending val={finalval}"
     sendToListeners(idMsgGridSizeY, self.mHwnd.WPARAM, finalval.LPARAM)
-
-
-  # proc onCmdSpinTxtDivisions(self: wGridControlPanel, event: wEvent) =
-  #   var valf: float
-  #   let nchars = parseBiggestFloat(self.mSpinDivisions.text, valf)
-  #   when defined(debug):
-  #     if nchars == 0:
-  #       echo &"could not parse \"{self.mSpinDivisions.text}\""
-  #   let finalval = clamp(valf.round.int, self.mSpinDivisions.range)
-  #   when defined(debug):
-  #     echo &"Division spinner sending val={finalval}"
-  #   sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, finalval.LPARAM)
-
   proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
     sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, index.LPARAM)
-
-
   proc onCmdSpinDensity(self: wGridControlPanel, event: wEvent) =
-    when defined(debug):
-      echo "spin density = ", self.mSpinDensity.value + event.spinDelta
-
+    let finalval = self.mSpinDensity.value + event.spinDelta
+    sendToListeners(idMsgGridDensity, self.mHWnd.WPARAM, finalval.LPARAM)
+  #---
   proc onCmdSnap(self: wGridControlPanel, event: wEvent) =
     let state = self.mCbSnap.value
     sendToListeners(idMsgGridSnap, self.mHwnd, state.LPARAM)
-
   proc onCmdDynamic(self: wGridControlPanel, event: wEvent) =
     let state = self.mCbDynamic.value
     sendToListeners(idMsgGridDynamic, self.mHwnd, state.LPARAM)
-
+  proc onCmdGridBaseSync(self: wGridControlPanel, event: wEvent) =
+    let state = self.mCbBaseSync.value
+    sendToListeners(idMsgGridBaseSync, self.mHwnd, state.LPARAM)
+  #--
   proc onCmdGridVisible(self: wGridControlPanel, event: wEvent) =
-    # Read state from button and broadcast to everyone
     let state = self.mCbVisible.value
     sendToListeners(idMsgGridVisible, self.mHwnd, state.LPARAM)
-
   proc onCmdDots(self: wGridControlPanel, event: wEvent) =
     let state = self.mRbDots.value
     sendToListeners(idMsgGridDots, self.mHwnd, state.LPARAM)
-
   proc onCmdLines(self: wGridControlPanel, event: wEvent) =
     let state = self.mRbLines.value
     sendToListeners(idMsgGridLines, self.mHwnd, state.LPARAM)
 
-  # Respond to incoming messages
+  # Respond to incoming messages, including from self
+  # Update local UI only.  Don't do anything else.
   proc onMsgGridSizeX(self: wGridControlPanel, event: wEvent) =
-    # Set major grid size; minor grid size will adjust
-    when defined(debug):
-      echo &"onMsgGridSizeX receiving {event.lParam}"
-    let val = event.lParam
-    self.mSpinSizeX.title = $val
-
+    self.mSpinSizeX.setValue($event.lParam)
   proc onMsgGridSizeY(self: wGridControlPanel, event: wEvent) =
-    # Set major grid size; minor grid size will adjust
-    when defined(debug):
-      echo &"onMsgGridSizeY receiving {event.lParam}"
-    let val = event.lParam
-    self.mSpinSizeY.title = $val
-
+    self.mSpinSizeY.setValue($event.lParam)
   proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
-
+  proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
+    self.mSpinDensity.setValue($event.lParam)
+  #--
   proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
-    when defined(debug):
-      echo "onMsgGridSnap"
-    let state = event.lParam.bool
-    self.mCbSnap.setValue(state)
-    self.mGrid.mSnap = state
-
+    self.mCbSnap.value = event.lParam.bool
   proc onMsgGridDynamic(self: wGridControlPanel, event: wEvent) =
-    when defined(debug):
-      echo "onMsgGridDynamic"
-    let state = event.lParam.bool
-    self.mCbDynamic.setValue(state)
-    self.mGrid.mZctrl.dynamic = state
-
+    self.mCbDynamic.value = event.lParam.bool
+  proc onMsgGridBaseSync(self: wGridControlPanel, event: wEvent) =
+    self.mCbBaseSync.value = event.lParam.bool
+  #--
   proc onMsgGridVisible(self: wGridControlPanel, event: wEvent) =
-    when defined(debug):
-      echo "onMsgGridVisible"
-    # Accept the message and update state
-    # This responds to self-messages
     let state = event.lParam.bool
-    self.mCbVisible.setValue(state)
+    self.mCbVisible.value = state
     self.mRbDots.enable(state)
     self.mRbLines.enable(state)
-    self.mGrid.mVisible = state
-
   proc onMsgGridDots(self: wGridControlPanel, event: wEvent) =
-    # We only get this when state is true
-    when defined(debug):
-      echo "onMsgGridDots"
-      echo event.lParam
-
+    self.mRbDots.value = event.lParam.bool
+    self.mRbLines.value = not event.lParam.bool
   proc onMsgGridLines(self: wGridControlPanel, event: wEvent) =
-    # We only get this when state is true
-    when defined(debug):
-      echo "onMsgGridLines"
-      echo event.lParam
+    self.mRbLines.value = event.lParam.bool
+    self.mRbDots.value = not event.lParam.bool
 
 
 
@@ -295,7 +259,8 @@ wClass(wGridControlPanel of wPanel):
     self.mSpinDensity   = SpinCtrl(self, idDensity, "", style=wSpArrowKeys)
     self.mCbSnap        = CheckBox(self, idSnap, "Snap")
     self.mCbVisible     = CheckBox(self, idVisible, "Visible")
-    self.mCbDynamic     = CheckBox(self, idDynamic, "Dynamic Grid")
+    self.mCbDynamic     = CheckBox(self, idDynamic, "Dynamic")
+    self.mCbBaseSync    = CheckBox(self, idBaseSync, "Cool zoom")
     self.mRbDots        = RadioButton(self, idDots, "Dots")
     self.mRbLines       = RadioButton(self, idLines, "Lines")
 
@@ -308,6 +273,7 @@ wClass(wGridControlPanel of wPanel):
     self.mCbSnap.setValue(self.mGrid.mSnap)
     self.mCbVisible.setValue(self.mGrid.mVisible)
     self.mCbDynamic.setValue(self.mGrid.mZctrl.dynamic)
+    self.mCbBaseSync.setValue(self.mGrid.mZctrl.baseSync)
     self.mRbDots.setValue(self.mGrid.mDotsOrLines == Dots)
     self.mRbLines.setValue(self.mGrid.mDotsOrLines == Lines)
     
@@ -318,31 +284,57 @@ wClass(wGridControlPanel of wPanel):
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
     # Respond to controls
-    self.mSpinSizeX.wEvent_Spin     do (event: wEvent): self.onCmdSpinSizeX(event)
-    self.mSpinSizeX.wEvent_TextEnter do (event: wEvent): self.onCmdSpinSizeX(event)
-    self.mSpinSizeY.wEvent_Spin     do (event: wEvent): self.onCmdSpinSizeY(event)
-    self.mSpinSizeY.wEvent_TextEnter do (event: wEvent): self.onCmdSpinSizeY(event)
-    self.mCbDivisions.wEvent_ComboBox do (event: wEvent): self.onCmdCbDivisions(event)
-    self.mSpinDensity.wEvent_Spin   do (event: wEvent): self.onCmdSpinDensity(event)
-
-    self.mCbSnap.wEvent_CheckBox     do (event: wEvent): self.onCmdSnap(event)
-    self.mCbDynamic.wEvent_CheckBox  do (event: wEvent): self.onCmdDynamic(event)
-    self.mCbVisible.wEvent_CheckBox  do (event: wEvent): self.onCmdGridVisible(event)
-    self.mRbDots.wEvent_RadioButton  do (event: wEvent): self.onCmdDots(event)
-    self.mRblines.wEvent_RadioButton do (event: wEvent): self.onCmdLines(event)
+    self.mSpinSizeX.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeX(event)
+    self.mSpinSizeX.wEvent_TextEnter   do (event: wEvent): self.onCmdSpinSizeX(event)
+    self.mSpinSizeY.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeY(event)
+    self.mSpinSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdSpinSizeY(event)
+    self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisions(event)
+    self.mSpinDensity.wEvent_Spin      do (event: wEvent): self.onCmdSpinDensity(event)
+    self.mSpinDensity.wEvent_TextEnter do (event: wEvent): self.onCmdSpinDensity(event)
+    #--
+    self.mCbSnap.wEvent_CheckBox      do (event: wEvent): self.onCmdSnap(event)
+    self.mCbDynamic.wEvent_CheckBox   do (event: wEvent): self.onCmdDynamic(event)
+    self.mCbBaseSync.wEvent_CheckBox  do (event: wEvent): self.onCmdGridBaseSync(event)
+    #--
+    self.mCbVisible.wEvent_CheckBox   do (event: wEvent): self.onCmdGridVisible(event)
+    self.mRbDots.wEvent_RadioButton   do (event: wEvent): self.onCmdDots(event)
+    self.mRblines.wEvent_RadioButton  do (event: wEvent): self.onCmdLines(event)
 
     # Update controls from outside messages
-    self.registerListener(idMsgGridSizeX,     (w:wWindow,e:wEvent)=>(onMsgGridSizeX(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridSizeY,     (w:wWindow,e:wEvent)=>(onMsgGridSizeY(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDivisions, (w:wWindow,e:wEvent)=>(onMsgGridDivisions(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridSnap,      (w:wWindow,e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDynamic,   (w:wWindow,e:wEvent)=>(onMsgGridDynamic(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridVisible,   (w:wWindow,e:wEvent)=>(onMsgGridVisible(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDots,      (w:wWindow,e:wEvent)=>(onMsgGridDots(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridLines,     (w:wWindow,e:wEvent)=>(onMsgGridLines(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>(onMsgGridSizeX(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>(onMsgGridSizeY(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDivisions, (w:wWindow, e:wEvent)=>(onMsgGridDivisions(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>(onMsgGridDensity(w.wGridControlPanel, e)))
+    #--
+    self.registerListener(idMsgGridSnap,      (w:wWindow, e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDynamic,   (w:wWindow, e:wEvent)=>(onMsgGridDynamic(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridBaseSync,  (w:wWindow, e:wEvent)=>(onMsgGridBaseSync(w.wGridControlPanel, e)))
+    #--
+    self.registerListener(idMsgGridVisible,   (w:wWindow, e:wEvent)=>(onMsgGridVisible(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDots,      (w:wWindow, e:wEvent)=>(onMsgGridDots(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridLines,     (w:wWindow, e:wEvent)=>(onMsgGridLines(w.wGridControlPanel, e)))
 
     self.mBDone.wEvent_Button        do(): self.parent.destroy()
     self.wEvent_Destroy do(): self.deregisterListener()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 wClass(wGridControlFrame of wFrame):
@@ -356,8 +348,6 @@ wClass(wGridControlFrame of wFrame):
       sz: wSize = (w, h)
     let style = wModalFrame
     wFrame(self).init(owner, title="Grid Settings", size=sz, style=style)
-    when defined(debug):
-      echo "Grid control frame is ", self.mHwnd
     self.margin = self.dpiScale(6)
     self.backgroundColor = frameBackgroundColor
     self.mPanel = GridControlPanel(self, gr)
