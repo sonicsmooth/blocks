@@ -541,8 +541,8 @@ Rendering options for SDL and pixie
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0)
-    self.mGrid = newGrid(zc)
+    let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0, dynamic=true, baseSync=true)
+    self.mGrid = newGrid(zCtrl=zc)
     self.mViewport = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
 
     #self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)

@@ -18,12 +18,13 @@
       "clickDiv": 2400,
       "maxPwr": 5,
       "density": 1.0,
-      "dynamic": true
+      "dynamic": true,
+      "baseSync": true
     },
     "Grid": {
-      "majorXSpace": 150,
-      "majorYSpace": 150,
-      "divisions": 5,
+      "majorXSpace": 160,
+      "majorYSpace": 160,
+      "divisions": 4,
       "visible": true,
       "originVisible": true,
       "snap": true,

@@ -138,6 +138,8 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.mGrid.mSnap = event.lParam.bool
   proc onMsgGridDynamic(self: wMainFrame, event: wEvent) =
     self.mMainPanel.mBlockPanel.mGrid.mZctrl.dynamic = event.lParam.bool
+    self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
+    self.mMainPanel.mBlockPanel.refresh(false)
   proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
     var gr = self.mMainPanel.mBlockPanel.mGrid
     let val = event.lParam.bool
@@ -221,10 +223,10 @@ wClass(wMainFrame of wFrame):
       echo "Main frame is ", $self.mHwnd
     
     # Create controls
-    self.mMenuBar     = setupMenuBar(self)
-    self.mReBar       = setupRebar(self)
-    self.mMainPanel   = MainPanel(self)
-    self.mStatusBar   = StatusBar(self)
+    self.mMenuBar   = setupMenuBar(self)
+    self.mReBar     = setupRebar(self)
+    self.mMainPanel = MainPanel(self)
+    self.mStatusBar = StatusBar(self)
 
     # Do stuff
     self.mStatusBar.setStatusWidths([-1, -1, -1])

@@ -80,7 +80,8 @@ proc doZoom*(vp: var Viewport, delta: int) =
   vp.mZclicks = clamp(vp.mZclicks + delta.float, -maxzClicks.float, maxzClicks.float)
   vp.mRawZoom = pow(vp.mZctrl.base.float, vp.mZclicks / vp.mZctrl.clickDiv )
   vp.mZoom = vp.mRawZoom * vp.mZctrl.density
-  vp.mZctrl.updateLogStep(vp.mZclicks)
+  if vp.mZctrl.dynamic:
+    vp.mZctrl.updateLogStep(vp.mZclicks)
 
 proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
   # Keep mouse location in the same spot during zoom.
