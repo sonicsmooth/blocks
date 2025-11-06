@@ -1,6 +1,6 @@
-import std/[math, sugar, strutils, parseutils]
+import std/[math, sugar, strutils, strformat, parseutils]
 import wNim, winim
-import grid, viewport
+import grid, viewport, utils
 import routing
 
 # Create a panel to hold some controls,
@@ -29,10 +29,10 @@ type
     mCbBaseSync:    wCheckBox
     mRbDots:        wRadioButton
     mRbLines:       wRadioButton
-    mSpinSizeX:     wSpinCtrl 
-    mSpinSizeY:     wSpinCtrl 
+    mTxtSizeX:      wTextCtrl
+    mTxtSizeY:      wTextCtrl
     mCbDivisions:   wComboBox
-    mSliderDensity:   wSlider
+    mSliderDensity: wSlider
   wGridControlFrame* = ref object of wFrame
     mPanel: wGridControlPanel
 
@@ -71,16 +71,16 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtX.position = (hmarg, vmarg)
     (l,r,t,b) = edges(self.mTxtX)
 
-    self.mSpinSizeX.position = (r, vmarg)
-    self.mSpinSizeX.size = (spwidth, self.mSpinSizeX.size.height)
-    (l,r,t,b) = edges(self.mSpinSizeX)
+    self.mTxtSizeX.position = (r, vmarg)
+    self.mTxtSizeX.size = (spwidth, self.mTxtSizeX.size.height)
+    (l,r,t,b) = edges(self.mTxtSizeX)
 
     self.mTxtY.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtY)
 
-    self.mSpinSizeY.position = (r, vmarg)
-    self.mSpinSizeY.size = (spwidth, self.mSpinSizeY.size.height)
-    (l,r,t,b) = edges(self.mSpinSizeY)
+    self.mTxtSizeY.position = (r, vmarg)
+    self.mTxtSizeY.size = (spwidth, self.mTxtSizeY.size.height)
+    (l,r,t,b) = edges(self.mTxtSizeY)
 
     self.mTxtDivs.position = (r + hspc, vmarg)
     (l,r,t,b) = edges(self.mTxtDivs)
@@ -95,7 +95,7 @@ wClass(wGridControlPanel of wPanel):
     self.mSliderDensity.position = (r, vmarg)
     self.mSliderDensity.size = (spwidth, self.mSliderDensity.size.height)
 
-    self.mIntervalBox.contain(self.mTxtX, self.mSpinSizeX, self.mTxtY, self.mSpinSizeY,
+    self.mIntervalBox.contain(self.mTxtX, self.mTxtSizeX, self.mTxtY, self.mTxtSizeY,
                               self.mTxtDivs, self.mCbDivisions, self.mTxtDens, self.mSliderDensity)
     (l,r,t,b) = edges(self.mIntervalBox)
 
@@ -132,7 +132,7 @@ wClass(wGridControlPanel of wPanel):
     (l,r,t,b) = edges(self.mBDone)
 
     # Minor text adjustments
-    let vadj2 = self.dpiScale(2)
+    let vadj2 = self.dpiScale(0) #2
     self.mTxtX.moveby(0, vadj2)
     self.mTxtY.moveby(0, vadj2)
     self.mTxtDivs.moveby(0, vadj2)
@@ -166,18 +166,24 @@ wClass(wGridControlPanel of wPanel):
   # Don't do anything else
   # TODO: text inputs for spinners
   # TODO: small txt units
-  proc onCmdSpinSizeX(self: wGridControlPanel, event: wEvent) =
+  proc onCmdTxtSizeX(self: wGridControlPanel, event: wEvent) =
+    # send pointer to value string
     let
-      val = self.mSpinSizeX.value
-      delta = event.spinDelta
-      finalval = clamp(val + delta, self.mSpinSizeX.range)
-    sendToListeners(idMsgGridSizeX, self.mHwnd.WPARAM, finalval.LPARAM)
-  proc onCmdSpinSizeY(self: wGridControlPanel, event: wEvent) =
+      val = self.mTxtSizeX.value
+      valptr = cast[uint64](val.addr)
+      hi32:uint32 =  (valptr shr 32).uint32
+      lo32:uint32 = (valptr and 0xffff_ffff'u64).uint32
+    echo &"X sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
+    sendToListeners(idMsgGridSizeX, hi32.WPARAM, lo32.LPARAM)
+  proc onCmdTxtSizeY(self: wGridControlPanel, event: wEvent) =
+    # send pointer to value string
     let
-      val = self.mSpinSizeY.value
-      delta = event.spinDelta
-      finalval = clamp(val + delta, self.mSpinSizeY.range)
-    sendToListeners(idMsgGridSizeY, self.mHwnd.WPARAM, finalval.LPARAM)
+      val = self.mTxtSizeY.value
+      valptr = cast[uint64](val.addr)
+      hi32:int32 =  (valptr shr 32).uint32
+      lo32:int32 = (valptr and 0xffff_ffff'u64).uint32
+    echo &"Y sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
+    sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
   proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
     sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, index.LPARAM)
@@ -208,9 +214,11 @@ wClass(wGridControlPanel of wPanel):
   # Respond to incoming messages, including from self
   # Update local UI only.  Don't do anything else.
   proc onMsgGridSizeX(self: wGridControlPanel, event: wEvent) =
-    self.mSpinSizeX.setValue($event.lParam)
+    let rxstr = event.ptrToString()
+    self.mTxtSizeX.setValue(rxstr)
   proc onMsgGridSizeY(self: wGridControlPanel, event: wEvent) =
-    self.mSpinSizeY.setValue($event.lParam)
+    let rxstr = event.ptrToString()
+    self.mTxtSizeY.setValue(rxstr)
   proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
   proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
@@ -252,8 +260,8 @@ wClass(wGridControlPanel of wPanel):
     self.mTxtY          = StaticText(self, 0, "Y")
     self.mTxtDivs       = StaticText(self, 0, "Divisions")
     self.mTxtDens       = StaticText(self, 0, "Magnification")
-    self.mSpinSizeX     = SpinCtrl(self, idSpaceX, "", style=wSpArrowKeys)
-    self.mSpinSizeY     = SpinCtrl(self, idSpaceY, "", style=wSpArrowKeys)
+    self.mTxtSizeX      = TextCtrl(self, idSpaceX, style=wBorderStatic)
+    self.mTxtSizeY      = TextCtrl(self, idSpaceY, style=wBorderStatic)
     self.mCbDivisions   = ComboBox(self, idDivisions, choices=gr.allowedDivisionsStr)
     self.mSliderDensity = Slider(self, idDensity)
     self.mCbSnap        = CheckBox(self, idSnap, "Snap")
@@ -264,10 +272,8 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines       = RadioButton(self, idLines, "Lines")
 
     
-    self.mSpinSizeX.setValue($self.mGrid.majorXSpace)
-    self.mSpinSizeX.setRange(1 .. 1000)
-    self.mSpinSizeY.setValue($self.mGrid.majorYSpace)
-    self.mSpinSizeY.setRange(1 .. 1000)
+    self.mTxtSizeX.setValue($self.mGrid.majorXSpace)
+    self.mTxtSizeY.setValue($self.mGrid.majorYSpace)
     self.mCbDivisions.select(2)
     self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
     self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
@@ -285,10 +291,10 @@ wClass(wGridControlPanel of wPanel):
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
     # Respond to controls
-    self.mSpinSizeX.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeX(event)
-    self.mSpinSizeX.wEvent_TextEnter   do (event: wEvent): self.onCmdSpinSizeX(event)
-    self.mSpinSizeY.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeY(event)
-    self.mSpinSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdSpinSizeY(event)
+    #self.mTxtSizeX.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeX(event)
+    self.mTxtSizeX.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeX(event)
+    #self.mTxtSizeY.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeY(event)
+    self.mTxtSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeY(event)
     self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisions(event)
     self.mSliderDensity.wEvent_Slider  do (event: wEvent): self.onCmdSliderDensity(event)
     #--
