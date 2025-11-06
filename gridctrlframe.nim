@@ -162,6 +162,7 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
+
   # Read state from controls and broadcast message to listeners
   # Don't do anything else
   # TODO: text inputs for spinners
@@ -186,7 +187,7 @@ wClass(wGridControlPanel of wPanel):
     sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
   proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
-    sendToListeners(idMsgGridDivisions, self.mHwnd.WPARAM, index.LPARAM)
+    sendToListeners(idMsgGridSelectDivisions, self.mHwnd.WPARAM, index.LPARAM)
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
     let finalval = self.mSliderDensity.getValue()
     sendToListeners(idMsgGridDensity, self.mHWnd.WPARAM, finalval.LPARAM)
@@ -219,8 +220,25 @@ wClass(wGridControlPanel of wPanel):
   proc onMsgGridSizeY(self: wGridControlPanel, event: wEvent) =
     let rxstr = event.ptrToString()
     self.mTxtSizeY.setValue(rxstr)
-  proc onMsgGridDivisions(self: wGridControlPanel, event: wEvent) =
+  proc onMsgGridSelectDivisions(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
+  proc onMsgGridResetDivisions(self: wGridControlPanel, event: wEvent) = 
+    discard event
+    let oldidx = self.mCbDivisions.selection
+    let oldval = self.mCbDivisions.value
+    echo "oldidx: ", oldidx, " = ", oldval
+
+    self.mCbDivisions.clear()
+    for s in self.mGrid.allowedDivisionsStr:
+      self.mCbDivisions.append(s)
+
+    let adivs = self.mGrid.allowedDivisions
+    let newidx = clamp(oldidx, 0..<adivs.len)
+    let newval = adivs[newidx]
+    echo "newidx: ", newidx, " = ", newval
+    sendToListeners(idMsgGridSelectDivisions, self.mHwnd.WPARAM, newidx.LPARAM)
+    self.mGrid.divisions = newval
+
   proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
     self.mSliderDensity.setValue(event.lParam)
   #--
@@ -274,7 +292,8 @@ wClass(wGridControlPanel of wPanel):
     
     self.mTxtSizeX.setValue($self.mGrid.majorXSpace)
     self.mTxtSizeY.setValue($self.mGrid.majorYSpace)
-    self.mCbDivisions.select(2)
+    echo "divisionsIndex: ", self.mGrid.divisionsIndex
+    self.mCbDivisions.select(self.mGrid.divisionsindex)
     self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
     self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
     self.mCbSnap.setValue(self.mGrid.mSnap)
@@ -291,9 +310,7 @@ wClass(wGridControlPanel of wPanel):
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
     # Respond to controls
-    #self.mTxtSizeX.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeX(event)
     self.mTxtSizeX.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeX(event)
-    #self.mTxtSizeY.wEvent_Spin        do (event: wEvent): self.onCmdSpinSizeY(event)
     self.mTxtSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeY(event)
     self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisions(event)
     self.mSliderDensity.wEvent_Slider  do (event: wEvent): self.onCmdSliderDensity(event)
@@ -309,7 +326,8 @@ wClass(wGridControlPanel of wPanel):
     # Update controls from outside messages
     self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>(onMsgGridSizeX(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>(onMsgGridSizeY(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDivisions, (w:wWindow, e:wEvent)=>(onMsgGridDivisions(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridSelectDivisions, (w:wWindow, e:wEvent)=>(onMsgGridSelectDivisions(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridResetDivisions, (w:wWindow, e:wEvent)=>(onMsgGridResetDivisions(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>(onMsgGridDensity(w.wGridControlPanel, e)))
     #--
     self.registerListener(idMsgGridSnap,      (w:wWindow, e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))
