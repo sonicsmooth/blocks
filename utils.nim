@@ -1,5 +1,5 @@
 import std/[strformat]
-import wnim/wTypes 
+import wnim/wTypes
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 import sdl2
 import rects
@@ -10,10 +10,18 @@ type
   SDLException = object of CatchableError
 
 
-
 template paramSplit*(x: LPARAM|WPARAM): auto =
   (LOWORD(x).WORD,
    HIWORD(x).WORD)
+
+proc ptrToString*(event: wEvent): string =
+  # Event's wparam and lparam are both parts of 64-bit
+  # pointer-to-string.  Return the string
+  let
+    wp = event.mWparam.int64
+    lp = event.mLparam.int64
+  cast[ptr string]((wp shl 32) or lp)[]
+
 
 proc displayParams*(event: wEvent) =
   # Do stuff with param values
@@ -21,8 +29,8 @@ proc displayParams*(event: wEvent) =
   # WPARAM and LPARAM are int64, but only the bottom
   # 32 bits get filled
   let
-    wp = event.mWParam
-    lp = event.mLParam
+    wp = event.mWparam
+    lp = event.mLparam
     wpuhi = (wp.shr(16).uint16)
     wpulo = (wp.uint16)
     wpshi = cast[int16](wpuhi)

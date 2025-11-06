@@ -1,4 +1,4 @@
-import std/[os, strformat, sugar, tables]
+import std/[os, strformat, strutils, sugar, tables]
 
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
@@ -24,6 +24,7 @@ type
               idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout
 
 const
+  singleFrames = false
   pth = r"icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
   res = [staticRead(pth & r"New document.bmp"),
          staticRead(pth & r"Folder.bmp"),
@@ -113,19 +114,32 @@ wClass(wMainFrame of wFrame):
       let state = self.mBandToolbars[1].toolState(idCmdGridShow)
       sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
-      if not self.mGridCtrlFrameShowing:
+      if not singleFrames or not self.mGridCtrlFrameShowing:
         let gr = self.mMainPanel.mBlockPanel.mGrid
         GridControlFrame(self, gr).show()
-        self.mGridCtrlFrameShowing = true
+        if singleFrames:
+          self.mGridCtrlFrameShowing = true
     else:
       discard
 
 
   proc onMsgGridSizeX(self: wMainFrame, event: wEvent) =
     # TODO: update divisions list
-    self.mMainPanel.mBlockPanel.mGrid.majorXSpace = event.lParam.WType
+    let wp = event.wParam.int64
+    let lp = event.lParam.int64
+    let rxstr = cast[ptr string]((wp shl 32) or lp)[]
+    echo "onMsgGridSizeX :", rxstr
+    when WType is SomeInteger:
+      let newsz = rxstr.parseBiggestUInt.WType
+      echo "newsize int: ", newsz
+    elif WType is SomeFloat:
+      let newsz = rxstr.parseFloat.WType
+      echo "newsize float: ", newsz
+    self.mMainPanel.mBlockPanel.mGrid.majorXSpace = newsz
+  
   proc onMsgGridSizeY(self: wMainFrame, event: wEvent) =
     self.mMainPanel.mBlockPanel.mGrid.majorYSpace = event.lParam.WType
+  
   proc onMsgGridDivisions(self: wMainFrame, event: wEvent) =
     var gr = self.mMainPanel.mBlockPanel.mGrid
     gr.divisions = gr.allowedDivisions()[event.mLparam]
@@ -257,20 +271,20 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
     
     # Respond to incoming messages
-    self.registerListener(idMsgGridSizeX,     (w:wWindow,e:wEvent)=>onMsgGridSizeX(w.wMainFrame,e))
-    self.registerListener(idMsgGridSizeY,     (w:wWindow,e:wEvent)=>onMsgGridSizeY(w.wMainFrame,e))
-    self.registerListener(idMsgGridDivisions, (w:wWindow,e:wEvent)=>onMsgGridDivisions(w.wMainFrame,e))
-    self.registerListener(idMsgGridDensity,   (w:wWindow,e:wEvent)=>onMsgGridDensity(w.wMainFrame,e))
+    self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>onMsgGridSizeX(w.wMainFrame, e))
+    self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSizeY(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisions, (w:wWindow, e:wEvent)=>onMsgGridDivisions(w.wMainFrame, e))
+    self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
     #---
-    self.registerListener(idMsgGridSnap,     (w:wWindow,e:wEvent)=>onMsgGridSnap(w.wMainFrame,e))
-    self.registerListener(idMsgGridDynamic,  (w:wWindow,e:wEvent)=>onMsgGridDynamic(w.wMainFrame,e))
-    self.registerListener(idMsgGridBaseSync, (w:wWindow,e:wEvent)=>onMsgGridBaseSync(w.wMainFrame,e))
+    self.registerListener(idMsgGridSnap,     (w:wWindow, e:wEvent)=>onMsgGridSnap(w.wMainFrame, e))
+    self.registerListener(idMsgGridDynamic,  (w:wWindow, e:wEvent)=>onMsgGridDynamic(w.wMainFrame, e))
+    self.registerListener(idMsgGridBaseSync, (w:wWindow, e:wEvent)=>onMsgGridBaseSync(w.wMainFrame, e))
     #--
-    self.registerListener(idMsgGridVisible, (w:wWindow,e:wEvent)=>onMsgGridVisible(w.wMainFrame,e))
-    self.registerListener(idMsgGridDots,    (w:wWindow,e:wEvent)=>onMsgGridDots(w.wMainFrame,e))
-    self.registerListener(idMsgGridLines,   (w:wWindow,e:wEvent)=>onMsgGridLines(w.wMainFrame,e))
+    self.registerListener(idMsgGridVisible, (w:wWindow, e:wEvent)=>onMsgGridVisible(w.wMainFrame, e))
+    self.registerListener(idMsgGridDots,    (w:wWindow, e:wEvent)=>onMsgGridDots(w.wMainFrame, e))
+    self.registerListener(idMsgGridLines,   (w:wWindow, e:wEvent)=>onMsgGridLines(w.wMainFrame, e))
     
-    self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow,e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame,e))
+    self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
   
 when isMainModule:
     # Main data and window
