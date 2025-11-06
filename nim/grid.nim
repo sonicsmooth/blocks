@@ -33,19 +33,10 @@ proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
 proc minorXSpace*(grid: Grid): WType = grid.mMinorXSpace
 proc minorYSpace*(grid: Grid): WType = grid.mMinorYSpace
 proc `majorXSpace=`*(grid: Grid, val: WType) =
-  # Find major space closest to val such that the
-  # ratio to the minor space is exactly correct
-  when Wtype is SomeInteger:
-    grid.mMinorXSpace = val div grid.mDivisions
-  elif WType is SomeFloat:
-    grid.mMinorXSpace = val / grid.mDivisions
-  grid.mMajorXSpace = grid.mMinorXSpace * grid.mDivisions
+  grid.mMajorXSpace = val
+
 proc `majorYSpace=`*(grid: Grid, val: WType) =
-  when Wtype is SomeInteger:
-    grid.mMinorYSpace = val div grid.mDivisions
-  elif WType is SomeFloat:
-    grid.mMinorYSpace = val / grid.mDivisions
-  grid.mMajorYSpace = grid.mMinorYSpace * grid.mDivisions
+  grid.mMajorYSpace = val
 
 proc allowedDivisions*(grid: Grid): seq[range[2..16]] =
   # Return list of allowable divisions, i.e., which
@@ -64,7 +55,7 @@ proc allowedDivisionsStr*(grid: Grid): seq[string] =
     result.add($d)
 proc divisions*(grid: Grid): int = grid.mDivisions
 proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
-  # Change grid's zctrl's base aka divsions, and update
+  # Change grid's zctrl's base aka divsions to val, and update
   # minor grid size to ensure major grid size stays the
   # same.  Return true/false if base can/cannot be set
   # exactly.
@@ -79,7 +70,8 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
     elif WType is SomeFloat:
       grid.mMinorXSpace = grid.mMajorXSpace / val.float
       grid.mMinorYSpace = grid.mMajorYSpace / val.float
-
+proc divisionsIndex*(grid: Grid): int =
+  grid.allowedDivisions.find(grid.mDivisions)
 proc updateBase*(grid: var Grid) =
   if grid.mZctrl.baseSync:
     grid.mZctrl.base = grid.mDivisions

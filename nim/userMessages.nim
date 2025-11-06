@@ -10,16 +10,17 @@ const
   idMsgAlgUpdate*     = WM_USER +  3
   
   # Grid Control
-  idMsgGridSizeX*     = WM_USER +  4
-  idMsgGridSizeY*     = WM_USER +  5
-  idMsgGridDivisions* = WM_USER +  6
-  idMsgGridDensity*   = WM_USER +  7
-  idMsgGridSnap*      = WM_USER +  8
-  idMsgGridDynamic*   = WM_USER +  9
-  idMsgGridBaseSync*  = WM_USER + 10
-  idMsgGridVisible*   = WM_USER + 11
-  idMsgGridDots*      = WM_USER + 12
-  idMsgGridLines*     = WM_USER + 13
+  idMsgGridSizeX*          = WM_USER +  4
+  idMsgGridSizeY*          = WM_USER +  5
+  idMsgGridSelectDivisions* = WM_USER +  6
+  idMsgGridResetDivisions* = WM_USER +  7
+  idMsgGridDensity*        = WM_USER +  8
+  idMsgGridSnap*           = WM_USER +  9
+  idMsgGridDynamic*        = WM_USER + 10
+  idMsgGridBaseSync*       = WM_USER + 11
+  idMsgGridVisible*        = WM_USER + 12
+  idMsgGridDots*           = WM_USER + 13
+  idMsgGridLines*          = WM_USER + 14
   
   # Frames
   idMsgGridCtrlFrameClosing* = WM_USER + 14
