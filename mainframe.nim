@@ -92,7 +92,6 @@ wClass(wMainFrame of wFrame):
     let tmpStr = &"temperature: {event.mLparam}"
     self.mStatusBar.setStatusText(tmpStr, index=0)
   proc onToolEvent(self: wMainFrame, event: wEvent) =
-    let evtStr = $MenuCmdID(event.id)
     case event.id
     of idCmdNew: discard
     of idCmdOpen:
@@ -123,34 +122,21 @@ wClass(wMainFrame of wFrame):
       discard
 
 
-  proc onMsgGridSizeX(self: wMainFrame, event: wEvent) =
-    # TODO: update divisions list
-    let wp = event.wParam.int64
-    let lp = event.lParam.int64
-    let rxstr = cast[ptr string]((wp shl 32) or lp)[]
+  proc onMsgGridSize(self: wMainFrame, event: wEvent) =
+    let newsz = derefAs[WType](event)
     when WType is SomeInteger:
-      let newsz = rxstr.parseBiggestUInt.WType
       echo "newsize int: ", newsz
     elif WType is SomeFloat:
-      let newsz = rxstr.parseFloat.WType
       echo "newsize float: ", newsz
-    self.mMainPanel.mBlockPanel.mGrid.majorXSpace = newsz
-    self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
+    if event.mMsg == idMsgGridSizeX:
+      echo "resizing X"
+      self.mMainPanel.mBlockPanel.mGrid.majorXSpace = newsz
+      #self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
+    elif event.mMsg == idMsgGridSizeY:
+      echo "resizing Y"
+      self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
     self.mMainPanel.mBlockPanel.refresh(false)
     sendToListeners(idMsgGridResetDivisions, 0, 0)
-  
-  proc onMsgGridSizeY(self: wMainFrame, event: wEvent) =
-    let wp = event.wParam.int64
-    let lp = event.lParam.int64
-    let rxstr = cast[ptr string]((wp shl 32) or lp)[]
-    when WType is SomeInteger:
-      let newsz = rxstr.parseBiggestUInt.WType
-      echo "newsize int: ", newsz
-    elif WType is SomeFloat:
-      let newsz = rxstr.parseFloat.WType
-      echo "newsize float: ", newsz
-    self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
-    self.mMainPanel.mBlockPanel.refresh(false)
   
   proc onMsgGridSelectDivisions(self: wMainFrame, event: wEvent) =
     var gr = self.mMainPanel.mBlockPanel.mGrid
@@ -281,8 +267,9 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
     
     # Respond to incoming messages
-    self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>onMsgGridSizeX(w.wMainFrame, e))
-    self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSizeY(w.wMainFrame, e))
+    self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
+    self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
+    # self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSizeY(w.wMainFrame, e))
     self.registerListener(idMsgGridSelectDivisions, (w:wWindow, e:wEvent)=>onMsgGridSelectDivisions(w.wMainFrame, e))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
     #---
