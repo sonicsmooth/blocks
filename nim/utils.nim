@@ -14,13 +14,37 @@ template paramSplit*(x: LPARAM|WPARAM): auto =
   (LOWORD(x).WORD,
    HIWORD(x).WORD)
 
-proc ptrToString*(event: wEvent): string =
+proc derefAs*[T](event: wEvent): T =
   # Event's wparam and lparam are both parts of 64-bit
   # pointer-to-string.  Return the string
   let
     wp = event.mWparam.int64
     lp = event.mLparam.int64
-  cast[ptr string]((wp shl 32) or lp)[]
+  cast[ptr T]((wp shl 32) or lp)[]
+
+# proc derefAsString*(event: wEvent): string =
+#   # Event's wparam and lparam are both parts of 64-bit
+#   # pointer-to-string.  Return the string
+#   let
+#     wp = event.mWparam.int64
+#     lp = event.mLparam.int64
+#   cast[ptr string]((wp shl 32) or lp)[]
+
+# proc derefAsFloat*(event: wEvent): float =
+#   # Event's wparam and lparam are both parts of 64-bit
+#   # pointer-to-string.  Return the string
+#   let
+#     wp = event.mWparam.int64
+#     lp = event.mLparam.int64
+#   cast[ptr float]((wp shl 32) or lp)[]
+
+# proc derefAsInt*(event: wEvent): int =
+#   # Event's wparam and lparam are both parts of 64-bit
+#   # pointer-to-string.  Return the string
+#   let
+#     wp = event.mWparam.int64
+#     lp = event.mLparam.int64
+#   cast[ptr int]((wp shl 32) or lp)[]
 
 
 proc displayParams*(event: wEvent) =

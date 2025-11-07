@@ -52,6 +52,13 @@ proc edges(w: wWindow): tuple[left, right, top, bot: int] =
 proc moveby(w: wWindow, dx, dy: int) =
   w.position = (w.position.x + dx, w.position.y + dy)
 
+proc parseNumber(s: string, val: var WType): bool =
+  # Returns true if s can be parsed to int or float
+  # Parsed value is returned in val
+  when WType is SomeFloat:
+    result = parseBiggestFloat(s, val) > 0
+  elif WType is SomeInteger:
+    result = parseInt(s, val) > 0
 
 wClass(wGridControlPanel of wPanel):
   proc layout(self: wGridControlPanel) =
@@ -162,32 +169,58 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
+  proc txtValue(self: wGridControlPanel, event: wEvent): string =
+    # hwnd is in param with coloredit
+    # hwnd is in origin with enter
+    if event.mLparam == self.mTxtSizeX.mHwnd:
+      self.mTxtSizeX.value.strip
+    elif event.mOrigin == self.mTxtSizeX.mHwnd:
+      self.mTxtSizeX.value.strip
+    elif event.mLparam == self.mTxtSizeY.mHwnd:
+      self.mTxtSizeY.value.strip
+    elif event.mOrigin == self.mTxtSizeY.mHwnd:
+      self.mTxtSizeY.value.strip
+    else:
+      # Should not get here
+      "junk"
 
   # Read state from controls and broadcast message to listeners
-  # Don't do anything else
-  # TODO: text inputs for spinners
   # TODO: small txt units
-  proc onCmdTxtSizeX(self: wGridControlPanel, event: wEvent) =
-    # send pointer to value string
+  proc onCmdTxtSizeEnter(self: wGridControlPanel, event: wEvent) =
+    # Called when enter pressed
+    # send pointer to parsed and validated value
+    var val: Wtype
+    let strval = self.txtValue(event)
+    if strval.len == 0: return
+    if not parseNumber(strval, val): return
     let
-      val = self.mTxtSizeX.value
       valptr = cast[uint64](val.addr)
-      hi32:uint32 =  (valptr shr 32).uint32
-      lo32:uint32 = (valptr and 0xffff_ffff'u64).uint32
-    echo &"X sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
-    sendToListeners(idMsgGridSizeX, hi32.WPARAM, lo32.LPARAM)
-  proc onCmdTxtSizeY(self: wGridControlPanel, event: wEvent) =
-    # send pointer to value string
-    let
-      val = self.mTxtSizeY.value
-      valptr = cast[uint64](val.addr)
-      hi32:int32 =  (valptr shr 32).uint32
-      lo32:int32 = (valptr and 0xffff_ffff'u64).uint32
-    echo &"Y sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
-    sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
+      hi32 =  (valptr shr 32).uint32
+      lo32 = (valptr and 0xffff_ffff'u64).uint32
+    if event.mOrigin == self.mTxtSizeX.mHwnd:
+      echo &"XY sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
+      sendToListeners(idMsgGridSizeX, hi32.WPARAM, lo32.LPARAM)
+      sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
+    elif event.mOrigin == self.mTxtSizeY.mHwnd:
+      echo &"Y sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
+      sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
+
+  proc colorEdit(self: wGridControlPanel, event: wEvent) = 
+    # Gets called when parent panel redraws text box
+    if event.lParam != self.mTxtSizeX.mHwnd and
+       event.lParam != self.mTxtSizeY.mHwnd:
+        return
+    var val: WType
+    let strval = self.txtValue(event)
+    if strval.len == 0: return
+    if not parseNumber(strval, val):
+      SetBkColor(event.wParam, RGB(255, 199, 206))
+      SetTextColor(event.wParam, RGB(156, 0, 6))
+
   proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
     sendToListeners(idMsgGridSelectDivisions, self.mHwnd.WPARAM, index.LPARAM)
+
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
     let finalval = self.mSliderDensity.getValue()
     sendToListeners(idMsgGridDensity, self.mHWnd.WPARAM, finalval.LPARAM)
@@ -214,12 +247,17 @@ wClass(wGridControlPanel of wPanel):
 
   # Respond to incoming messages, including from self
   # Update local UI only.  Don't do anything else.
-  proc onMsgGridSizeX(self: wGridControlPanel, event: wEvent) =
-    let rxstr = event.ptrToString()
-    self.mTxtSizeX.setValue(rxstr)
-  proc onMsgGridSizeY(self: wGridControlPanel, event: wEvent) =
-    let rxstr = event.ptrToString()
-    self.mTxtSizeY.setValue(rxstr)
+  proc onMsgGridSize(self: wGridControlPanel, event: wEvent) =
+    # We receive a pointer-to-float and display it
+    let val = derefAs[WType](event)
+    when WType is SomeFloat:
+      let rxstr = &"{val:g}"
+    elif WType is SomeInteger:
+      let rxstr = $val
+    if event.mMsg == idMsgGridSizeX:
+      self.mTxtSizeX.setValue(rxstr)
+    elif event.mMsg == idMsgGridSizeY:
+      self.mTxtSizeY.setValue(rxstr)
   proc onMsgGridSelectDivisions(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
   proc onMsgGridResetDivisions(self: wGridControlPanel, event: wEvent) = 
@@ -292,7 +330,6 @@ wClass(wGridControlPanel of wPanel):
     
     self.mTxtSizeX.setValue($self.mGrid.majorXSpace)
     self.mTxtSizeY.setValue($self.mGrid.majorYSpace)
-    echo "divisionsIndex: ", self.mGrid.divisionsIndex
     self.mCbDivisions.select(self.mGrid.divisionsindex)
     self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
     self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
@@ -310,10 +347,14 @@ wClass(wGridControlPanel of wPanel):
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
     # Respond to controls
-    self.mTxtSizeX.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeX(event)
-    self.mTxtSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeY(event)
-    self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisions(event)
-    self.mSliderDensity.wEvent_Slider  do (event: wEvent): self.onCmdSliderDensity(event)
+    self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
+    
+    # self.mTxtSizeX.WM_MOUSEHOVER   do (event: wEvent): echo "hover"
+    # self.mTxtSizeX.WM_MOUSELEAVE  do (event: wEvent): echo "leave"
+    self.mTxtSizeX.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeEnter(event)
+    self.mTxtSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeEnter(event)
+    self.mCbDivisions.wEvent_ComboBox do (event: wEvent): self.onCmdCbDivisions(event)
+    self.mSliderDensity.wEvent_Slider do (event: wEvent): self.onCmdSliderDensity(event)
     #--
     self.mCbSnap.wEvent_CheckBox      do (event: wEvent): self.onCmdSnap(event)
     self.mCbDynamic.wEvent_CheckBox   do (event: wEvent): self.onCmdDynamic(event)
@@ -324,8 +365,8 @@ wClass(wGridControlPanel of wPanel):
     self.mRblines.wEvent_RadioButton  do (event: wEvent): self.onCmdLines(event)
 
     # Update controls from outside messages
-    self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>(onMsgGridSizeX(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>(onMsgGridSizeY(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>(onMsgGridSize(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>(onMsgGridSize(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridSelectDivisions, (w:wWindow, e:wEvent)=>(onMsgGridSelectDivisions(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridResetDivisions, (w:wWindow, e:wEvent)=>(onMsgGridResetDivisions(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>(onMsgGridDensity(w.wGridControlPanel, e)))
