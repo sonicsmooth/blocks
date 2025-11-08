@@ -53,7 +53,9 @@ proc allowedDivisions*(grid: Grid): seq[range[2..16]] =
 proc allowedDivisionsStr*(grid: Grid): seq[string] =
   for d in grid.allowedDivisions:
     result.add($d)
+
 proc divisions*(grid: Grid): int = grid.mDivisions
+
 proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
   # Change grid's zctrl's base aka divsions to val, and update
   # minor grid size to ensure major grid size stays the

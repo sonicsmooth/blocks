@@ -198,9 +198,8 @@ wClass(wGridControlPanel of wPanel):
       hi32 =  (valptr shr 32).uint32
       lo32 = (valptr and 0xffff_ffff'u64).uint32
     if event.mOrigin == self.mTxtSizeX.mHwnd:
-      echo &"XY sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
+      echo &"X sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
       sendToListeners(idMsgGridSizeX, hi32.WPARAM, lo32.LPARAM)
-      sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
     elif event.mOrigin == self.mTxtSizeY.mHwnd:
       echo &"Y sending {val} -> 0x{valptr:016x} = 0x{hi32:08x}_{lo32:08x}"
       sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
@@ -264,18 +263,22 @@ wClass(wGridControlPanel of wPanel):
     discard event
     let oldidx = self.mCbDivisions.selection
     let oldval = self.mCbDivisions.value
-    echo "oldidx: ", oldidx, " = ", oldval
+    #echo "oldidx: ", oldidx, " -> ", oldval
 
     self.mCbDivisions.clear()
     for s in self.mGrid.allowedDivisionsStr:
       self.mCbDivisions.append(s)
 
     let adivs = self.mGrid.allowedDivisions
-    let newidx = clamp(oldidx, 0..<adivs.len)
-    let newval = adivs[newidx]
-    echo "newidx: ", newidx, " = ", newval
-    sendToListeners(idMsgGridSelectDivisions, self.mHwnd.WPARAM, newidx.LPARAM)
-    self.mGrid.divisions = newval
+    if adivs.len > 0:
+      let newidx = clamp(oldidx, 0..<adivs.len)
+      let newval = adivs[newidx]
+      echo "newidx: ", newidx, " = ", newval
+      sendToListeners(idMsgGridSelectDivisions, self.mHwnd.WPARAM, newidx.LPARAM)
+      self.mGrid.divisions = newval
+    else:
+      echo "no new index"
+      #self.mGrid.divisions = -1
 
   proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
     self.mSliderDensity.setValue(event.lParam)

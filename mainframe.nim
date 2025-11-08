@@ -124,16 +124,11 @@ wClass(wMainFrame of wFrame):
 
   proc onMsgGridSize(self: wMainFrame, event: wEvent) =
     let newsz = derefAs[WType](event)
-    when WType is SomeInteger:
-      echo "newsize int: ", newsz
-    elif WType is SomeFloat:
-      echo "newsize float: ", newsz
     if event.mMsg == idMsgGridSizeX:
-      echo "resizing X"
       self.mMainPanel.mBlockPanel.mGrid.majorXSpace = newsz
-      #self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
+      # resend message for Y also
+      sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
     elif event.mMsg == idMsgGridSizeY:
-      echo "resizing Y"
       self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
     self.mMainPanel.mBlockPanel.refresh(false)
     sendToListeners(idMsgGridResetDivisions, 0, 0)
