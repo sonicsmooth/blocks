@@ -14,7 +14,7 @@
       "zClicks": 0.0
     },
     "Zctrl": {
-      "base": 2,
+      "base": 4,
       "clickDiv": 2400,
       "maxPwr": 5,
       "density": 1.0,

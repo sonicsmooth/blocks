@@ -135,8 +135,12 @@ wClass(wMainFrame of wFrame):
   
   proc onMsgGridSelectDivisions(self: wMainFrame, event: wEvent) =
     var gr = self.mMainPanel.mBlockPanel.mGrid
+    var vp = self.mMainPanel.mBlockPanel.mViewport
+    let oldz = vp.rawZoom
     gr.divisions = gr.allowedDivisions()[event.mLparam]
+    vp.rawZoom = oldz
     self.mMainPanel.mBlockPanel.refresh(false)
+
   proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
     let mag = event.lParam.float / 100.0
     self.mMainPanel.mBlockPanel.mGrid.mZctrl.density = mag
@@ -151,11 +155,15 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.refresh(false)
   proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
     var gr = self.mMainPanel.mBlockPanel.mGrid
-    let val = event.lParam.bool
-    gr.mZctrl.baseSync = val
-    if val:
-      # special case to update base
-      self.mMainPanel.mBlockPanel.mGrid.updateBase()
+    var zc = self.mMainPanel.mBlockPanel.mGrid.mZctrl
+    var vp = self.mMainPanel.mBlockPanel.mViewport
+    zc.baseSync = event.lParam.bool
+    # gr.divisions below is ignored when basySync false
+    let oldz = vp.rawZoom
+    zc.updateBase(gr.divisions)
+    vp.rawZoom = oldz
+    self.mMainPanel.mBlockPanel.refresh(false)
+    
   #--
   proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
     let state = event.mLparam.bool

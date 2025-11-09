@@ -10,13 +10,14 @@ import wNim/wTypes
 type
   Scale* = enum None, Tiny, Minor, Major
   DotsOrLines* = enum Dots, Lines
+  DivRange = range[2..16]
   # TODO: When these change they should trigger a refresh right away
   Grid* = ref object
     mMinorXSpace: WType
     mMinorYSpace: WType
     mMajorXSpace: WType
     mMajorYSpace: WType
-    mDivisions:      int
+    mDivisions:      DivRange
     mVisible*:       bool
     mOriginVisible*: bool
     mSnap*:          bool
@@ -38,14 +39,15 @@ proc `majorXSpace=`*(grid: Grid, val: WType) =
 proc `majorYSpace=`*(grid: Grid, val: WType) =
   grid.mMajorYSpace = val
 
-proc allowedDivisions*(grid: Grid): seq[range[2..16]] =
+proc allowedDivisions*(grid: Grid): seq[DivRange] =
   # Return list of allowable divisions, i.e., which
   # values in 2..16 divide major grid space evenly.
   # If the result for X and Y are different, then
   # return the intersection.  Typically the values
-  # are 2,4,5,8,10,16.
-  var xset, yset: set[range[2..16]]
-  for d in 2 .. 16:
+  # are 1,2,4,5,8,10,16.  1 will be treated as a
+  # special case elsewhere
+  var xset, yset: set[DivRange]
+  for d in DivRange.low .. DivRange.high:
     if grid.mMajorXSpace mod d == 0: xset.incl(d)
     if grid.mMajorYSpace mod d == 0: yset.incl(d)
   (xset * yset).toSeq
@@ -72,11 +74,9 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
     elif WType is SomeFloat:
       grid.mMinorXSpace = grid.mMajorXSpace / val.float
       grid.mMinorYSpace = grid.mMajorYSpace / val.float
+    
 proc divisionsIndex*(grid: Grid): int =
   grid.allowedDivisions.find(grid.mDivisions)
-proc updateBase*(grid: var Grid) =
-  if grid.mZctrl.baseSync:
-    grid.mZctrl.base = grid.mDivisions
 
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.
