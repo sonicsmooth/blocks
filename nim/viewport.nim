@@ -36,10 +36,10 @@ proc zClicks*(vp: Viewport): float = vp.mZclicks
 proc zCtrl*(vp: Viewport): ZoomCtrl = vp.mZctrl
 proc rawZoom*(vp: Viewport): float = vp.mRawZoom
 proc zoom*(vp: Viewport): float = vp.mZoom
-proc `zoom=`*(vp: var Viewport, val: float) =
-  # Forcibly set zoom to new value by solving for Zclicks
+proc `rawZoom=`*(vp: var Viewport, val: float) =
+  # Forcibly set rawZoom to new value by solving for Zclicks
   # Starting with rawZoom = base ^ (Zclicks / ClickDiv)
-  # -> log(rawzoom [base]) = Zclicks / clickDiv
+  # -> log(rawZoom [base]) = Zclicks / clickDiv
   # -> zclicks = log(rawZoom [base]) * clickDiv
   let newClicks = log(val, vp.zctrl.base.float) * vp.zctrl.clickDiv.float
   vp.mZclicks = newClicks
@@ -55,7 +55,7 @@ proc newViewport*(): Viewport =
   result.mPan = j["pan"].toPxPoint
   result.mZclicks = j["zClicks"].getFloat
   result.mZctrl = newZoomCtrl()
-  doZoom(result, 0) 
+  result.doZoom(0)
 
 proc newViewport*(pan: PxPoint, clicks: float, zCtrl: ZoomCtrl): Viewport =
   # Fill in values from args

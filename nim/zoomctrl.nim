@@ -1,7 +1,6 @@
 from std/math import floor
 import appinit
 
-
 type
   ZoomCtrl* = ref object
     mBase:     int   # Logarithmic base for zoom
@@ -36,6 +35,15 @@ proc `dynamic=`*(zctrl: var ZoomCtrl, val: bool) =
 proc `baseSync=`*(zctrl: var ZoomCtrl, val: bool) =
   # If val is true be sure to call grid.updateBase afterwards
   zctrl.mBaseSync = val
+proc updateBase*(zctrl: var ZoomCtrl, newBase: range[2..16]) =
+  # Use divs when baseSync true else use json
+  # newBase range is the same as DivRange
+  # but DivRange type is not available here
+  if zctrl.baseSync:
+    zctrl.base = newBase
+  else:
+    zctrl.base = gZctrlJ["base"].getInt
+  echo "updating base to ", zctrl.base
 
 proc newZoomCtrl*(): ZoomCtrl =
   # Fill values from from json
