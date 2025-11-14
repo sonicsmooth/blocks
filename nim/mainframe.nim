@@ -131,9 +131,17 @@ wClass(wMainFrame of wFrame):
     elif event.mMsg == idMsgGridSizeY:
       self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
     self.mMainPanel.mBlockPanel.refresh(false)
-    sendToListeners(idMsgGridResetDivisions, 0, 0)
+    sendToListeners(idMsgGridDivisionsReset, 0, 0)
   
-  proc onMsgGridSelectDivisions(self: wMainFrame, event: wEvent) =
+  proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
+    var gr = self.mMainPanel.mBlockPanel.mGrid
+    var vp = self.mMainPanel.mBlockPanel.mViewport
+    let oldz = vp.rawZoom
+    gr.divisions = gr.allowedDivisions()[event.mLparam]
+    vp.rawZoom = oldz
+    self.mMainPanel.mBlockPanel.refresh(false)
+
+  proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
     var gr = self.mMainPanel.mBlockPanel.mGrid
     var vp = self.mMainPanel.mBlockPanel.mViewport
     let oldz = vp.rawZoom
@@ -273,7 +281,8 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
     self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
     # self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSizeY(w.wMainFrame, e))
-    self.registerListener(idMsgGridSelectDivisions, (w:wWindow, e:wEvent)=>onMsgGridSelectDivisions(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisionsValue, (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
     #---
     self.registerListener(idMsgGridSnap,     (w:wWindow, e:wEvent)=>onMsgGridSnap(w.wMainFrame, e))

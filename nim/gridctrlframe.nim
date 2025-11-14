@@ -60,6 +60,15 @@ proc parseNumber(s: string, val: var WType): bool =
   elif WType is SomeInteger:
     result = parseInt(s, val) > 0
 
+let errcol = proc(event: wEvent) =
+    SetBkColor(event.wParam, RGB(255, 199, 206))
+    SetTextColor(event.wParam, RGB(156, 0, 6))
+
+let goodcol = proc(event: wEvent) =
+    SetBkColor(event.wParam, RGB(0xc6, 0xef, 0xce)) #c6efce
+    SetTextColor(event.wParam, RGB(0, 0x61, 0)) #006100
+
+
 wClass(wGridControlPanel of wPanel):
   proc layout(self: wGridControlPanel) =
     let
@@ -169,30 +178,29 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  proc txtValue(self: wGridControlPanel, event: wEvent): string =
-    # hwnd is in param with coloredit
-    # hwnd is in origin with enter
-    if event.mLparam == self.mTxtSizeX.mHwnd:
-      self.mTxtSizeX.value.strip
-    elif event.mOrigin == self.mTxtSizeX.mHwnd:
-      self.mTxtSizeX.value.strip
-    elif event.mLparam == self.mTxtSizeY.mHwnd:
-      self.mTxtSizeY.value.strip
-    elif event.mOrigin == self.mTxtSizeY.mHwnd:
-      self.mTxtSizeY.value.strip
-    else:
-      # Should not get here
-      "junk"
+  proc eventMatchAndStrip(self: wGridControlPanel, event: wEvent): (wWindow, string) =
+    let txtCtrls = [self.mTxtSizeX, self.mTxtSizeY]
+    let comboBoxes = [self.mCbDivisions]
+    
+    for w in txtCtrls:
+      if event.lParam == w.mHwnd or event.mOrigin == w.mHwnd:
+          return (w, w.value.strip())
+    for w in comboBoxes:
+      if event.lparam == WindowFromDC(event.wParam):
+          echo "Matched combo box in strip"
+          return (w, w.value.strip())
 
   # Read state from controls and broadcast message to listeners
   # TODO: small txt units
   proc onCmdTxtSizeEnter(self: wGridControlPanel, event: wEvent) =
     # Called when enter pressed
     # send pointer to parsed and validated value
+    let (matchedCtrl, strval) = self.eventMatchAndStrip(event)
+    if matchedCtrl.isnil or strval.len == 0:
+      return
     var val: Wtype
-    let strval = self.txtValue(event)
-    if strval.len == 0: return
-    if not parseNumber(strval, val): return
+    if not parseNumber(strval, val):
+      return
     let
       valptr = cast[uint64](val.addr)
       hi32 =  (valptr shr 32).uint32
@@ -202,21 +210,62 @@ wClass(wGridControlPanel of wPanel):
     elif event.mOrigin == self.mTxtSizeY.mHwnd:
       sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
 
+  # var cb: bool
+  var cnt: int
   proc colorEdit(self: wGridControlPanel, event: wEvent) = 
     # Gets called when parent panel redraws text box
-    if event.lParam != self.mTxtSizeX.mHwnd and
-       event.lParam != self.mTxtSizeY.mHwnd:
-        return
-    var val: WType
-    let strval = self.txtValue(event)
-    if strval.len == 0: return
-    if not parseNumber(strval, val):
-      SetBkColor(event.wParam, RGB(255, 199, 206))
-      SetTextColor(event.wParam, RGB(156, 0, 6))
+    # which is on mouse enter/leave, and when typing
+    # but not on enter key.  For some reason when typing
+    # in the divisions box, the lparam does not match
+    # the mHwnd of the division box, but it does on mouse
+    # enter/leave.  Instead, when typing in the divisions
+    # box, the lparam matches the WindowFromDC of the wParam.
+    # So at no point is the self.mCbDivisions.mHwnd used
+    echo ""
+    echo cnt, " lparam = ", event.lParam, ";     div.mHwnd = ", self.mCbDivisions.mHwnd
+    echo cnt, " lparam = ", event.lParam, "; dc->div.mHwnd = ", WindowFromDC(event.wParam)
+    cnt.inc
+    let (matchedCtrl, strval) = self.eventMatchAndStrip(event)
+    if matchedCtrl.isnil or strval.len == 0:
+      return
 
-  proc onCmdCbDivisions(self: wGridControlPanel, event: wEvent) =
+    # if cb:
+    #   errcol()
+    #   cb = false
+    # else:
+    #   goodcol()
+    #   cb = true
+
+    if event.lParam == self.mTxtSizeX.mHwnd or event.lParam == self.mTxtSizeY.mHwnd:
+      var val: WType
+      if not parseNumber(strval, val):
+        errcol(event)
+    elif event.lParam == WindowFromDC(event.wParam):
+      echo "Matched combobox in colorEdit"
+      var val: int
+      if not parseNumber(strval, val):
+        errcol(event)
+
+  proc onCmdCbDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
-    sendToListeners(idMsgGridSelectDivisions, self.mHwnd.WPARAM, index.LPARAM)
+    sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+
+  proc onCmdCbDivisionsTextEnter(self: wGridControlPanel, event: wEvent) =
+    let strval  = self.mCbDivisions.value
+    var index = self.mCbDivisions.findText(strval)
+    if index >= 0: # inputted string directly matches something in list
+      sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+    else: # See if parsed string can be a value in the list
+      var val: int
+      if parseNumber(strval, val):
+        index = self.mCbDivisions.findText($val) # yes converting back to string
+        if index >= 0: # parsed string matches something in list
+          sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+        else: # parsed string doesn't match anything so send integer value instead of index
+          sendToListeners(idMsgGridDivisionsValue, self.mHwnd.WPARAM, val.LPARAM)
+    # inputted value cannot be made into integer
+
+
 
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
     let finalval = self.mSliderDensity.getValue()
@@ -255,9 +304,11 @@ wClass(wGridControlPanel of wPanel):
       self.mTxtSizeX.setValue(rxstr)
     elif event.mMsg == idMsgGridSizeY:
       self.mTxtSizeY.setValue(rxstr)
-  proc onMsgGridSelectDivisions(self: wGridControlPanel, event: wEvent) =
+  proc onMsgGridDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
-  proc onMsgGridResetDivisions(self: wGridControlPanel, event: wEvent) = 
+  proc onMsgGridDivisionsValue(self: wGridControlPanel, event: wEvent) =
+    self.mCbDivisions.setValue($event.lParam)
+  proc onMsgGridDivisionsReset(self: wGridControlPanel, event: wEvent) = 
     discard event
     let oldidx = self.mCbDivisions.selection
     let oldval = self.mCbDivisions.value
@@ -270,7 +321,7 @@ wClass(wGridControlPanel of wPanel):
     if adivs.len > 0:
       let newidx = clamp(oldidx, 0..<adivs.len)
       let newval = adivs[newidx]
-      sendToListeners(idMsgGridSelectDivisions, self.mHwnd.WPARAM, newidx.LPARAM)
+      sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
       self.mGrid.divisions = newval
     # else divisions don't change
     
@@ -349,10 +400,11 @@ wClass(wGridControlPanel of wPanel):
     
     # self.mTxtSizeX.WM_MOUSEHOVER   do (event: wEvent): echo "hover"
     # self.mTxtSizeX.WM_MOUSELEAVE  do (event: wEvent): echo "leave"
-    self.mTxtSizeX.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeEnter(event)
-    self.mTxtSizeY.wEvent_TextEnter   do (event: wEvent): self.onCmdTxtSizeEnter(event)
-    self.mCbDivisions.wEvent_ComboBox do (event: wEvent): self.onCmdCbDivisions(event)
-    self.mSliderDensity.wEvent_Slider do (event: wEvent): self.onCmdSliderDensity(event)
+    self.mTxtSizeX.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
+    self.mTxtSizeY.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
+    self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisionsSelect(event)
+    self.mCbDivisions.wEvent_TextEnter do (event: wEvent): self.onCmdCbDivisionsTextEnter(event)
+    self.mSliderDensity.wEvent_Slider  do (event: wEvent): self.onCmdSliderDensity(event)
     #--
     self.mCbSnap.wEvent_CheckBox      do (event: wEvent): self.onCmdSnap(event)
     self.mCbDynamic.wEvent_CheckBox   do (event: wEvent): self.onCmdDynamic(event)
@@ -365,8 +417,9 @@ wClass(wGridControlPanel of wPanel):
     # Update controls from outside messages
     self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>(onMsgGridSize(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>(onMsgGridSize(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridSelectDivisions, (w:wWindow, e:wEvent)=>(onMsgGridSelectDivisions(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridResetDivisions, (w:wWindow, e:wEvent)=>(onMsgGridResetDivisions(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>(onMsgGridDivisionsSelect(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsValue(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDivisionsReset,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsReset(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>(onMsgGridDensity(w.wGridControlPanel, e)))
     #--
     self.registerListener(idMsgGridSnap,      (w:wWindow, e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))
