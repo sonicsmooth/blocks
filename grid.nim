@@ -249,7 +249,7 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
 
     # Major lines
     if grid.mDotsOrLines == Lines:
-      rp.setDrawColor(Black.toColor)
+      rp.setDrawColor(DarkSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
       for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
         rp.drawLine(xpx, 0, xpx, size.height - 1)
