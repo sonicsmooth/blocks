@@ -162,17 +162,14 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
 proc recommendScale*(grid: Grid, modifier: bool): Scale =
   # Recommend a snapping scale based on current zoom level
   # If modifier is true, recommend a finer scale
-  let
-    minorValid = grid.areMinorDivisionsValid()
-    tinyValid = grid.areTinyDivisionsValid()
   if grid.mSnap:
-    if modifier:
-      if tinyValid: Tiny
-      else: None
-    else: 
-      if minorValid: Minor
-      elif tinyValid: Tiny
-      else: None
+    let minorValid = grid.areMinorDivisionsValid()
+    let tinyValid = grid.areTinyDivisionsValid()
+    if modifier and tinyValid: Tiny
+    elif modifier: None
+    elif minorValid: Minor
+    elif tinyValid: Tiny
+    else: None
   else: None
 
 proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
