@@ -59,21 +59,27 @@ proc allowedDivisionsStr*(grid: Grid): seq[string] =
 proc divisions*(grid: Grid): int = grid.mDivisions
 
 proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
-  # Change grid's zctrl's base aka divsions to val, and update
-  # minor grid size to ensure major grid size stays the
-  # same.  Return true/false if base can/cannot be set
-  # exactly.
-  result = val in grid.allowedDivisions()
-  if result:
-    if grid.mZCtrl.baseSync:
-      grid.mZctrl.base = val
-    grid.mDivisions = val
-    when WType is SomeInteger:
-      grid.mMinorXSpace = grid.mMajorXSpace div val
-      grid.mMinorYSpace = grid.mMajorYSpace div val
-    elif WType is SomeFloat:
-      grid.mMinorXSpace = grid.mMajorXSpace / val.float
-      grid.mMinorYSpace = grid.mMajorYSpace / val.float
+  # Change grid's divisions to val, and update minor grid size.
+  # Clamps val to DivRange.
+  # Returns true if given val is in allowed divisions, else false.
+
+  let cval = clamp(val, DivRange.low, DivRange.high)
+  if val != cval:
+    echo val, " not in range! Setting to ", cval
+    result = false
+  else:
+    result = cval in grid.allowedDivisions()
+
+  if grid.mZctrl.baseSync:
+    grid.mZctrl.base = cval
+  grid.mDivisions = cval
+ 
+  when WType is SomeInteger:
+    grid.mMinorXSpace = grid.mMajorXSpace div cval
+    grid.mMinorYSpace = grid.mMajorYSpace div cval
+  elif WType is SomeFloat:
+    grid.mMinorXSpace = grid.mMajorXSpace / cval.float
+    grid.mMinorYSpace = grid.mMajorYSpace / cval.float
     
 proc divisionsIndex*(grid: Grid): int =
   grid.allowedDivisions.find(grid.mDivisions)
