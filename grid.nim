@@ -1,4 +1,4 @@
-import std/[algorithm, math, sequtils, strformat]
+import std/[algorithm, math, sequtils]
 import sdl2
 import colors
 from arange import arange
@@ -13,8 +13,6 @@ type
   DivRange = range[2..16]
   # TODO: When these change they should trigger a refresh right away
   Grid* = ref object
-    mMinorXSpace: WType
-    mMinorYSpace: WType
     mMajorXSpace: WType
     mMajorYSpace: WType
     mDivisions:      DivRange
@@ -31,8 +29,6 @@ const
 
 proc majorXSpace*(grid: Grid): WType = grid.mMajorXSpace
 proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
-proc minorXSpace*(grid: Grid): WType = grid.mMinorXSpace
-proc minorYSpace*(grid: Grid): WType = grid.mMinorYSpace
 proc `majorXSpace=`*(grid: Grid, val: WType) =
   grid.mMajorXSpace = val
 
@@ -59,7 +55,7 @@ proc allowedDivisionsStr*(grid: Grid): seq[string] =
 proc divisions*(grid: Grid): int = grid.mDivisions
 
 proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
-  # Change grid's divisions to val, and update minor grid size.
+  # Change grid's divisions to val
   # Clamps val to DivRange.
   # Returns true if given val is in allowed divisions, else false.
 
@@ -74,15 +70,24 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
     grid.mZctrl.base = cval
   grid.mDivisions = cval
  
-  when WType is SomeInteger:
-    grid.mMinorXSpace = grid.mMajorXSpace div cval
-    grid.mMinorYSpace = grid.mMajorYSpace div cval
-  elif WType is SomeFloat:
-    grid.mMinorXSpace = grid.mMajorXSpace / cval.float
-    grid.mMinorYSpace = grid.mMajorYSpace / cval.float
-    
 proc divisionsIndex*(grid: Grid): int =
   grid.allowedDivisions.find(grid.mDivisions)
+
+proc minDelta*(grid: Grid, scale: Scale): WPoint
+proc areMinorDivisionsValid*(grid: Grid): bool =
+  # True if minor grid spaces divide major grid spaces evenly
+  # Generally this is false when divisions is weird or when 
+  # zoomed in very far.
+  grid.minDelta(scale=Major).x div grid.minDelta(scale=Minor).x == grid.mDivisions and
+  grid.minDelta(scale=Major).y div grid.minDelta(scale=Minor).y == grid.mDivisions
+
+proc areTinyDivisionsValid*(grid: Grid): bool =
+  # True if minor grid spaces divide major grid spaces evenly
+  # Generally this is false when divisions is weird or when 
+  # zoomed in very far.
+  grid.minDelta(scale=Minor).x div grid.minDelta(scale=Tiny).x == grid.mDivisions and
+  grid.minDelta(scale=Minor).y div grid.minDelta(scale=Tiny).y == grid.mDivisions
+
 
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.
@@ -153,6 +158,22 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
     of Tiny: (tinyX, tinyY)
     of Minor: (minorX, minorY)
     of Major: (majorX, majorY)
+
+proc recommendScale*(grid: Grid, modifier: bool): Scale =
+  # Recommend a snapping scale based on current zoom level
+  # If modifier is true, recommend a finer scale
+  let
+    minorValid = grid.areMinorDivisionsValid()
+    tinyValid = grid.areTinyDivisionsValid()
+  if grid.mSnap:
+    if modifier:
+      if tinyValid: Tiny
+      else: None
+    else: 
+      if minorValid: Minor
+      elif tinyValid: Tiny
+      else: None
+  else: None
 
 proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
   # Round to nearest minor grid point

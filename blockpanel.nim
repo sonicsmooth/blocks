@@ -180,18 +180,11 @@ wClass(wBlockPanel of wSDLPanel):
   proc updateDestinationBox(self: wBlockPanel) =
     let 
       marg = 25
-      (w, h) = self.size
-    let pdstrect: PRect = (marg, marg, w - 2*marg, h - 2*marg)
+      pdstrect: PRect = (marg, marg, self.size.width - 2*marg, self.size.height - 2*marg)
     self.mDstRect = pdstrect.toWRect(self.mViewport)
 
   proc updateBoundingBox(self: wBlockPanel) =
     self.mAllBbox = gDb.boundingBox()
-
-  # proc onResize(self: wBlockPanel, event: wEvent) =
-  #   # Post user message so top frame can show new size
-  #   discard
-  #   let hWnd = GetAncestor(self.handle, GA_ROOT)
-  #   SendMessage(hWnd, idMsgSize, event.mWparam, event.mLparam)
 
   proc updateRatio*(self: wBlockPanel) =
     if gDb.len == 0:
@@ -426,9 +419,8 @@ wClass(wBlockPanel of wSDLPanel):
       let sel = gdb.selected()
       case event.getEventType
       of wEvent_MouseMove:
-        # TODO: maybe implement shift-move to snap to Tiny
-        let 
-          scale = if self.mGrid.mSnap: Minor else: None
+        let
+          scale = self.mGrid.recommendScale(event.shiftDown)
           lastSnap: WPoint = self.mMouseData.lastPos.toWorld(vp).snap(self.mGrid, scale=scale)
           newSnap: WPoint = wmp.snap(self.mGrid, scale=scale)
           delta: WPoint = newSnap - lastSnap
