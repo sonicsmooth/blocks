@@ -134,6 +134,7 @@ wClass(wMainFrame of wFrame):
     sendToListeners(idMsgGridDivisionsReset, 0, 0)
   
   proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
+    # Change divisions based on given index and force zoom
     var gr = self.mMainPanel.mBlockPanel.mGrid
     var vp = self.mMainPanel.mBlockPanel.mViewport
     let oldz = vp.rawZoom
@@ -142,10 +143,16 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.refresh(false)
 
   proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
+    # Change divisions based on given value and force zoom
+    # Presumably the value is not in allowed divisions because
+    # if it were we would be in onMsgGridDivisionsSelect
+    # We're here because user typed in a value, which may or
+    # may not be in allowed divisions, ie able to divide grid 
+    # size exactly.
     var gr = self.mMainPanel.mBlockPanel.mGrid
     var vp = self.mMainPanel.mBlockPanel.mViewport
     let oldz = vp.rawZoom
-    gr.divisions = gr.allowedDivisions()[event.mLparam]
+    gr.divisions = event.mLparam
     vp.rawZoom = oldz
     self.mMainPanel.mBlockPanel.refresh(false)
 

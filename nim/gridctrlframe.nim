@@ -178,18 +178,39 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
+  var cnt: int = 0
   proc eventMatchAndStrip(self: wGridControlPanel, event: wEvent): (wWindow, string) =
     let txtCtrls = [self.mTxtSizeX, self.mTxtSizeY]
     let comboBoxes = [self.mCbDivisions]
-    
     for w in txtCtrls:
       if event.lParam == w.mHwnd or event.mOrigin == w.mHwnd:
           return (w, w.value.strip())
     for w in comboBoxes:
       if event.lparam == WindowFromDC(event.wParam):
-          echo "Matched combo box in strip"
           return (w, w.value.strip())
 
+  proc colorEdit(self: wGridControlPanel, event: wEvent) = 
+    # Gets called when parent panel redraws text box
+    # which is on mouse enter/leave, and when typing
+    # but not on enter key.  For some reason when typing
+    # in the divisions box, the lparam does not match
+    # the mHwnd of the division box, but it does on mouse
+    # enter/leave.  Instead, when typing in the divisions
+    # box, the lparam matches the WindowFromDC of the wParam.
+    # So at no point is the self.mCbDivisions.mHwnd used
+    let (matchedCtrl, strval) = self.eventMatchAndStrip(event)
+    if matchedCtrl.isnil or strval.len == 0:
+      return
+    if event.lParam == self.mTxtSizeX.mHwnd or event.lParam == self.mTxtSizeY.mHwnd:
+      var val: WType
+      if not parseNumber(strval, val):
+        errcol(event)
+    elif event.lParam == WindowFromDC(event.wParam):
+      var val: int
+      if not parseNumber(strval, val):
+        errcol(event)
+
+  
   # Read state from controls and broadcast message to listeners
   # TODO: small txt units
   proc onCmdTxtSizeEnter(self: wGridControlPanel, event: wEvent) =
@@ -210,61 +231,26 @@ wClass(wGridControlPanel of wPanel):
     elif event.mOrigin == self.mTxtSizeY.mHwnd:
       sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
 
-  # var cb: bool
-  var cnt: int
-  proc colorEdit(self: wGridControlPanel, event: wEvent) = 
-    # Gets called when parent panel redraws text box
-    # which is on mouse enter/leave, and when typing
-    # but not on enter key.  For some reason when typing
-    # in the divisions box, the lparam does not match
-    # the mHwnd of the division box, but it does on mouse
-    # enter/leave.  Instead, when typing in the divisions
-    # box, the lparam matches the WindowFromDC of the wParam.
-    # So at no point is the self.mCbDivisions.mHwnd used
-    echo ""
-    echo cnt, " lparam = ", event.lParam, ";     div.mHwnd = ", self.mCbDivisions.mHwnd
-    echo cnt, " lparam = ", event.lParam, "; dc->div.mHwnd = ", WindowFromDC(event.wParam)
-    cnt.inc
-    let (matchedCtrl, strval) = self.eventMatchAndStrip(event)
-    if matchedCtrl.isnil or strval.len == 0:
-      return
-
-    # if cb:
-    #   errcol()
-    #   cb = false
-    # else:
-    #   goodcol()
-    #   cb = true
-
-    if event.lParam == self.mTxtSizeX.mHwnd or event.lParam == self.mTxtSizeY.mHwnd:
-      var val: WType
-      if not parseNumber(strval, val):
-        errcol(event)
-    elif event.lParam == WindowFromDC(event.wParam):
-      echo "Matched combobox in colorEdit"
-      var val: int
-      if not parseNumber(strval, val):
-        errcol(event)
-
   proc onCmdCbDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
     sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
 
   proc onCmdCbDivisionsTextEnter(self: wGridControlPanel, event: wEvent) =
+    # Check if user-inputted text matches allowed divisions and send index if so
+    # If not, then try to parse it as a number and send value
     let strval  = self.mCbDivisions.value
     var index = self.mCbDivisions.findText(strval)
-    if index >= 0: # inputted string directly matches something in list
+    if index >= 0:
       sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
-    else: # See if parsed string can be a value in the list
+    else:
       var val: int
       if parseNumber(strval, val):
-        index = self.mCbDivisions.findText($val) # yes converting back to string
-        if index >= 0: # parsed string matches something in list
+        index = self.mCbDivisions.findText($val)
+        if index >= 0:
           sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
-        else: # parsed string doesn't match anything so send integer value instead of index
+        else:
           sendToListeners(idMsgGridDivisionsValue, self.mHwnd.WPARAM, val.LPARAM)
     # inputted value cannot be made into integer
-
 
 
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
@@ -309,6 +295,10 @@ wClass(wGridControlPanel of wPanel):
   proc onMsgGridDivisionsValue(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.setValue($event.lParam)
   proc onMsgGridDivisionsReset(self: wGridControlPanel, event: wEvent) = 
+    # Change divisions based on allowed divisions, sent after a 
+    # change in sizeX or sizeY.  If allowed divisions is empty,
+    # then current divisions are not changed, otherwise find
+    # closest match to old index.
     discard event
     let oldidx = self.mCbDivisions.selection
     let oldval = self.mCbDivisions.value
@@ -323,8 +313,6 @@ wClass(wGridControlPanel of wPanel):
       let newval = adivs[newidx]
       sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
       self.mGrid.divisions = newval
-    # else divisions don't change
-    
 
   proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
     self.mSliderDensity.setValue(event.lParam)
