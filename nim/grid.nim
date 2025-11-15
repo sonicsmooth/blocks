@@ -10,7 +10,7 @@ import wNim/wTypes
 type
   Scale* = enum None, Tiny, Minor, Major
   DotsOrLines* = enum Dots, Lines
-  DivRange = range[2..16]
+  DivRange* = range[2..16]
   # TODO: When these change they should trigger a refresh right away
   Grid* = ref object
     mMajorXSpace: WType
@@ -56,19 +56,15 @@ proc divisions*(grid: Grid): int = grid.mDivisions
 
 proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
   # Change grid's divisions to val
-  # Clamps val to DivRange.
+  # Raises exception if out of range
   # Returns true if given val is in allowed divisions, else false.
 
-  let cval = clamp(val, DivRange.low, DivRange.high)
-  if val != cval:
-    echo val, " not in range! Setting to ", cval
-    result = false
-  else:
-    result = cval in grid.allowedDivisions()
+  # This will raise exception if val is out of range
+  result = val in grid.allowedDivisions()
 
   if grid.mZctrl.baseSync:
-    grid.mZctrl.base = cval
-  grid.mDivisions = cval
+    grid.mZctrl.base = val
+  grid.mDivisions = val
  
 proc divisionsIndex*(grid: Grid): int =
   grid.allowedDivisions.find(grid.mDivisions)
