@@ -422,7 +422,8 @@ wClass(wGridControlPanel of wPanel):
     self.registerListener(idMsgGridVisible,   (w:wWindow, e:wEvent)=>(onMsgGridVisible(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDots,      (w:wWindow, e:wEvent)=>(onMsgGridDots(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridLines,     (w:wWindow, e:wEvent)=>(onMsgGridLines(w.wGridControlPanel, e)))
-
+    #--
+    self.registerListener(idMsgGridZoom, (w:wWindow, e:wEvent)=>(echo "zoom msg received"))
     self.mBDone.wEvent_Button        do(): self.parent.destroy()
     self.wEvent_Destroy do(): self.deregisterListener()
 
