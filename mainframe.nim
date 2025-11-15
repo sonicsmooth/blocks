@@ -148,7 +148,8 @@ wClass(wMainFrame of wFrame):
     # if it were we would be in onMsgGridDivisionsSelect
     # We're here because user typed in a value, which may or
     # may not be in allowed divisions, ie able to divide grid 
-    # size exactly.
+    # size exactly.  We do however assume it's been validated
+    # otherwise, which means it should be in DivRange
     var gr = self.mMainPanel.mBlockPanel.mGrid
     var vp = self.mMainPanel.mBlockPanel.mViewport
     let oldz = vp.rawZoom

@@ -249,10 +249,13 @@ wClass(wGridControlPanel of wPanel):
       if parseNumber(strval, val):
         index = self.mCbDivisions.findText($val)
         if index >= 0:
+          # value found
           sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
         else:
-          sendToListeners(idMsgGridDivisionsValue, self.mHwnd.WPARAM, val.LPARAM)
-    # inputted value cannot be made into integer
+          # value not found, clamp to within range
+          let cval = clamp(val, DivRange.low, DivRange.high)
+          sendToListeners(idMsgGridDivisionsValue, self.mHwnd.WPARAM, cval.LPARAM)
+    # inputted value cannot be made into integer; don't send anything
 
 
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
