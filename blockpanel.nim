@@ -4,7 +4,7 @@ import wNim
 import winim except PRECT, Color
 import sdl2
 import rects, recttable, sdlframes, db, viewport, grid, pointmath
-import userMessages, utils, appopts
+import userMessages, utils, appopts, routing
 import render
 
 # TODO: update qty when spinner text loses focus
@@ -358,6 +358,8 @@ wClass(wBlockPanel of wSDLPanel):
       of wEvent_MouseWheel:
         # Keep mouse location in the same spot during zoom.
         doAdaptivePanZoom(self.mViewport, event.wheelRotation, event.mousePos)
+        # Tell the world
+        sendToListeners(idMsgGridZoom, 0, 0)
         self.clearTextureCache()
         self.refresh(false)
       else:
