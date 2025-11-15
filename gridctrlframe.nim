@@ -331,6 +331,7 @@ wClass(wGridControlPanel of wPanel):
   #--
   proc onMsgGridVisible(self: wGridControlPanel, event: wEvent) =
     let state = event.lParam.bool
+    echo "GridControlPanel received visible state ", state
     self.mCbVisible.value = state
     self.mRbDots.enable(state)
     self.mRbLines.enable(state)
