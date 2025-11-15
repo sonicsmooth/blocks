@@ -52,13 +52,14 @@ proc edges(w: wWindow): tuple[left, right, top, bot: int] =
 proc moveby(w: wWindow, dx, dy: int) =
   w.position = (w.position.x + dx, w.position.y + dy)
 
-proc parseNumber(s: string, val: var WType): bool =
+proc parseNumber[T](s: string, number: var T): bool =
   # Returns true if s can be parsed to int or float
   # Parsed value is returned in val
-  when WType is SomeFloat:
-    result = parseBiggestFloat(s, val) > 0
-  elif WType is SomeInteger:
-    result = parseInt(s, val) > 0
+  when T is SomeFloat:   parseFloat(s, number) > 0
+  elif T is SomeInteger: parseInt(s, number) > 0
+  else:
+    static: echo "Unsupported WType in parseNumber"
+    false
 
 let errcol = proc(event: wEvent) =
     SetBkColor(event.wParam, RGB(255, 199, 206))
@@ -206,6 +207,7 @@ wClass(wGridControlPanel of wPanel):
       if not parseNumber(strval, val):
         errcol(event)
     elif event.lParam == WindowFromDC(event.wParam):
+      # We are in the divisions combo box, so must use int
       var val: int
       if not parseNumber(strval, val):
         errcol(event)
