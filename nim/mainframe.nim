@@ -109,8 +109,9 @@ wClass(wMainFrame of wFrame):
       let f = AboutFrame(self)
       f.show()
     of idCmdGridShow:
-      # We know this comes from the second toolbar in the rebar
+      # We know this comes from the second toolbar in the rebar hence [1]
       let state = self.mBandToolbars[1].toolState(idCmdGridShow)
+      echo "Sending grid visible state ", state, " from ", self.mHwnd
       sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
       if not singleFrames or not self.mGridCtrlFrameShowing:
@@ -183,6 +184,7 @@ wClass(wMainFrame of wFrame):
   #--
   proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
     let state = event.mLparam.bool
+    echo "Mainframe grid visible state set to ", state
     self.mMainPanel.mBlockPanel.mGrid.mVisible = state
     self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
     self.mMainPanel.mBlockPanel.refresh(false)
@@ -288,7 +290,6 @@ wClass(wMainFrame of wFrame):
     # Respond to incoming messages
     self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
     self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
-    # self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSizeY(w.wMainFrame, e))
     self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
     self.registerListener(idMsgGridDivisionsValue, (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))

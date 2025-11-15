@@ -25,7 +25,7 @@ const
   idMsgGridLines*           = WM_USER + 16
   
   # Frames
-  idMsgGridCtrlFrameClosing* = WM_USER + 14
+  idMsgGridCtrlFrameClosing* = WM_USER + 17
 
   
   # Random thread stuff
