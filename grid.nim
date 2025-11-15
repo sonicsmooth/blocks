@@ -78,15 +78,21 @@ proc areMinorDivisionsValid*(grid: Grid): bool =
   # True if minor grid spaces divide major grid spaces evenly
   # Generally this is false when divisions is weird or when 
   # zoomed in very far.
-  grid.minDelta(scale=Major).x div grid.minDelta(scale=Minor).x == grid.mDivisions and
-  grid.minDelta(scale=Major).y div grid.minDelta(scale=Minor).y == grid.mDivisions
+  when Wtype is SomeInteger:
+    grid.minDelta(scale=Major).x div grid.minDelta(scale=Minor).x == grid.mDivisions and
+    grid.minDelta(scale=Major).y div grid.minDelta(scale=Minor).y == grid.mDivisions
+  elif WType is SomeFloat:
+    true
 
 proc areTinyDivisionsValid*(grid: Grid): bool =
   # True if minor grid spaces divide major grid spaces evenly
   # Generally this is false when divisions is weird or when 
   # zoomed in very far.
-  grid.minDelta(scale=Minor).x div grid.minDelta(scale=Tiny).x == grid.mDivisions and
-  grid.minDelta(scale=Minor).y div grid.minDelta(scale=Tiny).y == grid.mDivisions
+  when WType is SomeInteger:
+    grid.minDelta(scale=Minor).x div grid.minDelta(scale=Tiny).x == grid.mDivisions and
+    grid.minDelta(scale=Minor).y div grid.minDelta(scale=Tiny).y == grid.mDivisions
+  elif WType is SomeFloat:
+    true 
 
 
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
