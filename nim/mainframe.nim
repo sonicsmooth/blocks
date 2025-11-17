@@ -217,6 +217,7 @@ wClass(wMainFrame of wFrame):
     menu2.append(idCmdHelp, "Help", bitmap=bmpHelpSm)
     result.append(menu1, "File")
     result.append(menu2, "Help")
+
   proc setupReBar(self: wMainFrame): wReBar =
     # Set up three things in the rebar
     result = ReBar(self)
@@ -234,6 +235,14 @@ wClass(wMainFrame of wFrame):
     # Read from init file
     tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
     tb2.addtool(idCmdGridSetting, "Grid settings", bmpGearsBg)
+
+    let ddcb = ComboBox(tb2, 0, "My dropdown")
+    ddcb.size = (self.dpiScale(150), ddcb.size.height)
+    ddcb.append("Option 1")
+    ddcb.append("Option 2")
+    ddcb.position = (self.dpiScale(150), self.dpiScale(10))
+
+
     self.mBandToolBars.add(tb2)
     
     # 3. Close
@@ -251,6 +260,7 @@ wClass(wMainFrame of wFrame):
     result.setBandWidth(bid2, 200)
     result.setBandWidth(bid1, 64)
     result.disableDrag()
+
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()

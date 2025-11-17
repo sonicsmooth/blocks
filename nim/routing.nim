@@ -46,8 +46,6 @@ proc sendToListeners*(msg: int32, wp: WPARAM, lp: LPARAM) =
   # wp is usually the hwnd of the sender
   # lp is usually the value to be sent
   if msg notin gEventListeners:
-    echo "returning"
     return
   for handle in gEventListeners[msg]:
-    echo "sending message ", msg, " to handle ", handle
     SendMessage(handle, msg, wp, lp)

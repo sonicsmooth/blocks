@@ -1,8 +1,8 @@
-import std/[algorithm, math, sequtils]
+import std/[algorithm, math, sequtils, strformat]
 import sdl2
 import colors
 from arange import arange
-import viewport, pointmath
+import viewport, pointmath, render
 import appinit
 import wNim/wTypes
 
@@ -207,6 +207,43 @@ proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
     y = ((pt.y - vp.pan.y).float / vp.zoom)
   (x, y)
 
+proc drawScale(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
+  let
+    left = 150
+    majDelta = grid.minDelta(Major).x
+    minDelta = grid.minDelta(Minor).x
+    majDeltaPx = (majDelta.float * vp.zoom).round.int
+    minDeltaPx = (minDelta.float * vp.zoom).round.int
+    botMajor = size.height - 100
+    botMinor = size.height - 60
+
+  # Major line
+  rp.setDrawColor(DarkSlateGray.toColor)
+  var r1, r2, r3: Rect
+  let ht = 11
+  r1 = (left, botMajor - 1, majDeltaPx, 3)
+  r2 = (left, botMajor - (ht div 2), 3, ht)
+  r3 = (left + majDeltaPx, botMajor - (ht div 2), 3, ht)
+  rp.fillRect(r1)
+  rp.fillRect(r2)
+  rp.fillRect(r3)
+
+  # Minor line
+  r1 = (left, botMinor - 1, minDeltaPx, 3)
+  r2 = (left, botMinor - (ht div 2), 3, ht)
+  r3 = (left + minDeltaPx, botMinor - (ht div 2), 3, ht)
+  rp.fillRect(r1)
+  rp.fillRect(r2)
+  rp.fillRect(r3)
+
+  # Labels
+  let
+    majorLabel = if WType is SomeInteger: &"{majDelta}"
+                 else: &"{majDelta}"
+    minorLabel = if WType is SomeInteger: &"{minDelta}"
+                 else: &"{minDelta}"
+  rp.renderText(left - 5, botMajor + 12, majorLabel)
+  rp.renderText(left - 5, botMinor + 12, minorLabel)
 
 proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
   # Grid spaces are in world coords.  Need to convert to pixels
@@ -248,7 +285,6 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
           pts.add((xpx,   ypx  ))
       rp.drawPoints(cast[ptr Point](pts[0].addr), pts.len.cint)
 
-
     # Major lines
     if grid.mDotsOrLines == Lines:
       rp.setDrawColor(DarkSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
@@ -278,7 +314,6 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
           pts.add((xpx+1, ypx+1))
       rp.drawPoints(cast[ptr Point](pts[0].addr), pts.len.cint)
 
-
   if grid.mOriginVisible:
     let
       extent: PxType = 25.0 * vp.zoom
@@ -295,6 +330,9 @@ proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
     rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
     rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
     rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
+
+    # Scale
+    grid.drawScale(vp, rp, size)
 
 proc newGrid*(zCtrl: ZoomCtrl): Grid = 
   result = new Grid
