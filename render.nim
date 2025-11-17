@@ -114,27 +114,30 @@ proc longestLine(lines: openArray[string]): string =
       maxi = i
   lines[maxi]
 
-proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
-  # Draws text at bottom right corner
+proc renderText*(renderer: RendererPtr, x,y: cint, txt: string) =
+  # Draws text at given location
   var txtSzW, txtSzH: cint
   let
     fnt = font(defFontSize)
-    sz = window.getSize()
-    marg = 10
     lines = txt.splitLines
     maxLine = longestLine(lines)
 
   discard sizeText(fnt, maxLine.cstring, addr txtSzW, addr txtSzH)
   txtSzH *= lines.len
-  let dstRect: PRect = (sz.x - txtSzW - marg, 
-                        sz.y - txtSzH - marg, 
-                        txtSzW, txtSzH)
-  #let txtSurface = renderTextBlended(fnt, txt, Black.toColor())
+  let dstRect: PRect = (x - txtSzW, y - txtSzH, txtSzW, txtSzH)
   let txtSurface = renderTextBlendedWrapped(fnt, txt, Black.toColor(), 0)
   let txtTexture = renderer.createTextureFromSurface(txtSurface)
   discard renderer.copy(txtTexture, nil, addr dstRect)
   txtTexture.destroy()
   txtSurface.destroy()
+
+proc renderText*(renderer: RendererPtr, window: WindowPtr, txt: string) =
+  # Draws text at bottom right corner
+  renderer.renderText(window.getSize.x - 10,
+                      window.getSize.y - 10, txt)
+
+
+
 
 
 

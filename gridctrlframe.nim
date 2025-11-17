@@ -426,7 +426,8 @@ wClass(wGridControlPanel of wPanel):
     #--
     self.registerListener(idMsgGridZoom, (w:wWindow, e:wEvent)=>(echo "zoom msg received"))
     self.mBDone.wEvent_Button        do(): self.parent.destroy()
-    self.wEvent_Destroy do(): self.deregisterListener()
+    #self.wEvent_Destroy do(): self.deregisterListener()
+    self.wEvent_Close do(): self.deregisterListener()
 
 
 
@@ -448,7 +449,8 @@ wClass(wGridControlFrame of wFrame):
     self.marginDown  = self.dpiScale(0)
     self.backgroundColor = frameBackgroundColor
     self.mPanel = GridControlPanel(self, gr)
-    self.wEvent_Destroy do(): self.onDestroy()
+    #self.wEvent_Destroy do(): self.onDestroy()
+    self.wEvent_Close do(): self.onDestroy()
 
 
 when isMainModule:
