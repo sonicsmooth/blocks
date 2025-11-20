@@ -229,9 +229,9 @@ wClass(wGridControlPanel of wPanel):
       hi32 =  (valptr shr 32).uint32
       lo32 = (valptr and 0xffff_ffff'u64).uint32
     if event.mOrigin == self.mTxtSizeX.mHwnd:
-      sendToListeners(idMsgGridSizeX, hi32.WPARAM, lo32.LPARAM)
+      sendToListeners(idMsgGridRequestX, hi32.WPARAM, lo32.LPARAM)
     elif event.mOrigin == self.mTxtSizeY.mHwnd:
-      sendToListeners(idMsgGridSizeY, hi32.WPARAM, lo32.LPARAM)
+      sendToListeners(idMsgGridRequestY, hi32.WPARAM, lo32.LPARAM)
 
   proc onCmdCbDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
@@ -331,7 +331,6 @@ wClass(wGridControlPanel of wPanel):
   #--
   proc onMsgGridVisible(self: wGridControlPanel, event: wEvent) =
     let state = event.lParam.bool
-    echo "GridControlPanel received visible state ", state
     self.mCbVisible.value = state
     self.mRbDots.enable(state)
     self.mRbLines.enable(state)
@@ -341,7 +340,10 @@ wClass(wGridControlPanel of wPanel):
   proc onMsgGridLines(self: wGridControlPanel, event: wEvent) =
     self.mRbLines.value = event.lParam.bool
     self.mRbDots.value = not event.lParam.bool
-
+  proc onMsgGridZoom(self: wGridControlPanel, event: wEvent) =
+    let md = self.mGrid.minDelta(Major)
+    self.mTxtSizeX.setValue($md.x)
+    self.mTxtSizeY.setValue($md.y)
 
 
   proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid) =
@@ -351,14 +353,14 @@ wClass(wGridControlPanel of wPanel):
     self.mGrid          = gr
     self.mZctrl         = gr.mZctrl
     self.mBDone         = Button(self, idDone, "Done")
-    self.mIntervalBox   = StaticBox(self, 0, "Interval")
-    self.mBehaviorBox   = StaticBox(self, 0, "Behavior")
-    self.mAppearanceBox = StaticBox(self, 0, "Appearance")
+    self.mIntervalBox   = StaticBox(self, label="Interval")
+    self.mBehaviorBox   = StaticBox(self, label="Behavior")
+    self.mAppearanceBox = StaticBox(self, label="Appearance")
 
-    self.mTxtX          = StaticText(self, 0, "X")
-    self.mTxtY          = StaticText(self, 0, "Y")
-    self.mTxtDivs       = StaticText(self, 0, "Divisions")
-    self.mTxtDens       = StaticText(self, 0, "Magnification")
+    self.mTxtX          = StaticText(self, label="X")
+    self.mTxtY          = StaticText(self, label="Y")
+    self.mTxtDivs       = StaticText(self, label="Divisions")
+    self.mTxtDens       = StaticText(self, label="Magnification")
     self.mTxtSizeX      = TextCtrl(self, idSpaceX, style=wBorderStatic)
     self.mTxtSizeY      = TextCtrl(self, idSpaceY, style=wBorderStatic)
     self.mCbDivisions   = ComboBox(self, idDivisions, choices=gr.allowedDivisionsStr)
@@ -424,7 +426,7 @@ wClass(wGridControlPanel of wPanel):
     self.registerListener(idMsgGridDots,      (w:wWindow, e:wEvent)=>(onMsgGridDots(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridLines,     (w:wWindow, e:wEvent)=>(onMsgGridLines(w.wGridControlPanel, e)))
     #--
-    self.registerListener(idMsgGridZoom, (w:wWindow, e:wEvent)=>(echo "zoom msg received"))
+    self.registerListener(idMsgGridZoom, (w:wWindow, e:wEvent)=>(onMsgGridZoom(w.wGridControlPanel, e)))
     self.mBDone.wEvent_Button        do(): self.parent.destroy()
     #self.wEvent_Destroy do(): self.deregisterListener()
     self.wEvent_Close do(): self.deregisterListener()

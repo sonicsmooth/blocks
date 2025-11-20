@@ -90,6 +90,16 @@ proc areTinyDivisionsValid*(grid: Grid): bool =
   elif WType is SomeFloat:
     true 
 
+proc calcMajorSpace*(grid: Grid, val: WType): WType =
+  # Given a desired major grid space val,
+  # calculate the major grid space given current zoom level.
+  # At stepScale == 1.0, returns val.
+  let stpScale: float = pow(grid.mZctrl.base.float, -grid.mZctrl.logStep.float)
+  when WType is SomeInteger:
+    (val.float / stpScale).round.WType
+  elif WType is SomeFloat:
+    val / stpScale
+  
 
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.

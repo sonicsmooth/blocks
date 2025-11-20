@@ -83,6 +83,11 @@ proc doZoom*(vp: var Viewport, delta: int) =
   if vp.mZctrl.dynamic:
     vp.mZctrl.updateLogStep(vp.mZclicks)
 
+proc resetZoom*(vp: var Viewport) =
+  # Reset zoom to 1.0 and recalc zClicks
+  vp.mZclicks = 0.0
+  vp.doZoom(0)
+
 proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
   # Keep mouse location in the same spot during zoom.
   # Mouse position is the same before and after because it's just the wheel event

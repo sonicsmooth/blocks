@@ -124,13 +124,22 @@ wClass(wMainFrame of wFrame):
 
 
   proc onMsgGridSize(self: wMainFrame, event: wEvent) =
-    let newsz = derefAs[WType](event)
-    if event.mMsg == idMsgGridSizeX:
-      self.mMainPanel.mBlockPanel.mGrid.majorXSpace = newsz
-      # resend message for Y also
+    # Received value is what the user wants at this zoom level
+    # Need to calc value to set grid.majorSpace so minDelta(Major) == val
+    let gr = self.mMainPanel.mBlockPanel.mGrid
+    let newSz = gr.calcMajorSpace(derefAs[WType](event))
+    if event.mMsg == idMsgGridRequestX:
+      gr.majorXSpace = newsz
+      gr.majorYSpace = newsz
+      echo "majorXSpace: ", gr.majorXSpace
+      echo "minDelta: ", gr.minDelta(Major)
+      # Send message to update display to both X and Y
+      sendToListeners(idMsgGridSizeX, event.wParam, event.lParam)
       sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
-    elif event.mMsg == idMsgGridSizeY:
-      self.mMainPanel.mBlockPanel.mGrid.majorYSpace = newsz
+    elif event.mMsg == idMsgGridRequestY:
+      gr.majorYSpace = newsz
+      # Send message to update display to only Y
+      sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
     self.mMainPanel.mBlockPanel.refresh(false)
     sendToListeners(idMsgGridDivisionsReset, 0, 0)
   
@@ -168,7 +177,7 @@ wClass(wMainFrame of wFrame):
     self.mMainPanel.mBlockPanel.mGrid.mSnap = event.lParam.bool
   proc onMsgGridDynamic(self: wMainFrame, event: wEvent) =
     self.mMainPanel.mBlockPanel.mGrid.mZctrl.dynamic = event.lParam.bool
-    self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
+    self.mMainPanel.mBlockPanel.mViewport.resetZoom()
     self.mMainPanel.mBlockPanel.refresh(false)
   proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
     var gr = self.mMainPanel.mBlockPanel.mGrid
@@ -298,11 +307,11 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
     
     # Respond to incoming messages
-    self.registerListener(idMsgGridSizeX,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
-    self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
+    self.registerListener(idMsgGridRequestX,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
+    self.registerListener(idMsgGridRequestY,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
     self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
-    self.registerListener(idMsgGridDivisionsValue, (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
-    self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
+    self.registerListener(idMsgGridDensity,         (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
     #---
     self.registerListener(idMsgGridSnap,     (w:wWindow, e:wEvent)=>onMsgGridSnap(w.wMainFrame, e))
     self.registerListener(idMsgGridDynamic,  (w:wWindow, e:wEvent)=>onMsgGridDynamic(w.wMainFrame, e))
