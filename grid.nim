@@ -11,8 +11,9 @@ type
   Scale* = enum None, Tiny, Minor, Major
   DotsOrLines* = enum Dots, Lines
   DivRange* = range[2..16]
-  # TODO: When these change they should trigger a refresh right away
   Grid* = ref object
+    mTrueXSpace: float
+    mTrueYSpace: float
     mMajorXSpace: WType
     mMajorYSpace: WType
     mDivisions:      DivRange
@@ -46,7 +47,8 @@ proc allowedDivisions*(grid: Grid): seq[DivRange] =
   for d in DivRange.low .. DivRange.high:
     if grid.mMajorXSpace mod d == 0: xset.incl(d)
     if grid.mMajorYSpace mod d == 0: yset.incl(d)
-  (xset * yset).toSeq
+  let isect = xset * yset
+  isect.toSeq
 
 proc allowedDivisionsStr*(grid: Grid): seq[string] =
   for d in grid.allowedDivisions:
@@ -96,11 +98,12 @@ proc calcMajorSpace*(grid: Grid, val: WType): WType =
   # At stepScale == 1.0, returns val.
   let stpScale: float = pow(grid.mZctrl.base.float, -grid.mZctrl.logStep.float)
   when WType is SomeInteger:
-    (val.float / stpScale).round.WType
+    (val.float / stpScale).round
   elif WType is SomeFloat:
     val / stpScale
   
-
+# Todo: Cache in grid object every time something changes
+# Sensitive to grid.mZctrl, grid spacing, grid divisions, scale
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.
   # Return type T i
@@ -131,8 +134,8 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
       minorNaturalY: float = grid.mMajorYSpace.float * stpScale / divs
       minorRoundX: float = minorNaturalX.round
       minorRoundY: float = minorNaturalY.round
-      minorIsRoundedX: bool = minorNaturalX != minorRoundX
-      minorIsRoundedY: bool = minorNaturalY != minorRoundY
+      # minorIsRoundedX: bool = minorNaturalX != minorRoundX
+      # minorIsRoundedY: bool = minorNaturalY != minorRoundY
       minorIsZeroX: bool = minorRoundX == 0.0
       minorIsZeroY: bool = minorRoundY == 0.0
       minorFinalX: float = if minorIsZeroX: 1.0
@@ -140,17 +143,20 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
       minorFinalY: float = if minorIsZeroY: 1
                            else: minorRoundY
 
-      # Major depends on minor
+      # Major is independent
       majorNaturalX: float = grid.mMajorXSpace.float * stpScale
       majorNaturalY: float = grid.mMajorYSpace.float * stpScale
       majorRoundX: float = majorNaturalX.round
       majorRoundY: float = majorNaturalY.round
       majorFinalX: float = if minorIsZeroX: 1.0
-                           elif minorIsRoundedX: minorFinalX * divs
+                           #elif minorIsRoundedX: minorFinalX * divs
                            else: majorRoundX
       majorFinalY: float = if minorIsZeroY: 1
-                           elif minorIsRoundedY: minorFinalY * divs
+                           #elif minorIsRoundedY: minorFinalY * divs
                            else: majorRoundY
+
+    echo "natural: ", majorNaturalX
+    echo "rounded: ", majorRoundX
 
     case scale
     of None: (1, 1)
