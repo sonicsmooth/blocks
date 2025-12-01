@@ -12,10 +12,10 @@ type
   DotsOrLines* = enum Dots, Lines
   DivRange* = range[2..16]
   Grid* = ref object
-    mTrueXSpace: float
-    mTrueYSpace: float
-    mMajorXSpace: WType
-    mMajorYSpace: WType
+    mRefXSpace: float # Major Spacing when zoom level is 0
+    mRefYSpace: float # Major Spacing when zoom level is 0
+    mMajorXSpace*: WType # Written to by minDelta
+    mMajorYSpace*: WType # Written to by minDelta
     mDivisions:      DivRange
     mVisible*:       bool
     mOriginVisible*: bool
@@ -27,14 +27,30 @@ const
   alphaOffset = 20
   stepAlphas = arange(60 .. 255, alphaOffset).toSeq
 
+# Forward decl
+proc minDelta*(grid: Grid, scale: Scale): WPoint
 
+# Return cached values
 proc majorXSpace*(grid: Grid): WType = grid.mMajorXSpace
 proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
-proc `majorXSpace=`*(grid: Grid, val: WType) =
-  grid.mMajorXSpace = val
+# todo: minor, tiny 
 
-proc `majorYSpace=`*(grid: Grid, val: WType) =
-  grid.mMajorYSpace = val
+proc `refXSpace`*(grid: Grid): float = grid.mRefXSpace
+proc `refYSpace`*(grid: Grid): float = grid.mRefYSpace
+
+proc `refXSpace=`*(grid: Grid, val: float) =
+  grid.mRefXSpace = val
+  grid.mMajorXSpace = grid.minDelta(Major).x
+
+proc `refYSpace=`*(grid: Grid, val: float) =
+  grid.mRefYSpace = val
+  grid.mMajorYSpace = grid.minDelta(Major).y
+
+# proc `majorXSpace=`*(grid: Grid, val: WType) =
+#   grid.mMajorXSpace = val
+
+# proc `majorYSpace=`*(grid: Grid, val: WType) =
+#   grid.mMajorYSpace = val
 
 proc allowedDivisions*(grid: Grid): seq[DivRange] =
   # Return list of allowable divisions, i.e., which
@@ -71,7 +87,7 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
 proc divisionsIndex*(grid: Grid): int =
   grid.allowedDivisions.find(grid.mDivisions)
 
-proc minDelta*(grid: Grid, scale: Scale): WPoint
+
 proc areMinorDivisionsValid*(grid: Grid): bool =
   # True if minor grid spaces divide major grid spaces evenly
   # Generally this is false when divisions is weird or when 
@@ -83,7 +99,7 @@ proc areMinorDivisionsValid*(grid: Grid): bool =
     true
 
 proc areTinyDivisionsValid*(grid: Grid): bool =
-  # True if minor grid spaces divide major grid spaces evenly
+  # True if tiny grid spaces divide minor grid spaces evenly
   # Generally this is false when divisions is weird or when 
   # zoomed in very far.
   when WType is SomeInteger:
@@ -92,15 +108,24 @@ proc areTinyDivisionsValid*(grid: Grid): bool =
   elif WType is SomeFloat:
     true 
 
-proc calcMajorSpace*(grid: Grid, val: WType): WType =
+# proc calcReferenceSpace*(grid: Grid, val: WType): WType =
+#   # Given a desired major grid space val,
+#   # calculate the major grid space given current zoom level.
+#   # At stepScale == 1.0, returns val.
+#   # This value gets assigned to grid.mRef[XY]Space
+#   let stpScale: float = pow(grid.mZctrl.base.float, -grid.mZctrl.logStep.float)
+#   when WType is SomeInteger:
+#     (val.float / stpScale).round
+#   elif WType is SomeFloat:
+#     val / stpScale
+
+proc calcReferenceSpace*(grid: Grid, val: WType): float =
   # Given a desired major grid space val,
   # calculate the major grid space given current zoom level.
   # At stepScale == 1.0, returns val.
+  # This value gets assigned to grid.mRef[XY]Space
   let stpScale: float = pow(grid.mZctrl.base.float, -grid.mZctrl.logStep.float)
-  when WType is SomeInteger:
-    (val.float / stpScale).round
-  elif WType is SomeFloat:
-    val / stpScale
+  val.float / stpScale
   
 # Todo: Cache in grid object every time something changes
 # Sensitive to grid.mZctrl, grid spacing, grid divisions, scale
@@ -118,8 +143,8 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
   when WType is SomeInteger:
     let
       # Tiny is independent
-      tinyNaturalX: float = grid.mMajorXSpace.float * stpScale / (divs^2)
-      tinyNaturalY: float = grid.mMajorYSpace.float * stpScale / (divs^2)
+      tinyNaturalX: float = grid.mRefXSpace.float * stpScale / (divs^2)
+      tinyNaturalY: float = grid.mRefYSpace.float * stpScale / (divs^2)
       tinyRoundX: float = tinyNaturalX.round
       tinyRoundY: float = tinyNaturalY.round
       tinyIsZeroX: bool = tinyRoundX == 0.0
@@ -130,12 +155,10 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
                           else: tinyRoundY
 
       # Minor is independent
-      minorNaturalX: float = grid.mMajorXSpace.float * stpScale / divs
-      minorNaturalY: float = grid.mMajorYSpace.float * stpScale / divs
+      minorNaturalX: float = grid.mRefXSpace.float * stpScale / divs
+      minorNaturalY: float = grid.mRefYSpace.float * stpScale / divs
       minorRoundX: float = minorNaturalX.round
       minorRoundY: float = minorNaturalY.round
-      # minorIsRoundedX: bool = minorNaturalX != minorRoundX
-      # minorIsRoundedY: bool = minorNaturalY != minorRoundY
       minorIsZeroX: bool = minorRoundX == 0.0
       minorIsZeroY: bool = minorRoundY == 0.0
       minorFinalX: float = if minorIsZeroX: 1.0
@@ -144,15 +167,13 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
                            else: minorRoundY
 
       # Major is independent
-      majorNaturalX: float = grid.mMajorXSpace.float * stpScale
-      majorNaturalY: float = grid.mMajorYSpace.float * stpScale
+      majorNaturalX: float = grid.mRefXSpace.float * stpScale
+      majorNaturalY: float = grid.mRefYSpace.float * stpScale
       majorRoundX: float = majorNaturalX.round
       majorRoundY: float = majorNaturalY.round
       majorFinalX: float = if minorIsZeroX: 1.0
-                           #elif minorIsRoundedX: minorFinalX * divs
                            else: majorRoundX
       majorFinalY: float = if minorIsZeroY: 1
-                           #elif minorIsRoundedY: minorFinalY * divs
                            else: majorRoundY
 
     echo "natural: ", majorNaturalX
@@ -165,12 +186,12 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
     of Major: (majorFinalX.WType, majorFinalY.WType)
   elif WType is SomeFloat:
     let 
-      majorX: float = grid.mMajorXSpace * stpScale
-      majorY: float = grid.mMajorYSpace * stpScale
-      minorX: float = grid.mMajorXSpace * stpScale / divs
-      minorY: float = grid.mMajorYSpace * stpScale / divs
-      tinyX:  float = grid.mMajorXSpace * stpScale / (divs^2)
-      tinyY:  float = grid.mMajorYSpace * stpScale / (divs^2)
+      majorX: float = grid.mRefXSpace * stpScale
+      majorY: float = grid.mRefYSpace * stpScale
+      minorX: float = grid.mRefXSpace * stpScale / divs
+      minorY: float = grid.mRefYSpace * stpScale / divs
+      tinyX:  float = grid.mRefXSpace * stpScale / (divs^2)
+      tinyY:  float = grid.mRefYSpace * stpScale / (divs^2)
     case scale
     of None: (0.0, 0.0)
     of Tiny: (tinyX, tinyY)
@@ -354,8 +375,8 @@ proc newGrid*(zCtrl: ZoomCtrl): Grid =
   result = new Grid
   result.mZctrl = zCtrl
   result.divisions = gGridSpecsJ["divisions"].getInt
-  result.majorXSpace = gGridSpecsJ["majorXSpace"].getInt
-  result.majorYSpace = gGridSpecsJ["majorYSpace"].getInt
+  result.refXSpace = gGridSpecsJ["referenceXSpace"].getFloat
+  result.refYSpace = gGridSpecsJ["referenceYSpace"].getFloat
   result.mVisible = gGridSpecsJ["visible"].getBool
   result.mOriginVisible = gGridSpecsJ["originVisible"].getBool
   result.mSnap = gGridSpecsJ["snap"].getBool
@@ -365,6 +386,7 @@ proc newGrid*(zCtrl: ZoomCtrl): Grid =
     else: raise newException(ValueError, "Select dots or lines")
 
 when isMainModule:
-  let zc = newZoomCtrl(base=4, clickDiv=2400, maxPwr=3, density=1.0)
+  let zc = newZoomCtrl(base=4, clickDiv=2400, maxPwr=3,
+                       density=1.0, dynamic=true, baseSync=true)
   let gr = newGrid(zc)
   echo gr[]
