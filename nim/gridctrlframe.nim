@@ -342,6 +342,7 @@ wClass(wGridControlPanel of wPanel):
     self.mRbDots.value = not event.lParam.bool
   proc onMsgGridZoom(self: wGridControlPanel, event: wEvent) =
     let md = self.mGrid.minDelta(Major)
+    echo md
     self.mTxtSizeX.setValue($md.x)
     self.mTxtSizeY.setValue($md.y)
 
@@ -373,8 +374,8 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines       = RadioButton(self, idLines, "Lines")
 
     
-    self.mTxtSizeX.setValue($self.mGrid.majorXSpace)
-    self.mTxtSizeY.setValue($self.mGrid.majorYSpace)
+    self.mTxtSizeX.setValue($self.mGrid.minDelta(Major).x)
+    self.mTxtSizeY.setValue($self.mGrid.minDelta(Major).y)
     self.mCbDivisions.select(self.mGrid.divisionsindex)
     self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
     self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
@@ -394,8 +395,6 @@ wClass(wGridControlPanel of wPanel):
     # Respond to controls
     self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
     
-    # self.mTxtSizeX.WM_MOUSEHOVER   do (event: wEvent): echo "hover"
-    # self.mTxtSizeX.WM_MOUSELEAVE  do (event: wEvent): echo "leave"
     self.mTxtSizeX.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
     self.mTxtSizeY.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
     self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisionsSelect(event)
@@ -415,7 +414,7 @@ wClass(wGridControlPanel of wPanel):
     self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>(onMsgGridSize(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>(onMsgGridDivisionsSelect(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsValue(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDivisionsReset,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsReset(w.wGridControlPanel, e)))
+    #self.registerListener(idMsgGridDivisionsReset,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsReset(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>(onMsgGridDensity(w.wGridControlPanel, e)))
     #--
     self.registerListener(idMsgGridSnap,      (w:wWindow, e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))

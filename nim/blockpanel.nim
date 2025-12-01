@@ -518,9 +518,9 @@ Rendering options for SDL and pixie
     txt &= &"level: {self.mViewport.zCtrl.logStep}\n"
     txt &= &"rawZoom: {self.mViewport.rawZoom:.3f}\n"
     txt &= &"zoom: {self.mViewport.zoom:.3f}\n"
-    txt &= &"smoothDelta: {minDelta(self.mGrid, scale=None):.3s}\n"
-    txt &= &"tinyDelta: {minDelta(self.mGrid, scale=Tiny):.3s}\n"
-    txt &= &"minorDelta: {minDelta(self.mGrid, scale=Minor):.3s}\n"
+    txt &= &"smoothDelta: {minDelta(self.mGrid, scale=None)}\n"
+    txt &= &"tinyDelta: {minDelta(self.mGrid, scale=Tiny)}\n"
+    txt &= &"minorDelta: {minDelta(self.mGrid, scale=Minor)}\n"
     let majdelt = minDelta(self.mGrid, scale=Major)
     let pxwidth = (majdelt.x.float * self.mViewport.zoom).round.int
     txt &= &"majorDelta: {majdelt}\n"

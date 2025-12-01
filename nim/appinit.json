@@ -22,8 +22,8 @@
       "baseSync": true
     },
     "Grid": {
-      "majorXSpace": 160,
-      "majorYSpace": 160,
+      "referenceXSpace": 160,
+      "referenceYSpace": 160,
       "divisions": 8,
       "visible": true,
       "originVisible": true,
