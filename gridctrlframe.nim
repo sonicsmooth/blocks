@@ -300,24 +300,21 @@ wClass(wGridControlPanel of wPanel):
   proc onMsgGridDivisionsValue(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.setValue($event.lParam)
   proc onMsgGridDivisionsReset(self: wGridControlPanel, event: wEvent) = 
-    # Change divisions based on allowed divisions, sent after a 
-    # change in sizeX or sizeY.  If allowed divisions is empty,
-    # then current divisions are not changed, otherwise find
-    # closest match to old index.
-    discard event
-    let oldidx = self.mCbDivisions.selection
-    let oldval = self.mCbDivisions.value
-
+    # Change divisions drop down options, sent after a 
+    # change in sizeX or sizeY. Current divisions setting is 
+    # not changed.  If current divisions setting is in allowed
+    # divisions, then selected index is updated to use this value.
+    
     self.mCbDivisions.clear()
     for s in self.mGrid.allowedDivisionsStr:
       self.mCbDivisions.append(s)
 
-    let adivs = self.mGrid.allowedDivisions
-    if adivs.len > 0:
-      let newidx = clamp(oldidx, 0..<adivs.len)
-      let newval = adivs[newidx]
+    let oldval = self.mGrid.divisions
+    let newidx = self.mCbDivisions.findText($oldval)
+    if newidx >= 0:
       sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
-      self.mGrid.divisions = newval
+    else:
+      sendToListeners(idMsgGridDivisionsValue, self.mHwnd.WPARAM, oldval.LPARAM)
 
   proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
     self.mSliderDensity.setValue(event.lParam)
@@ -342,7 +339,6 @@ wClass(wGridControlPanel of wPanel):
     self.mRbDots.value = not event.lParam.bool
   proc onMsgGridZoom(self: wGridControlPanel, event: wEvent) =
     let md = self.mGrid.minDelta(Major)
-    echo md
     self.mTxtSizeX.setValue($md.x)
     self.mTxtSizeY.setValue($md.y)
 
@@ -376,7 +372,7 @@ wClass(wGridControlPanel of wPanel):
     
     self.mTxtSizeX.setValue($self.mGrid.minDelta(Major).x)
     self.mTxtSizeY.setValue($self.mGrid.minDelta(Major).y)
-    self.mCbDivisions.select(self.mGrid.divisionsindex)
+    self.mCbDivisions.select(self.mGrid.divisionsIndex)
     self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
     self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
     self.mCbSnap.setValue(self.mGrid.mSnap)
@@ -414,7 +410,7 @@ wClass(wGridControlPanel of wPanel):
     self.registerListener(idMsgGridSizeY,     (w:wWindow, e:wEvent)=>(onMsgGridSize(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>(onMsgGridDivisionsSelect(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsValue(w.wGridControlPanel, e)))
-    #self.registerListener(idMsgGridDivisionsReset,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsReset(w.wGridControlPanel, e)))
+    self.registerListener(idMsgGridDivisionsReset,  (w:wWindow, e:wEvent)=>(onMsgGridDivisionsReset(w.wGridControlPanel, e)))
     self.registerListener(idMsgGridDensity,   (w:wWindow, e:wEvent)=>(onMsgGridDensity(w.wGridControlPanel, e)))
     #--
     self.registerListener(idMsgGridSnap,      (w:wWindow, e:wEvent)=>(onMsgGridSnap(w.wGridControlPanel, e)))

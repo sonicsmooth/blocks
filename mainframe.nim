@@ -111,7 +111,6 @@ wClass(wMainFrame of wFrame):
     of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar hence [1]
       let state = self.mBandToolbars[1].toolState(idCmdGridShow)
-      echo "Sending grid visible state ", state, " from ", self.mHwnd
       sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
       if not singleFrames or not self.mGridCtrlFrameShowing:
@@ -128,12 +127,10 @@ wClass(wMainFrame of wFrame):
     # Need to calc value to set grid.majorSpace so minDelta(Major) == val
     let gr = self.mMainPanel.mBlockPanel.mGrid
     let newSz = gr.calcReferenceSpace(derefAs[WType](event))
-    #let newSz: float = gr.calcReferenceSpace(derefAs[float](event))
     if event.mMsg == idMsgGridRequestX:
       gr.refYSpace = newsz
       gr.refXSpace = newsz
       echo "refXSpace:   ", gr.refXSpace
-      echo "majorXSpace: ", gr.majorXSpace
       echo "minDelta:    ", gr.minDelta(Major)
       # Send message to update display to both X and Y
       sendToListeners(idMsgGridSizeX, event.wParam, event.lParam)
@@ -143,7 +140,7 @@ wClass(wMainFrame of wFrame):
       # Send message to update display to only Y
       sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
     self.mMainPanel.mBlockPanel.refresh(false)
-    #sendToListeners(idMsgGridDivisionsReset, 0, 0)
+    sendToListeners(idMsgGridDivisionsReset, 0, 0)
   
   proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
     # Change divisions based on given index and force zoom
@@ -195,7 +192,6 @@ wClass(wMainFrame of wFrame):
   #--
   proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
     let state = event.mLparam.bool
-    echo "Mainframe grid visible state set to ", state
     self.mMainPanel.mBlockPanel.mGrid.mVisible = state
     self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
     self.mMainPanel.mBlockPanel.refresh(false)
@@ -311,8 +307,8 @@ wClass(wMainFrame of wFrame):
     # Respond to incoming messages
     self.registerListener(idMsgGridRequestX,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
     self.registerListener(idMsgGridRequestY,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
-    # self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
-    # self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
     self.registerListener(idMsgGridDensity,         (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
     #---
     self.registerListener(idMsgGridSnap,     (w:wWindow, e:wEvent)=>onMsgGridSnap(w.wMainFrame, e))
