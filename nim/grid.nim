@@ -31,8 +31,8 @@ const
 proc minDelta*(grid: Grid, scale: Scale): WPoint
 
 # Return cached values
-proc majorXSpace*(grid: Grid): WType = grid.mMajorXSpace
-proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
+# proc majorXSpace*(grid: Grid): WType = grid.mMajorXSpace
+# proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
 # todo: minor, tiny 
 
 proc `refXSpace`*(grid: Grid): float = grid.mRefXSpace
@@ -46,19 +46,12 @@ proc `refYSpace=`*(grid: Grid, val: float) =
   grid.mRefYSpace = val
   grid.mMajorYSpace = grid.minDelta(Major).y
 
-# proc `majorXSpace=`*(grid: Grid, val: WType) =
-#   grid.mMajorXSpace = val
-
-# proc `majorYSpace=`*(grid: Grid, val: WType) =
-#   grid.mMajorYSpace = val
-
 proc allowedDivisions*(grid: Grid): seq[DivRange] =
   # Return list of allowable divisions, i.e., which
   # values in 2..16 divide major grid space evenly.
   # If the result for X and Y are different, then
   # return the intersection.  Typically the values
-  # are 1,2,4,5,8,10,16.  1 will be treated as a
-  # special case elsewhere
+  # are 2,4,5,8,10,16.
   var xset, yset: set[DivRange]
   for d in DivRange.low .. DivRange.high:
     if grid.mMajorXSpace mod d == 0: xset.incl(d)
@@ -74,10 +67,9 @@ proc divisions*(grid: Grid): int = grid.mDivisions
 
 proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
   # Change grid's divisions to val
-  # Raises exception if out of range
   # Returns true if given val is in allowed divisions, else false.
 
-  # This will raise exception if val is out of range
+  # Raise exception if val is out of range
   result = val in grid.allowedDivisions()
 
   if grid.mZctrl.baseSync:
@@ -86,7 +78,6 @@ proc `divisions=`*(grid: var Grid, val: int): bool {.discardable.} =
  
 proc divisionsIndex*(grid: Grid): int =
   grid.allowedDivisions.find(grid.mDivisions)
-
 
 proc areMinorDivisionsValid*(grid: Grid): bool =
   # True if minor grid spaces divide major grid spaces evenly
@@ -131,8 +122,7 @@ proc calcReferenceSpace*(grid: Grid, val: WType): float =
 # Sensitive to grid.mZctrl, grid spacing, grid divisions, scale
 proc minDelta*(grid: Grid, scale: Scale): WPoint =
   # Return minimum grid spacing.
-  # Return type T i
-  # When zoomed in far, stpScale is small and spacings are small.
+  # When zoomed in, stpScale is small and spacings are small.
   # When zoomed out, stpScale is large and spacings are large
   # scale lets you return different sizes
   let
@@ -175,9 +165,6 @@ proc minDelta*(grid: Grid, scale: Scale): WPoint =
                            else: majorRoundX
       majorFinalY: float = if minorIsZeroY: 1
                            else: majorRoundY
-
-    echo "natural: ", majorNaturalX
-    echo "rounded: ", majorRoundX
 
     case scale
     of None: (1, 1)
