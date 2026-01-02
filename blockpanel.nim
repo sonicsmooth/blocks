@@ -136,10 +136,11 @@ wClass(wBlockPanel of wSDLPanel):
       if cprect.w == 0 or cprect.h == 0:
         # We are zoomed out too far
         return nil
-      let
-        surface = createRGBSurface(0, cprect.w, cprect.h, 32, rmask, gmask, bmask, amask)
-        swRenderer = createSoftwareRenderer(surface)
-      swRenderer.renderDBComp(vp, rect, cprect, zero=true)
+      # let
+      #   surface = createRGBSurface(0, cprect.w, cprect.h, 32, rmask, gmask, bmask, amask)
+      #   swRenderer = createSoftwareRenderer(surface)
+      var rptr: RendererPtr
+      let surface = renderDBComp(rptr, vp, rect, cprect, zero=true)
       let pTexture = self.sdlRenderer.createTextureFromSurface(surface)
       if pTexture.isNil:
         raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
@@ -175,7 +176,7 @@ wClass(wBlockPanel of wSDLPanel):
       let
         prect = rect.bbox.toPRect(vp)
         cprect = self.clampRectSize(prect)
-      self.sdlRenderer.renderDBComp(vp, rect, cprect, zero=false)
+      discard renderDBComp(self.sdlRenderer, vp, rect, cprect, zero=false)
 
   proc updateDestinationBox(self: wBlockPanel) =
     let 

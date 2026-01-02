@@ -41,7 +41,7 @@ proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBComp*(rp: RendererPtr, vp: Viewport, rect: DBComp, prect: PRect, zero: bool) =
+proc renderDBComp*(rp: var RendererPtr, vp: Viewport, rect: DBComp, prect: PRect, zero: bool): SurfacePtr =
   # Draw rectangle on SDL2 renderer
   # vp is Viewport, used for zoom
   # rect is database object
@@ -49,6 +49,10 @@ proc renderDBComp*(rp: RendererPtr, vp: Viewport, rect: DBComp, prect: PRect, ze
   # zero is whether the object should be rendered at upper left corner of target
   #   this should be true when target is texture
   #   this should be false when target is screen
+
+  if rp.isNil:
+    result = createRGBSurface(0, prect.w, prect.h, 32, rmask, gmask, bmask, amask)
+    rp = createSoftwareRenderer(result)
 
   # Draw rectangle
   var err: SDL_Return

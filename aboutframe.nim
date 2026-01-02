@@ -15,7 +15,7 @@ proc newFont(typeface: Typeface, size: float32, color: pixie.Color): Font =
   result.size = size
   result.paint.color = color
 
-proc heart(w,h: int): Image =
+proc heart*(w,h: int): Image =
   result = newImage(w, h)
   result.fill(rgba(255, 255, 255, 200)) # clear background
 

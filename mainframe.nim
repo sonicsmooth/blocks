@@ -21,6 +21,7 @@ type
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
+              idCmdOptions,
               idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout
 
 const
@@ -30,6 +31,7 @@ const
          staticRead(pth & r"Folder.bmp"),
          staticRead(pth & r"Save.bmp"),
          staticRead(pth & r"Close.bmp"),
+         staticRead(pth & r"Application.bmp"),
          staticRead(pth & r"Exit.bmp"),
          staticRead(pth & r"Info.bmp"),
          staticRead(pth & r"Help book.bmp"),
@@ -47,27 +49,29 @@ for r in res:
   imgLstBg.add(Image(r).scale(big, big))
 
 let
-  bmpNewSm    = imgLstSm.getBitmap(0)
-  bmpOpenSm   = imgLstSm.getBitmap(1)
-  bmpSaveSm   = imgLstSm.getBitmap(2)
-  bmpCloseSm  = imgLstSm.getBitmap(3)
-  bmpExitSm   = imgLstSm.getBitmap(4)
-  bmpInfoSm   = imgLstSm.getBitmap(5)
-  bmpHelpSm   = imgLstSm.getBitmap(6)
-  bmpAddSm    = imgLstSm.getBitmap(7)
-  bmpGridSm   = imgLstSm.getBitmap(8)
-  bmpGearsSm  = imgLstSm.getBitmap(9)
+  bmpNewSm     = imgLstSm.getBitmap(0)
+  bmpOpenSm    = imgLstSm.getBitmap(1)
+  bmpSaveSm    = imgLstSm.getBitmap(2)
+  bmpCloseSm   = imgLstSm.getBitmap(3)
+  bmpOptionsSm = imgLstSm.getBitmap(4)
+  bmpExitSm    = imgLstSm.getBitmap(5)
+  bmpInfoSm    = imgLstSm.getBitmap(6)
+  bmpHelpSm    = imgLstSm.getBitmap(7)
+  bmpAddSm     = imgLstSm.getBitmap(8)
+  bmpGridSm    = imgLstSm.getBitmap(9)
+  bmpGearsSm   = imgLstSm.getBitmap(10)
 
-  bmpNewBg    = imgLstBg.getBitmap(0)
-  bmpOpenBg   = imgLstBg.getBitmap(1)
-  bmpSaveBg   = imgLstBg.getBitmap(2)
-  bmpCloseBg  = imgLstBg.getBitmap(3)
-  bmpExitBg   = imgLstBg.getBitmap(4)
-  bmpInfoBg   = imgLstBg.getBitmap(5)
-  bmpHelpBg   = imgLstBg.getBitmap(6)
-  bmpAddBg    = imgLstBg.getBitmap(7)
-  bmpGridBg   = imgLstBg.getBitmap(8)
-  bmpGearsBg  = imgLstBg.getBitmap(9)
+  bmpNewBg     = imgLstBg.getBitmap(0)
+  bmpOpenBg    = imgLstBg.getBitmap(1)
+  bmpSaveBg    = imgLstBg.getBitmap(2)
+  bmpCloseBg   = imgLstBg.getBitmap(3)
+  bmpOptionsBg = imgLstBg.getBitmap(4)
+  bmpExitBg    = imgLstBg.getBitmap(5)
+  bmpInfoBg    = imgLstBg.getBitmap(6)
+  bmpHelpBg    = imgLstBg.getBitmap(7)
+  bmpAddBg     = imgLstBg.getBitmap(8)
+  bmpGridBg    = imgLstBg.getBitmap(9)
+  bmpGearsBg   = imgLstBg.getBitmap(10)
 
 
 
@@ -218,6 +222,8 @@ wClass(wMainFrame of wFrame):
     menu1.append(idCmdOpen, "Open", bitmap=bmpOpenSm)
     menu1.append(idCmdSave, "Save", bitmap=bmpSaveSm)
     menu1.append(idCmdClose, "Close", bitmap=bmpCloseSm)
+    menu1.appendSeparator()
+    menu1.append(idCmdOptions, "Options", bitmap=bmpOptionsSm)
     menu1.appendSeparator()
     menu1.append(idCmdExit, "Exit", bitmap=bmpExitSm)
     menu2.append(idCmdAbout, "About", bitmap=bmpInfoSm)
