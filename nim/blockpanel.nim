@@ -136,11 +136,11 @@ wClass(wBlockPanel of wSDLPanel):
       if cprect.w == 0 or cprect.h == 0:
         # We are zoomed out too far
         return nil
-      # let
-      #   surface = createRGBSurface(0, cprect.w, cprect.h, 32, rmask, gmask, bmask, amask)
-      #   swRenderer = createSoftwareRenderer(surface)
       var rptr: RendererPtr
-      let surface = renderDBComp(rptr, vp, rect, cprect, zero=true)
+      #let surface = renderDBComp(rptr, vp, rect, cprect, zero=true)
+      let surface = renderDBCompPixie(vp, rect, cprect)
+      if surface.isNil:
+        return
       let pTexture = self.sdlRenderer.createTextureFromSurface(surface)
       if pTexture.isNil:
         raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
