@@ -1,7 +1,13 @@
-import std/[enumerate, strutils, strformat, tables, math]
+import std/[enumerate, 
+            strutils, 
+            strformat, 
+            tables, 
+            math]
 import sdl2
 import sdl2/ttf
 import rects, utils, appopts
+import shapes
+
 
 
 type
@@ -106,6 +112,78 @@ proc renderDBComp*(rp: var RendererPtr, vp: Viewport, rect: DBComp, prect: PRect
 
     rp.copyEx(pTextTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
     pTextTexture.destroy()
+
+#let hrt = heart(52, 102)
+proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
+  # Draw rectangle to new surface using pixie
+  # vp is Viewport, used for zoom
+  # rect is database object
+  # prect is target rectangle with same aspect ratio as rect
+
+  echo prect.w
+
+  let hrt = checkers(prect.w, prect.h)
+  #let hrt = heart(prect.w, prect.h)
+  #let hrt = junkTxt(prect.w, prect.h)
+  let pitch = prect.w * 4
+  result = createRGBSurfaceFrom(
+    hrt.data[0].addr, 
+    prect.w, prect.h, 
+    32, pitch, 
+    rmask, gmask, bmask, amask)
+  if result.isNil:
+    echo "Create surface failed"
+    echo getError()
+  # # Draw rectangle
+  # let prect = prect.zero 
+  # let highlight =
+  #   if   (rect.selected, rect.hovering) == (false, false): 1.0
+  #   elif (rect.selected, rect.hovering) == (false, true ): 1.2
+  #   elif (rect.selected, rect.hovering) == (true,  false): 1.5
+  #   else: 1.9
+  
+  # rp.renderFilledRect(prect, rect.fillColor * highlight, rect.penColor)
+  # when defined(debug):
+  #   if err != SdlSuccess:
+  #     raise newException(ValueError, &"Could not renderFilledRect: {getError()}")
+
+  # # Draw origin
+  # # Todo: There is something to be said here about model space
+  # # TODO: to world space to pixel space
+  # let
+  #   fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
+  #   fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
+  #   opx: PxPoint = (fnx(rect.originToLeftEdge), fny(rect.originToTopEdge))
+  #   extent = (10.0 * vp.zoom).round.cint
+  # rp.setDrawColor(Black.toColor)
+  # err = rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
+  # when defined(debug):
+  #   if err != SdlSuccess:
+  #     raise newException(ValueError, &"Could not drawLine: {getError()}")
+  # err = rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
+  # when defined(debug):
+  #   if err != SdlSuccess:
+  #     raise newException(ValueError, &"Could not drawLine: {getError()}")
+
+  # # Text to texture, then texture to renderer
+  # # TODO: cache texts at different sizes
+  # if gAppOpts.enableText:
+  #   let 
+  #     (w, h) = (prect.w, prect.h)
+  #     selstr = $rect.id & (if rect.selected: "*" else: "")
+  #     font = rect.font(vp.zoom)
+  #     textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
+  #     (tsw, tsh) = (textSurface.w, textSurface.h)
+  #     dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
+  #                       prect.y + (h div 2) - (tsh div 2), tsw, tsh)
+  #     pTextTexture = rp.createTextureFromSurface(textSurface)
+  #   if pTextTexture.isNil:
+  #     raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
+
+  #   rp.copyEx(pTextTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
+  #   pTextTexture.destroy()
+
+
 
 proc longestLine(lines: openArray[string]): string =
   # Returns longest substring terminated by newline

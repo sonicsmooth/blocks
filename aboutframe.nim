@@ -1,4 +1,5 @@
 import wnim, winim
+import shapes
 import pixie
 
 # No wPanel here, just draw directly
@@ -17,7 +18,7 @@ proc newFont(typeface: Typeface, size: float32, color: pixie.Color): Font =
 
 proc heart*(w,h: int): Image =
   result = newImage(w, h)
-  result.fill(rgba(255, 255, 255, 200)) # clear background
+  result.fill(rgba(255, 255, 255, 10)) # clear background
 
   var path = newPath()
   path.moveTo(20, 60)
@@ -27,8 +28,9 @@ proc heart*(w,h: int): Image =
   path.quadraticCurveTo(20, 120, 20, 60)
   path.closePath()
   result.fillPath(path, "#7B42FC")
+  #result.fillPath(path, "#ffffff")
 
-proc junkTxt(w,h: int): Image = 
+proc junkTxt*(w,h: int): Image = 
   let typeface = readTypeface("fonts/Ubuntu-Regular_1.ttf")
   let spans = @[
     newSpan("verb [with object] ",
@@ -52,7 +54,7 @@ wClass(wAboutFrame of wFrame):
       w = rect.width
       h = rect.height
    
-    if cnt mod 3 == 2:
+    if cnt mod 4 == 0:
       let rect = windef.RECT(left: 0, top: 0, right: w-1, bottom: h-1)
       let hbr = CreateSolidBrush(RGB(255,0,0))
       hbmp = CreateBitmap(w, h, 1, 32, nil)
@@ -65,7 +67,8 @@ wClass(wAboutFrame of wFrame):
       DeleteObject(bmpDc)
     else:
       let image = 
-        if cnt mod 3 == 1: heart(w, h)
+        if cnt mod 4 == 1: heart(w, h)
+        elif cnt mod 4 == 2: checkers(w, h)
         else: junkTxt(w, h)
       hbmp = CreateBitmap(w,h,1,32,image.data[0].addr)
       bmpDc = CreateCompatibleDC(0.HDC)
