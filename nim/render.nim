@@ -122,12 +122,14 @@ proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
 
   echo prect.w
 
-  let hrt = checkers(prect.w, prect.h)
+  #let hrt = checkers(prect.w, prect.h)
+  var pixiRect: shapes.Rect
+  let shape = basicBox(pixiRect, rect.penColor)
   #let hrt = heart(prect.w, prect.h)
   #let hrt = junkTxt(prect.w, prect.h)
   let pitch = prect.w * 4
   result = createRGBSurfaceFrom(
-    hrt.data[0].addr, 
+    shape.data[0].addr, 
     prect.w, prect.h, 
     32, pitch, 
     rmask, gmask, bmask, amask)
