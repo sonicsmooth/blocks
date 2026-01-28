@@ -1,7 +1,7 @@
 
 import pixie
-
-
+import colors
+export pixie.Rect
 
 proc newFont(typeface: Typeface, size: float32, color: pixie.Color): Font =
   result = newFont(typeface)
@@ -58,7 +58,13 @@ proc checkers*(w, h: int): Image =
           pos = vec2((x.float-1) * sz, y.float * sz)
           ctx.fillStyle = rgba(0, 0, 255, 255)
           ctx.fillRect(rect(pos, wh))
-         
+
+proc basicBox*(rect: pixie.Rect, color: ColorU32): Image =
+  result = newImage(rect.w.int, rect.h.int)
+  let ctx = result.newContext()
+  ctx.fillStyle = rgba(color.red, color.green, color.blue, color.alpha)
+  ctx.fillRect(rect)
+
 when isMainModule:
   let image = checkers(200, 200)
   image.writeFile("square.png")
