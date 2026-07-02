@@ -120,11 +120,14 @@ proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
   # rect is database object
   # prect is target rectangle with same aspect ratio as rect
 
-  echo prect.w
-
   #let hrt = checkers(prect.w, prect.h)
   var pixiRect: shapes.Rect
-  let shape = basicBox(pixiRect, rect.penColor)
+  pixiRect.x = 0.0
+  pixiRect.y = 0.0
+  pixiRect.w = prect.w.float32
+  pixiRect.h = prect.h.float32
+  #let shape = basicBox(pixiRect, rect.penColor)
+  let shape = heart(prect.w, prect.h)
   #let hrt = heart(prect.w, prect.h)
   #let hrt = junkTxt(prect.w, prect.h)
   let pitch = prect.w * 4
@@ -133,9 +136,11 @@ proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
     prect.w, prect.h, 
     32, pitch, 
     rmask, gmask, bmask, amask)
+
   if result.isNil:
     echo "Create surface failed"
     echo getError()
+
   # # Draw rectangle
   # let prect = prect.zero 
   # let highlight =
@@ -144,11 +149,6 @@ proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
   #   elif (rect.selected, rect.hovering) == (true,  false): 1.5
   #   else: 1.9
   
-  # rp.renderFilledRect(prect, rect.fillColor * highlight, rect.penColor)
-  # when defined(debug):
-  #   if err != SdlSuccess:
-  #     raise newException(ValueError, &"Could not renderFilledRect: {getError()}")
-
   # # Draw origin
   # # Todo: There is something to be said here about model space
   # # TODO: to world space to pixel space
@@ -184,7 +184,6 @@ proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
 
   #   rp.copyEx(pTextTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
   #   pTextTexture.destroy()
-
 
 
 proc longestLine(lines: openArray[string]): string =
