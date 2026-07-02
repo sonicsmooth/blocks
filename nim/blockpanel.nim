@@ -146,6 +146,7 @@ wClass(wBlockPanel of wSDLPanel):
         raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
       self.mTextureCache[key] = pTexture
       pTexture
+
   
   proc blitFromTextureCache(self: wBlockPanel) =
     # Copy from texture cache to screen via sdlrenderer

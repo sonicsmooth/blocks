@@ -19,6 +19,8 @@ proc heart*(w,h: int): Image =
   path.quadraticCurveTo(180, 120, 100, 180)
   path.quadraticCurveTo(20, 120, 20, 60)
   path.closePath()
+  let scale = w.float / 180.0
+  path.transform(scale(vec2(scale, scale)))
   result.fillPath(path, "#7B42FC")
   #result.fillPath(path, "#ffffff")
 
