@@ -113,7 +113,6 @@ proc renderDBComp*(rp: var RendererPtr, vp: Viewport, rect: DBComp, prect: PRect
     rp.copyEx(pTextTexture, nil, addr dstRect, -rect.rot.toFloat, nil)
     pTextTexture.destroy()
 
-#let hrt = heart(52, 102)
 proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
   # Draw rectangle to new surface using pixie
   # vp is Viewport, used for zoom
@@ -126,10 +125,7 @@ proc renderDBCompPixie*(vp: Viewport, rect: DBComp, prect: PRect): SurfacePtr =
   pixiRect.y = 0.0
   pixiRect.w = prect.w.float32
   pixiRect.h = prect.h.float32
-  #let shape = basicBox(pixiRect, rect.penColor)
-  let shape = heart(prect.w, prect.h)
-  #let hrt = heart(prect.w, prect.h)
-  #let hrt = junkTxt(prect.w, prect.h)
+  let shape = basicBox(pixiRect, rect.penColor)
   let pitch = prect.w * 4
   result = createRGBSurfaceFrom(
     shape.data[0].addr, 
