@@ -9,15 +9,16 @@ import viewport, utils
 import mainpanel, aboutframe, gridctrlframe, grid
 export mainpanel
 
+# TODO: mainframe should have ref to editor, doc
 
 type
   wMainFrame* = ref object of wFrame
-    mGridCtrlFrameShowing: bool
-    mMainPanel*: wMainPanel
+    gridCtrlFrameShowing: bool
+    mainPanel*: wMainPanel
     #mMenuBar: wMenuBar
     #mStatusBar: wStatusBar
-    mBandToolBars: seq[wToolBar]
-    #mReBar: wReBar
+    bandToolBars: seq[wToolBar]
+    #reBar: wReBar
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
@@ -77,13 +78,13 @@ let
 
 wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
-    self.mMainPanel.size = self.clientSize
-    self.mStatusBar.setStatusText($self.clientSize, index=1)
+    self.mainPanel.size = self.clientSize
+    self.statusBar.setStatusText($self.clientSize, index=1)
   proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
     # event can contain either client or screen coordinates
     # so ignore wparam and lparam.  Just grab  mouse pos directly
-    let mousePxPos = screenToClient(self.mMainPanel.mBlockPanel, wGetMousePosition())
-    let mouseWPos: WPoint = mousePxPos.toWorld(self.mMainPanel.mBlockPanel.mViewport)
+    let mousePxPos = screenToClient(self.mainPanel.blockPanel, wGetMousePosition())
+    let mouseWPos: WPoint = mousePxPos.toWorld(self.mainPanel.blockPanel.editor.viewport)
     when WType is SomeFloat:
       let mwpx = &"{mouseWPos.x:0.4f}"
       let mwpy = &"{mouseWPos.y:0.4f}"
@@ -91,10 +92,10 @@ wClass(wMainFrame of wFrame):
       let mwpx = &"{mouseWPos.x}"
       let mwpy = &"{mouseWPos.y}"
     let txt = &"Pixel: {mousePxPos}; World: ({mwpx}, {mwpy})"
-    self.mStatusBar.setStatusText(txt, index=2)
+    self.statusBar.setStatusText(txt, index=2)
   proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
     let tmpStr = &"temperature: {event.mLparam}"
-    self.mStatusBar.setStatusText(tmpStr, index=0)
+    self.statusBar.setStatusText(tmpStr, index=0)
   proc onToolEvent(self: wMainFrame, event: wEvent) =
     case event.id
     of idCmdNew: discard
@@ -106,22 +107,22 @@ wClass(wMainFrame of wFrame):
     of idCmdExit: self.destroy()
     of idCmdHelp: discard
     of idCmdInfo:
-      echo self.mMainPanel.mBlockPanel.mGrid[]
-      echo self.mMainPanel.mBlockPanel.mViewport[]
-      echo self.mMainPanel.mBlockPanel.mGrid.mZctrl[]
+      echo self.mainPanel.blockPanel.editor.doc.grid[]
+      echo self.mainPanel.blockPanel.editor.viewport[]
+      echo self.mainPanel.blockPanel.editor.doc.grid.mZctrl[]
     of idCmdAbout:
       let f = AboutFrame(self)
       f.show()
     of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar hence [1]
-      let state = self.mBandToolbars[1].toolState(idCmdGridShow)
+      let state = self.bandToolbars[1].toolState(idCmdGridShow)
       sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
-      if not singleFrames or not self.mGridCtrlFrameShowing:
-        let gr = self.mMainPanel.mBlockPanel.mGrid
+      if not singleFrames or not self.gridCtrlFrameShowing:
+        let gr = self.mainPanel.blockPanel.editor.doc.grid
         GridControlFrame(self, gr).show()
         if singleFrames:
-          self.mGridCtrlFrameShowing = true
+          self.gridCtrlFrameShowing = true
     else:
       discard
 
@@ -129,7 +130,7 @@ wClass(wMainFrame of wFrame):
   proc onMsgGridSize(self: wMainFrame, event: wEvent) =
     # Received value is what the user wants at this zoom level
     # Need to calc value to set grid.majorSpace so minDelta(Major) == val
-    let gr = self.mMainPanel.mBlockPanel.mGrid
+    let gr = self.mainPanel.blockPanel.editor.doc.grid
     let newSz = gr.calcReferenceSpace(derefAs[WType](event))
     if event.mMsg == idMsgGridRequestX:
       gr.refYSpace = newsz
@@ -143,17 +144,17 @@ wClass(wMainFrame of wFrame):
       gr.refYSpace = newsz
       # Send message to update display to only Y
       sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
-    self.mMainPanel.mBlockPanel.refresh(false)
+    self.mainPanel.blockPanel.refresh(false)
     sendToListeners(idMsgGridDivisionsReset, 0, 0)
   
   proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
     # Change divisions based on given index and force zoom
-    var gr = self.mMainPanel.mBlockPanel.mGrid
-    var vp = self.mMainPanel.mBlockPanel.mViewport
+    var gr = self.mainPanel.blockPanel.editor.doc.grid
+    var vp = self.mainPanel.blockPanel.editor.viewport
     let oldz = vp.rawZoom
     gr.divisions = gr.allowedDivisions()[event.mLparam]
     vp.rawZoom = oldz
-    self.mMainPanel.mBlockPanel.refresh(false)
+    self.mainPanel.blockPanel.refresh(false)
 
   proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
     # Change divisions based on given value and force zoom
@@ -163,55 +164,55 @@ wClass(wMainFrame of wFrame):
     # may not be in allowed divisions, ie able to divide grid 
     # size exactly.  We do however assume it's been validated
     # otherwise, which means it should be in DivRange
-    var gr = self.mMainPanel.mBlockPanel.mGrid
-    var vp = self.mMainPanel.mBlockPanel.mViewport
+    var gr = self.mainPanel.blockPanel.editor.doc.grid
+    var vp = self.mainPanel.blockPanel.editor.viewport
     let oldz = vp.rawZoom
     gr.divisions = event.mLparam
     vp.rawZoom = oldz
-    self.mMainPanel.mBlockPanel.refresh(false)
+    self.mainPanel.blockPanel.refresh(false)
 
   proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
     let mag = event.lParam.float / 100.0
-    self.mMainPanel.mBlockPanel.mGrid.mZctrl.density = mag
-    self.mMainPanel.mBlockPanel.mViewport.doZoom(0)
-    self.mMainPanel.mBlockPanel.refresh(false)
+    self.mainPanel.blockPanel.editor.doc.grid.mZctrl.density = mag
+    self.mainPanel.blockPanel.editor.viewport.doZoom(0)
+    self.mainPanel.blockPanel.refresh(false)
   #--
   proc onMsgGridSnap(self: wMainFrame, event: wEvent) =
-    self.mMainPanel.mBlockPanel.mGrid.mSnap = event.lParam.bool
+    self.mainPanel.blockPanel.editor.doc.grid.mSnap = event.lParam.bool
   proc onMsgGridDynamic(self: wMainFrame, event: wEvent) =
-    self.mMainPanel.mBlockPanel.mGrid.mZctrl.dynamic = event.lParam.bool
-    self.mMainPanel.mBlockPanel.mViewport.resetZoom()
-    self.mMainPanel.mBlockPanel.refresh(false)
+    self.mainPanel.blockPanel.editor.doc.grid.mZctrl.dynamic = event.lParam.bool
+    self.mainPanel.blockPanel.editor.viewport.resetZoom()
+    self.mainPanel.blockPanel.refresh(false)
   proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
-    var gr = self.mMainPanel.mBlockPanel.mGrid
-    var zc = self.mMainPanel.mBlockPanel.mGrid.mZctrl
-    var vp = self.mMainPanel.mBlockPanel.mViewport
+    var gr = self.mainPanel.blockPanel.editor.doc.grid
+    var zc = self.mainPanel.blockPanel.editor.doc.grid.mZctrl
+    var vp = self.mainPanel.blockPanel.editor.viewport
     zc.baseSync = event.lParam.bool
     # gr.divisions below is ignored when basySync false
     let oldz = vp.rawZoom
     zc.updateBase(gr.divisions)
     vp.rawZoom = oldz
-    self.mMainPanel.mBlockPanel.refresh(false)
+    self.mainPanel.blockPanel.refresh(false)
     
   #--
   proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
     let state = event.mLparam.bool
-    self.mMainPanel.mBlockPanel.mGrid.mVisible = state
-    self.mBandToolbars[1].toggleTool(idCmdGridShow, state)
-    self.mMainPanel.mBlockPanel.refresh(false)
+    self.mainPanel.blockPanel.editor.doc.grid.mVisible = state
+    self.bandToolbars[1].toggleTool(idCmdGridShow, state)
+    self.mainPanel.blockPanel.refresh(false)
   proc onMsgGridDots(self: wMainFrame, event: wEvent) =
     let val = event.lParam.bool
-    if val: self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Dots
-    else:   self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Lines
-    self.mMainPanel.mBlockPanel.refresh(false)
+    if val: self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Dots
+    else:   self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Lines
+    self.mainPanel.blockPanel.refresh(false)
   proc onMsgGridLines(self: wMainFrame, event: wEvent) =
     let val = event.lParam.bool
-    if val: self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Lines
-    else:   self.mMainPanel.mBlockPanel.mGrid.mDotsOrLines = Dots
-    self.mMainPanel.mBlockPanel.refresh(false)
+    if val: self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Lines
+    else:   self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Dots
+    self.mainPanel.blockPanel.refresh(false)
   #--
   proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
-    self.mGridCtrlFrameShowing = false
+    self.gridCtrlFrameShowing = false
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     # Main menu at top of frame
@@ -240,7 +241,7 @@ wClass(wMainFrame of wFrame):
     tb1.addTool(idCmdNew, "New", bmpNewBg)
     tb1.addTool(idCmdOpen, "Open", bmpOpenBg)
     tb1.addTool(idCmdSave, "Save", bmpSaveBg)
-    self.mBandToolBars.add(tb1)
+    self.bandToolBars.add(tb1)
     
     # 2. Grid controls    
     let tb2 = ToolBar(result)
@@ -256,13 +257,13 @@ wClass(wMainFrame of wFrame):
     ddcb.position = (self.dpiScale(150), self.dpiScale(10))
 
 
-    self.mBandToolBars.add(tb2)
+    self.bandToolBars.add(tb2)
     
     # 3. Close
     let tb3 = ToolBar(result)
     tb3.addTool(idCmdInfo, "Info", bmpInfoBg)
     tb3.addTool(idCmdClose, "Close", bmpCloseBg)
-    self.mBandToolBars.add(tb3)
+    self.bandToolBars.add(tb3)
 
     # Put toolbars things in rebar
     let bid1 = result.addBand(tb1)
@@ -278,8 +279,8 @@ wClass(wMainFrame of wFrame):
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()
     wFrame.show(self)
-    self.mMainPanel.mBlockPanel.forceRedraw()
-    self.mMainPanel.mBlockPanel.forceRedraw()
+    self.mainPanel.blockPanel.forceRedraw()
+    self.mainPanel.blockPanel.forceRedraw()
   proc init*(self: wMainFrame, size: wSize) = 
     wFrame(self).init(title="Blocks Frame", size=size)
     when defined(debug):
@@ -287,19 +288,19 @@ wClass(wMainFrame of wFrame):
     
     # Create controls
     self.mMenuBar   = setupMenuBar(self)
-    self.mReBar     = setupRebar(self)
-    self.mMainPanel = MainPanel(self)
+    self.mReBar      = setupRebar(self)
+    self.mainPanel  = MainPanel(self)
     self.mStatusBar = StatusBar(self)
 
     # Do stuff
-    self.mStatusBar.setStatusWidths([-1, -1, -1])
+    self.statusBar.setStatusWidths([-1, -1, -1])
     
-    # A couple of cheats because I'm not sure how to do these when the mBlockPanel is 
+    # A couple of cheats because I'm not sure how to do these when the blockPanel is 
     # finally rendered at the proper size
-    let sldrVal = self.mMainPanel.mSldr.value
+    let sldrVal = self.mainPanel.slider.value
     let tmpStr = &"temperature: {sldrVal}"
-    self.mStatusBar.setStatusText(tmpStr, index=0)
-    self.mMainPanel.randomizeRectsAll()
+    self.statusBar.setStatusText(tmpStr, index=0)
+    self.mainPanel.randomizeRectsAll()
 
     # Connect Events
     self.wEvent_Size          do (event: wEvent): self.onResize(event)

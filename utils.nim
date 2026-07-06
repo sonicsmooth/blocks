@@ -9,6 +9,7 @@ export colors
 type
   SDLException = object of CatchableError
 
+# TODO: Split this into sdlutils, wnimutils, and utils
 
 template paramSplit*(x: LPARAM|WPARAM): auto =
   (LOWORD(x).WORD,
@@ -71,5 +72,3 @@ proc textureInfo*(texture: TexturePtr): string =
   result &= &"amask : {colors.amask:08x}\n"
   result &= &"amaskx: {amaskx:08x}"
 
-#let junkr: uint32 = 12
-echo 12'u64

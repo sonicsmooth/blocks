@@ -1,6 +1,7 @@
 import std/[algorithm, sugar, sequtils]
 from rects import DBComp
-import recttable, compact
+#import recttable, compact
+import document, compact
 
 
 #[

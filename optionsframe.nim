@@ -12,24 +12,24 @@ type
     idSnap, idDynamic, idBaseSync,
     idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
-    mGrid:          Grid     # reference to the grid under control
+    grid:          Grid     # reference to the grid under control
     mZctrl:         ZoomCtrl # reference to params for grid zoom control
     mBDone:         wButton
     mIntervalBox:   wStaticbox
     mBehaviorBox:   wStaticBox
     mAppearanceBox: wStaticBox
-    mTxtX:          wStaticText
-    mTxtY:          wStaticText
-    mTxtDivs:       wStaticText
-    mTxtDens:       wStaticText
+    txtX:          wStaticText
+    txtY:          wStaticText
+    txtDivs:       wStaticText
+    txtDens:       wStaticText
     mCbSnap:        wCheckBox
     mCbVisible:     wCheckBox
     mCbDynamic:     wCheckBox
     mCbBaseSync:    wCheckBox
     mRbDots:        wRadioButton
     mRbLines:       wRadioButton
-    mTxtSizeX:      wTextCtrl
-    mTxtSizeY:      wTextCtrl
+    txtSizeX:      wTextCtrl
+    txtSizeY:      wTextCtrl
     mCbDivisions:   wComboBox
     mSliderDensity: wSlider
   wGridControlFrame* = ref object of wFrame
@@ -84,35 +84,35 @@ wClass(wGridControlPanel of wPanel):
     # TODO: investigate using setBuddy
 
     # First row
-    self.mTxtX.position = (hmarg, vmarg)
-    (l,r,t,b) = edges(self.mTxtX)
+    self.txtX.position = (hmarg, vmarg)
+    (l,r,t,b) = edges(self.txtX)
 
-    self.mTxtSizeX.position = (r, vmarg)
-    self.mTxtSizeX.size = (spwidth, self.mTxtSizeX.size.height)
-    (l,r,t,b) = edges(self.mTxtSizeX)
+    self.txtSizeX.position = (r, vmarg)
+    self.txtSizeX.size = (spwidth, self.txtSizeX.size.height)
+    (l,r,t,b) = edges(self.txtSizeX)
 
-    self.mTxtY.position = (r + hspc, vmarg)
-    (l,r,t,b) = edges(self.mTxtY)
+    self.txtY.position = (r + hspc, vmarg)
+    (l,r,t,b) = edges(self.txtY)
 
-    self.mTxtSizeY.position = (r, vmarg)
-    self.mTxtSizeY.size = (spwidth, self.mTxtSizeY.size.height)
-    (l,r,t,b) = edges(self.mTxtSizeY)
+    self.txtSizeY.position = (r, vmarg)
+    self.txtSizeY.size = (spwidth, self.txtSizeY.size.height)
+    (l,r,t,b) = edges(self.txtSizeY)
 
-    self.mTxtDivs.position = (r + hspc, vmarg)
-    (l,r,t,b) = edges(self.mTxtDivs)
+    self.txtDivs.position = (r + hspc, vmarg)
+    (l,r,t,b) = edges(self.txtDivs)
 
     self.mCbDivisions.position = (r, vmarg)
     self.mCbDivisions.size = (spwidth, self.mCbDivisions.size.height)
     (l,r,t,b) = edges(self.mCbDivisions)
 
-    self.mTxtDens.position = (r + hspc, vmarg)
-    (l,r,t,b) = edges(self.mTxtDens)
+    self.txtDens.position = (r + hspc, vmarg)
+    (l,r,t,b) = edges(self.txtDens)
 
     self.mSliderDensity.position = (r, vmarg)
     self.mSliderDensity.size = (spwidth, self.mSliderDensity.size.height)
 
-    self.mIntervalBox.contain(self.mTxtX, self.mTxtSizeX, self.mTxtY, self.mTxtSizeY,
-                              self.mTxtDivs, self.mCbDivisions, self.mTxtDens, self.mSliderDensity)
+    self.mIntervalBox.contain(self.txtX, self.txtSizeX, self.txtY, self.txtSizeY,
+                              self.txtDivs, self.mCbDivisions, self.txtDens, self.mSliderDensity)
     (l,r,t,b) = edges(self.mIntervalBox)
 
     # Second box (second row)
@@ -149,10 +149,10 @@ wClass(wGridControlPanel of wPanel):
 
     # Minor text adjustments
     let vadj2 = self.dpiScale(0) #2
-    self.mTxtX.moveby(0, vadj2)
-    self.mTxtY.moveby(0, vadj2)
-    self.mTxtDivs.moveby(0, vadj2)
-    self.mTxtDens.moveby(0, vadj2)
+    self.txtX.moveby(0, vadj2)
+    self.txtY.moveby(0, vadj2)
+    self.txtDivs.moveby(0, vadj2)
+    self.txtDens.moveby(0, vadj2)
 
     # Finalize frame size, then gray rectangle
     let (_,_,ibxt,_) = edges(self.mIntervalBox)
@@ -180,7 +180,7 @@ wClass(wGridControlPanel of wPanel):
 
   var cnt: int = 0
   proc eventMatchAndStrip(self: wGridControlPanel, event: wEvent): (wWindow, string) =
-    let txtCtrls = [self.mTxtSizeX, self.mTxtSizeY]
+    let txtCtrls = [self.txtSizeX, self.txtSizeY]
     let comboBoxes = [self.mCbDivisions]
     for w in txtCtrls:
       if event.lParam == w.mHwnd or event.mOrigin == w.mHwnd:
@@ -201,7 +201,7 @@ wClass(wGridControlPanel of wPanel):
     let (matchedCtrl, strval) = self.eventMatchAndStrip(event)
     if matchedCtrl.isnil or strval.len == 0:
       return
-    if event.lParam == self.mTxtSizeX.mHwnd or event.lParam == self.mTxtSizeY.mHwnd:
+    if event.lParam == self.txtSizeX.mHwnd or event.lParam == self.txtSizeY.mHwnd:
       var val: WType
       if not parseNumber(strval, val):
         errcol(event)
@@ -227,9 +227,9 @@ wClass(wGridControlPanel of wPanel):
       valptr = cast[uint64](val.addr)
       hi32 =  (valptr shr 32).uint32
       lo32 = (valptr and 0xffff_ffff'u64).uint32
-    if event.mOrigin == self.mTxtSizeX.mHwnd:
+    if event.mOrigin == self.txtSizeX.mHwnd:
       sendToListeners(idMsgGridRequestX, hi32.WPARAM, lo32.LPARAM)
-    elif event.mOrigin == self.mTxtSizeY.mHwnd:
+    elif event.mOrigin == self.txtSizeY.mHwnd:
       sendToListeners(idMsgGridRequestY, hi32.WPARAM, lo32.LPARAM)
 
   proc onCmdCbDivisionsSelect(self: wGridControlPanel, event: wEvent) =
@@ -291,9 +291,9 @@ wClass(wGridControlPanel of wPanel):
     elif WType is SomeInteger:
       let rxstr = $val
     if event.mMsg == idMsgGridSizeX:
-      self.mTxtSizeX.setValue(rxstr)
+      self.txtSizeX.setValue(rxstr)
     elif event.mMsg == idMsgGridSizeY:
-      self.mTxtSizeY.setValue(rxstr)
+      self.txtSizeY.setValue(rxstr)
   proc onMsgGridDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
   proc onMsgGridDivisionsValue(self: wGridControlPanel, event: wEvent) =
@@ -305,10 +305,10 @@ wClass(wGridControlPanel of wPanel):
     # divisions, then selected index is updated to use this value.
     
     self.mCbDivisions.clear()
-    for s in self.mGrid.allowedDivisionsStr:
+    for s in self.grid.allowedDivisionsStr:
       self.mCbDivisions.append(s)
 
-    let oldval = self.mGrid.divisions
+    let oldval = self.grid.divisions
     let newidx = self.mCbDivisions.findText($oldval)
     if newidx >= 0:
       sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
@@ -337,28 +337,28 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines.value = event.lParam.bool
     self.mRbDots.value = not event.lParam.bool
   proc onMsgGridZoom(self: wGridControlPanel, event: wEvent) =
-    let md = self.mGrid.minDelta(Major)
-    self.mTxtSizeX.setValue($md.x)
-    self.mTxtSizeY.setValue($md.y)
+    let md = self.grid.minDelta(Major)
+    self.txtSizeX.setValue($md.x)
+    self.txtSizeY.setValue($md.y)
 
 
   proc init*(self: wGridControlPanel, parent: wWindow, gr: Grid) =
     wPanel(self).init(parent)
     self.backgroundColor = panelBackgroundColor
     # Create controls
-    self.mGrid          = gr
+    self.grid          = gr
     self.mZctrl         = gr.mZctrl
     self.mBDone         = Button(self, idDone, "Done")
     self.mIntervalBox   = StaticBox(self, label="Interval")
     self.mBehaviorBox   = StaticBox(self, label="Behavior")
     self.mAppearanceBox = StaticBox(self, label="Appearance")
 
-    self.mTxtX          = StaticText(self, label="X")
-    self.mTxtY          = StaticText(self, label="Y")
-    self.mTxtDivs       = StaticText(self, label="Divisions")
-    self.mTxtDens       = StaticText(self, label="Magnification")
-    self.mTxtSizeX      = TextCtrl(self, idSpaceX, style=wBorderStatic)
-    self.mTxtSizeY      = TextCtrl(self, idSpaceY, style=wBorderStatic)
+    self.txtX          = StaticText(self, label="X")
+    self.txtY          = StaticText(self, label="Y")
+    self.txtDivs       = StaticText(self, label="Divisions")
+    self.txtDens       = StaticText(self, label="Magnification")
+    self.txtSizeX      = TextCtrl(self, idSpaceX, style=wBorderStatic)
+    self.txtSizeY      = TextCtrl(self, idSpaceY, style=wBorderStatic)
     self.mCbDivisions   = ComboBox(self, idDivisions, choices=gr.allowedDivisionsStr)
     self.mSliderDensity = Slider(self, idDensity)
     self.mCbSnap        = CheckBox(self, idSnap, "Snap")
@@ -369,17 +369,17 @@ wClass(wGridControlPanel of wPanel):
     self.mRbLines       = RadioButton(self, idLines, "Lines")
 
     
-    self.mTxtSizeX.setValue($self.mGrid.minDelta(Major).x)
-    self.mTxtSizeY.setValue($self.mGrid.minDelta(Major).y)
-    self.mCbDivisions.select(self.mGrid.divisionsIndex)
+    self.txtSizeX.setValue($self.grid.minDelta(Major).x)
+    self.txtSizeY.setValue($self.grid.minDelta(Major).y)
+    self.mCbDivisions.select(self.grid.divisionsIndex)
     self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
     self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
-    self.mCbSnap.setValue(self.mGrid.mSnap)
-    self.mCbVisible.setValue(self.mGrid.mVisible)
-    self.mCbDynamic.setValue(self.mGrid.mZctrl.dynamic)
-    self.mCbBaseSync.setValue(self.mGrid.mZctrl.baseSync)
-    self.mRbDots.setValue(self.mGrid.mDotsOrLines == Dots)
-    self.mRbLines.setValue(self.mGrid.mDotsOrLines == Lines)
+    self.mCbSnap.setValue(self.grid.mSnap)
+    self.mCbVisible.setValue(self.grid.mVisible)
+    self.mCbDynamic.setValue(self.grid.mZctrl.dynamic)
+    self.mCbBaseSync.setValue(self.grid.mZctrl.baseSync)
+    self.mRbDots.setValue(self.grid.mDotsOrLines == Dots)
+    self.mRbLines.setValue(self.grid.mDotsOrLines == Lines)
     
     self.layout()
 
@@ -390,8 +390,8 @@ wClass(wGridControlPanel of wPanel):
     # Respond to controls
     self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
     
-    self.mTxtSizeX.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
-    self.mTxtSizeY.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
+    self.txtSizeX.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
+    self.txtSizeY.wEvent_TextEnter    do (event: wEvent): self.onCmdTxtSizeEnter(event)
     self.mCbDivisions.wEvent_ComboBox  do (event: wEvent): self.onCmdCbDivisionsSelect(event)
     self.mCbDivisions.wEvent_TextEnter do (event: wEvent): self.onCmdCbDivisionsTextEnter(event)
     self.mSliderDensity.wEvent_Slider  do (event: wEvent): self.onCmdSliderDensity(event)
