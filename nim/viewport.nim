@@ -18,6 +18,7 @@ export world, zoomctrl
 
 type
   Viewport* = ref object
+    clientSize*: PxSize # size of panel
     # These are controlled by user
     mPan:     PxPoint
     mZclicks: float   # counts wheel zClicks; there are div zClicks between levels
@@ -52,6 +53,7 @@ proc newViewport*(): Viewport =
   # The doZoom call updates values in result, including result.zctrl.
   let j = gViewportJ
   result = new Viewport
+  result.clientSize = (0, 0)
   result.mPan = j["pan"].toPxPoint
   result.mZclicks = j["zClicks"].getFloat
   result.mZctrl = newZoomCtrl()
@@ -61,6 +63,7 @@ proc newViewport*(pan: PxPoint, clicks: float, zCtrl: ZoomCtrl): Viewport =
   # Fill in values from args
   # zctrl must be passed already properly formed by caller
   result = new Viewport
+  result.clientSize = (0, 0)
   result.mPan = pan
   result.mZclicks = clicks
   result.mZctrl = zCtrl
@@ -132,11 +135,11 @@ proc toWorldY*(y: PxType, vp: Viewport): WType =
 proc toWorld*[T: SomePoint](pt: T, vp: Viewport): WPoint =
   (pt[0].toWorldX(vp), pt[1].toWorldY(vp))
 
-proc isPointVisible*(wpt: WPoint, vp: Viewport, size: PxSize): bool =
+proc isPointVisible*(wpt: WPoint, vp: Viewport): bool =
   # Returns true if pt is visible on screen
   let pxpt: PxPoint = wpt.toPixel(vp)
-  pxpt.x >= 0 and pxpt.x < size.w and
-  pxpt.y >= 0 and pxpt.y < size.h
+  pxpt.x >= 0 and pxpt.x < vp.clientSize.w and
+  pxpt.y >= 0 and pxpt.y < vp.clientSize.h
 
 
 

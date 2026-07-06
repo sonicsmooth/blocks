@@ -1,7 +1,8 @@
 import std/[os, parseopt, paths, random, strutils, strformat]
 import wNim/[wApp, wWindow, wUtils]
-import appopts, mainframe, sdlframes, db
+import appopts, mainframe, sdlframes, document
 import concurrent, anneal
+import application
 
 
 when isMainModule:
@@ -22,18 +23,15 @@ when isMainModule:
     # Start stuff
     concurrent.init()
     anneal.init()
-    sdlframes.initSDL()
-    db.initDb()
+    #sdlframes.initSDL()
+    #document.initDb()
     
     # Main data and window
-    let app = App()
-    let init_size = (1200, 800)
-    let frame = MainFrame(init_size)
-    
-    # Go App!
-    frame.center()
-    frame.show()
-    app.mainLoop()
+    var app: Application
+    app.init(1200, 800)
+    app.go()
+
+    # ... wait for user to shut down ... #
 
     # Shut down
     concurrent.deinit()

@@ -17,10 +17,10 @@ import wnim, winim
 type 
   wBlockPanel = ref object of wPanel
   wMainPanel = ref object of wPanel
-    mBlockPanel: wBlockPanel
-    mButtons: array[1, wButton]
+    blockPanel: wBlockPanel
+    buttons: array[1, wButton]
   wMainFrame = ref object of wFrame
-    mMainPanel: wMainPanel
+    mainPanel: wMainPanel
   Rect = tuple[rect: wRect, color: wColor]
   RSeq = seq[Rect]
   ThreadArg = tuple[pRects: ptr RSeq, sz: wSize, window: wMainPanel]
@@ -90,27 +90,27 @@ wClass(wMainPanel of wPanel):
       bmarg = 8
       (bw, bh) = (130, 30)
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
-    self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
-    self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
+    self.blockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
+    self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
                              cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Buttons position, size
-    for i, butt in self.mButtons:
+    for i, butt in self.buttons:
       butt.position = (bmarg, yPosAcc)
       butt.size     = (bw, bh)
       yPosAcc += bh
 
   proc forceRedraw(self: wMainPanel, wait: int) = 
     self.refresh(false)
-    UpdateWindow(self.mBlockPanel.mHwnd)
+    UpdateWindow(self.blockPanel.mHwnd)
     sleep(wait)
 
   proc onResize(self: wMainPanel) =
-    randomizeRectsAll(gRects.addr, self.mBlockPanel.clientSize, 10)
+    randomizeRectsAll(gRects.addr, self.blockPanel.clientSize, 10)
     self.Layout()
       
   proc onButtonTest(self: wMainPanel) =
-    let sz = self.mBlockPanel.cLientSize
+    let sz = self.blockPanel.cLientSize
     createThread(myThread, worker, (gRects.addr, sz, self))
     # while myThread.running() or gRChan.peek() > 0:
     #   gRects = gRChan.recv()
@@ -119,27 +119,27 @@ wClass(wMainPanel of wPanel):
 
   proc init(self: wMainPanel, parent: wWindow) =
     wPanel(self).init(parent)
-    self.mButtons[ 0] = Button(self, label = "Start long thing"     )
-    self.mBlockPanel = BlockPanel(self)
+    self.buttons[ 0] = Button(self, label = "Start long thing"     )
+    self.blockPanel = BlockPanel(self)
     self.wEvent_Size                    do (event: wEvent): self.onResize()
-    self.mButtons[ 0].wEvent_Button     do (): self.onButtonTest()
+    self.buttons[ 0].wEvent_Button     do (): self.onButtonTest()
 
 
 
 
 wClass(wMainFrame of wFrame):
   proc onResize(self: wMainFrame, event: wEvent) =
-    self.mMainPanel.size = (event.size.width, event.size.height - self.mStatusBar.size.height)
+    self.mainPanel.size = (event.size.width, event.size.height - self.statusBar.size.height)
 
   proc init*(self: wMainFrame, newBlockSz: wSize) = 
     wFrame(self).init(title="Blocks Frame")
     
     # Create controls
-    self.mMainPanel   = MainPanel(self)
+    self.mainPanel   = MainPanel(self)
 
     let
-      otherWidth  = self.size.width  - self.mMainPanel.mBlockPanel.clientSize.width
-      otherHeight = self.size.height - self.mMainPanel.mBlockPanel.clientSize.height
+      otherWidth  = self.size.width  - self.mainPanel.blockPanel.clientSize.width
+      otherHeight = self.size.height - self.mainPanel.blockPanel.clientSize.height
       newWidth    = newBlockSz.width  + otherWidth
       newHeight   = newBlockSz.height + otherHeight + 23
 

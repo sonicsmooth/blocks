@@ -1,8 +1,11 @@
-import std/[algorithm, math, sequtils, strformat]
-import sdl2
+import std/[algorithm, 
+            math, 
+            sequtils, 
+            #strformat
+            ]
+#import sdl2
 import colors
-from arange import arange
-import viewport, pointmath, render
+import viewport, pointmath #, renderer
 import appinit
 import wNim/wTypes
 
@@ -23,9 +26,6 @@ type
     mDotsOrLines*: DotsOrLines = Lines
     mZctrl*:       ZoomCtrl
 
-const
-  alphaOffset = 20
-  stepAlphas = arange(60 .. 255, alphaOffset).toSeq
 
 # Forward decl
 proc minDelta*(grid: Grid, scale: Scale): WPoint
@@ -219,144 +219,6 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
     ysnap: float = ycnt * md.y.float
   (xsnap, ysnap)
 
-proc lineAlpha(step: int): int =
-  let idx = max(0, step - alphaOffset)
-  if idx < stepAlphas.len:
-    result = stepAlphas[idx]
-  else:
-    result = 255
-proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
-  let
-    x = ((pt.x - vp.pan.x).float / vp.zoom)
-    y = ((pt.y - vp.pan.y).float / vp.zoom)
-  (x, y)
-
-proc drawScale(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
-  let
-    left = 150
-    majDelta = grid.minDelta(Major).x
-    minDelta = grid.minDelta(Minor).x
-    majDeltaPx = (majDelta.float * vp.zoom).round.int
-    minDeltaPx = (minDelta.float * vp.zoom).round.int
-    botMajor = size.height - 100
-    botMinor = size.height - 60
-
-  # Major line
-  rp.setDrawColor(DarkSlateGray.toColor)
-  var r1, r2, r3: Rect
-  let ht = 11
-  r1 = (left, botMajor - 1, majDeltaPx, 3)
-  r2 = (left, botMajor - (ht div 2), 3, ht)
-  r3 = (left + majDeltaPx, botMajor - (ht div 2), 3, ht)
-  rp.fillRect(r1)
-  rp.fillRect(r2)
-  rp.fillRect(r3)
-
-  # Minor line
-  r1 = (left, botMinor - 1, minDeltaPx, 3)
-  r2 = (left, botMinor - (ht div 2), 3, ht)
-  r3 = (left + minDeltaPx, botMinor - (ht div 2), 3, ht)
-  rp.fillRect(r1)
-  rp.fillRect(r2)
-  rp.fillRect(r3)
-
-  # Labels
-  let
-    majorLabel = if WType is SomeInteger: &"{majDelta}"
-                 else: &"{majDelta}"
-    minorLabel = if WType is SomeInteger: &"{minDelta}"
-                 else: &"{minDelta}"
-  rp.renderText(left - 5, botMajor + 12, majorLabel)
-  rp.renderText(left - 5, botMinor + 12, minorLabel)
-
-proc draw*(grid: Grid, vp: Viewport, rp: RendererPtr, size: wSize) =
-  # Grid spaces are in world coords.  Need to convert to pixels
-  let
-    upperLeft: PxPoint = (0, 0)
-    lowerRight: PxPoint = (size.width - 1, size.height - 1)
-
-  if grid.mVisible:
-    let
-      worldStartMinor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Minor)
-      worldEndMinor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Minor)
-      worldStepMinor:  tuple[x, y: WType] = minDelta(grid, scale=Minor)
-      worldStartMajor: tuple[x, y: float] = upperLeft.toWorldF(vp).snap(grid, scale=Major)
-      worldEndMajor:   tuple[x, y: float] = lowerRight.toWorldF(vp).snap(grid, scale=Major)
-      worldStepMajor:  tuple[x, y: WType] = minDelta(grid, scale=Major)
-      xStepPxColor:    int = (worldStepMinor.x.float * vp.zoom).round.int
-
-    # Minor lines
-    if grid.mDotsOrLines == Lines:
-      rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
-      for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
-        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
-        rp.drawLine(xpx, 0, xpx, size.height - 1)
-
-      for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
-        let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
-        rp.drawLine(0, ypx, size.width - 1, ypx)
-
-    elif grid.mDotsOrLines == Dots:
-      var pts: seq[Point]
-      rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
-      for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
-        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
-        for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
-          let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
-          pts.add((xpx-1, ypx-1))
-          pts.add((xpx-1, ypx  ))
-          pts.add((xpx,   ypx-1))
-          pts.add((xpx,   ypx  ))
-      rp.drawPoints(cast[ptr Point](pts[0].addr), pts.len.cint)
-
-    # Major lines
-    if grid.mDotsOrLines == Lines:
-      rp.setDrawColor(DarkSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
-      for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
-        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
-        rp.drawLine(xpx, 0, xpx, size.height - 1)
-
-      for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
-        let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
-        rp.drawLine(0, ypx, size.width - 1, ypx)
-    
-    elif grid.mDotsOrLines == Dots:
-      var pts: seq[Point]
-      rp.setDrawColor(Black.toColor)
-      for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
-        let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
-        for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
-          let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
-          pts.add((xpx-1, ypx-1))
-          pts.add((xpx-0, ypx-1))
-          pts.add((xpx+1, ypx-1))
-          pts.add((xpx-1, ypx-0))
-          pts.add((xpx-0, ypx-0))
-          pts.add((xpx+1, ypx-0))
-          pts.add((xpx-1, ypx+1))
-          pts.add((xpx-0, ypx+1))
-          pts.add((xpx+1, ypx+1))
-      rp.drawPoints(cast[ptr Point](pts[0].addr), pts.len.cint)
-
-  if grid.mOriginVisible:
-    let
-      extent: PxType = 25.0 * vp.zoom
-      o: PxPoint = (0, 0).toPixel(vp)
-        
-    rp.setDrawColor(colors.DarkRed.toColor())
-
-    # Horizontals
-    rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
-    rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
-    rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
-    
-    # Verticals
-    rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
-    rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
-    rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
-
-    # Scale
-    grid.drawScale(vp, rp, size)
 
 proc newGrid*(zCtrl: ZoomCtrl): Grid = 
   result = new Grid

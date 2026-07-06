@@ -1,27 +1,30 @@
 import std/[algorithm, locks, math, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
+import editor, renderer
 import wNim
 import winim
-import anneal, appopts, compact, concurrent, db
+import anneal, appopts, compact, concurrent, document
 import stack, userMessages, utils, blockpanel, world
 export blockpanel
 
+# TODO: mainpanel should have refs to editor, renderer, doc
+
 type
   wMainPanel* = ref object of wPanel
-    mBlockPanel*: wBlockPanel
-    mSpnr:  wSpinCtrl
-    mTxt:   wStaticText
-    mChk:   wCheckBox
-    mBox1:  wStaticBox
-    mCTRb1: wRadioButton # Compact type radio button
-    mCTRb2: wRadioButton # Compact type radio button
-    mCTRb3: wRadioButton # Compact type radio button
-    mAStratRb1: wRadioButton # Anneal strategy radio button
-    mAStratRb2: wRadioButton # Anneal strategy radio button
-    mAStratRb3: wRadioButton # Anneal strategy radio button
-    mAStratRb4: wRadioButton # Anneal strategy radio button
-    mSldr*: wSlider
-    mButtons: array[17, wButton]
+    blockPanel*: wBlockPanel
+    spnr:  wSpinCtrl
+    txt:   wStaticText
+    chk:   wCheckBox
+    box1:  wStaticBox
+    ctrb1: wRadioButton # Compact type radio button
+    ctrb2: wRadioButton # Compact type radio button
+    ctrb3: wRadioButton # Compact type radio button
+    aStratRb1: wRadioButton # Anneal strategy radio button
+    aStratRb2: wRadioButton # Anneal strategy radio button
+    aStratRb3: wRadioButton # Anneal strategy radio button
+    aStratRb4: wRadioButton # Anneal strategy radio button
+    slider*: wSlider
+    buttons: array[17, wButton]
 
 const 
   logRandomize = true
@@ -36,69 +39,73 @@ wClass(wMainPanel of wPanel):
       (bw, bh) = (self.dpiScale(150), self.dpiScale(30))
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
       bwd2 = bw div 2
-    self.mBlockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
-    self.mBlockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
+    self.blockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
+    self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
                              cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Static text position, size
-    self.mTxt.position = (bmarg, bmarg)
-    self.mTxt.size = (bwd2, self.mTxt.size.height)
+    self.txt.position = (bmarg, bmarg)
+    self.txt.size = (bwd2, self.txt.size.height)
 
     # Spin Ctrl position, size
-    self.mSpnr.position = (bmarg + bwd2, bmarg)
-    self.mSpnr.size     = (bwd2, self.mSpnr.size.height)
-    yPosAcc += bmarg + self.mTxt.size.height
+    self.spnr.position = (bmarg + bwd2, bmarg)
+    self.spnr.size     = (bwd2, self.spnr.size.height)
+    yPosAcc += bmarg + self.txt.size.height
 
     # Selection strategy pos, size
-    self.mCTRb1.position = (bmarg,            yPosAcc); yPosAcc += bh
-    self.mCTRb2.position = (bmarg,            yPosAcc)
-    self.mCTRb3.position = (bmarg + bwd2, yPosAcc)
+    self.ctrb1.position = (bmarg,            yPosAcc); yPosAcc += bh
+    self.ctrb2.position = (bmarg,            yPosAcc)
+    self.ctrb3.position = (bmarg + bwd2, yPosAcc)
 
-    self.mCTRb1.size     = (bw,       bh)
-    self.mCTRb2.size     = (bwd2, bh)
-    self.mCTRb3.size     = (bwd2, bh)
+    self.ctrb1.size     = (bw,       bh)
+    self.ctrb2.size     = (bwd2, bh)
+    self.ctrb3.size     = (bwd2, bh)
     yPosAcc += bmarg + bh
 
     # Slider position, size
-    self.mSldr.position = (bmarg, yPosAcc)
-    self.mSldr.size    = (bw, bh)
+    self.slider.position = (bmarg, yPosAcc)
+    self.slider.size    = (bw, bh)
     yPosAcc += bmarg + bh
 
     # Static box1 and radio button position, size
-    self.mBox1.position      = (bmarg,   yPosAcc          )
-    self.mAStratRb1.size = (bwd2, bh)
-    self.mAStratRb2.size = (bwd2, bh)
-    self.mAStratRb3.size = (bwd2, bh)
-    self.mAStratRb4.size = (bwd2, bh)
-    self.mAStratRb1.position = (bmarg*2, yPosAcc + bmarg*3); #yPosAcc += self.mAStratRb1.size.height
-    self.mAStratRb3.position = (bmarg*2+bwd2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb3.size.height
-    self.mAStratRb2.position = (bmarg*2, yPosAcc + bmarg*3); #yPosAcc += self.mAStratRb2.size.height
-    self.mAStratRb4.position = (bmarg*2+bwd2, yPosAcc + bmarg*3); yPosAcc += self.mAStratRb4.size.height
-    self.mBox1.size = (bw, self.mAStratRb1.size.height*2 + bmarg*4)
+    self.box1.position      = (bmarg,   yPosAcc          )
+    self.aStratRb1.size = (bwd2, bh)
+    self.aStratRb2.size = (bwd2, bh)
+    self.aStratRb3.size = (bwd2, bh)
+    self.aStratRb4.size = (bwd2, bh)
+    self.aStratRb1.position = (bmarg*2, yPosAcc + bmarg*3); #yPosAcc += self.aStratRb1.size.height
+    self.aStratRb3.position = (bmarg*2+bwd2, yPosAcc + bmarg*3); yPosAcc += self.aStratRb3.size.height
+    self.aStratRb2.position = (bmarg*2, yPosAcc + bmarg*3); #yPosAcc += self.aStratRb2.size.height
+    self.aStratRb4.position = (bmarg*2+bwd2, yPosAcc + bmarg*3); yPosAcc += self.aStratRb4.size.height
+    self.box1.size = (bw, self.aStratRb1.size.height*2 + bmarg*4)
     yPosAcc += bmarg*5
 
     # Static box2 position, size
     #self.mBox2.position = (bmarg,   yPosAcc          )
-    #self.mBox2.size = (bw, self.mAStratRb3.size.height*2 + bmarg*4)
+    #self.mBox2.size = (bw, self.aStratRb3.size.height*2 + bmarg*4)
     #yPosAcc += bmarg*5
 
     # Buttons position, size
-    for i, butt in self.mButtons:
+    for i, butt in self.buttons:
       butt.position = (bmarg, yPosAcc)
       butt.size     = (bw, bh)
       yPosAcc += bh
 
-  proc randomizeRectsAll*(self: wMainPanel, qty: int=self.mSpnr.value) =
-    gDb.randomizeRectsAll(randRegion, qty, logRandomize)
-    self.mBlockPanel.mFillArea = gDb.fillArea()
-    self.mBlockPanel.updateRatio()
-    self.mBlockPanel.clearTextureCache()
+  proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
+    var db = self.blockPanel.editor.doc.db
+    db.randomizeRectsAll(randRegion, qty, logRandomize)
+    ##! Move updateRatio to algorithm, solve clearTextureCache
+    self.blockPanel.editor.fillArea = db.fillArea()
+    self.blockPanel.editor.updateRatio()
+    self.blockPanel.renderer.clearTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
     #echo GC_getStatistics()
+    ##! Move updateratio to algorithm
+    var db = self.blockPanel.editor.doc.db
     withLock(gLock):
-      compact(gDb, axis, sortOrder, self.mBlockPanel.mDstRect)
-    self.mBlockPanel.updateRatio()
+      compact(db, axis, sortOrder, self.blockPanel.editor.dstRect)
+    self.blockPanel.editor.updateRatio()
     self.refresh(false)
     GC_fullCollect()
 
@@ -108,29 +115,30 @@ wClass(wMainPanel of wPanel):
     for i in gAnnealComms.low .. gAnnealComms.high:
       if gAnnealComms[i].thread.running: return
 
-    let dstRect = self.mBlockPanel.mDstRect
+    let dstRect = self.blockPanel.editor.dstRect
+    let dbaddr = addr self.blockPanel.editor.doc.db
     
-    if self.mCtrb1.value: # Not anneal, just normal 2d compact
-      let arg: CompactArg = (pRectTable:  gDb.addr,
+    if self.ctrb1.value: # Not anneal, just normal 2d compact
+      let arg: CompactArg = (pRectTable:  dbaddr,
                              direction:   direction,
                              window:      self,
                              dstRect:     dstRect)
       gCompactThread.createThread(compactWorker, arg)
       gCompactThread.joinThread()
-      self.mBlockPanel.updateRatio()
+      self.blockPanel.editor.updateRatio()
       self.refresh(false)
     
-    elif self.mCTRb2.value: # Do anneal
+    elif self.ctrb2.value: # Do anneal
       proc compactfn() {.closure.} = 
-        iterCompact(gDb, direction, dstRect)
-      let strat = if self.mAStratRb1.value: Strat1
+        iterCompact(self.blockPanel.editor.doc.db, direction, dstRect)
+      let strat = if self.aStratRb1.value: Strat1
                   else:                     Strat2
-      let perturbFn = if self.mAStratRb3.value: makeWiggler[PosTable, ptr RectTable](dstRect)
+      let perturbFn = if self.aStratRb3.value: makeWiggler[PosTable, ptr RectTable](dstRect)
                       else:                     makeSwapper[PosTable, ptr RectTable]()
       for i in gAnnealComms.low .. gAnnealComms.high:
-        let arg: AnnealArg = (pRectTable: gDb.addr,
+        let arg: AnnealArg = (pRectTable: dbaddr,
                               strategy:   strat,
-                              initTemp:   self.mSldr.value.float,
+                              initTemp:   self.slider.value.float,
                               perturbFn:  perturbFn,
                               compactFn:  compactfn,
                               window:     self,
@@ -141,11 +149,11 @@ wClass(wMainPanel of wPanel):
         # TODO: figure out how to clearTextureCache when thread is done
         break
     
-    elif self.mCTRb3.value: # Do stack
+    elif self.ctrb3.value: # Do stack
       withLock(gLock):
-        stackCompact(gDb, dstRect, direction)
-      self.mBlockPanel.clearTextureCache()
-      self.mBlockPanel.updateRatio()
+        stackCompact(self.blockPanel.editor.doc.db, dstRect, direction)
+      self.blockPanel.renderer.clearTextureCache()
+      self.blockPanel.editor.updateRatio()
       self.refresh(false)
 
 
@@ -154,48 +162,48 @@ wClass(wMainPanel of wPanel):
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
     self.randomizeRectsAll(qty)
-    self.mBlockPanel.updateRatio()
+    self.blockPanel.editor.updateRatio()
     self.refresh(false)
   proc onSpinTextEnter(self: wMainPanel) =
-    if self.mSpnr.value > 0:
-      self.randomizeRectsAll(self.mSpnr.value)
-      self.mBlockPanel.updateRatio()
+    if self.spnr.value > 0:
+      self.randomizeRectsAll(self.spnr.value)
+      self.blockPanel.editor.updateRatio()
       self.refresh(false)
   proc onStrategyRadioButton(self: wMainPanel, event: wEvent) =
-    if self.mCTRb1.value: # No strategy
-      self.mSldr.disable()
-      self.mAStratRb1.disable()
-      self.mAStratRb2.disable()
-      self.mAStratRb3.disable()
-      self.mAStratRb4.disable()
-    elif self.mCTRb2.value: # Anneal strategy
-      self.mSldr.enable()
-      self.mAStratRb1.enable()
-      self.mAStratRb2.enable()
-      self.mAStratRb3.enable()
-      self.mAStratRb4.enable()
-    elif self.mCTRb3.value: # Stack strategy
-      self.mSldr.disable()
-      self.mAStratRb1.disable()
-      self.mAStratRb2.disable()
-      self.mAStratRb3.disable()
-      self.mAStratRb4.disable()
+    if self.ctrb1.value: # No strategy
+      self.slider.disable()
+      self.aStratRb1.disable()
+      self.aStratRb2.disable()
+      self.aStratRb3.disable()
+      self.aStratRb4.disable()
+    elif self.ctrb2.value: # Anneal strategy
+      self.slider.enable()
+      self.aStratRb1.enable()
+      self.aStratRb2.enable()
+      self.aStratRb3.enable()
+      self.aStratRb4.enable()
+    elif self.ctrb3.value: # Stack strategy
+      self.slider.disable()
+      self.aStratRb1.disable()
+      self.aStratRb2.disable()
+      self.aStratRb3.disable()
+      self.aStratRb4.disable()
 
   proc onSlider(self: wMainPanel, event: wEvent) =
     let pos = event.scrollPos
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hwnd, idMsgSlider, pos, pos)
   proc onButtonrandomizeAll(self: wMainPanel) =
-    self.randomizeRectsAll(self.mSpnr.value)
-    self.mBlockPanel.updateRatio()
+    self.randomizeRectsAll(self.spnr.value)
+    self.blockPanel.editor.updateRatio()
     self.refresh(false)
   proc onButtonrandomizePos(self: wMainPanel) =
-    #let sz = self.mBlockPanel.clientSize
-    gDb.randomizeRectsPos(randRegion)
-    self.mBlockPanel.updateRatio()
-    self.refresh(false)
+    #let sz = self.blockPanel.clientSize
+    self.blockPanel.editor.doc.db.randomizeRectsPos(randRegion)
+    self.blockPanel.editor.updateRatio()
+    self.blockPanel.editor.invalidate()
   proc onButtonTest(self: wMainPanel) =
-    for rect in gDb.values:
+    for rect in self.blockPanel.editor.doc.db.values:
       echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.w, rect.h)}, rot: {rect.rot}"
   # Left  arrow = stack from left to right, which is x ascending
   # Right arrow = stack from right to left, which is x descending
@@ -231,12 +239,12 @@ wClass(wMainPanel of wPanel):
     let (idx, _) = paramSplit(event.lParam)
     let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
     if msgAvail:
-        self.mBlockPanel.mText = $idx.int64 & ": " & msg 
+        self.blockPanel.editor.text = $idx.int64 & ": " & msg 
     
     let (_, _) = gAnnealComms[idx].idChan.tryRecv()
     withLock(gLock):
-      self.mBlockPanel.clearTextureCache()
-      self.mBlockPanel.forceRedraw(0)
+      self.blockPanel.renderer.clearTextureCache()
+      self.blockPanel.forceRedraw(0)
       gAnnealComms[idx].ackChan.send(ackCnt)
     inc ackCnt
 
@@ -246,66 +254,66 @@ wClass(wMainPanel of wPanel):
     let rectQty = gAppOpts.compQty
 
     # Create controls
-    self.mSpnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
-    self.mTxt       = StaticText(self, label="Qty", style=wSpRight)
-    self.mBox1      = StaticBox(self, label="Strat and func")
-    self.mCTRb1     = RadioButton(self, label="None", style=wRbGroup)
-    self.mCTRb2     = RadioButton(self, label="Anneal")
-    self.mCTRb3     = RadioButton(self, label="Stack" )
-    self.mAStratRb1 = RadioButton(self, label="Strat1", style=wRbGroup)
-    self.mAStratRb2 = RadioButton(self, label="Strat2")
-    self.mAStratRb3 = RadioButton(self, label="Wiggle", style=wRbGroup)
-    self.mAStratRb4 = RadioButton(self, label="Swap"  )
+    self.spnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
+    self.txt       = StaticText(self, label="Qty", style=wSpRight)
+    self.box1      = StaticBox(self, label="Strat and func")
+    self.ctrb1     = RadioButton(self, label="None", style=wRbGroup)
+    self.ctrb2     = RadioButton(self, label="Anneal")
+    self.ctrb3     = RadioButton(self, label="Stack" )
+    self.aStratRb1 = RadioButton(self, label="Strat1", style=wRbGroup)
+    self.aStratRb2 = RadioButton(self, label="Strat2")
+    self.aStratRb3 = RadioButton(self, label="Wiggle", style=wRbGroup)
+    self.aStratRb4 = RadioButton(self, label="Swap"  )
 
-    self.mSldr  = Slider(self)
-    self.mButtons[ 0] = Button(self, label = "randomize All"     )
-    self.mButtons[ 1] = Button(self, label = "randomize Pos"     )
-    self.mButtons[ 2] = Button(self, label = "Test"              )
-    self.mButtons[ 3] = Button(self, label = "Compact X←"        )
-    self.mButtons[ 4] = Button(self, label = "Compact X→"        )
-    self.mButtons[ 5] = Button(self, label = "Compact Y↑"        )
-    self.mButtons[ 6] = Button(self, label = "Compact Y↓"        )
-    self.mButtons[ 7] = Button(self, label = "Compact X← then Y↑")
-    self.mButtons[ 8] = Button(self, label = "Compact X← then Y↓")
-    self.mButtons[ 9] = Button(self, label = "Compact X→ then Y↑")
-    self.mButtons[10] = Button(self, label = "Compact X→ then Y↓")
-    self.mButtons[11] = Button(self, label = "Compact Y↑ then X←")
-    self.mButtons[12] = Button(self, label = "Compact Y↑ then X→")
-    self.mButtons[13] = Button(self, label = "Compact Y↓ then X←")
-    self.mButtons[14] = Button(self, label = "Compact Y↓ then X→")
-    self.mButtons[15] = Button(self, label = "Save"              )
-    self.mButtons[16] = Button(self, label = "Load"              )
+    self.slider  = Slider(self)
+    self.buttons[ 0] = Button(self, label = "randomize All"     )
+    self.buttons[ 1] = Button(self, label = "randomize Pos"     )
+    self.buttons[ 2] = Button(self, label = "Test"              )
+    self.buttons[ 3] = Button(self, label = "Compact X←"        )
+    self.buttons[ 4] = Button(self, label = "Compact X→"        )
+    self.buttons[ 5] = Button(self, label = "Compact Y↑"        )
+    self.buttons[ 6] = Button(self, label = "Compact Y↓"        )
+    self.buttons[ 7] = Button(self, label = "Compact X← then Y↑")
+    self.buttons[ 8] = Button(self, label = "Compact X← then Y↓")
+    self.buttons[ 9] = Button(self, label = "Compact X→ then Y↑")
+    self.buttons[10] = Button(self, label = "Compact X→ then Y↓")
+    self.buttons[11] = Button(self, label = "Compact Y↑ then X←")
+    self.buttons[12] = Button(self, label = "Compact Y↑ then X→")
+    self.buttons[13] = Button(self, label = "Compact Y↓ then X←")
+    self.buttons[14] = Button(self, label = "Compact Y↓ then X→")
+    self.buttons[15] = Button(self, label = "Save"              )
+    self.buttons[16] = Button(self, label = "Load"              )
 
     # Connect events
     self.wEvent_Size                do (event: wEvent): self.onResize()
-    self.mSpnr.wEvent_Spin          do (event: wEvent): self.onSpinSpin(event)
-    self.mSpnr.wEvent_TextEnter     do (): self.onSpinTextEnter()
-    self.mCTRb1.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
-    self.mCTRb2.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
-    self.mCTRb3.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
-    self.mSldr.wEvent_Slider        do (event: wEvent): self.onSlider(event)
-    self.mButtons[ 0].wEvent_Button do (): self.onButtonrandomizeAll()
-    self.mButtons[ 1].wEvent_Button do (): self.onButtonrandomizePos()
-    self.mButtons[ 2].wEvent_Button do (): self.onButtonTest()
-    self.mButtons[ 3].wEvent_Button do (): self.onButtonCompact←()
-    self.mButtons[ 4].wEvent_Button do (): self.onButtonCompact→()
-    self.mButtons[ 5].wEvent_Button do (): self.onButtonCompact↑()
-    self.mButtons[ 6].wEvent_Button do (): self.onButtonCompact↓()
-    self.mButtons[ 7].wEvent_Button do (): self.onButtonCompact←↑()
-    self.mButtons[ 8].wEvent_Button do (): self.onButtonCompact←↓()
-    self.mButtons[ 9].wEvent_Button do (): self.onButtonCompact→↑()
-    self.mButtons[10].wEvent_Button do (): self.onButtonCompact→↓()
-    self.mButtons[11].wEvent_Button do (): self.onButtonCompact↑←()
-    self.mButtons[12].wEvent_Button do (): self.onButtonCompact↑→()
-    self.mButtons[13].wEvent_Button do (): self.onButtonCompact↓←()
-    self.mButtons[14].wEvent_Button do (): self.onButtonCompact↓→()
+    self.spnr.wEvent_Spin          do (event: wEvent): self.onSpinSpin(event)
+    self.spnr.wEvent_TextEnter     do (): self.onSpinTextEnter()
+    self.ctrb1.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
+    self.ctrb2.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
+    self.ctrb3.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
+    self.slider.wEvent_Slider        do (event: wEvent): self.onSlider(event)
+    self.buttons[ 0].wEvent_Button do (): self.onButtonrandomizeAll()
+    self.buttons[ 1].wEvent_Button do (): self.onButtonrandomizePos()
+    self.buttons[ 2].wEvent_Button do (): self.onButtonTest()
+    self.buttons[ 3].wEvent_Button do (): self.onButtonCompact←()
+    self.buttons[ 4].wEvent_Button do (): self.onButtonCompact→()
+    self.buttons[ 5].wEvent_Button do (): self.onButtonCompact↑()
+    self.buttons[ 6].wEvent_Button do (): self.onButtonCompact↓()
+    self.buttons[ 7].wEvent_Button do (): self.onButtonCompact←↑()
+    self.buttons[ 8].wEvent_Button do (): self.onButtonCompact←↓()
+    self.buttons[ 9].wEvent_Button do (): self.onButtonCompact→↑()
+    self.buttons[10].wEvent_Button do (): self.onButtonCompact→↓()
+    self.buttons[11].wEvent_Button do (): self.onButtonCompact↑←()
+    self.buttons[12].wEvent_Button do (): self.onButtonCompact↑→()
+    self.buttons[13].wEvent_Button do (): self.onButtonCompact↓←()
+    self.buttons[14].wEvent_Button do (): self.onButtonCompact↓→()
     self.idMsgAlgUpdate                do (event: wEvent): self.onAlgUpdate(event)
 
     # Set up stuff
-    self.mBlockPanel = BlockPanel(self)
-    self.mSpnr.setRange(1, 10000)
-    self.mSldr.setValue(20)
-    self.mCTRb1.click()
-    self.mAStratRb1.click()
-    self.mAStratRb3.click()
+    self.blockPanel = BlockPanel(self)
+    self.spnr.setRange(1, 10000)
+    self.slider.setValue(20)
+    self.ctrb1.click()
+    self.aStratRb1.click()
+    self.aStratRb3.click()
 

@@ -4,7 +4,8 @@ import wnim
 import wnim/wTypes
 import winim/inc/[winuser, windef]
 import concurrent
-import recttable, userMessages
+#import recttable, userMessages
+import document, userMessages
 
 type 
   Axis* = enum X=true, Y=false
