@@ -12,12 +12,12 @@ type
 
 proc init*(app: var Application, w,h: int) =
   # Create stuff
+  initSDL()
   app.wapp = App()
   app.mainFrame = MainFrame((w, h))
   app.doc = newDocument()
-  app.editor = newEditor()
+  app.editor = newEditor(app.doc.grid.mZctrl)
   app.renderer = newRenderer()
-  initSDL()
 
   # Assign stuff
   app.editor.doc = app.doc
@@ -36,7 +36,6 @@ proc init*(app: var Application, w,h: int) =
 
   # Editor needs to be able to invalidate panel without knowing about panel
   #!app.editor.invalidate = proc() {.closure.} = app.mainFrame.mainPanel.blockPanel.refresh(false)
-
 
 
 proc go*(app: Application) =

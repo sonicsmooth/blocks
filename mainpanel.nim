@@ -39,9 +39,9 @@ wClass(wMainPanel of wPanel):
       (bw, bh) = (self.dpiScale(150), self.dpiScale(30))
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
       bwd2 = bw div 2
-    self.blockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
-    self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
-                             cszh - tbpmarg - bbpmarg)
+    # self.blockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
+    # self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
+    #                          cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Static text position, size
     self.txt.position = (bmarg, bmarg)
@@ -98,7 +98,6 @@ wClass(wMainPanel of wPanel):
     self.blockPanel.editor.fillArea = db.fillArea()
     self.blockPanel.editor.updateRatio()
     self.blockPanel.renderer.clearTextureCache()
-
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
     #echo GC_getStatistics()
     ##! Move updateratio to algorithm
@@ -108,7 +107,6 @@ wClass(wMainPanel of wPanel):
     self.blockPanel.editor.updateRatio()
     self.refresh(false)
     GC_fullCollect()
-
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     # Leave if we have any threads already running
     if gCompactThread.running: return
@@ -155,7 +153,6 @@ wClass(wMainPanel of wPanel):
       self.blockPanel.renderer.clearTextureCache()
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
-
 
   proc onResize(self: wMainPanel) =
     self.layout()
@@ -307,7 +304,7 @@ wClass(wMainPanel of wPanel):
     self.buttons[12].wEvent_Button do (): self.onButtonCompact↑→()
     self.buttons[13].wEvent_Button do (): self.onButtonCompact↓←()
     self.buttons[14].wEvent_Button do (): self.onButtonCompact↓→()
-    self.idMsgAlgUpdate                do (event: wEvent): self.onAlgUpdate(event)
+    self.idMsgAlgUpdate            do (event: wEvent): self.onAlgUpdate(event)
 
     # Set up stuff
     self.blockPanel = BlockPanel(self)

@@ -1,5 +1,5 @@
 import std/[os, strformat, strutils, sugar, tables]
-
+import appopts
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
@@ -125,8 +125,6 @@ wClass(wMainFrame of wFrame):
           self.gridCtrlFrameShowing = true
     else:
       discard
-
-
   proc onMsgGridSize(self: wMainFrame, event: wEvent) =
     # Received value is what the user wants at this zoom level
     # Need to calc value to set grid.majorSpace so minDelta(Major) == val
@@ -146,7 +144,6 @@ wClass(wMainFrame of wFrame):
       sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
     self.mainPanel.blockPanel.refresh(false)
     sendToListeners(idMsgGridDivisionsReset, 0, 0)
-  
   proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
     # Change divisions based on given index and force zoom
     var gr = self.mainPanel.blockPanel.editor.doc.grid
@@ -155,7 +152,6 @@ wClass(wMainFrame of wFrame):
     gr.divisions = gr.allowedDivisions()[event.mLparam]
     vp.rawZoom = oldz
     self.mainPanel.blockPanel.refresh(false)
-
   proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
     # Change divisions based on given value and force zoom
     # Presumably the value is not in allowed divisions because
@@ -170,7 +166,6 @@ wClass(wMainFrame of wFrame):
     gr.divisions = event.mLparam
     vp.rawZoom = oldz
     self.mainPanel.blockPanel.refresh(false)
-
   proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
     let mag = event.lParam.float / 100.0
     self.mainPanel.blockPanel.editor.doc.grid.mZctrl.density = mag
@@ -193,7 +188,6 @@ wClass(wMainFrame of wFrame):
     zc.updateBase(gr.divisions)
     vp.rawZoom = oldz
     self.mainPanel.blockPanel.refresh(false)
-    
   #--
   proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
     let state = event.mLparam.bool
@@ -279,8 +273,8 @@ wClass(wMainFrame of wFrame):
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()
     wFrame.show(self)
-    self.mainPanel.blockPanel.forceRedraw()
-    self.mainPanel.blockPanel.forceRedraw()
+    # self.mainPanel.blockPanel.forceRedraw()
+    # self.mainPanel.blockPanel.forceRedraw()
   proc init*(self: wMainFrame, size: wSize) = 
     wFrame(self).init(title="Blocks Frame", size=size)
     when defined(debug):
@@ -289,8 +283,11 @@ wClass(wMainFrame of wFrame):
     # Create controls
     self.mMenuBar   = setupMenuBar(self)
     self.mReBar      = setupRebar(self)
-    self.mainPanel  = MainPanel(self)
     self.mStatusBar = StatusBar(self)
+    self.mainPanel  = MainPanel(self)
+
+    # TODO: move stuff around so it's easy to comment out main panel, etc
+    # TODO: eg setupMainPanel() with the appropriate argumets
 
     # Do stuff
     self.statusBar.setStatusWidths([-1, -1, -1])
@@ -300,7 +297,7 @@ wClass(wMainFrame of wFrame):
     let sldrVal = self.mainPanel.slider.value
     let tmpStr = &"temperature: {sldrVal}"
     self.statusBar.setStatusText(tmpStr, index=0)
-    self.mainPanel.randomizeRectsAll()
+    # self.mainPanel.randomizeRectsAll()
 
     # Connect Events
     self.wEvent_Size          do (event: wEvent): self.onResize(event)
@@ -329,7 +326,12 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
   
 when isMainModule:
-    # Main data and window
+  # Main data and window
+  try:
+    gAppOpts = parseAppOptions()
+    if gAppOpts.appHelp:
+      showAppHelp(gAppOpts)
+      system.quit()
     let
       app = App()
       init_size = (800, 800)
@@ -339,4 +341,11 @@ when isMainModule:
     frame.center()
     frame.show()
     app.mainLoop()
+  except Exception as e:
+      echo "Exception!"
+      echo e.msg
+      echo getStackTrace(e)
+    
+
+    
 

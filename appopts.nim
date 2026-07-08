@@ -31,7 +31,6 @@ proc showAppHelp*(opts: AppOpts) =
     echo "    ", k, " = ", v
 
 proc parseAppOptions*(): AppOpts = 
-  #result = AppOpts()
   # Start with values in json file, then override 
   # with command line values
   result = gAppOptsJ.to(AppOpts)
@@ -50,3 +49,15 @@ proc parseAppOptions*(): AppOpts =
     of cmdEnd:
       echo "done parsing"
 
+when isMainModule:
+  try:
+    gAppOpts = parseAppOptions()
+    if gAppOpts.appHelp:
+      showAppHelp(gAppOpts)
+      system.quit()
+    echo gAppOpts[]
+  except Exception as e:
+      echo "Exception!"
+      echo e.msg
+      echo getStackTrace(e)
+    

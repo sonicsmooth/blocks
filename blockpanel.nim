@@ -4,7 +4,7 @@ from std/sequtils import toSeq
 import wNim
 import winim except PRECT, Color
 import sdl2
-import rects, recttable, sdlframes #, document, viewport, grid, pointmath
+import rects, recttable, sdlframes, grid #, document, viewport, grid, pointmath
 import userMessages, utils, appopts, routing
 
 # TODO: blockpanel should have refs to editor, renderer, doc, viewport
@@ -76,6 +76,7 @@ const
 
 wClass(wBlockPanel of wSDLPanel):
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
+    #discard
     self.refresh(false)
     UpdateWindow(self.mHwnd)
 
@@ -119,18 +120,16 @@ wClass(wBlockPanel of wSDLPanel):
     self.editor.updateDestinationBox()
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
+    #discard
     if gAppOpts.enableBbox:
       self.editor.updateBoundingBox()
     self.renderer.drawEverything()
   
 
   proc init*(self: wBlockPanel, parent: wWindow) = 
+    discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue
-    let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0, dynamic=true, baseSync=true)
-    # self.grid = newGrid(zCtrl=zc)
-    ##! Move to another init place eg application
-    self.editor.viewport = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
