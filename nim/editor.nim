@@ -4,6 +4,7 @@ import wNim
 import pointmath
 import routing
 import appopts
+import zoomctrl
 from utils import excl
 import rects
 import document
@@ -86,8 +87,11 @@ const
     [(0, 1), (0, -1), (-1, 0), (1, 0)]
 
 
-proc newEditor*(): Editor =
+proc newEditor*(zc: ZoomCtrl): Editor =
   result = new Editor
+  # assign viewport like 
+  result.viewport  = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
+  # ... but zc was created before, with grid
   # all other fields can take their default values
   # and are assigned later
 

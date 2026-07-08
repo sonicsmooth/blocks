@@ -473,6 +473,7 @@ proc drawEverything*(self: Renderer) =
   # Typically called from OnPaint
   self.sdlRenderer.setDrawColor(self.backgroundColor)
   self.sdlRenderer.clear()
+  return
   self.drawGrid()
 
   # Try a few methods to draw rectangles
