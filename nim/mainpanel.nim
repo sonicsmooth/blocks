@@ -246,6 +246,7 @@ wClass(wMainPanel of wPanel):
     inc ackCnt
 
   proc init*(self: wMainPanel, parent: wWindow) =
+    echo "mainpanel init"
     wPanel(self).init(parent)
 
     let rectQty = gAppOpts.compQty

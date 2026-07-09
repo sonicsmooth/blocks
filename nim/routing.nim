@@ -21,6 +21,7 @@ proc uniqueHandles(): HashSet[HANDLE] =
 
 
 proc registerListener*(listener: wWindow, msg: int32, callback: MsgProc) =
+  # This makes window receive messages
   if msg notin gEventListeners:
     gEventListeners[msg] = @[]
   gEventListeners[msg].add(listener.mHwnd)

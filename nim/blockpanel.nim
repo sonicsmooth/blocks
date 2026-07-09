@@ -127,6 +127,7 @@ wClass(wBlockPanel of wSDLPanel):
   
 
   proc init*(self: wBlockPanel, parent: wWindow) = 
+    echo "blockpanel init"
     discard
     wSDLPanel(self).init(parent, style=wBorderSimple)
     self.backgroundColor = wLightBlue

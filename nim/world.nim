@@ -8,20 +8,20 @@ import std/[math, json, parseutils, strutils]
 
 
 when defined(worldInt): 
-  echo "WType defined as int"
+  #echo "WType defined as int"
   static:
     echo "WType defined as int"
   type WType* = int
 elif defined(worldFloat):
-  echo "WType defined as float"
+  #echo "WType defined as float"
   static:
     echo "WType defined as float"
   type WType* = float
 else:
-  echo "WType not defined; defaulting to int"
+  #echo "WType not defined; defaulting to float"
   static:
-    echo "WType not defined; defaulting to int"
-  type WType* = int
+    echo "WType not defined; defaulting to float"
+  type WType* = float
 
 type
   WPoint* = tuple[x, y: WType]
