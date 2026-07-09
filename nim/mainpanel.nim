@@ -32,6 +32,9 @@ const
 
 
 wClass(wMainPanel of wPanel):
+  proc refresh(self: wMainPanel) =
+    self.blockPanel.refresh(false)
+
   proc layout(self: wMainPanel) =
     let 
       bmarg = self.dpiScale(8)

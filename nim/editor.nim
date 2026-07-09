@@ -55,7 +55,6 @@ type
     state:       MouseState
     pzState:     PanZoomState
 
-  # TODO: editor should have pointer to doc.grid directly
 
   Editor* = ref object of RootObj
     doc*:          Document
@@ -96,6 +95,7 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   # ... but zc was created before, with grid
   # all other fields can take their default values
   # and are assigned later
+
 
 proc updateDestinationBox*(self: Editor) =
   let 

@@ -75,6 +75,11 @@ const
 # proc isAlt(event: wEvent): bool = event.keyCode == wKey_Alt
 
 wClass(wBlockPanel of wSDLPanel):
+  proc mouseClientPosition*(self: wBlockPanel): PxPoint =
+    self.screenToClient(wGetMousePosition())
+  proc mouseWorldPosition*(self: wBlockPanel): WPoint =
+    self.mouseClientPosition().toWorld(self.editor.viewport)
+
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
     #discard
     self.refresh(false)
