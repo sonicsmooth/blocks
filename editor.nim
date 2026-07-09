@@ -55,6 +55,8 @@ type
     state:       MouseState
     pzState:     PanZoomState
 
+  # TODO: editor should have pointer to doc.grid directly
+
   Editor* = ref object of RootObj
     doc*:          Document
     mouseData:     MouseData
