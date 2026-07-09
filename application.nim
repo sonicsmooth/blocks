@@ -20,6 +20,7 @@ proc init*(app: var Application, w,h: int) =
   app.renderer = newRenderer()
 
   # Assign stuff
+  app.mainFrame.editor = app.editor
   app.editor.doc = app.doc
   app.renderer.doc = app.doc
   app.renderer.editor = app.editor

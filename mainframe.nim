@@ -7,7 +7,7 @@ import sdl2
 
 import appopts
 import appinit, routing
-import viewport, utils
+import editor, viewport, utils
 import mainpanel, aboutframe, gridctrlframe, grid
 export mainpanel
 
@@ -15,10 +15,10 @@ export mainpanel
 
 type
   wMainFrame* = ref object of wFrame
+    editor: Editor
     gridCtrlFrameShowing: bool
     mainPanel*: wMainPanel
     bandToolBars: seq[wToolBar]
-    #reBar: wReBar
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
@@ -77,12 +77,22 @@ let
 
 
 wClass(wMainFrame of wFrame):
+  proc isReady(self: wMainFrame): bool =
+    # only check first-level objects, ie don't check doc, grid, viewport, etc.
+    self.editor != nil and
+    self.mainPanel != nil and
+    self.mainPanel.blockPanel != nil and
+    self.statusBar != nil
+  
   proc onResize(self: wMainFrame, event: wEvent) =
     if self.mainPanel != nil:
       self.mainPanel.size = self.clientSize
     if self.statusBar != nil:
       self.statusBar.setStatusText($self.clientSize, index=1)
   
+  proc refresh(self: wMainFrame) =
+    self.mainPanel.refresh()
+
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     # Main menu at top of frame
     var menu1 = Menu()
@@ -159,7 +169,8 @@ wClass(wMainFrame of wFrame):
     of idCmdExit: self.destroy()
     of idCmdHelp: discard
     of idCmdInfo:
-      if self.mainPanel != nil:
+      #if self.mainPanel != nil:
+      if self.isReady():
         echo self.mainPanel.blockPanel.editor.doc.grid[]
         echo self.mainPanel.blockPanel.editor.viewport[]
         echo self.mainPanel.blockPanel.editor.doc.grid.mZctrl[]
@@ -180,117 +191,129 @@ wClass(wMainFrame of wFrame):
     else:
       discard
 
-  # proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
-  #   # event can contain either client or screen coordinates
-  #   # so ignore wparam and lparam.  Just grab  mouse pos directly
-  #   let mousePxPos = screenToClient(self.mainPanel.blockPanel, wGetMousePosition())
-  #   let mouseWPos: WPoint = mousePxPos.toWorld(self.mainPanel.blockPanel.editor.viewport)
-  #   when WType is SomeFloat:
-  #     let mwpx = &"{mouseWPos.x:0.4f}"
-  #     let mwpy = &"{mouseWPos.y:0.4f}"
-  #   elif WType is SomeInteger:
-  #     let mwpx = &"{mouseWPos.x}"
-  #     let mwpy = &"{mouseWPos.y}"
-  #   let txt = &"Pixel: {mousePxPos}; World: ({mwpx}, {mwpy})"
-  #   self.statusBar.setStatusText(txt, index=2)
+  proc onUserMouseNotify(self: wMainFrame, event: wEvent) =
+    # TODO: fix this so the event carries the proper information
+    # event can contain either client or screen coordinates
+    # so ignore wparam and lparam.  Just grab  mouse pos directly
+    if self.isReady():
+      let mouseWPos: Wpoint = self.mainPanel.blockPanel.mouseWorldPosition()
+      let mousePxPos: PxPoint = self.mainPanel.blockPanel.mouseClientPosition()
+      when WType is SomeFloat:
+        let mwpx = &"{mouseWPos.x:0.4f}"
+        let mwpy = &"{mouseWPos.y:0.4f}"
+      elif WType is SomeInteger:
+        let mwpx = &"{mouseWPos.x}"
+        let mwpy = &"{mouseWPos.y}"
+      let txt = &"Pixel: {mousePxPos}; World: ({mwpx}, {mwpy})"
+      self.statusBar.setStatusText(txt, index=2)
 
-  # proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
-  #   let tmpStr = &"temperature: {event.mLparam}"
-  #   self.statusBar.setStatusText(tmpStr, index=0)
+  proc onUserSliderNotify(self: wMainFrame, event: wEvent) =
+    if self.statusBar != nil:
+      let tmpStr = &"temperature: {event.mLparam}"
+      self.statusBar.setStatusText(tmpStr, index=0)
 
-  # proc onMsgGridSize(self: wMainFrame, event: wEvent) =
-  #   # Received value is what the user wants at this zoom level
-  #   # Need to calc value to set grid.majorSpace so minDelta(Major) == val
-  #   let gr = self.mainPanel.blockPanel.editor.doc.grid
-  #   let newSz = gr.calcReferenceSpace(derefAs[WType](event))
-  #   if event.mMsg == idMsgGridRequestX:
-  #     gr.refYSpace = newsz
-  #     gr.refXSpace = newsz
-  #     echo "refXSpace:   ", gr.refXSpace
-  #     echo "minDelta:    ", gr.minDelta(Major)
-  #     # Send message to update display to both X and Y
-  #     sendToListeners(idMsgGridSizeX, event.wParam, event.lParam)
-  #     sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
-  #   elif event.mMsg == idMsgGridRequestY:
-  #     gr.refYSpace = newsz
-  #     # Send message to update display to only Y
-  #     sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
-  #   self.mainPanel.blockPanel.refresh(false)
-  #   sendToListeners(idMsgGridDivisionsReset, 0, 0)
+  proc onMsgGridSize(self: wMainFrame, event: wEvent) =
+    # Received value is what the user wants at this zoom level
+    # Need to calc value to set grid.majorSpace so minDelta(Major) == val
+    if self.isReady():
+      let gr = self.editor.doc.grid
+      let newSz = gr.calcReferenceSpace(derefAs[WType](event))
+      if event.mMsg == idMsgGridRequestX:
+        gr.refYSpace = newsz
+        gr.refXSpace = newsz
+        echo "refXSpace:   ", gr.refXSpace
+        echo "minDelta:    ", gr.minDelta(Major)
+        # Send message to update display to both X and Y
+        sendToListeners(idMsgGridSizeX, event.wParam, event.lParam)
+        sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
+      elif event.mMsg == idMsgGridRequestY:
+        gr.refYSpace = newsz
+        # Send message to update display to only Y
+        sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
+      self.refresh()
+      sendToListeners(idMsgGridDivisionsReset, 0, 0)
 
-  # proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
-  #   # Change divisions based on given index and force zoom
-  #   var gr = self.mainPanel.blockPanel.editor.doc.grid
-  #   var vp = self.mainPanel.blockPanel.editor.viewport
-  #   let oldz = vp.rawZoom
-  #   gr.divisions = gr.allowedDivisions()[event.mLparam]
-  #   vp.rawZoom = oldz
-  #   self.mainPanel.blockPanel.refresh(false)
+  proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
+    # Change divisions based on given index and force zoom
+    if self.isReady():
+      var gr = self.editor.doc.grid
+      var vp = self.editor.viewport
+      let oldz = vp.rawZoom
+      gr.divisions = gr.allowedDivisions()[event.mLparam]
+      vp.rawZoom = oldz
+      self.refresh()
 
-  # proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
-  #   # Change divisions based on given value and force zoom
-  #   # Presumably the value is not in allowed divisions because
-  #   # if it were we would be in onMsgGridDivisionsSelect
-  #   # We're here because user typed in a value, which may or
-  #   # may not be in allowed divisions, ie able to divide grid 
-  #   # size exactly.  We do however assume it's been validated
-  #   # otherwise, which means it should be in DivRange
-  #   var gr = self.mainPanel.blockPanel.editor.doc.grid
-  #   var vp = self.mainPanel.blockPanel.editor.viewport
-  #   let oldz = vp.rawZoom
-  #   gr.divisions = event.mLparam
-  #   vp.rawZoom = oldz
-  #   self.mainPanel.blockPanel.refresh(false)
+  proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
+    # Change divisions based on given value and force zoom
+    # Presumably the value is not in allowed divisions because
+    # if it were we would be in onMsgGridDivisionsSelect
+    # We're here because user typed in a value, which may or
+    # may not be in allowed divisions, ie able to divide grid 
+    # size exactly.  We do however assume it's been validated
+    # otherwise, which means it should be in DivRange
+    if self.isReady():
+      var gr = self.editor.doc.grid
+      var vp = self.editor.viewport
+      let oldz = vp.rawZoom
+      gr.divisions = event.mLparam
+      vp.rawZoom = oldz
+      self.refresh()
 
-  # proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
-  #   let mag = event.lParam.float / 100.0
-  #   self.mainPanel.blockPanel.editor.doc.grid.mZctrl.density = mag
-  #   self.mainPanel.blockPanel.editor.viewport.doZoom(0)
-  #   self.mainPanel.blockPanel.refresh(false)
-  # #--
+  proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
+    if self.isReady():
+      let mag = event.lParam.float / 100.0
+      self.editor.doc.grid.mZctrl.density = mag
+      self.editor.viewport.doZoom(0)
+      self.refresh()
+  #--
 
-  # proc onMsgGridSnap(self: wMainFrame, event: wEvent) =
-  #   self.mainPanel.blockPanel.editor.doc.grid.mSnap = event.lParam.bool
+  proc onMsgGridSnap(self: wMainFrame, event: wEvent) =
+    if self.isReady():
+      self.editor.doc.grid.mSnap = event.lParam.bool
 
-  # proc onMsgGridDynamic(self: wMainFrame, event: wEvent) =
-  #   self.mainPanel.blockPanel.editor.doc.grid.mZctrl.dynamic = event.lParam.bool
-  #   self.mainPanel.blockPanel.editor.viewport.resetZoom()
-  #   self.mainPanel.blockPanel.refresh(false)
+  proc onMsgGridDynamic(self: wMainFrame, event: wEvent) =
+    if self.isReady():
+      self.editor.doc.grid.mZctrl.dynamic = event.lParam.bool
+      self.editor.viewport.resetZoom()
+      self.refresh()
 
-  # proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
-  #   var gr = self.mainPanel.blockPanel.editor.doc.grid
-  #   var zc = self.mainPanel.blockPanel.editor.doc.grid.mZctrl
-  #   var vp = self.mainPanel.blockPanel.editor.viewport
-  #   zc.baseSync = event.lParam.bool
-  #   # gr.divisions below is ignored when basySync false
-  #   let oldz = vp.rawZoom
-  #   zc.updateBase(gr.divisions)
-  #   vp.rawZoom = oldz
-  #   self.mainPanel.blockPanel.refresh(false)
-  # #--
+  proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
+    if self.isReady():
+      var gr = self.editor.doc.grid
+      var zc = self.editor.doc.grid.mZctrl
+      var vp = self.editor.viewport
+      zc.baseSync = event.lParam.bool
+      # gr.divisions below is ignored when baseSync false
+      let oldz = vp.rawZoom
+      zc.updateBase(gr.divisions)
+      vp.rawZoom = oldz
+      self.refresh()
+  #--
 
-  # proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
-  #   let state = event.mLparam.bool
-  #   self.mainPanel.blockPanel.editor.doc.grid.mVisible = state
-  #   self.bandToolbars[1].toggleTool(idCmdGridShow, state)
-  #   self.mainPanel.blockPanel.refresh(false)
+  proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
+    if self.isReady():
+      let state = event.mLparam.bool
+      self.editor.doc.grid.mVisible = state
+      self.bandToolbars[1].toggleTool(idCmdGridShow, state)
+      self.refresh()
 
-  # proc onMsgGridDots(self: wMainFrame, event: wEvent) =
-  #   let val = event.lParam.bool
-  #   if val: self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Dots
-  #   else:   self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Lines
-  #   self.mainPanel.blockPanel.refresh(false)
+  proc onMsgGridDots(self: wMainFrame, event: wEvent) =
+    if self.isReady():
+      let val = event.lParam.bool
+      if val: self.editor.doc.grid.mDotsOrLines = Dots
+      else:   self.editor.doc.grid.mDotsOrLines = Lines
+      self.refresh()
 
-  # proc onMsgGridLines(self: wMainFrame, event: wEvent) =
-  #   let val = event.lParam.bool
-  #   if val: self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Lines
-  #   else:   self.mainPanel.blockPanel.editor.doc.grid.mDotsOrLines = Dots
-  #   self.mainPanel.blockPanel.refresh(false)
-  # #--
+  proc onMsgGridLines(self: wMainFrame, event: wEvent) =
+    if self.isReady():
+      let val = event.lParam.bool
+      if val: self.editor.doc.grid.mDotsOrLines = Lines
+      else:   self.editor.doc.grid.mDotsOrLines = Dots
+      self.refresh()
+  #--
 
-  # proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
-  #   self.gridCtrlFrameShowing = false
-
+  proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
+    self.gridCtrlFrameShowing = false
 
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
@@ -316,25 +339,25 @@ wClass(wMainFrame of wFrame):
 
     
     # Respond to buttons & send msg
-    # self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
-    # self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
+    self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
+    self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
     
     # # Respond to incoming messages
-    # self.registerListener(idMsgGridRequestX,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
-    # self.registerListener(idMsgGridRequestY,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
-    # self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
-    # self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
-    # self.registerListener(idMsgGridDensity,         (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
-    # #---
-    # self.registerListener(idMsgGridSnap,     (w:wWindow, e:wEvent)=>onMsgGridSnap(w.wMainFrame, e))
-    # self.registerListener(idMsgGridDynamic,  (w:wWindow, e:wEvent)=>onMsgGridDynamic(w.wMainFrame, e))
-    # self.registerListener(idMsgGridBaseSync, (w:wWindow, e:wEvent)=>onMsgGridBaseSync(w.wMainFrame, e))
-    # #--
-    # self.registerListener(idMsgGridVisible, (w:wWindow, e:wEvent)=>onMsgGridVisible(w.wMainFrame, e))
-    # self.registerListener(idMsgGridDots,    (w:wWindow, e:wEvent)=>onMsgGridDots(w.wMainFrame, e))
-    # self.registerListener(idMsgGridLines,   (w:wWindow, e:wEvent)=>onMsgGridLines(w.wMainFrame, e))
-    # #--
-    # self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
+    self.registerListener(idMsgGridRequestX,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
+    self.registerListener(idMsgGridRequestY,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
+    self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
+    self.registerListener(idMsgGridDensity,         (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
+    #---
+    self.registerListener(idMsgGridSnap,     (w:wWindow, e:wEvent)=>onMsgGridSnap(w.wMainFrame, e))
+    self.registerListener(idMsgGridDynamic,  (w:wWindow, e:wEvent)=>onMsgGridDynamic(w.wMainFrame, e))
+    self.registerListener(idMsgGridBaseSync, (w:wWindow, e:wEvent)=>onMsgGridBaseSync(w.wMainFrame, e))
+    #--
+    self.registerListener(idMsgGridVisible, (w:wWindow, e:wEvent)=>onMsgGridVisible(w.wMainFrame, e))
+    self.registerListener(idMsgGridDots,    (w:wWindow, e:wEvent)=>onMsgGridDots(w.wMainFrame, e))
+    self.registerListener(idMsgGridLines,   (w:wWindow, e:wEvent)=>onMsgGridLines(w.wMainFrame, e))
+    #--
+    self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
 
     # Set up mainPanel
     # self.mainPanel  = MainPanel(self)
