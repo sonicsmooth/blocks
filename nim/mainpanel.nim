@@ -32,19 +32,21 @@ const
 
 
 wClass(wMainPanel of wPanel):
-  proc refresh(self: wMainPanel) =
-    self.blockPanel.refresh(false)
+  proc isReady*(self: wMainPanel): bool =
+    self.blockPanel != nil and
+    self.slider != nil
 
-  proc layout(self: wMainPanel) =
+  proc layout*(self: wMainPanel) =
     let 
       bmarg = self.dpiScale(8)
       (cszw, cszh) = self.clientSize
       (bw, bh) = (self.dpiScale(150), self.dpiScale(30))
       (lbpmarg, rbpmarg, tbpmarg, bbpmarg) = (0, 8, 0, 0)
       bwd2 = bw div 2
-    # self.blockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
-    # self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
-    #                          cszh - tbpmarg - bbpmarg)
+    if self.blockPanel != nil:
+      self.blockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
+      self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
+                               cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Static text position, size
     self.txt.position = (bmarg, bmarg)
@@ -71,7 +73,7 @@ wClass(wMainPanel of wPanel):
     yPosAcc += bmarg + bh
 
     # Static box1 and radio button position, size
-    self.box1.position      = (bmarg,   yPosAcc          )
+    self.box1.position  = (bmarg,   yPosAcc          )
     self.aStratRb1.size = (bwd2, bh)
     self.aStratRb2.size = (bwd2, bh)
     self.aStratRb3.size = (bwd2, bh)
@@ -83,11 +85,6 @@ wClass(wMainPanel of wPanel):
     self.box1.size = (bw, self.aStratRb1.size.height*2 + bmarg*4)
     yPosAcc += bmarg*5
 
-    # Static box2 position, size
-    #self.mBox2.position = (bmarg,   yPosAcc          )
-    #self.mBox2.size = (bw, self.aStratRb3.size.height*2 + bmarg*4)
-    #yPosAcc += bmarg*5
-
     # Buttons position, size
     for i, butt in self.buttons:
       butt.position = (bmarg, yPosAcc)
@@ -95,27 +92,33 @@ wClass(wMainPanel of wPanel):
       yPosAcc += bh
 
   proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
-    var db = self.blockPanel.editor.doc.db
-    db.randomizeRectsAll(randRegion, qty, logRandomize)
-    ##! Move updateRatio to algorithm, solve clearTextureCache
-    self.blockPanel.editor.fillArea = db.fillArea()
-    self.blockPanel.editor.updateRatio()
-    self.blockPanel.renderer.clearTextureCache()
+    # TODO: delegate all this to something else, so we can 
+    # TODO: get rid of self.blockpanel.editor,... etc.
+    if self.blockPanel != nil:
+      var db = self.blockPanel.editor.doc.db
+      db.randomizeRectsAll(randRegion, qty, logRandomize)
+      ##! Move updateRatio to algorithm, solve clearTextureCache
+      self.blockPanel.editor.fillArea = db.fillArea()
+      self.blockPanel.editor.updateRatio()
+      self.blockPanel.renderer.clearTextureCache()
+
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
     #echo GC_getStatistics()
     ##! Move updateratio to algorithm
-    var db = self.blockPanel.editor.doc.db
-    withLock(gLock):
-      compact(db, axis, sortOrder, self.blockPanel.editor.dstRect)
-    self.blockPanel.editor.updateRatio()
-    self.refresh(false)
-    GC_fullCollect()
+    if self.blockPanel != nil:
+      var db = self.blockPanel.editor.doc.db
+      withLock(gLock):
+        compact(db, axis, sortOrder, self.blockPanel.editor.dstRect)
+      self.blockPanel.editor.updateRatio()
+      self.refresh(false)
+      GC_fullCollect()
+
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     # Leave if we have any threads already running
+    if self.blockPanel.isNil: return
     if gCompactThread.running: return
     for i in gAnnealComms.low .. gAnnealComms.high:
       if gAnnealComms[i].thread.running: return
-
     let dstRect = self.blockPanel.editor.dstRect
     let dbaddr = addr self.blockPanel.editor.doc.db
     
@@ -128,7 +131,7 @@ wClass(wMainPanel of wPanel):
       gCompactThread.joinThread()
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
-    
+   
     elif self.ctrb2.value: # Do anneal
       proc compactfn() {.closure.} = 
         iterCompact(self.blockPanel.editor.doc.db, direction, dstRect)
@@ -157,18 +160,24 @@ wClass(wMainPanel of wPanel):
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
 
-  proc onResize(self: wMainPanel) =
+  proc onResize(self: wMainPanel, event: wEvent) =
     self.layout()
+    event.skip()
+
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
     self.randomizeRectsAll(qty)
-    self.blockPanel.editor.updateRatio()
+    if self.blockPanel != nil:
+      self.blockPanel.editor.updateRatio()
     self.refresh(false)
+
   proc onSpinTextEnter(self: wMainPanel) =
     if self.spnr.value > 0:
       self.randomizeRectsAll(self.spnr.value)
-      self.blockPanel.editor.updateRatio()
+      if self.blockPanel != nil:
+        self.blockPanel.editor.updateRatio()
       self.refresh(false)
+
   proc onStrategyRadioButton(self: wMainPanel, event: wEvent) =
     if self.ctrb1.value: # No strategy
       self.slider.disable()
@@ -193,18 +202,24 @@ wClass(wMainPanel of wPanel):
     let pos = event.scrollPos
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hwnd, idMsgSlider, pos, pos)
+
   proc onButtonrandomizeAll(self: wMainPanel) =
-    self.randomizeRectsAll(self.spnr.value)
-    self.blockPanel.editor.updateRatio()
-    self.refresh(false)
+    if self.blockPanel != nil:
+      self.randomizeRectsAll(self.spnr.value)
+      self.blockPanel.editor.updateRatio()
+      self.refresh(false)
+  
   proc onButtonrandomizePos(self: wMainPanel) =
-    #let sz = self.blockPanel.clientSize
-    self.blockPanel.editor.doc.db.randomizeRectsPos(randRegion)
-    self.blockPanel.editor.updateRatio()
-    self.blockPanel.editor.invalidate()
+    if self.blockPanel != nil:
+      #let sz = self.blockPanel.clientSize
+      self.blockPanel.editor.doc.db.randomizeRectsPos(randRegion)
+      self.blockPanel.editor.updateRatio()
+      self.blockPanel.editor.invalidate()
+  
   proc onButtonTest(self: wMainPanel) =
-    for rect in self.blockPanel.editor.doc.db.values:
-      echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.w, rect.h)}, rot: {rect.rot}"
+    if self.blockPanel != nil:
+      for rect in self.blockPanel.editor.doc.db.values:
+        echo &"id: {rect.id}, pos: {(rect.x, rect.y)}, size: {(rect.w, rect.h)}, rot: {rect.rot}"
   # Left  arrow = stack from left to right, which is x ascending
   # Right arrow = stack from right to left, which is x descending
   # Up    arrow = stack from top to bottom, which is y descending
@@ -238,15 +253,17 @@ wClass(wMainPanel of wPanel):
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
     let (idx, _) = paramSplit(event.lParam)
     let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
-    if msgAvail:
-        self.blockPanel.editor.text = $idx.int64 & ": " & msg 
+    if self.blockPanel != nil:
+      if msgAvail:
+          self.blockPanel.editor.text = $idx.int64 & ": " & msg 
     
     let (_, _) = gAnnealComms[idx].idChan.tryRecv()
-    withLock(gLock):
-      self.blockPanel.renderer.clearTextureCache()
-      self.blockPanel.forceRedraw(0)
-      gAnnealComms[idx].ackChan.send(ackCnt)
-    inc ackCnt
+    if self.blockPanel != nil:
+      withLock(gLock):
+        self.blockPanel.renderer.clearTextureCache()
+        self.blockPanel.forceRedraw(0)
+        gAnnealComms[idx].ackChan.send(ackCnt)
+      inc ackCnt
 
   proc init*(self: wMainPanel, parent: wWindow) =
     echo "mainpanel init"
@@ -255,8 +272,8 @@ wClass(wMainPanel of wPanel):
     let rectQty = gAppOpts.compQty
 
     # Create controls
-    self.spnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
     self.txt       = StaticText(self, label="Qty", style=wSpRight)
+    self.spnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
     self.box1      = StaticBox(self, label="Strat and func")
     self.ctrb1     = RadioButton(self, label="None", style=wRbGroup)
     self.ctrb2     = RadioButton(self, label="Anneal")
@@ -286,7 +303,7 @@ wClass(wMainPanel of wPanel):
     self.buttons[16] = Button(self, label = "Load"              )
 
     # Connect events
-    self.wEvent_Size                do (event: wEvent): self.onResize()
+    self.wEvent_Size                do (event: wEvent): self.onResize(event)
     self.spnr.wEvent_Spin          do (event: wEvent): self.onSpinSpin(event)
     self.spnr.wEvent_TextEnter     do (): self.onSpinTextEnter()
     self.ctrb1.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
@@ -310,11 +327,12 @@ wClass(wMainPanel of wPanel):
     self.buttons[14].wEvent_Button do (): self.onButtonCompact↓→()
     self.idMsgAlgUpdate            do (event: wEvent): self.onAlgUpdate(event)
 
-    # Set up stuff
-    self.blockPanel = BlockPanel(self)
+    # # Set up stuff
+    # self.blockPanel = BlockPanel(self)
     self.spnr.setRange(1, 10000)
     self.slider.setValue(20)
     self.ctrb1.click()
     self.aStratRb1.click()
     self.aStratRb3.click()
+    self.randomizeRectsAll()
 

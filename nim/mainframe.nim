@@ -1,9 +1,8 @@
-import std/[os, strformat, strutils, sugar, tables]
+import std/[os, strformat, sugar]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
 import winim/inc/windef
-import sdl2
 
 import appopts
 import appinit, routing
@@ -85,13 +84,16 @@ wClass(wMainFrame of wFrame):
     self.statusBar != nil
   
   proc onResize(self: wMainFrame, event: wEvent) =
-    if self.mainPanel != nil:
-      self.mainPanel.size = self.clientSize
     if self.statusBar != nil:
       self.statusBar.setStatusText($self.clientSize, index=1)
+    event.skip()
   
-  proc refresh(self: wMainFrame) =
-    self.mainPanel.refresh()
+  proc refreshCanvas(self: wMainFrame) =
+    echo "mainframe refresh"
+    if self.mainPanel != nil:
+      self.mainPanel.layout()
+    if self.mainPanel.blockPanel != nil:
+      self.mainPanel.blockPanel.refresh(false)
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     # Main menu at top of frame
@@ -154,8 +156,8 @@ wClass(wMainFrame of wFrame):
     result.disableDrag()
 
   proc setupStatusBar(self: wMainFrame): wStatusBar =
-    self.mStatusBar = StatusBar(self)
-    self.statusBar.setStatusWidths([-1, -1, -1])
+    result = StatusBar(self)
+    result.setStatusWidths([-1, -1, -1])
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
     echo event.id.MenuCmdID
@@ -230,7 +232,7 @@ wClass(wMainFrame of wFrame):
         gr.refYSpace = newsz
         # Send message to update display to only Y
         sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
-      self.refresh()
+      self.refreshCanvas()
       sendToListeners(idMsgGridDivisionsReset, 0, 0)
 
   proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
@@ -241,7 +243,7 @@ wClass(wMainFrame of wFrame):
       let oldz = vp.rawZoom
       gr.divisions = gr.allowedDivisions()[event.mLparam]
       vp.rawZoom = oldz
-      self.refresh()
+      self.refreshCanvas()
 
   proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
     # Change divisions based on given value and force zoom
@@ -257,14 +259,14 @@ wClass(wMainFrame of wFrame):
       let oldz = vp.rawZoom
       gr.divisions = event.mLparam
       vp.rawZoom = oldz
-      self.refresh()
+      self.refreshCanvas()
 
   proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
     if self.isReady():
       let mag = event.lParam.float / 100.0
       self.editor.doc.grid.mZctrl.density = mag
       self.editor.viewport.doZoom(0)
-      self.refresh()
+      self.refreshCanvas()
   #--
 
   proc onMsgGridSnap(self: wMainFrame, event: wEvent) =
@@ -275,7 +277,7 @@ wClass(wMainFrame of wFrame):
     if self.isReady():
       self.editor.doc.grid.mZctrl.dynamic = event.lParam.bool
       self.editor.viewport.resetZoom()
-      self.refresh()
+      self.refreshCanvas()
 
   proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
     if self.isReady():
@@ -287,7 +289,7 @@ wClass(wMainFrame of wFrame):
       let oldz = vp.rawZoom
       zc.updateBase(gr.divisions)
       vp.rawZoom = oldz
-      self.refresh()
+      self.refreshCanvas()
   #--
 
   proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
@@ -295,21 +297,21 @@ wClass(wMainFrame of wFrame):
       let state = event.mLparam.bool
       self.editor.doc.grid.mVisible = state
       self.bandToolbars[1].toggleTool(idCmdGridShow, state)
-      self.refresh()
+      self.refreshCanvas()
 
   proc onMsgGridDots(self: wMainFrame, event: wEvent) =
     if self.isReady():
       let val = event.lParam.bool
       if val: self.editor.doc.grid.mDotsOrLines = Dots
       else:   self.editor.doc.grid.mDotsOrLines = Lines
-      self.refresh()
+      self.refreshCanvas()
 
   proc onMsgGridLines(self: wMainFrame, event: wEvent) =
     if self.isReady():
       let val = event.lParam.bool
       if val: self.editor.doc.grid.mDotsOrLines = Lines
       else:   self.editor.doc.grid.mDotsOrLines = Dots
-      self.refresh()
+      self.refreshCanvas()
   #--
 
   proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
@@ -318,26 +320,25 @@ wClass(wMainFrame of wFrame):
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()
+    echo "mainframe show"
     wFrame.show(self)
-    if self.mainPanel != nil:
-      self.mainPanel.blockPanel.forceRedraw()
-      self.mainPanel.blockPanel.forceRedraw()
+    self.refreshCanvas()
   
   proc init*(self: wMainFrame, size: wSize) = 
+    echo "mainframe init"
     wFrame(self).init(title="Blocks Frame", size=size)
     when defined(debug):
       echo "Main frame is ", $self.mHwnd
     
-    # Create controls
-    self.mMenuBar   = self.setupMenuBar()  # membor declared in wNim already
-    self.mReBar     = self.setupRebar()    # member declared in wNim already
+    # Create controls -- these are declared in wNim already
+    self.mMenuBar   = self.setupMenuBar()
+    self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()
     
     # Connect internal Events
     self.wEvent_Size do (event: wEvent): self.onResize(event)
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
 
-    
     # Respond to buttons & send msg
     self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
     self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
@@ -360,13 +361,13 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
 
     # Set up mainPanel
-    # self.mainPanel  = MainPanel(self)
+    self.mainPanel  = MainPanel(self)
     if self.mainPanel != nil:
       if self.statusBar != nil:
-        let sldrVal = self.mainPanel.slider.value
-        let tmpStr = &"temperature: {sldrVal}"
-        self.statusBar.setStatusText(tmpStr, index=0)
-      # self.mainPanel.randomizeRectsAll()
+        if self.mainPanel.isReady():
+          let sldrVal = self.mainPanel.slider.value
+          let tmpStr = &"temperature: {sldrVal}"
+          self.statusBar.setStatusText(tmpStr, index=0)
   
 when isMainModule:
   # Main data and window

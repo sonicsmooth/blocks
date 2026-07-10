@@ -82,6 +82,8 @@ wClass(wBlockPanel of wSDLPanel):
 
   proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
     #discard
+    echo "in blockpanel forcredraw"
+    echo getStackTrace()
     self.refresh(false)
     UpdateWindow(self.mHwnd)
 
