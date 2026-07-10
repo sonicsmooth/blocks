@@ -477,42 +477,43 @@ proc drawGrid*(self: Renderer) =
 
 proc drawEverything*(self: Renderer) =
   # Typically called from OnPaint
+  echo "draweverything: ", self.backgroundColor
   self.sdlRenderer.setDrawColor(self.backgroundColor)
   self.sdlRenderer.clear()
   return
-  self.drawGrid()
+  # self.drawGrid()
 
-  # Try a few methods to draw rectangles
-  when defined(noTextureCache):
-    self.renderToScreen()
-  else:
-    self.blitFromtextureCache()
+  # # Try a few methods to draw rectangles
+  # when defined(noTextureCache):
+  #   self.renderToScreen()
+  # else:
+  #   self.blitFromtextureCache()
 
-  # Draw various boxes and text, then done
-  #self.updateDestinationBox()
-  if gAppOpts.enableDstRect:
-    self.sdlRenderer.renderOutlineRect(self.editor.dstRect.toPRect(self.editor.viewport), DarkOrchid)
-  if gAppOpts.enableBbox:
-    #self.updateBoundingBox()
-    self.sdlRenderer.renderOutlineRect(self.editor.allBbox.toPRect(self.editor.viewport).grow(1), Green)
-  self.sdlRenderer.renderFilledRect(self.editor.selectBox,
-                                    fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
-                                    penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
-  var txt: string
-  txt &= &"pan: {self.editor.viewport.pan}\n"
-  txt &= &"zClicks: {self.editor.viewport.zClicks}\n"
-  txt &= &"level: {self.editor.viewport.zCtrl.logStep}\n"
-  txt &= &"rawZoom: {self.editor.viewport.rawZoom:.3f}\n"
-  txt &= &"zoom: {self.editor.viewport.zoom:.3f}\n"
-  txt &= &"smoothDelta: {minDelta(self.doc.grid, scale=None)}\n"
-  txt &= &"tinyDelta: {minDelta(self.doc.grid, scale=Tiny)}\n"
-  txt &= &"minorDelta: {minDelta(self.doc.grid, scale=Minor)}\n"
-  let majdelt = minDelta(self.doc.grid, scale=Major)
-  let pxwidth = (majdelt.x.float * self.editor.viewport.zoom).round.int
-  txt &= &"majorDelta: {majdelt}\n"
-  txt &= &"majorPx: {pxwidth}"
+  # # Draw various boxes and text, then done
+  # #self.updateDestinationBox()
+  # if gAppOpts.enableDstRect:
+  #   self.sdlRenderer.renderOutlineRect(self.editor.dstRect.toPRect(self.editor.viewport), DarkOrchid)
+  # if gAppOpts.enableBbox:
+  #   #self.updateBoundingBox()
+  #   self.sdlRenderer.renderOutlineRect(self.editor.allBbox.toPRect(self.editor.viewport).grow(1), Green)
+  # self.sdlRenderer.renderFilledRect(self.editor.selectBox,
+  #                                   fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
+  #                                   penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
+  # var txt: string
+  # txt &= &"pan: {self.editor.viewport.pan}\n"
+  # txt &= &"zClicks: {self.editor.viewport.zClicks}\n"
+  # txt &= &"level: {self.editor.viewport.zCtrl.logStep}\n"
+  # txt &= &"rawZoom: {self.editor.viewport.rawZoom:.3f}\n"
+  # txt &= &"zoom: {self.editor.viewport.zoom:.3f}\n"
+  # txt &= &"smoothDelta: {minDelta(self.doc.grid, scale=None)}\n"
+  # txt &= &"tinyDelta: {minDelta(self.doc.grid, scale=Tiny)}\n"
+  # txt &= &"minorDelta: {minDelta(self.doc.grid, scale=Minor)}\n"
+  # let majdelt = minDelta(self.doc.grid, scale=Major)
+  # let pxwidth = (majdelt.x.float * self.editor.viewport.zoom).round.int
+  # txt &= &"majorDelta: {majdelt}\n"
+  # txt &= &"majorPx: {pxwidth}"
   
-  self.renderText(txt)
-  self.sdlRenderer.present()
+  # self.renderText(txt)
+  # self.sdlRenderer.present()
 
   # release(gLock)
