@@ -13,6 +13,10 @@ proc newDocument*(): Document =
   let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0, dynamic=true, baseSync=true)
   result.grid = newGrid(zCtrl=zc)
 
+proc isReady*(self: Document): bool =
+  self.db != nil and
+  self.grid != nil and self.grid.isReady()
+
 when isMainModule:
   let doc: Document = newDocument()
   echo doc[]

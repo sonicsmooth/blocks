@@ -26,6 +26,10 @@ type
     mDotsOrLines*: DotsOrLines = Lines
     mZctrl*:       ZoomCtrl
 
+# TODO: delete m prefix
+
+proc isReady*(self: Grid): bool =
+  self.mZctrl != nil
 
 # Forward decl
 proc minDelta*(grid: Grid, scale: Scale): WPoint
@@ -233,6 +237,7 @@ proc newGrid*(zCtrl: ZoomCtrl): Grid =
     if gGridSpecsJ["dotsOrLines"].getStr == "dots": Dots
     elif gGridSpecsJ["dotsOrLines"].getStr == "lines": Lines
     else: raise newException(ValueError, "Select dots or lines")
+
 
 when isMainModule:
   let zc = newZoomCtrl(base=4, clickDiv=2400, maxPwr=3,

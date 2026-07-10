@@ -78,9 +78,9 @@ let
 wClass(wMainFrame of wFrame):
   proc isReady(self: wMainFrame): bool =
     # only check first-level objects, ie don't check doc, grid, viewport, etc.
-    self.editor != nil and
-    self.mainPanel != nil and
-    self.mainPanel.blockPanel != nil and
+    self.editor != nil and self.editor.isReady() and
+    self.mainPanel != nil and self.mainPanel.isReady() and
+    #self.mainPanel.blockPanel != nil and
     self.statusBar != nil
   
   proc onResize(self: wMainFrame, event: wEvent) =

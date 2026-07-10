@@ -38,6 +38,12 @@ const
 proc newRenderer*(): Renderer =
   result = new Renderer
 
+proc isReady*(self: Renderer): bool =
+  self.doc != nil and self.doc.isReady() and
+  self.editor != nil and self.editor.isReady() and
+  self.sdlRenderer != nil and
+  self.sdlWindow != nil 
+
 proc clientSize(self: Renderer): PxSize =
   var w, h: cint
   self.sdlRenderer.getLogicalSize(w, h)

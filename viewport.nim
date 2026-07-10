@@ -70,6 +70,9 @@ proc newViewport*(pan: PxPoint, clicks: float, zCtrl: ZoomCtrl): Viewport =
   # The doZoom call updates values in result, including result.zctrl.
   doZoom(result, 0) 
 
+proc isReady*(self: Viewport): bool =
+  self.mZctrl != nil
+
 proc doPan*(vp: var Viewport, delta: PxPoint) = 
   # Just pan by the pixel amount
   vp.mPan += delta

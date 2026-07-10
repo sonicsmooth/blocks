@@ -33,8 +33,19 @@ const
 
 wClass(wMainPanel of wPanel):
   proc isReady*(self: wMainPanel): bool =
-    self.blockPanel != nil and
-    self.slider != nil
+    self.blockPanel != nil and self.blockPanel.isReady() and
+    self.spnr != nil and 
+    self.txt != nil and 
+    self.chk != nil and 
+    self.box1 != nil and 
+    self.ctrb1 != nil and 
+    self.ctrb2 != nil and 
+    self.ctrb3 != nil and 
+    self.aStratRb1 != nil and 
+    self.aStratRb2 != nil and 
+    self.aStratRb3 != nil and 
+    self.aStratRb4 != nil and 
+    self.slider != nil 
 
   proc layout*(self: wMainPanel) =
     let 
@@ -94,7 +105,10 @@ wClass(wMainPanel of wPanel):
   proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
     # TODO: delegate all this to something else, so we can 
     # TODO: get rid of self.blockpanel.editor,... etc.
-    if self.blockPanel != nil:
+    if self.blockPanel != nil and
+       self.blockPanel.editor != nil and
+       self.blockPanel.editor.doc != nil and
+       self.blockPanel.renderer != nil:
       var db = self.blockPanel.editor.doc.db
       db.randomizeRectsAll(randRegion, qty, logRandomize)
       ##! Move updateRatio to algorithm, solve clearTextureCache
@@ -261,7 +275,8 @@ wClass(wMainPanel of wPanel):
     if self.blockPanel != nil:
       withLock(gLock):
         self.blockPanel.renderer.clearTextureCache()
-        self.blockPanel.forceRedraw(0)
+        #self.blockPanel.forceRedraw(0)
+        self.blockPanel.refresh(false)
         gAnnealComms[idx].ackChan.send(ackCnt)
       inc ackCnt
 
@@ -328,7 +343,7 @@ wClass(wMainPanel of wPanel):
     self.idMsgAlgUpdate            do (event: wEvent): self.onAlgUpdate(event)
 
     # # Set up stuff
-    # self.blockPanel = BlockPanel(self)
+    self.blockPanel = BlockPanel(self)
     self.spnr.setRange(1, 10000)
     self.slider.setValue(20)
     self.ctrb1.click()
