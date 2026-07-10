@@ -50,11 +50,13 @@ wClass(wSDLPanel of wPanel):
     wPanel(self).init(parent, style=style)
 
     self.sdlWindow = createWindowFrom(cast[pointer] (self.mHwnd))
-    sdlFailIf self.sdlWindow.isNil: "Window could not be created"
+    sdlFailIf(self.sdlWindow.isNil):
+      "Window could not be created"
     
     let flags = Renderer_Accelerated or Renderer_PresentVsync
     self.sdlRenderer = self.sdlWindow.createRenderer(index = -1, flags=flags)
-    sdlFailIf self.sdlRenderer.isNil: "Renderer could not be created"
+    sdlFailIf(self.sdlRenderer.isNil):
+      "Renderer could not be created"
     self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
 
     var dm: DisplayMode 
