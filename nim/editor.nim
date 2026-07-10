@@ -58,6 +58,7 @@ type
 
   Editor* = ref object of RootObj
     doc*:          Document
+    viewport*:     Viewport
     mouseData:     MouseData
     selectBox*:    PRect # Selection box
     allBbox*:      WRect # Bounding box of everything
@@ -66,7 +67,6 @@ type
     fillArea*:     WType
     ratio:         float
     firmSelection: seq[CompID]
-    viewport*:     Viewport
     invalidate*:   proc() {.gcsafe.}
 
 const 
@@ -96,6 +96,9 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   # all other fields can take their default values
   # and are assigned later
 
+proc isReady*(self: Editor): bool =
+  self.doc != nil and self.doc.isReady() and
+  self.viewport != nil and self.viewport.isReady()
 
 proc updateDestinationBox*(self: Editor) =
   let 
