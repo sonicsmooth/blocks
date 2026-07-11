@@ -53,7 +53,7 @@ wClass(wSDLPanel of wPanel):
     sdlFailIf(self.sdlWindow.isNil):
       "Window could not be created"
     
-    let flags = Renderer_Accelerated or Renderer_PresentVsync
+    let flags = Renderer_Accelerated #or Renderer_PresentVsync
     self.sdlRenderer = self.sdlWindow.createRenderer(index = -1, flags=flags)
     sdlFailIf(self.sdlRenderer.isNil):
       "Renderer could not be created"

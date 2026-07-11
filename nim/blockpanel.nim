@@ -83,13 +83,6 @@ wClass(wBlockPanel of wSDLPanel):
   proc mouseWorldPosition*(self: wBlockPanel): WPoint =
     self.mouseClientPosition().toWorld(self.editor.viewport)
 
-  # proc forceRedraw*(self: wBlockPanel, wait: int = 0) = 
-  #   #discard
-  #   echo "in blockpanel forcredraw"
-  #   echo getStackTrace()
-  #   self.refresh(false)
-  #   UpdateWindow(self.mHwnd)
-
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
     echo "ui event"
     return
@@ -136,14 +129,15 @@ wClass(wBlockPanel of wSDLPanel):
     event.skip()
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
-    echo "onPaint"
-    if gAppOpts.enableBbox:
-      self.editor.updateBoundingBox()
+    if self.editor != nil:
+      if gAppOpts.enableBbox:
+        self.editor.updateBoundingBox()
     if self.renderer != nil:
       self.renderer.drawEverything()
-    else:
-      echo "renderer is nil"
   
+  proc onFirstPaintKick(self: wBlockPanel) = 
+      self.stopTimer()
+      self.refresh(true)
 
   proc init*(self: wBlockPanel, parent: wWindow) = 
     echo "blockpanel init"
@@ -167,5 +161,6 @@ wClass(wBlockPanel of wSDLPanel):
     self.wEvent_MouseHorizontalWheel do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
     self.wEvent_KeyDown              do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
     self.wEvent_KeyUp                do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-
+    self.wEvent_Timer                do (): self.onFirstPaintKick()
+    self.startTimer(0.0)
     

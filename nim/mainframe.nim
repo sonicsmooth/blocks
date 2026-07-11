@@ -6,7 +6,7 @@ import winim/inc/windef
 
 import appopts
 import appinit, routing
-import editor, viewport, utils
+import editor, document, viewport, utils
 import mainpanel, aboutframe, gridctrlframe, grid
 export mainpanel
 
@@ -14,7 +14,8 @@ export mainpanel
 
 type
   wMainFrame* = ref object of wFrame
-    editor: Editor
+    editor*: Editor
+    doc*: Document
     gridCtrlFrameShowing: bool
     mainPanel*: wMainPanel
     bandToolBars: seq[wToolBar]
