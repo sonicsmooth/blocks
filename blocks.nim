@@ -21,8 +21,8 @@ when isMainModule:
       echo "DPI: ", wAppGetDpi()
 
     # Start stuff
-    concurrent.init()
-    anneal.init()
+    # concurrent.init()
+    # anneal.init()
     #sdlframes.initSDL()
     #document.initDb()
     
@@ -34,8 +34,8 @@ when isMainModule:
     # ... wait for user to shut down ... #
 
     # Shut down
-    concurrent.deinit()
-    anneal.deinit()
+    #concurrent.deinit()
+    #anneal.deinit()
       
   except Exception as e:
     echo "Exception!"

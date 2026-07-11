@@ -49,6 +49,7 @@ proc clientSize(self: Renderer): PxSize =
   self.sdlRenderer.getLogicalSize(w, h)
   (w.PxType, h.Pxtype)
 
+
 proc clampRectSize(self: Renderer, prect: PRect): PRect =
   # Return the given prect if one or more dimensions fits in client area
   # If both dimensions exceed client size, then return a PRect with the
@@ -324,15 +325,13 @@ proc renderToScreen(self: Renderer) =
       cprect = self.clampRectSize(prect)
     self.renderDBComp(vp, comp, cprect, newSurface=false) # -> Returns nil
 
-
-
-
 proc lineAlpha(step: int): int =
   let idx = max(0, step - alphaOffset)
   if idx < stepAlphas.len:
     result = stepAlphas[idx]
   else:
     result = 255
+
 proc toWorldF(pt: PxPoint, vp: Viewport): tuple[x,y: float] =
   let
     x = ((pt.x - vp.pan.x).float / vp.zoom)
@@ -474,12 +473,14 @@ proc drawGrid*(self: Renderer) =
     # Scale
     self.drawScale()
 
-
 proc drawEverything*(self: Renderer) =
   # Typically called from OnPaint
-  echo "draweverything: ", self.backgroundColor
-  self.sdlRenderer.setDrawColor(self.backgroundColor)
+  #let bg = self.backgroundColor
+  #echo "draweverything: ", $bg.r.int8, " ", $bg.g.int8, " ", $bg.b.int8
+  echo "drawEverything: "
+  self.sdlRenderer.setDrawColor(10'u8, 50'u8, 200'u8, 255'u8)
   self.sdlRenderer.clear()
+  self.sdlRenderer.present()
   return
   # self.drawGrid()
 

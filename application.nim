@@ -10,10 +10,9 @@ type
     renderer: Renderer
     mainFrame: wMainFrame
 
-proc init*(app: var Application, w,h: int) =
+proc init*(app: var Application, w, h: int) =
   # Create stuff
-  initSDL()
-  app.wapp = App()
+  app.wapp = wApp.App()
   app.mainFrame = MainFrame((w, h))
   app.doc = newDocument()
   app.editor = newEditor(app.doc.grid.mZctrl)
@@ -21,6 +20,7 @@ proc init*(app: var Application, w,h: int) =
 
   # Assign stuff
   app.mainFrame.editor = app.editor
+  app.mainFrame.doc = app.doc
   app.editor.doc = app.doc
   app.renderer.doc = app.doc
   app.renderer.editor = app.editor
