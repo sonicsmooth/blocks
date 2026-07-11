@@ -107,13 +107,15 @@ wClass(wMainPanel of wPanel):
     # TODO: get rid of self.blockpanel.editor,... etc.
     if self.blockPanel != nil and
        self.blockPanel.editor != nil and
-       self.blockPanel.editor.doc != nil and
-       self.blockPanel.renderer != nil:
+       self.blockPanel.editor.doc != nil:
+    #if self.isReady():
       var db = self.blockPanel.editor.doc.db
+      echo qty
       db.randomizeRectsAll(randRegion, qty, logRandomize)
       ##! Move updateRatio to algorithm, solve clearTextureCache
       self.blockPanel.editor.fillArea = db.fillArea()
       self.blockPanel.editor.updateRatio()
+      # if self.blockPanel.renderer != nil:
       self.blockPanel.renderer.clearTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
