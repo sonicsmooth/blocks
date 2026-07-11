@@ -23,8 +23,6 @@ when isMainModule:
     # Start stuff
     # concurrent.init()
     # anneal.init()
-    #sdlframes.initSDL()
-    #document.initDb()
     
     # Main data and window
     var app: Application
