@@ -7,7 +7,8 @@
       "enableDstRect": false,
       "enableText": true,
       "enableHover": true,
-      "compQty": 1
+      "compQty": 1,
+      "renderMethod": "PixieLock"
     },
     "Viewport": {
       "pan": "(400, 400)",

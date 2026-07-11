@@ -14,9 +14,9 @@ export json
 # TODO: Use Jsony
 
 let
-  appInits = parseFile("appinit.json")["appInits"]
-  gAppOptsJ*: JsonNode = appInits["AppOpts"]
-  gViewportJ*: JsonNode = appInits["Viewport"]
-  gZctrlJ*: JsonNode = appInits["Zctrl"]
-  gGridSpecsJ*: JsonNode = appInits["Grid"]
-  gPanelSpecsJ*: JsonNode = appInits["MainPanel"]
+  appInitsJ: JsonNode = parseFile("appinit.json")["appInits"]
+  gAppOptsJ*: JsonNode = appInitsJ["AppOpts"]
+  gViewportJ*: JsonNode = appInitsJ["Viewport"]
+  gZctrlJ*: JsonNode = appInitsJ["Zctrl"]
+  gGridSpecsJ*: JsonNode = appInitsJ["Grid"]
+  gPanelSpecsJ*: JsonNode = appInitsJ["MainPanel"]

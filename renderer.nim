@@ -38,20 +38,13 @@ const
 
 proc newRenderer*(): Renderer =
   result = new Renderer
-  result.backgroundColor = LightBlue.toColor
+  result.backgroundColor = MintCream.toColor
 
 proc isReady*(self: Renderer): bool =
   self.doc != nil and self.doc.isReady() and
   self.editor != nil and self.editor.isReady() and
   self.sdlRenderer != nil and
   self.sdlWindow != nil 
-
-# proc clientSize(self: Renderer): PxSize =
-#   var w, h: cint
-#   # self.sdlRenderer.getLogicalSize(w, h)
-#   self.editor.viewport.clientSize
-#   # (w.PxType, h.Pxtype)
-
 
 proc clampRectSize(self: Renderer, prect: PRect): PRect =
   # Return the given prect if one or more dimensions fits in client area
@@ -94,6 +87,13 @@ proc highlight(comp: DBComp): float =
   elif (comp.selected, comp.hovering) == (true,  false): 1.5
   else: 1.9
 
+#[ Component rendering options:
+  1. Default renderer -> rp.drawRect
+  2. Software renderer -> rp.drawRect -> cache -> blit
+  3. Texture as rendering target -> rp.drawRect -> cache -> blit
+  4. Pixie.Image, then update texture cache, then blit to sdlRenderer 
+  5. Lock texture then draw with pixie, then unlock and blit to sdlRenderer ]# 
+
 proc renderFilledRect*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorU32) =
   # explicit convertion to SDL2.Rect?
   rp.setDrawColor(fillColor.toColor)
@@ -106,26 +106,29 @@ proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBComp*(self: Renderer, vp: Viewport, comp: DBComp, prect: PRect, newSurface: bool): SurfacePtr {.discardable} =
+proc renderDBComp*(self: Renderer, comp: DBComp, prect: PRect, useDefaultSurface: bool): SurfacePtr {.discardable} =
   # Draw rectangle on surface using SDL2 renderer; return surface
-  # if newSurface:
-  #   create new Surface to draw to and use the zero'd version of prect; return surface
-  # else:
+  # if useDefaultSurface:
   #   use self.sdlRenderer and the full prect
+  # else:
+  #   create new Surface to draw to and use the zero'd version of prect; return surface
+  # comp is component
+  # prect is position and size of target rectangle
 
   var
     rp: RendererPtr
     surfRect: PRect
     err: SDL_Return
+    vp: Viewport = self.editor.viewport
   
-  if newSurface:
-    result = createRGBSurface(0, prect.w, prect.h, 32, rmask, gmask, bmask, amask)
-    rp = createSoftwareRenderer(result)
-    surfRect = prect.zero 
-  else:
+  if useDefaultSurface:
     result = nil
     rp = self.sdlRenderer
     surfRect = prect
+  else:
+    result = createRGBSurface(0, prect.w, prect.h, 32, rmask, gmask, bmask, amask)
+    rp = createSoftwareRenderer(result)
+    surfRect = prect.zero 
 
   # Draw rectangle
   rp.renderFilledRect(prect, comp.fillColor * comp.highlight, comp.penColor)
@@ -196,69 +199,6 @@ proc renderDBCompPixie*(vp: Viewport, comp: DBComp, prect: PRect): SurfacePtr =
     echo "Create surface failed"
     echo getError()
 
-proc clearTextureCache*(self: Renderer) =
-  # Clear all textures
-  for texture in self.textureCache.values:
-    texture.destroy()
-  self.textureCache.clear()
-
-proc clearTextureCache*(self: Renderer, id: CompID) =
-  # Clear specific id from texture cache
-  for sel in [false, true]:
-    for hov in [false, true]:
-      let key = (id, sel, hov)
-      if key in self.textureCache:
-        self.textureCache[key].destroy()
-      self.textureCache.del(key)
-
-proc getFromtextureCache(self: Renderer, id: CompID): TexturePtr =
-  # Returns block texture, using cache if possible.
-  #  Uses software renderer to draw to newly created surface,
-  #  then creates texture from surface
-  # Returns nil if any block dimension is zero or surface can't be created.
-  # Throws exception if surface or texture can't be created.
-  let 
-    comp = self.doc.db[id]
-    key = (id, comp.selected, comp.hovering)
-  if self.textureCache.hasKey(key):
-    self.textureCache[key]
-  else:
-    let 
-      vp = self.editor.viewport
-      prect = comp.bbox.toPRect(vp)
-      cprect = self.clampRectSize(prect)
-    if cprect.w == 0 or cprect.h == 0:
-      # We are zoomed out too far
-      return nil
-    #let surface = renderDBComp(nil, vp, comp, cprect, zero=true) -> returns Surface
-    let surface = renderDBCompPixie(vp, comp, cprect) # -> returns surface
-    if surface.isNil:
-      return nil
-    let pTexture = self.sdlRenderer.createTextureFromSurface(surface)
-    if pTexture.isNil:
-      raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
-    self.textureCache[key] = pTexture
-    pTexture
-
-proc blitFromtextureCache(self: Renderer) =
-  # Copy from texture cache to screen via sdlrenderer
-  let
-    vp = self.editor.viewport
-    sz: PxSize = self.editor.viewport.clientSize ##!! or self.clientSize?
-    screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
-  var dstRect: PRect
-  componentsVisible.setLen(0)
-  for rect in self.doc.db.values:
-    if isRectSeparate(rect.bbox, screenRect):
-      continue
-    let pTexture: TexturePtr = self.getFromtextureCache(rect.id)
-    if not pTexture.isNil:
-      componentsVisible.add(rect)
-      dstRect = rect.bbox.toPRect(vp)
-      self.sdlRenderer.copy(pTexture, nil, addr dstRect)
-
-
-
 
 proc longestLine(lines: openArray[string]): string =
   # Returns longest substring terminated by newline
@@ -295,22 +235,66 @@ proc renderText*(self: Renderer, txt: string) =
                   window.getSize.y - 10, txt)
 
 
+proc clearTextureCache*(self: Renderer) =
+  # Clear all textures
+  for texture in self.textureCache.values:
+    texture.destroy()
+  self.textureCache.clear()
 
-      
-#[
-Rendering options for pure SDL
-1. Blitting to window renderer from sdl Texture cache
-2. Rendering in real time directly to sdl surface
+proc clearTextureCache*(self: Renderer, id: CompID) =
+  # Clear specific id from texture cache
+  for sel in [false, true]:
+    for hov in [false, true]:
+      let key = (id, sel, hov)
+      if key in self.textureCache:
+        self.textureCache[key].destroy()
+      self.textureCache.del(key)
 
-Rendering options for SDL and pixie
-1. Blitting to window renderer...
-  A. ...from sdl Texture cache (copied from pixie image cache on init and resize)
-  C. ...from pixie image cache
-2. Rendering in real time  
-  B. Render to pixie image then blit to sdl surface
+proc getFromtextureCache(self: Renderer, id: CompID): TexturePtr =
+  # Returns block texture, using cache if possible.
+  #  Uses software renderer to draw to newly created surface,
+  #  then creates texture from surface
+  # Returns nil if any block dimension is zero or surface can't be created.
+  # Throws exception if surface or texture can't be created.
+  let 
+    comp = self.doc.db[id]
+    key = (id, comp.selected, comp.hovering)
+  if self.textureCache.hasKey(key):
+    self.textureCache[key]
+  else:
+    let 
+      vp = self.editor.viewport
+      prect = comp.bbox.toPRect(vp)
+      cprect = self.clampRectSize(prect)
+    if cprect.w == 0 or cprect.h == 0:
+      # We are zoomed out too far
+      return nil
+    let surface = renderDBComp(nil, comp, cprect, useDefaultSurface=false) # -> returns Surface
+    #let surface = renderDBCompPixie(vp, comp, cprect) # -> returns surface
+    if surface.isNil:
+      return nil
+    let pTexture = self.sdlRenderer.createTextureFromSurface(surface)
+    if pTexture.isNil:
+      raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
+    self.textureCache[key] = pTexture
+    pTexture
 
-
-]# 
+proc blitFromtextureCache(self: Renderer) =
+  # Copy from texture cache to screen via sdlrenderer
+  let
+    vp = self.editor.viewport
+    sz: PxSize = self.editor.viewport.clientSize ##!! or self.clientSize?
+    screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
+  var dstRect: PRect
+  componentsVisible.setLen(0)
+  for rect in self.doc.db.values:
+    if isRectSeparate(rect.bbox, screenRect):
+      continue
+    let pTexture: TexturePtr = self.getFromtextureCache(rect.id)
+    if not pTexture.isNil:
+      componentsVisible.add(rect)
+      dstRect = rect.bbox.toPRect(vp)
+      self.sdlRenderer.copy(pTexture, nil, addr dstRect)
 
 
 proc renderToScreen(self: Renderer) =
@@ -325,7 +309,9 @@ proc renderToScreen(self: Renderer) =
     let
       prect = comp.bbox.toPRect(vp)
       cprect = self.clampRectSize(prect)
-    self.renderDBComp(vp, comp, cprect, newSurface=false) # -> Returns nil
+    echo prect, " ", cprect
+    self.renderDBComp(comp, cprect, useDefaultSurface=true) # -> Returns nil
+
 
 proc lineAlpha(step: int): int =
   let idx = max(0, step - alphaOffset)
@@ -391,10 +377,6 @@ proc drawGrid*(self: Renderer) =
     grid = self.doc.grid
     upperLeft: PxPoint = (0, 0)
     lowerRight: PxPoint = (size.w - 1, size.h - 1)
-
-  rp.setDrawColor(255,0,0)
-  rp.drawLine(0, 0, size.w, size.h)
-  rp.drawLine(0, size.h, size.w, 0)
 
   if grid.mVisible:
     let
@@ -485,15 +467,19 @@ proc drawEverything*(self: Renderer) =
   self.sdlRenderer.setDrawColor(bg.r, bg.g, bg.b)
   self.sdlRenderer.clear()
   self.drawGrid()
+
+  # Try a few methods to draw rectangles
+  case gAppOpts.renderMethod
+  of Direct:
+    echo "direct"
+    self.renderToScreen()
+  of SDLSurface:
+    echo "sdlsurface"
+    self.blitFromtextureCache()
+  else:
+    echo gAppOpts.renderMethod
+
   self.sdlRenderer.present()
-  return
-
-  # # Try a few methods to draw rectangles
-  # when defined(noTextureCache):
-  #   self.renderToScreen()
-  # else:
-  #   self.blitFromtextureCache()
-
   # # Draw various boxes and text, then done
   # #self.updateDestinationBox()
   # if gAppOpts.enableDstRect:

@@ -1,0 +1,43 @@
+drawEverything
+1 renderToScreen
+    renderDBComp (tgt=defaultRenderer)
+      rp.renderFilledRect -> to screen renderer
+
+  blitFromtextureCache
+    getFromTextureCache: texture
+2     renderDBComp (tgt=newSurface): surface
+        rp.renderFilledRect -> to software renderer
+      surface->texture->cache
+
+3     renderDBComp (tgt=newTexture): texture
+        rp.renderFilledRect -> to texture
+      texture->cache
+
+4     renderDBCompPixieSurface: surface
+        Image->surface
+      surface->texture->cache
+      
+5     renderDBCompPixieTexture (ptr): texture
+        lock texture
+        send to pixie
+      texture->cache
+
+    rp.copy(texture)
+
+renderDBCompSDL(rendererPtr) # ptr to texture or ptr
+1. nothing
+2. pass new surface, then -> texture -> cache
+3. pass new texture, then -> cache
+
+renderDBCompSDL(default | surface | texture)
+  if default:
+     discard
+  elif surface:
+     create surface, software renderer
+  elif texture:
+     create texture, accelerated renderer
+  renderDBCompSDL(renderer)
+renderDBCompSDL(rendererPtr)
+  rp.drawRect
+
+

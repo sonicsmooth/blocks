@@ -2,6 +2,8 @@ import std/[os, parseopt, strutils, strformat]
 import appinit
 
 type
+  RenderMethod* = enum
+    Direct, SDLSurface, SDLTexture, PixieTexture, PixieLock
   AppOpts* = ref object
     appHelp*: bool = false
     enableBbox*: bool = false # calc and show
@@ -9,6 +11,7 @@ type
     enableText*: bool = true
     enableHover*: bool = true
     compQty*: int = 1
+    renderMethod*: RenderMethod
 
 ## GLOBAL VAR FOR USE EVERYWHERE
 ## TODO: Do something here with the .json file
@@ -46,6 +49,7 @@ proc parseAppOptions*(): AppOpts =
       of "notext": result.enableText = false
       of "nohover": result.enableHover = false
       of "qty", "q": result.compQty = val.parseInt
+      of "renderMethod": result.renderMethod = parseEnum[RenderMethod](val)
     of cmdEnd:
       echo "done parsing"
 

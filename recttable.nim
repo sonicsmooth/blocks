@@ -121,17 +121,6 @@ proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool
   table.clear()
   if qty == 1:
     table[ 1] = DBComp(id:  1, x: 0, y:  0, w: 52, h: 102, origin: (0, 0), rot: R0, selected: false, penColor: Red, fillColor: Lavender)
-    # table[ 2] = DBComp(id:  2, x: 1, y: 10, w: 5, h: 5, origin: (1, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
-    # table[ 3] = DBComp(id:  3, x: 2, y: 20, w: 5, h: 5, origin: (2, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
-    # table[ 4] = DBComp(id:  4, x: 3, y: 30, w: 5, h: 5, origin: (3, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
-    # table[ 5] = DBComp(id:  5, x: 4, y: 40, w: 5, h: 5, origin: (4, 0), rot: R0, selected: false, penColor: Red, fillColor: Blue)
-    # table[ 6] = DBComp(id:  6, x: 10, y: 10, w: 5, h: 5, origin: (2, 2), rot: R90,  selected: false, penColor: Red, fillColor: Blue)
-    # table[ 7] = DBComp(id:  7, x: 20, y: 10, w: 5, h: 5, origin: (2, 2), rot: R180, selected: false, penColor: Red, fillColor: Blue)
-    # table[ 8] = DBComp(id:  8, x: 30, y: 10, w: 5, h: 5, origin: (2, 2), rot: R270, selected: false, penColor: Red, fillColor: Blue)
-    # table[ 9] = DBComp(id:  9, x:  0, y: 20, w: 5, h: 5, origin: (4, 4), rot: R0,   selected: false, penColor: Red, fillColor: Blue)
-    # table[10] = DBComp(id: 10, x: 10, y: 20, w: 5, h: 5, origin: (4, 4), rot: R90,  selected: false, penColor: Red, fillColor: Blue)
-    # table[11] = DBComp(id: 11, x: 20, y: 20, w: 5, h: 5, origin: (4, 4), rot: R180, selected: false, penColor: Red, fillColor: Blue)
-    # table[12] = DBComp(id: 12, x: 30, y: 20, w: 5, h: 5, origin: (4, 4), rot: R270, selected: false, penColor: Red, fillColor: Blue)
   else:
     for i in 1..qty:
       let rid = i.CompID
