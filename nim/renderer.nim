@@ -10,6 +10,7 @@ import sdl2/ttf
 import document, grid, editor
 import rects, utils, appopts
 import shapes
+import colors
 from arange import arange
 
 
@@ -37,6 +38,7 @@ const
 
 proc newRenderer*(): Renderer =
   result = new Renderer
+  result.backgroundColor = LightBlue.toColor
 
 proc isReady*(self: Renderer): bool =
   self.doc != nil and self.doc.isReady() and
@@ -44,17 +46,18 @@ proc isReady*(self: Renderer): bool =
   self.sdlRenderer != nil and
   self.sdlWindow != nil 
 
-proc clientSize(self: Renderer): PxSize =
-  var w, h: cint
-  self.sdlRenderer.getLogicalSize(w, h)
-  (w.PxType, h.Pxtype)
+# proc clientSize(self: Renderer): PxSize =
+#   var w, h: cint
+#   # self.sdlRenderer.getLogicalSize(w, h)
+#   self.editor.viewport.clientSize
+#   # (w.PxType, h.Pxtype)
 
 
 proc clampRectSize(self: Renderer, prect: PRect): PRect =
   # Return the given prect if one or more dimensions fits in client area
   # If both dimensions exceed client size, then return a PRect with the
   # same aspect ratio and with one dim that matches client dim.
-  let sz: PxSize = self.clientSize #!! or self.editor.viewport.clientSize ?
+  let sz: PxSize = self.editor.viewport.clientSize #!! or self.editor.viewport.clientSize ?
   if prect.w <= sz.w or prect.h <= sz.h:
     prect
   else:
@@ -64,7 +67,7 @@ proc clampRectSize(self: Renderer, prect: PRect): PRect =
     var neww, newh: int
     if rectRatio <= clientRatio:
       # Set rect width to client width
-      neww = self.clientSize.w
+      neww = self.editor.viewport.clientSize.w
       newh = (neww.float / rectRatio).round.int
     else:
       # Set rect height to client height
@@ -237,7 +240,6 @@ proc getFromtextureCache(self: Renderer, id: CompID): TexturePtr =
     self.textureCache[key] = pTexture
     pTexture
 
-
 proc blitFromtextureCache(self: Renderer) =
   # Copy from texture cache to screen via sdlrenderer
   let
@@ -315,7 +317,7 @@ proc renderToScreen(self: Renderer) =
   # Render blocks to screen using default renderer
   let
     vp = self.editor.viewport
-    sz: PxSize = self.clientSize
+    sz: PxSize = self.editor.viewport.clientSize
     screenRect: WRect = (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
   for comp in self.doc.db.values:
     if isRectSeparate(comp.bbox, screenRect):
@@ -343,7 +345,7 @@ proc drawScale(self: Renderer) =
     rp = self.sdlRenderer
     grid = self.doc.grid
     vp = self.editor.viewport
-    size = self.clientSize
+    size = self.editor.viewport.clientSize
     left = 150
     majDelta = grid.minDelta(Major).x
     minDelta = grid.minDelta(Minor).x
@@ -385,10 +387,14 @@ proc drawGrid*(self: Renderer) =
   let
     rp = self.sdlRenderer
     vp = self.editor.viewport
-    size = self.clientSize
+    size = self.editor.viewport.clientSize
     grid = self.doc.grid
     upperLeft: PxPoint = (0, 0)
     lowerRight: PxPoint = (size.w - 1, size.h - 1)
+
+  rp.setDrawColor(255,0,0)
+  rp.drawLine(0, 0, size.w, size.h)
+  rp.drawLine(0, size.h, size.w, 0)
 
   if grid.mVisible:
     let
@@ -475,14 +481,12 @@ proc drawGrid*(self: Renderer) =
 
 proc drawEverything*(self: Renderer) =
   # Typically called from OnPaint
-  #let bg = self.backgroundColor
-  #echo "draweverything: ", $bg.r.int8, " ", $bg.g.int8, " ", $bg.b.int8
-  echo "drawEverything: "
-  self.sdlRenderer.setDrawColor(10'u8, 50'u8, 200'u8, 255'u8)
+  let bg = self.backgroundColor
+  self.sdlRenderer.setDrawColor(bg.r, bg.g, bg.b)
   self.sdlRenderer.clear()
+  self.drawGrid()
   self.sdlRenderer.present()
   return
-  # self.drawGrid()
 
   # # Try a few methods to draw rectangles
   # when defined(noTextureCache):

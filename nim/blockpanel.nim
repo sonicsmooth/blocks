@@ -76,15 +76,35 @@ const
 
 wClass(wBlockPanel of wSDLPanel):
   proc isReady*(self: wBlockPanel): bool =
-    self.editor != nil and self.editor.isReady() and
-    self.renderer != nil and self.renderer.isReady()
+    when defined(debug):
+      if self.editor.isNil:
+        echo "blockPanel.editor isNil"
+        return
+      if self.renderer.isNil:
+        echo "blockPanel.rendere isNil"
+        return
+      if not self.editor.isReady():
+        echo "self.editor not ready"
+        return
+      if not self.renderer.isReady():
+        echo "self.renderer not ready"
+        return
+    else:
+      if self.editor.isNil: return
+      if self.renderer.isNil: return
+      if not self.editor.isReady(): return
+      if not self.renderer.isReady(): return
+    true
+
+  
+  
   proc mouseClientPosition*(self: wBlockPanel): PxPoint =
     self.screenToClient(wGetMousePosition())
   proc mouseWorldPosition*(self: wBlockPanel): WPoint =
     self.mouseClientPosition().toWorld(self.editor.viewport)
 
   proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
-    echo "ui event"
+    # echo "ui event"
     return
     # We don't deal with modifier key events directly
     if event.keyCode == wKey_Ctrl or
@@ -122,8 +142,7 @@ wClass(wBlockPanel of wSDLPanel):
   #   self.editor.processMouseEvent(event)
 
   proc onResize*(self: wBlockPanel, event: wEvent) =
-    if self.editor != nil and
-       self.editor.viewport != nil:
+    if self.isReady():
       self.editor.viewport.clientSize = event.size # should invoke converter
       self.editor.updateDestinationBox()
     event.skip()
@@ -143,7 +162,6 @@ wClass(wBlockPanel of wSDLPanel):
     echo "blockpanel init"
     initSDL()
     wSDLPanel(self).init(parent, style=wBorderSimple)
-    self.backgroundColor = wLightBlue
 
     self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
     self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
