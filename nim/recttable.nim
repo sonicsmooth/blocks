@@ -18,9 +18,6 @@ type
   PosTable* = Table[CompID, PosRot] # meant to have value semantics
   SomeComps* = RectTable | seq[(CompID, DBComp)]
 
-var
-  componentsVisible*: seq[DBComp]
-
 proc newRectTable*(): RectTable =
   newTable[CompID, rects.DBComp]()
 

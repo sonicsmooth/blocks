@@ -507,6 +507,7 @@ proc isRectOverRect*[T: SomeRect](rect1, rect2: T): bool =
 
 proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
   # Returns true if rect1 and rect2 do not have any overlap
+  # This works for any rect where all points are >= its origin
   rect1.bottomEdge > rect2.topEdge or
   rect1.rightEdge  < rect2.leftEdge or
   rect1.topEdge    < rect2.bottomEdge or
