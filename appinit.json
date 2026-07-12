@@ -8,7 +8,7 @@
       "enableText": true,
       "enableHover": true,
       "compQty": 1,
-      "renderMethod": "PixieLock"
+      "renderMethod": "SDLSurface"
     },
     "Viewport": {
       "pan": "(400, 400)",
