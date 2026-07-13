@@ -3,7 +3,8 @@ import std/[enumerate,
             strutils, 
             strformat, 
             tables, 
-            math]
+            math,
+            monotimes]
 import wNim/wTypes
 import sdl2
 import sdl2/ttf
@@ -11,6 +12,7 @@ import document, grid, editor
 import rects, utils, appopts
 import shapes
 import colors
+import reporting
 from arange import arange
 
 
@@ -43,10 +45,14 @@ proc newRenderer*(): Renderer =
   result.backgroundColor = MintCream.toColor
 
 proc isReady*(self: Renderer): bool =
-  self.doc != nil and self.doc.isReady() and
-  self.editor != nil and self.editor.isReady() and
-  self.sdlRenderer != nil and
-  self.sdlWindow != nil 
+  if self.doc.isNil: return reportNil("renderer.doc")
+  if self.editor.isNil: return reportNil("renderer.editor")
+  if self.sdlRenderer.isNil: return reportNil("renderer.sdlRenderer")
+  if self.sdlWindow.isNil: return reportNil("renderer.sdlWindow")
+  if not self.doc.isReady(): return reportNotReady("renderer.doc")
+  if not self.editor.isReady(): return reportNotReady("renderer.editor")
+  true
+
 
 proc clampRectSize(self: Renderer, prect: PRect): PRect =
   # Return the given prect if one or more of its dimensions fits in client area
@@ -109,7 +115,7 @@ proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-var err = SdlSuccess
+var err: SDL_Return
 proc renderDBCompSDL*(self: Renderer, comp: DBComp, prect: PRect, rp: RendererPtr) =
   # Draw rectangle using SDL2 renderer
   rp.renderFilledRect(prect, comp.fillColor * comp.highlight, comp.penColor)
@@ -232,35 +238,6 @@ proc clearTextureCache*(self: Renderer, id: CompID) =
         self.textureCache[key].destroy()
       self.textureCache.del(key)
 
-# proc getFromtextureCache(self: Renderer, id: CompID): TexturePtr =
-#   # Returns block texture, using cache if possible.
-#   #  Uses software renderer to draw to newly created surface,
-#   #  then creates texture from surface
-#   # Returns nil if any block dimension is zero or surface can't be created.
-#   # Throws exception if surface or texture can't be created.
-#   let 
-#     comp = self.doc.db[id]
-#     key = (id, comp.selected, comp.hovering)
-#   if self.textureCache.hasKey(key):
-#     self.textureCache[key]
-#   else:
-#     let 
-#       vp = self.editor.viewport
-#       prect = comp.bbox.toPRect(vp)
-#       cprect = self.clampRectSize(prect)
-#     if cprect.w == 0 or cprect.h == 0:
-#       # We are zoomed out too far
-#       return nil
-#     let surface = renderDBComp(nil, comp, cprect, useDefaultSurface=false) # -> returns Surface
-#     #let surface = renderDBCompPixie(vp, comp, cprect) # -> returns surface
-#     if surface.isNil:
-#       return nil
-#     let pTexture = self.sdlRenderer.createTextureFromSurface(surface)
-#     if pTexture.isNil:
-#       raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
-#     self.textureCache[key] = pTexture
-#     pTexture
-
 proc screenRectW(self: Renderer): WRect =
   let
     vp = self.editor.viewport
@@ -277,30 +254,25 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     if isRectSeparate(bbw, self.screenRectW): continue
     let cprect = self.clampRectSize(bbp)
     if cprect.w == 0 or cprect.h == 0: return
-    case rmethod
-    of Direct:
-      echo "direct, no texture cache"
-      self.renderDBCompSDL(comp, cprect, self.sdlRenderer) # -> Returns nil
-      self.visibleComponents.add(comp)
-    of SDLSurface:
-      echo "Using cache: ", self.textureCache.len
-      let key = (comp.id, comp.selected, comp.hovering)
-      var texture: TexturePtr
-      if self.textureCache.hasKey(key):
-        texture = self.textureCache[key]
-      else:
-        let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
-        let rp = surface.createSoftwareRenderer()
-        self.renderDBCompSDL(comp, cprect.zero, rp)
-        texture = self.sdlRenderer.createTextureFromSurface(surface)
-        if texture.isNil: 
-          raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
-        self.textureCache[key] = texture
-      let dstRect = comp.bbox.toPRect(vp)
-      self.sdlRenderer.copy(texture, nil, addr dstRect)
-      self.visibleComponents.add(comp)
+    if rmethod == Direct:
+      self.renderDBCompSDL(comp, cprect, self.sdlRenderer)
     else:
-      discard
+      var texture: TexturePtr
+      let key = (comp.id, comp.selected, comp.hovering)
+      if not self.textureCache.hasKey(key):
+        case rmethod
+        of SDLSurface:
+          let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
+          let rp = surface.createSoftwareRenderer()
+          self.renderDBCompSDL(comp, cprect.zero, rp)
+          texture = self.sdlRenderer.createTextureFromSurface(surface)
+          if texture.isNil: 
+            raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
+          self.textureCache[key] = texture
+        else:
+          echo "another method"
+      self.sdlRenderer.copy(self.textureCache[key], nil, addr bbp)
+    self.visibleComponents.add(comp)
 
 
 

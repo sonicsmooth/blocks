@@ -3,6 +3,7 @@ import appinit
 import world
 import pointmath
 import zoomctrl
+import reporting
 export world, zoomctrl
 
 # TODO: allow user to set zoom level directly,
@@ -71,7 +72,8 @@ proc newViewport*(pan: PxPoint, clicks: float, zCtrl: ZoomCtrl): Viewport =
   doZoom(result, 0) 
 
 proc isReady*(self: Viewport): bool =
-  self.mZctrl != nil
+  if self.mZctrl.isNil: return reportNil("viewport.mZctrl")
+  true
 
 proc doPan*(vp: var Viewport, delta: PxPoint) = 
   # Just pan by the pixel amount

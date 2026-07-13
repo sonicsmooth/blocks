@@ -5,7 +5,7 @@ import wNim
 import winim except PRECT, Color
 import sdl2
 import rects, recttable, sdlframes, grid #, document, viewport, grid, pointmath
-import userMessages, utils, appopts, routing
+import userMessages, utils, appopts, routing, reporting
 
 # TODO: blockpanel should have refs to editor, renderer, doc, viewport
 
@@ -76,27 +76,11 @@ const
 
 wClass(wBlockPanel of wSDLPanel):
   proc isReady*(self: wBlockPanel): bool =
-    when defined(debug):
-      if self.editor.isNil:
-        echo "blockPanel.editor isNil"
-        return
-      if self.renderer.isNil:
-        echo "blockPanel.rendere isNil"
-        return
-      if not self.editor.isReady():
-        echo "self.editor not ready"
-        return
-      if not self.renderer.isReady():
-        echo "self.renderer not ready"
-        return
-    else:
-      if self.editor.isNil: return
-      if self.renderer.isNil: return
-      if not self.editor.isReady(): return
-      if not self.renderer.isReady(): return
+    if self.editor.isNil: return reportNil("blockPanel.editor")
+    if self.renderer.isNil: return reportNil("blockPanel.renderer")
+    if not self.editor.isReady(): return reportNotReady("blockPanel.editor")
+    if not self.renderer.isReady(): return reportNotReady("blockPanel.renderer")
     true
-
-  
   
   proc mouseClientPosition*(self: wBlockPanel): PxPoint =
     self.screenToClient(wGetMousePosition())

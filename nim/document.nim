@@ -1,4 +1,4 @@
-import recttable, grid
+import recttable, grid, reporting
 export recttable, grid
 
 type
@@ -14,8 +14,11 @@ proc newDocument*(): Document =
   result.grid = newGrid(zCtrl=zc)
 
 proc isReady*(self: Document): bool =
-  self.db != nil and
-  self.grid != nil and self.grid.isReady()
+  if self.db.isNil: return reportNil("document.db")
+  if self.grid.isNil: return reportNil("document.grid")
+  if not self.grid.isReady(): return reportNotReady("document.grid")
+  true
+
 
 when isMainModule:
   let doc: Document = newDocument()
