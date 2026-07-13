@@ -8,6 +8,7 @@ import appopts
 import appinit, routing
 import editor, document, viewport, utils
 import mainpanel, aboutframe, gridctrlframe, grid
+import reporting
 export mainpanel
 
 # TODO: mainframe should have ref to editor, doc
@@ -78,11 +79,11 @@ let
 
 wClass(wMainFrame of wFrame):
   proc isReady(self: wMainFrame): bool =
-    # only check first-level objects, ie don't check doc, grid, viewport, etc.
-    self.editor != nil and self.editor.isReady() and
-    self.mainPanel != nil and self.mainPanel.isReady() and
-    #self.mainPanel.blockPanel != nil and
-    self.statusBar != nil
+    if self.editor.isNil: return reportNil("wMainFrame.editor")
+    if self.mainPanel.isNil: return reportNil("wMainFrame.mainPanel")
+    if not self.editor.isReady(): return reportNotReady("wMainFrame.editor")
+    if not self.mainPanel.isReady(): return reportNotReady("wMainFrame.mainPanel")
+    true
   
   proc onResize(self: wMainFrame, event: wEvent) =
     if self.statusBar != nil:

@@ -5,6 +5,7 @@ import pointmath
 import routing
 import appopts
 import zoomctrl
+import reporting
 from utils import excl
 import rects
 import document
@@ -97,8 +98,11 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   # and are assigned later
 
 proc isReady*(self: Editor): bool =
-  self.doc != nil and self.doc.isReady() and
-  self.viewport != nil and self.viewport.isReady()
+  if self.doc.isNil: return reportNil("editor.doc")
+  if self.viewport.isNil: return reportNil("editor.viewport")
+  if not self.doc.isReady(): return reportNotReady("editor.doc")
+  if not self.viewport.isReady(): return reportNotReady("editor.viewport")
+  true
 
 proc updateDestinationBox*(self: Editor) =
   let 

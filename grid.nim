@@ -7,6 +7,7 @@ import std/[algorithm,
 import colors
 import viewport, pointmath #, renderer
 import appinit
+import reporting
 import wNim/wTypes
 
 
@@ -29,7 +30,8 @@ type
 # TODO: delete m prefix
 
 proc isReady*(self: Grid): bool =
-  self.mZctrl != nil
+  if self.mZctrl.isNil: return reportNil("grid.mZctrl")
+  true
 
 # Forward decl
 proc minDelta*(grid: Grid, scale: Scale): WPoint

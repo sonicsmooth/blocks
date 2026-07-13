@@ -5,6 +5,7 @@ import wNim
 import winim
 import anneal, appopts, compact, concurrent, document
 import stack, userMessages, utils, blockpanel, world
+import reporting
 export blockpanel
 
 # TODO: mainpanel should have refs to editor, renderer, doc
@@ -14,7 +15,6 @@ type
     blockPanel*: wBlockPanel
     spnr:  wSpinCtrl
     txt:   wStaticText
-    chk:   wCheckBox
     box1:  wStaticBox
     ctrb1: wRadioButton # Compact type radio button
     ctrb2: wRadioButton # Compact type radio button
@@ -33,19 +33,20 @@ const
 
 wClass(wMainPanel of wPanel):
   proc isReady*(self: wMainPanel): bool =
-    self.blockPanel != nil and self.blockPanel.isReady() and
-    self.spnr != nil and 
-    self.txt != nil and 
-    self.chk != nil and 
-    self.box1 != nil and 
-    self.ctrb1 != nil and 
-    self.ctrb2 != nil and 
-    self.ctrb3 != nil and 
-    self.aStratRb1 != nil and 
-    self.aStratRb2 != nil and 
-    self.aStratRb3 != nil and 
-    self.aStratRb4 != nil and 
-    self.slider != nil 
+    if self.blockPanel.isNil: return reportNil("wMainPanel.blockPanel")
+    if self.spnr.isNil: return reportNil("wMainPanel.spnr")
+    if self.txt.isNil: return reportNil("wMainPanel.txt")
+    if self.box1.isNil: return reportNil("wMainPanel.box1")
+    if self.ctrb1.isNil: return reportNil("wMainPanel.ctrb1")
+    if self.ctrb2.isNil: return reportNil("wMainPanel.ctrb2")
+    if self.ctrb3.isNil: return reportNil("wMainPanel.ctrb3")
+    if self.aStratRb1.isNil: return reportNil("wMainPanel.aStratRb1")
+    if self.aStratRb2.isNil: return reportNil("wMainPanel.aStratRb2")
+    if self.aStratRb3.isNil: return reportNil("wMainPanel.aStratRb3")
+    if self.aStratRb4.isNil: return reportNil("wMainPanel.aStratRb4")
+    if self.slider.isNil: return reportNil("wMainPanel.slider")
+    if not self.blockPanel.isReady(): return reportNotReady("wMainPanel.blockPanel")
+    true
 
   proc layout*(self: wMainPanel) =
     let 
@@ -108,9 +109,8 @@ wClass(wMainPanel of wPanel):
     if self.blockPanel != nil and
        self.blockPanel.editor != nil and
        self.blockPanel.editor.doc != nil:
-    #if self.isReady():
+    # if self.isReady():
       var db = self.blockPanel.editor.doc.db
-      echo qty
       db.randomizeRectsAll(randRegion, qty, logRandomize)
       ##! Move updateRatio to algorithm, solve clearTextureCache
       self.blockPanel.editor.fillArea = db.fillArea()
