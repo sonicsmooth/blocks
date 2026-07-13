@@ -8,7 +8,7 @@
       "enableText": true,
       "enableHover": true,
       "compQty": 1,
-      "renderMethod": "SDLSurface"
+      "renderMethod": "SDLTexture"
     },
     "Viewport": {
       "pan": "(400, 400)",

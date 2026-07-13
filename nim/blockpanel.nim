@@ -1,10 +1,17 @@
-import std/[math, segfaults, sets, sugar, strformat, tables ]
+import std/[math, 
+            monotimes,
+            segfaults, 
+            sets, 
+            sugar, 
+            strformat,
+            tables,
+            times ]
 import editor, renderer
 from std/sequtils import toSeq
 import wNim
 import winim except PRECT, Color
 import sdl2
-import rects, recttable, sdlframes, grid #, document, viewport, grid, pointmath
+import rects, recttable, sdlframes, grid
 import userMessages, utils, appopts, routing, reporting
 
 # TODO: blockpanel should have refs to editor, renderer, doc, viewport
@@ -134,9 +141,13 @@ wClass(wBlockPanel of wSDLPanel):
   proc onPaint(self: wBlockPanel, event: wEvent) =
     if self.editor != nil:
       if gAppOpts.enableBbox:
+        #! Move this to somewhere else
         self.editor.updateBoundingBox()
     if self.renderer != nil:
+      let start = getMonoTime()
       self.renderer.drawEverything()
+      let elapsed_us = (getMonoTime() - start).inMilliseconds
+      echo $elapsed_us & " milliseconds"
   
   proc onFirstPaintKick(self: wBlockPanel) = 
       self.stopTimer()
