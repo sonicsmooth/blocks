@@ -3,8 +3,7 @@ import std/[enumerate,
             strutils, 
             strformat, 
             tables, 
-            math,
-            monotimes]
+            math]
 import wNim/wTypes
 import sdl2
 import sdl2/ttf
@@ -110,37 +109,31 @@ proc renderFilledRect*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorU
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderOutlineRect*(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
+proc renderOutlineRect(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
   # explicit convertion to SDL2.Rect?
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-var err: SDL_Return
-proc renderDBCompSDL*(self: Renderer, comp: DBComp, prect: PRect, rp: RendererPtr) =
+proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport) =
+  var err: SDL_Return
   # Draw rectangle using SDL2 renderer
   rp.renderFilledRect(prect, comp.fillColor * comp.highlight, comp.penColor)
   when defined(debug):
     if err != SdlSuccess:
       raise newException(ValueError, &"Could not renderFilledRect: {getError()}")
 
-  # # Draw origin
-  # # Todo: There is something to be said here about model space
-  # # TODO: to world space to pixel space
-  # let
-  #   vp = self.editor.viewport
-  #   fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
-  #   fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
-  #   opx: PxPoint = (fnx(comp.originToLeftEdge), fny(comp.originToTopEdge))
-  #   extent = (10.0 * vp.zoom).round.cint
-  # rp.setDrawColor(Black.toColor)
-  # err = rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
-  # when defined(debug):
-  #   if err != SdlSuccess:
-  #     raise newException(ValueError, &"Could not drawLine: {getError()}")
-  # err = rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
-  # when defined(debug):
-  #   if err != SdlSuccess:
-  #     raise newException(ValueError, &"Could not drawLine: {getError()}")
+  # Draw origin
+  # Todo: There is something to be said here about model space
+  # TODO: to world space to pixel space
+  let
+    # vp = self.editor.viewport
+    fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
+    fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
+    opx: PxPoint = (fnx(comp.originToLeftEdge), fny(comp.originToTopEdge))
+    extent = (10.0 * vp.zoom).round.cint
+  rp.setDrawColor(Black.toColor)
+  err = rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
+  err = rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
   # # Text to texture, then texture to renderer surface.
   # # This gets converted back to texture again after return
@@ -255,7 +248,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let cprect = self.clampRectSize(bbp)
     if cprect.w == 0 or cprect.h == 0: return
     if rmethod == Direct:
-      self.renderDBCompSDL(comp, cprect, self.sdlRenderer)
+      self.sdlRenderer.renderDBCompSDL(comp, cprect, vp)
     else:
       var texture: TexturePtr
       let key = (comp.id, comp.selected, comp.hovering)
@@ -264,10 +257,16 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
         of SDLSurface:
           let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
           let rp = surface.createSoftwareRenderer()
-          self.renderDBCompSDL(comp, cprect.zero, rp)
+          rp.renderDBCompSDL(comp, cprect.zero, vp)
           texture = self.sdlRenderer.createTextureFromSurface(surface)
-          if texture.isNil: 
-            raise newException(ValueError, &"Texture pointer is nil from createTextureFromSurface: {getError()}")
+          self.textureCache[key] = texture
+          surface.destroy()
+        of SDLTexture:
+          let fmt = self.sdlWindow.getPixelFormat()
+          let texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)
+          self.sdlRenderer.setRenderTarget(texture)
+          self.sdlRenderer.renderDBCompSDL(comp, cprect.zero, vp)
+          self.sdlRenderer.setRenderTarget(nil)
           self.textureCache[key] = texture
         else:
           echo "another method"
