@@ -53,11 +53,26 @@ wClass(wSDLPanel of wPanel):
     sdlFailIf(self.sdlWindow.isNil):
       "Window could not be created"
     
-    let flags = Renderer_Accelerated or Renderer_PresentVsync
-    self.sdlRenderer = self.sdlWindow.createRenderer(index = -1, flags=flags)
+    var oglIndex, d3d11Index = -1
+    for i in 0 ..< getNumRenderDrivers():
+      var info: RendererInfo
+      discard getRenderDriverInfo(i, info)
+      echo i, ": ", info.name
+      if info.name == "direct3d11": d3d11Index = i
+      if info.name == "opengl": oglIndex = i
+
+    let flags = Renderer_Accelerated or 
+                Renderer_PresentVsync or
+                Renderer_TargetTexture
+    self.sdlRenderer = self.sdlWindow.createRenderer(index = d3d11Index, flags=flags)
     sdlFailIf(self.sdlRenderer.isNil):
       "Renderer could not be created"
     self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
+
+    var info: RendererInfo
+    discard getRendererInfo(self.sdlRenderer, info)
+    echo "Using renderer: ", info.name
+
 
     var dm: DisplayMode 
     discard getDisplayMode(self.sdlWindow, dm)
