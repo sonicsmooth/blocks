@@ -117,47 +117,47 @@ proc renderOutlineRect(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
   rp.setDrawColor(penColor.toColor)
   rp.drawRect(addr rect)
 
-proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport) =
-  var err: SDL_Return
-  # Draw rectangle using SDL2 renderer
-  rp.renderFilledRect(prect, comp.fillColor * comp.highlight, comp.penColor)
-  when defined(debug):
-    if err != SdlSuccess:
-      raise newException(ValueError, &"Could not renderFilledRect: {getError()}")
-
-  # Draw origin
+proc renderCompOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport) =
   # Todo: There is something to be said here about model space
   # TODO: to world space to pixel space
   let
-    # vp = self.editor.viewport
     fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
     fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
     opx: PxPoint = (fnx(comp.originToLeftEdge), fny(comp.originToTopEdge))
     extent = (10.0 * vp.zoom).round.cint
   rp.setDrawColor(Black.toColor)
-  err = rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
-  err = rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
+  rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
+  rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
-  # # Text to texture, then texture to renderer surface.
-  # # This gets converted back to texture again after return
-  # # So this could clearly be optimized and assembled when
-  # # creating cache
-  # # TODO: cache texts at different sizes
-  # if gAppOpts.enableText:
-  #   let 
-  #     (w, h) = (prect.w, prect.h)
-  #     selstr = $comp.id & (if comp.selected: "*" else: "")
-  #     font = self.font(comp, vp.zoom)
-  #     textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
-  #     (tsw, tsh) = (textSurface.w, textSurface.h)
-  #     dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
-  #                       prect.y + (h div 2) - (tsh div 2), tsw, tsh)
-  #     pTextTexture = rp.createTextureFromSurface(textSurface)
-  #   if pTextTexture.isNil:
-  #     raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
+proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, vp: Viewport) =
+  # Render component text
+  # Text to texture, then texture to renderer surface.
+  # This gets converted back to texture again after return
+  # So this could clearly be optimized and assembled when
+  # creating cache
+  let 
+    (w, h) = (prect.w, prect.h)
+    selstr = $comp.id & (if comp.selected: "*" else: "")
+    textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
+    textTexture = rp.createTextureFromSurface(textSurface)
+    (tsw, tsh) = (textSurface.w, textSurface.h)
+    dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
+                      prect.y + (h div 2) - (tsh div 2), tsw, tsh)
+  if textTexture.isNil:
+    raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
 
-  #   rp.copyEx(pTextTexture, nil, addr dstRect, -comp.rot.toFloat, nil)
-  #   pTextTexture.destroy()
+  rp.copyEx(textTexture, nil, addr dstRect, -comp.rot.toFloat, nil)
+  textSurface.destroy()
+  textTexture.destroy()
+  # TODO: cache texts at different sizes
+
+proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, vp: Viewport) =
+  # Draw rectangle, origin, and its text using SDL2 renderer
+  rp.renderFilledRect(prect, comp.fillColor * comp.highlight, comp.penColor)
+  rp.renderCompOrigin(comp, prect, vp)
+  if gAppOpts.enableText:
+    rp.renderCompText(comp, font, prect, vp)
+
 
 proc renderDBCompPixie*(vp: Viewport, comp: DBComp, prect: PRect): SurfacePtr =
   # Draw rectangle to new surface using pixie and return surface
@@ -247,11 +247,12 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   for comp in self.doc.db.values:
     let bbw = comp.bbox
     let bbp = bbw.toPRect(vp)
+    let font = self.font(comp, vp.zoom)
     if isRectSeparate(bbw, self.screenRectW): continue
     let cprect = self.clampRectSize(bbp)
     if cprect.w == 0 or cprect.h == 0: continue
     if rmethod == Direct:
-      self.sdlRenderer.renderDBCompSDL(comp, cprect, vp)
+      self.sdlRenderer.renderDBCompSDL(comp, font, cprect, vp)
     else:
       var texture: TexturePtr
       let key = (comp.id, comp.selected, comp.hovering)
@@ -260,7 +261,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
         of SDLSurface:
           let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
           let rp = surface.createSoftwareRenderer()
-          rp.renderDBCompSDL(comp, cprect.zero, vp)
+          rp.renderDBCompSDL(comp, font, cprect.zero, vp)
           texture = self.sdlRenderer.createTextureFromSurface(surface)
           self.textureCache[key] = texture
           surface.destroy()
@@ -268,20 +269,13 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
           let fmt = self.sdlWindow.getPixelFormat()
           let texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)
           self.sdlRenderer.setRenderTarget(texture)
-          self.sdlRenderer.renderDBCompSDL(comp, cprect.zero, vp)
+          self.sdlRenderer.renderDBCompSDL(comp, font, cprect.zero, vp)
           self.sdlRenderer.setRenderTarget(nil)
           self.textureCache[key] = texture
         else:
           echo "another method"
       self.sdlRenderer.copy(self.textureCache[key], nil, addr bbp)
     self.visibleComponents.add(comp)
-    #var event: Event
-    #if pollEvent(event) == True32:
-    #  echo "event: ", event 
-    #self.clearTextureCache()
-
-
-
 
 
 proc lineAlpha(step: int): int =
