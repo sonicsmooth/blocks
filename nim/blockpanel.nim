@@ -146,8 +146,8 @@ wClass(wBlockPanel of wSDLPanel):
     if self.renderer != nil:
       let start = getMonoTime()
       self.renderer.drawEverything()
-      let elapsed_us = (getMonoTime() - start).inMilliseconds
-      echo $elapsed_us & " milliseconds"
+      let elapsed_ms = (getMonoTime() - start).inMilliseconds
+      echo $elapsed_ms & " milliseconds"
   
   proc onFirstPaintKick(self: wBlockPanel) = 
       self.stopTimer()

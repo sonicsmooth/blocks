@@ -2,8 +2,11 @@ import std/[enumerate,
             sequtils,
             strutils, 
             strformat, 
-            tables, 
-            math]
+            math,
+            #monotime,
+            tables,
+            #times 
+            ]
 import wNim/wTypes
 import sdl2
 import sdl2/ttf
@@ -246,7 +249,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let bbp = bbw.toPRect(vp)
     if isRectSeparate(bbw, self.screenRectW): continue
     let cprect = self.clampRectSize(bbp)
-    if cprect.w == 0 or cprect.h == 0: return
+    if cprect.w == 0 or cprect.h == 0: continue
     if rmethod == Direct:
       self.sdlRenderer.renderDBCompSDL(comp, cprect, vp)
     else:
@@ -272,6 +275,10 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
           echo "another method"
       self.sdlRenderer.copy(self.textureCache[key], nil, addr bbp)
     self.visibleComponents.add(comp)
+    #var event: Event
+    #if pollEvent(event) == True32:
+    #  echo "event: ", event 
+    #self.clearTextureCache()
 
 
 
