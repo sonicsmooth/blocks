@@ -1,8 +1,6 @@
-import std/[math, 
+import std/[
             monotimes,
             segfaults, 
-            sets, 
-            sugar, 
             strformat,
             tables,
             times ]
@@ -11,7 +9,7 @@ from std/sequtils import toSeq
 import wNim
 import winim except PRECT, Color
 import sdl2
-import rects, recttable, sdlframes, grid
+import rects, recttable, sdlframes
 import userMessages, utils, appopts, routing, reporting
 
 # TODO: blockpanel should have refs to editor, renderer, doc, viewport
@@ -154,7 +152,8 @@ wClass(wBlockPanel of wSDLPanel):
       self.refresh(true)
 
   proc init*(self: wBlockPanel, parent: wWindow) = 
-    echo "blockpanel init"
+    when defined(debug):
+      echo "blockpanel init"
     initSDL()
     wSDLPanel(self).init(parent, style=wBorderSimple)
 

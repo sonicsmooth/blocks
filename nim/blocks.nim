@@ -27,6 +27,9 @@ when isMainModule:
     # Main data and window
     var app: Application
     app.init(1200, 800)
+    if not app.isReady():
+      echo "Application not ready"
+      system.quit()
     app.go()
 
     # ... wait for user to shut down ... #

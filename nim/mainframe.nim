@@ -78,9 +78,10 @@ let
 
 
 wClass(wMainFrame of wFrame):
-  proc isReady(self: wMainFrame): bool =
+  proc isReady*(self: wMainFrame): bool =
     if self.editor.isNil: return reportNil("wMainFrame.editor")
     if self.mainPanel.isNil: return reportNil("wMainFrame.mainPanel")
+    if self.statusBar.isNil: return reportNil("wMainFrame.statusBar")
     if not self.editor.isReady(): return reportNotReady("wMainFrame.editor")
     if not self.mainPanel.isReady(): return reportNotReady("wMainFrame.mainPanel")
     true
@@ -91,7 +92,8 @@ wClass(wMainFrame of wFrame):
     event.skip()
   
   proc refreshCanvas(self: wMainFrame) =
-    echo "mainframe refresh"
+    when defined(debug):
+      echo "mainframe refresh"
     if self.mainPanel != nil:
       self.mainPanel.layout()
     if self.mainPanel.blockPanel != nil:
@@ -322,15 +324,16 @@ wClass(wMainFrame of wFrame):
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()
-    echo "mainframe show"
+    when defined(debug):
+      echo "mainframe show"
     wFrame.show(self)
     self.refreshCanvas()
   
   proc init*(self: wMainFrame, size: wSize) = 
-    echo "mainframe init"
-    wFrame(self).init(title="Blocks Frame", size=size)
     when defined(debug):
-      echo "Main frame is ", $self.mHwnd
+      echo "mainframe init"
+      echo "Main frame hwnd is ", $self.mHwnd
+    wFrame(self).init(title="Blocks Frame", size=size)
     
     # Create controls -- these are declared in wNim already
     self.mMenuBar   = self.setupMenuBar()
@@ -362,14 +365,10 @@ wClass(wMainFrame of wFrame):
     #--
     self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
 
-    # Set up mainPanel
-    self.mainPanel  = MainPanel(self)
-    if self.mainPanel != nil:
-      if self.statusBar != nil:
-        if self.mainPanel.isReady():
-          let sldrVal = self.mainPanel.slider.value
-          let tmpStr = &"temperature: {sldrVal}"
-          self.statusBar.setStatusText(tmpStr, index=0)
+    self.mainPanel = MainPanel(self)
+    when defined(debug):
+      echo "Main frame done initting"
+
   
 when isMainModule:
   # Main data and window

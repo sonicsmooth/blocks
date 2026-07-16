@@ -274,6 +274,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
           self.textureCache[key] = texture
         else:
           echo "another method"
+          return
       self.sdlRenderer.copy(self.textureCache[key], nil, addr bbp)
     self.visibleComponents.add(comp)
 

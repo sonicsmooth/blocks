@@ -53,11 +53,14 @@ wClass(wSDLPanel of wPanel):
     sdlFailIf(self.sdlWindow.isNil):
       "Window could not be created"
     
+    # Choose Direct3D 11; default of 9 deletes its
+    # textures when screen is resized
     var oglIndex, d3d11Index = -1
     for i in 0 ..< getNumRenderDrivers():
       var info: RendererInfo
       discard getRenderDriverInfo(i, info)
-      echo i, ": ", info.name
+      when defined(debug):
+        echo i, ": ", info.name
       if info.name == "direct3d11": d3d11Index = i
       if info.name == "opengl": oglIndex = i
 
@@ -69,20 +72,21 @@ wClass(wSDLPanel of wPanel):
       "Renderer could not be created"
     self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
 
-    var info: RendererInfo
-    discard getRendererInfo(self.sdlRenderer, info)
-    echo "Using renderer: ", info.name
+    when defined(debug):
+      var info: RendererInfo
+      discard getRendererInfo(self.sdlRenderer, info)
+      echo "Using renderer: ", info.name
 
-
-    var dm: DisplayMode 
-    discard getDisplayMode(self.sdlWindow, dm)
-    self.pixelFormat = dm.format
-    self.pixelFormatName = $getPixelFormatName(dm.format)
     when defined(debug):
       echo "Window DisplayMode():"
+      var dm: DisplayMode
+      discard getDisplayMode(self.sdlWindow, dm)
+      self.pixelFormat = dm.format
+      self.pixelFormatName = $getPixelFormatName(dm.format)
       for key, value in fieldPairs(dm):
-        echo key & ": " & $cast[cint](value)
-      echo "formatName: ", self.pixelFormatName
+        echo "  " & key & ": " & $cast[cint](value)
+        if key == "format":
+          echo "  formatName: ", self.pixelFormatName
 
 wClass(wTestPanel of wSDLPanel):
   proc drawRect(self: wTestPanel, rect: TestRect) =
