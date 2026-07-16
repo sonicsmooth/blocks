@@ -103,13 +103,15 @@ wClass(wMainPanel of wPanel):
       butt.size     = (bw, bh)
       yPosAcc += bh
 
+  # TODO: Move this to algorithms or db or something
+  # TODO: Since nothing here has to do with UI
   proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
     # TODO: delegate all this to something else, so we can 
     # TODO: get rid of self.blockpanel.editor,... etc.
-    if self.blockPanel != nil and
-       self.blockPanel.editor != nil and
-       self.blockPanel.editor.doc != nil:
-    # if self.isReady():
+    # if self.blockPanel != nil and
+    #    self.blockPanel.editor != nil and
+    #    self.blockPanel.editor.doc != nil:
+    if self.isReady():
       var db = self.blockPanel.editor.doc.db
       db.randomizeRectsAll(randRegion, qty, logRandomize)
       ##! Move updateRatio to algorithm, solve clearTextureCache
@@ -283,7 +285,8 @@ wClass(wMainPanel of wPanel):
       inc ackCnt
 
   proc init*(self: wMainPanel, parent: wWindow) =
-    echo "mainpanel init"
+    when defined(debug):
+      echo "mainpanel init"
     wPanel(self).init(parent)
 
     let rectQty = gAppOpts.compQty
@@ -351,5 +354,4 @@ wClass(wMainPanel of wPanel):
     self.ctrb1.click()
     self.aStratRb1.click()
     self.aStratRb3.click()
-    self.randomizeRectsAll()
 
