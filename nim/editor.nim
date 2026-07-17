@@ -88,6 +88,12 @@ const
   moveTable: array[KeyUp .. KeyRight, WPoint] =
     [(0, 1), (0, -1), (-1, 0), (1, 0)]
 
+proc `$`*(k: Key): string =
+  if k.ctrl: result &= "ctrl-"
+  if k.alt: result &= "alt-"
+  if k.shift: result &= "shft-"
+  result &= $k.keyCode
+
 
 proc newEditor*(zc: ZoomCtrl): Editor =
   result = new Editor
@@ -169,6 +175,9 @@ proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
   else:
     false
 proc processKeyDown*(self: Editor, key: Key) =
+  when defined(debug):
+    echo $key
+  return
   # event must not be a modifier key
   proc resetBox() =
     self.selectBox = (0,0,0,0)
@@ -247,7 +256,7 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.selectBox = (0,0,0,0)
     self.mouseData.state = StateNone
 
-proc processMouseEvent*(self: Editor, event: wEvent) = 
+proc processMouseMoveEvent*(self: Editor, event: wEvent) = 
   # Unified event processing
   # Separate specific events (eg shft+LMB) from state changes
   # For example, StateLMBDownInRect should be renamed to
@@ -257,6 +266,8 @@ proc processMouseEvent*(self: Editor, event: wEvent) =
   # so wEvent_LeftDown is mapped to MainSelector, which triggers
   # state change from None to StateSelectStartInRect
   # Also dragging is delayed by one event; fix it.
+  echo "editor mouse move event"
+  return
 
   
   let 
@@ -389,3 +400,9 @@ proc processMouseEvent*(self: Editor, event: wEvent) =
       self.invalidate()
     else:
       self.mouseData.state = StateNone
+
+proc processMouseWheelEvent*(self: Editor, event: wEvent) = 
+  echo "editor mouse wheel event"
+
+proc processMouseButtonEvent*(self: Editor, event: wEvent) = 
+  echo "editor mouse button event"

@@ -75,10 +75,8 @@ const
     (wKey_9,      Key9     )
     ].toTable
  
-# proc isCtrl(event: wEvent): bool = event.keyCode == wKey_Ctrl
-# proc isShift(event: wEvent): bool = event.keyCode == wKey_Shift
-# proc isAlt(event: wEvent): bool = event.keyCode == wKey_Alt
 
+var k,m: int
 wClass(wBlockPanel of wSDLPanel):
   proc isReady*(self: wBlockPanel): bool =
     if self.editor.isNil: return reportNil("blockPanel.editor")
@@ -92,43 +90,37 @@ wClass(wBlockPanel of wSDLPanel):
   proc mouseWorldPosition*(self: wBlockPanel): WPoint =
     self.mouseClientPosition().toWorld(self.editor.viewport)
 
-  proc processUiEvent*(self: wBlockPanel, event: wEvent) = 
-    # echo "ui event"
-    return
-    # We don't deal with modifier key events directly
+  proc processUIKeyEvent*(self: wBlockPanel, event: wEvent) = 
+    # We don't deal with standalone modifier key events
     if event.keyCode == wKey_Ctrl or
        event.keyCode == wKey_Shift or
-       event.keyCode == wKey_Alt:
-        return
-
-    # Repackage specific event types and send to editor
-    # Do all key processing first; all else is mouse state stuff
-    if event.getEventType == wEvent_KeyDown:
-      if self.editor != nil:
+       event.keyCode == wKey_Alt: # also the mainframe captures alt and shift-alt before it gets here
+        discard
+    elif event.getEventType == wEvent_KeyDown:
+      if self.isReady():
+        if not keyTable.hasKey(event.keyCode): return
         let editorKeyCode = keyTable[event.keyCode]
         let editorKey: Key = (editorKeyCode, event.ctrlDown, event.altDown, event.shiftDown)
         self.editor.processKeyDown(editorKey)
-      return
     elif event.getEventType == wEvent_KeyUp:
-      return
+      discard
 
-  #   # Send mouse message for x,y position displayed in Frame
-  #   # Maybe get rid of this and resend from editor somehow
-  #   if event.eventType == wEvent_MouseMove or
-  #      event.eventType == wEvent_MouseWheel:
-  #     let hWnd = GetAncestor(self.handle, GA_ROOT)
-  #     SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
-  #     # let editorMouseEvent = MouseEvent(
-  #     #   pos: event.mousePos,
-  #     #   ctrl: event.ctrlDown,
-  #     #   alt: event.altDown,
-  #     #   shift: event.shiftDown,
-  #     #   wheel: event.wheelRotation
-  #     # )
-  #     #self.editor.processMouseEvent(editorMouseEvent)
-  #   if event.eventType == wEvent_LeftDown:
-  #     SetFocus(self.mHwnd)
-  #   self.editor.processMouseEvent(event)
+  proc processUIMouseMoveEvent*(self: wBlockPanel, event: wEvent) = 
+    # Repackage specific event types and send to editor
+    # Send mouse message for x,y position displayed in Frame
+    # Maybe get rid of this and resend from editor somehow
+    let hWnd = GetAncestor(self.handle, GA_ROOT)
+    SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
+    self.editor.processMouseMoveEvent(event)
+
+  proc processUIMouseWheelEvent*(self: wBlockPanel, event: wEvent) =
+    self.editor.processMouseWheelEvent(event)
+
+  proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
+    if event.eventType == wEvent_LeftDown:
+      echo "focus"
+      SetFocus(self.mHwnd)
+    self.editor.processMouseButtonEvent(event)
 
   proc onResize*(self: wBlockPanel, event: wEvent) =
     if self.isReady():
@@ -150,6 +142,7 @@ wClass(wBlockPanel of wSDLPanel):
   proc onFirstPaintKick(self: wBlockPanel) = 
       self.stopTimer()
       self.refresh(true)
+      self.setFocus()
 
   proc init*(self: wBlockPanel, parent: wWindow) = 
     when defined(debug):
@@ -157,22 +150,22 @@ wClass(wBlockPanel of wSDLPanel):
     initSDL()
     wSDLPanel(self).init(parent, style=wBorderSimple)
 
-    self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high);self.onResize(event)
-    self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high);self.onPaint(event)
-    self.wEvent_MouseMove            do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_LeftDown             do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_LeftUp               do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_LeftDoubleClick      do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_MiddleDown           do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_MiddleUp             do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_MiddleDoubleClick    do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_RightDown            do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_RightUp              do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_RightDoubleClick     do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_MouseWheel           do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_MouseHorizontalWheel do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_KeyDown              do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
-    self.wEvent_KeyUp                do (event: wEvent): flushEvents(0,uint32.high);self.processUiEvent(event)
+    self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high); self.onResize(event)
+    self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high); self.onPaint(event)
+    self.wEvent_MouseMove            do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseMoveEvent(event)
+    self.wEvent_LeftDown             do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_LeftUp               do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_LeftDoubleClick      do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_MiddleDown           do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_MiddleUp             do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_MiddleDoubleClick    do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_RightDown            do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_RightUp              do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_RightDoubleClick     do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
+    self.wEvent_MouseWheel           do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseWheelEvent(event)
+    self.wEvent_MouseHorizontalWheel do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseWheelEvent(event)
+    self.wEvent_KeyDown              do (event: wEvent): flushEvents(0,uint32.high); self.processUIKeyEvent(event)
+    self.wEvent_KeyUp                do (event: wEvent): flushEvents(0,uint32.high); self.processUIKeyEvent(event)
     self.wEvent_Timer                do (): self.onFirstPaintKick()
     self.startTimer(0.0)
     
