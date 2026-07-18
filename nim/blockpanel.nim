@@ -105,22 +105,47 @@ wClass(wBlockPanel of wSDLPanel):
     elif event.getEventType == wEvent_KeyUp:
       discard
 
+  proc fillMouseMove(self: wBlockPanel, event: wEvent): MouseEvt =
+    result = (kind: mekMove,
+              pos: event.mousePos,
+              btnLeft: event.leftDown,
+              btnMid: event.middleDown,
+              btnRight: event.rightDown,
+              ctrl: event.ctrlDown,
+              alt: event.altDown,
+              shift: event.shiftDown,
+              wheelDelta: event.spinDelta,
+              button: btnNone)
+
+  # TODO: what about double clicks?
   proc processUIMouseMoveEvent*(self: wBlockPanel, event: wEvent) = 
     # Repackage specific event types and send to editor
     # Send mouse message for x,y position displayed in Frame
     # Maybe get rid of this and resend from editor somehow
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
-    self.editor.processMouseMoveEvent(event)
+    var mouseEvt = self.fillMouseMove(event)
+    self.editor.processMouseMoveEvent(mouseEvt)
 
   proc processUIMouseWheelEvent*(self: wBlockPanel, event: wEvent) =
+    var event: MouseEvt
     self.editor.processMouseWheelEvent(event)
 
   proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
     if event.eventType == wEvent_LeftDown:
       echo "focus"
       SetFocus(self.mHwnd)
-    self.editor.processMouseButtonEvent(event)
+    var mouseEvt: MouseEvt
+    case event.eventType
+    of wEvent_LeftDown, wEvent_MiddleDown, wEvent_RightDown:  mouseEvt.kind = mekDown
+    of wEvent_LeftUp,   wEvent_MiddleUp,   wEvent_RightUp:    mouseEvt.kind = mekUp
+    else: echo event.eventType
+    case event.eventType
+    of wEvent_LeftDown,   wEventLeftUp:    mouseEvt.button = btnLeft
+    of wEvent_MiddleDown, wEvent_MiddleUp: mouseEvt.button = btnMid
+    of wEvent_RightDown,  wEvent_RightUp:  mouseEvt.button = btnRight
+    else: echo event.eventType
+    self.editor.processMouseButtonEvent(mouseEvt)
 
   proc onResize*(self: wBlockPanel, event: wEvent) =
     if self.isReady():
