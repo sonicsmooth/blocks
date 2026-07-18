@@ -1,6 +1,6 @@
 import wnim, winim
-import shapes
 import pixie
+import pixieshapes
 
 # No wPanel here, just draw directly
 # to frame client area
@@ -28,7 +28,6 @@ proc heart*(w,h: int): Image =
   path.quadraticCurveTo(20, 120, 20, 60)
   path.closePath()
   result.fillPath(path, "#7B42FC")
-  #result.fillPath(path, "#ffffff")
 
 proc junkTxt*(w,h: int): Image = 
   let typeface = readTypeface("fonts/Ubuntu-Regular_1.ttf")

@@ -8,7 +8,7 @@
       "enableText": true,
       "enableHover": true,
       "compQty": 1,
-      "renderMethod": "Direct"
+      "renderMethod": "PixieTexture"
     },
     "Viewport": {
       "pan": "(400, 400)",

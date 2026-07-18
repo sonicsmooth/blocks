@@ -116,6 +116,7 @@ proc rectInRects*(table: RectTable, compId: CompID): seq[CompID] =
 
 proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool=false) = 
   table.clear()
+  echo "randomize color: ", $Lavender
   if qty == 1:
     table[ 1] = DBComp(id:  1, x: 0, y:  0, w: 52, h: 102, origin: (0, 0), rot: R0, selected: false, penColor: Red, fillColor: Lavender)
   else:
