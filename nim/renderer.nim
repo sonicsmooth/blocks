@@ -3,16 +3,15 @@ import std/[enumerate,
             strutils, 
             strformat, 
             math,
-            #monotime,
             tables,
-            #times 
             ]
 import wNim/wTypes
 import sdl2
 import sdl2/ttf
 import document, grid, editor
 import rects, utils, appopts
-import shapes
+import pixie except Color
+import pixieshapes
 import colors
 import reporting
 from arange import arange
@@ -159,19 +158,21 @@ proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect
     rp.renderCompText(comp, font, prect, vp)
 
 
-proc renderDBCompPixie*(vp: Viewport, comp: DBComp, prect: PRect): SurfacePtr =
+proc renderDBCompPixie*(comp: DBComp, prect: PRect, vp: Viewport): SurfacePtr =
   # Draw rectangle to new surface using pixie and return surface
   # vp is Viewport, used for zoom
   # comp is database object
   # prect is target rectangle with same aspect ratio as comp
 
   #let hrt = checkers(prect.w, prect.h)
-  var pixiRect: shapes.Rect
+  var pixiRect: pixieshapes.Rect
   pixiRect.x = 0.0
   pixiRect.y = 0.0
   pixiRect.w = prect.w.float32
   pixiRect.h = prect.h.float32
-  let shape = basicBox(pixiRect, comp.penColor)
+  let fc = comp.fillColor
+  let col = rgba(fc.blue, fc.green, fc.red, fc.alpha)
+  let shape = basicBox(pixiRect, col)
   let pitch = prect.w * 4
   result = createRGBSurfaceFrom(
     shape.data[0].addr, 
@@ -267,14 +268,21 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
           surface.destroy()
         of SDLTexture:
           let fmt = self.sdlWindow.getPixelFormat()
-          let texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)
+          texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)
           self.sdlRenderer.setRenderTarget(texture)
           self.sdlRenderer.renderDBCompSDL(comp, font, cprect.zero, vp)
           self.sdlRenderer.setRenderTarget(nil)
           self.textureCache[key] = texture
-        else:
+        of PixieTexture:
+          let surface = renderDBCompPixie(comp, cprect, vp)
+          texture = self.sdlRenderer.createTextureFromSurface(surface)
+          self.textureCache[key] = texture
+          surface.destroy()
+        of PixieLock:
           echo "another method"
           return
+        else:
+          echo "error"
       self.sdlRenderer.copy(self.textureCache[key], nil, addr bbp)
     self.visibleComponents.add(comp)
 
