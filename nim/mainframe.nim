@@ -4,7 +4,6 @@ from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
 import winim/inc/windef
 
-import appopts
 import appinit, routing
 import editor, document, viewport, utils
 import mainpanel, aboutframe, gridctrlframe, grid
@@ -371,6 +370,8 @@ wClass(wMainFrame of wFrame):
 
   
 when isMainModule:
+  import appopts
+
   # Main data and window
   try:
     gAppOpts = parseAppOptions()

@@ -1,16 +1,14 @@
 import std/[
             monotimes,
             segfaults, 
-            strformat,
             tables,
             times ]
 import editor, renderer
-from std/sequtils import toSeq
 import wNim
 import winim except PRECT, Color
 import sdl2
 import rects, recttable, sdlframes
-import userMessages, utils, appopts, routing, reporting
+import userMessages, appopts, routing, reporting
 
 # TODO: blockpanel should have refs to editor, renderer, doc, viewport
 
@@ -105,7 +103,7 @@ wClass(wBlockPanel of wSDLPanel):
     elif event.getEventType == wEvent_KeyUp:
       discard
 
-  proc fillMouseMove(self: wBlockPanel, event: wEvent): MouseEvt =
+  proc fillMouse(self: wBlockPanel, event: wEvent): MouseEvt =
     result = (kind: mekMove,
               pos: event.mousePos,
               btnLeft: event.leftDown,
@@ -114,37 +112,44 @@ wClass(wBlockPanel of wSDLPanel):
               ctrl: event.ctrlDown,
               alt: event.altDown,
               shift: event.shiftDown,
-              wheelDelta: event.spinDelta,
+              wheelDelta: event.wheelRotation,
               button: btnNone)
 
-  # TODO: what about double clicks?
   proc processUIMouseMoveEvent*(self: wBlockPanel, event: wEvent) = 
     # Repackage specific event types and send to editor
     # Send mouse message for x,y position displayed in Frame
     # Maybe get rid of this and resend from editor somehow
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
-    var mouseEvt = self.fillMouseMove(event)
-    self.editor.processMouseMoveEvent(mouseEvt)
+    self.editor.processMouseMoveEvent(self.fillMouse(event))
 
   proc processUIMouseWheelEvent*(self: wBlockPanel, event: wEvent) =
-    var event: MouseEvt
-    self.editor.processMouseWheelEvent(event)
+    var mouseEvt = self.fillMouse(event)
+    # event.wheelRotation doesn't work with horiz, so take wparam directly
+    let wp = event.wParam.uint  # make sure this is at least 32 bits wide, not truncated
+    let hiword = uint16((wp shr 16) and 0xFFFF)
+    mouseEvt.wheelDelta = cast[int16](hiword)
+    if event.eventType == wEvent_MouseWheel:
+      mouseEvt.kind = mekWheelVert
+    elif event.eventType == wEvent_MouseHorizontalWheel:
+      mouseEvt.kind = mekWheelHoriz
+    self.editor.processMouseWheelEvent(mouseEvt)
 
   proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
     if event.eventType == wEvent_LeftDown:
-      echo "focus"
       SetFocus(self.mHwnd)
-    var mouseEvt: MouseEvt
+    # Split events into two basis type -- left/mid/right and up/dn/dbl
+    var mouseEvt = self.fillMouse(event)
     case event.eventType
     of wEvent_LeftDown, wEvent_MiddleDown, wEvent_RightDown:  mouseEvt.kind = mekDown
     of wEvent_LeftUp,   wEvent_MiddleUp,   wEvent_RightUp:    mouseEvt.kind = mekUp
-    else: echo event.eventType
+    of wEvent_LeftDoubleClick, wEvent_MiddleDoubleClick, wEvent_RightDoubleClick: mouseEvt.kind = mekDbl
+    else: return
     case event.eventType
-    of wEvent_LeftDown,   wEventLeftUp:    mouseEvt.button = btnLeft
-    of wEvent_MiddleDown, wEvent_MiddleUp: mouseEvt.button = btnMid
-    of wEvent_RightDown,  wEvent_RightUp:  mouseEvt.button = btnRight
-    else: echo event.eventType
+    of wEvent_LeftDown,   wEvent_LeftUp,   wEvent_LeftDoubleClick:   mouseEvt.button = btnLeft
+    of wEvent_MiddleDown, wEvent_MiddleUp, wEvent_MiddleDoubleClick: mouseEvt.button = btnMid
+    of wEvent_RightDown,  wEvent_RightUp,  wEvent_RightDoubleClick:  mouseEvt.button = btnRight
+    else: return
     self.editor.processMouseButtonEvent(mouseEvt)
 
   proc onResize*(self: wBlockPanel, event: wEvent) =

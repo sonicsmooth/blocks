@@ -1,7 +1,6 @@
-import std/[os, parseopt, paths, random, strutils, strformat]
-import wNim/[wApp, wWindow, wUtils]
-import appopts, mainframe, sdlframes, document
-import concurrent, anneal
+import std/[random]
+import wNim/[wApp,wUtils]
+import appopts, document
 import application
 
 
@@ -20,6 +19,7 @@ when isMainModule:
     when defined(debug):
       echo "DPI: ", wAppGetDpi()
 
+    # TODO: Move to application
     # Start stuff
     # concurrent.init()
     # anneal.init()

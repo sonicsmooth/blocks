@@ -1,4 +1,4 @@
-import std/[math, sugar, strutils, strformat, parseutils]
+import std/[sugar, strutils, strformat, parseutils]
 import wNim, winim
 import grid, viewport, utils
 import routing

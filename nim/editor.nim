@@ -2,7 +2,6 @@ import std/[sets,
             sequtils]
 import wNim
 import pointmath
-import routing
 import appopts
 import zoomctrl
 import reporting
@@ -11,7 +10,8 @@ import rects
 import document
 
 type
-  MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekWheelUpDn, mekWheelSide
+  MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekDbl, 
+                    mekWheelVert, mekWheelHoriz
   MouseButton* = enum btnNone, btnLeft, btnMid, btnRight
   MouseEvt* = tuple
     kind:   MouseEventKind
@@ -41,7 +41,6 @@ type
     CmdSelect
     CmdSelectAll
 
-      
   MouseState = enum
     StateNone
     StateLMBDownInRect
@@ -270,7 +269,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   # so wEvent_LeftDown is mapped to MainSelector, which triggers
   # state change from None to StateSelectStartInRect
   # Also dragging is delayed by one event; fix it.
-  echo "editor mouse move event: ", event
+  echo event
   return
 
   
@@ -406,7 +405,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   #     self.mouseData.state = StateNone
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
-  echo "editor mouse wheel event"
+  echo event
 
 proc processMouseButtonEvent*(self: Editor, event: MouseEvt) = 
-  echo "editor mouse button event"
+  echo event
