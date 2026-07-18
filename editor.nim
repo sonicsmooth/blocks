@@ -11,14 +11,15 @@ import rects
 import document
 
 type
-  Command = enum
-    CmdEscape
-    CmdMove
-    CmdDelete
-    CmdRotateCCW
-    CmdRotateCW
-    CmdSelect
-    CmdSelectAll
+  MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekWheelUpDn, mekWheelSide
+  MouseButton* = enum btnNone, btnLeft, btnMid, btnRight
+  MouseEvt* = tuple
+    kind:   MouseEventKind
+    pos: PxPoint
+    btnLeft, btnMid, btnRight: bool # what else is true
+    ctrl, alt, shift: bool
+    wheelDelta: int
+    button: MouseButton # what caused the event
   KeyCode* = enum
     KeyNone, KeyEsc, KeySpace, KeyEnter,
     KeyDelete, KeyInsert, KeyBack, KeyPgUp, KeyPgDn,
@@ -31,13 +32,16 @@ type
     Key8, Key9
   Key* = tuple[keyCode: KeyCode, ctrl: bool, alt: bool, shift: bool]
   CmdTable = Table[Key, Command]
+  Command = enum
+    CmdEscape
+    CmdMove
+    CmdDelete
+    CmdRotateCCW
+    CmdRotateCW
+    CmdSelect
+    CmdSelectAll
 
-  # MouseMove* = object
-  #   pos: PxPoint
-  #   ctrl, alt, shift: bool
-  #   wheel: int
-
-    
+      
   MouseState = enum
     StateNone
     StateLMBDownInRect
@@ -256,7 +260,7 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.selectBox = (0,0,0,0)
     self.mouseData.state = StateNone
 
-proc processMouseMoveEvent*(self: Editor, event: wEvent) = 
+proc processMouseMoveEvent*(self: Editor, event: MouseEvt) = 
   # Unified event processing
   # Separate specific events (eg shft+LMB) from state changes
   # For example, StateLMBDownInRect should be renamed to
@@ -266,143 +270,143 @@ proc processMouseMoveEvent*(self: Editor, event: wEvent) =
   # so wEvent_LeftDown is mapped to MainSelector, which triggers
   # state change from None to StateSelectStartInRect
   # Also dragging is delayed by one event; fix it.
-  echo "editor mouse move event"
+  echo "editor mouse move event: ", event
   return
 
   
-  let 
-    vp = self.viewport
-    wmp = event.mousePos.toWorld(vp)
+  # let 
+  #   vp = self.viewport
+  #   wmp = event.pos.toWorld(vp)
   
-  case self.mouseData.pzState:
-  of PZStateNone:
-    case event.getEventType
-    of wEvent_RightDown:
-      self.mouseData.clickPos = event.mousePos
-      self.mouseData.lastPos  = event.mousePos
-      self.mouseData.pzState = PZStateRMBDown
-    of wEvent_RightUp:
-      self.mouseData.pzState = PZStateNone
-    of wEvent_MouseWheel:
-      # Keep mouse location in the same spot during zoom.
-      doAdaptivePanZoom(self.viewport, event.wheelRotation, event.mousePos)
-      # Tell the world
-      sendToListeners(idMsgGridZoom, 0, 0)
-      #!!!!!!self.clearTextureCache()
-      self.invalidate()
-    else:
-      discard
-  of PZStateRMBDown:
-    case event.getEventType
-    of wEvent_MouseMove:
-      let deltaPx: PxPoint = (event.mousePos.x - self.mouseData.lastPos.x,
-                              event.mousePos.y - self.mouseData.lastPos.y)
-      self.mouseData.lastPos = event.mousePos
-      self.viewport.doPan(deltaPx)
-      self.invalidate()
-    of wEvent_RightUp:
-      self.mouseData.pzState = PZStateNone
-    else:
-      discard
-  else:
-    discard
+  # case self.mouseData.pzState:
+  # of PZStateNone:
+  #   case event.getEventType
+  #   of wEvent_RightDown:
+  #     self.mouseData.clickPos = event.pos
+  #     self.mouseData.lastPos  = event.pos
+  #     self.mouseData.pzState = PZStateRMBDown
+  #   of wEvent_RightUp:
+  #     self.mouseData.pzState = PZStateNone
+  #   of wEvent_MouseWheel:
+  #     # Keep mouse location in the same spot during zoom.
+  #     doAdaptivePanZoom(self.viewport, event.wheelRotation, event.pos)
+  #     # Tell the world
+  #     sendToListeners(idMsgGridZoom, 0, 0)
+  #     #!!!!!!self.clearTextureCache()
+  #     self.invalidate()
+  #   else:
+  #     discard
+  # of PZStateRMBDown:
+  #   case event.getEventType
+  #   of wEvent_MouseMove:
+  #     let deltaPx: PxPoint = (event.pos.x - self.mouseData.lastPos.x,
+  #                             event.pos.y - self.mouseData.lastPos.y)
+  #     self.mouseData.lastPos = event.pos
+  #     self.viewport.doPan(deltaPx)
+  #     self.invalidate()
+  #   of wEvent_RightUp:
+  #     self.mouseData.pzState = PZStateNone
+  #   else:
+  #     discard
+  # else:
+  #   discard
 
-  case self.mouseData.state
-  of StateNone:
-    case event.getEventType
-    of wEvent_MouseMove:
-      if self.mouseData.pzState == PZStateNone:
-        if self.evaluateHovering(event.mousePos):
-          self.invalidate()
-      else:
-        discard
-    of wEvent_LeftDown:
-      self.mouseData.clickPos = event.mousePos
-      self.mouseData.lastPos  = event.mousePos
-      self.mouseData.clickHitIds = self.doc.db.ptInRects(wmp)
-      if self.mouseData.clickHitIds.len > 0: # Click in rect
-        self.mouseData.dirtyIds = self.doc.db.rectInRects(self.mouseData.clickHitIds[^1])
-        self.mouseData.state = StateLMBDownInRect
-      else: # Click in clear area
-        self.mouseData.state = StateLMBDownInSpace
-    else:
-      discard
-  of StateLMBDownInRect:
-    let hitid = self.mouseData.clickHitIds[^1]
-    case event.getEventType
-    of wEvent_MouseMove:
-      self.mouseData.state = StateDraggingRect
-    of wEvent_LeftUp:
-      if event.mousePos.PxPoint == self.mouseData.clickPos: # click and release in rect
-        var oldsel = self.doc.db.selected()
-        if not event.ctrlDown: # clear existing except this one
-          oldsel.excl(hitid)
-          self.doc.db.clearRectSelect(oldsel)
-        self.doc.db.toggleRectSelect(hitid) 
-        self.mouseData.dirtyIds = oldsel & hitid
-        self.invalidate()
-      self.mouseData.state = StateNone
-    else:
-      self.mouseData.state = StateNone
-  of StateDraggingRect:
-    let hitid = self.mouseData.clickHitIds[^1]
-    let sel = self.doc.db.selected()
-    case event.getEventType
-    of wEvent_MouseMove:
-      let
-        scale = self.doc.grid.recommendScale(event.shiftDown)
-        lastSnap: WPoint = self.mouseData.lastPos.toWorld(vp).snap(self.doc.grid, scale=scale)
-        newSnap: WPoint = wmp.snap(self.doc.grid, scale=scale)
-        delta: WPoint = newSnap - lastSnap
-      if event.ctrlDown and hitid in sel:
-        # Group move should snap by grid amount even if not on grid to start
-        self.moveRectsBy(sel, delta)
-        # Todo: make snap-to-grid proc like this
-        # for id in sel:
-        #   let newPos = self.grid.mSnap(self.doc.db[id].pos + delta)
-        #   self.moveRectTo(id, newPos)
-      else: # Snap pos to nearest grid point
-        let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
-        self.moveRectTo(hitid, newPos)
-      self.mouseData.lastPos = event.mousePos
-      self.invalidate()
-    else:
-      self.mouseData.state = StateNone
-  of StateLMBDownInSpace:
-    case event.getEventType
-    of wEvent_MouseMove:
-      self.mouseData.state = StateDraggingSelect
-      if event.ctrlDown:
-        self.firmSelection = self.doc.db.selected()
-      else:
-        self.firmSelection.setLen(0)
-        self.doc.db.clearRectSelect()
-    of wEvent_LeftUp:
-      let oldsel = self.doc.db.clearRectSelect()
-      self.mouseData.dirtyIds = oldsel
-      self.mouseData.state = StateNone
-      self.invalidate()
-    else:
-      self.mouseData.state = StateNone
-  of StateDraggingSelect:
-    case event.getEventType
-    of wEvent_MouseMove:
-      let pbox: PRect = normalizePRectCoords(self.mouseData.clickPos, event.mousePos)
-      self.selectBox = pbox
-      let newsel = self.doc.db.rectInRects(self.selectBox, vp)
-      self.doc.db.clearRectSelect()
-      self.doc.db.setRectSelect(self.firmSelection)
-      self.doc.db.setRectSelect(newsel)
-      self.invalidate()
-    of wEvent_LeftUp:
-      self.selectBox = (0,0,0,0)
-      self.mouseData.state = StateNone
-      self.invalidate()
-    else:
-      self.mouseData.state = StateNone
+  # case self.mouseData.state
+  # of StateNone:
+  #   case event.getEventType
+  #   of wEvent_MouseMove:
+  #     if self.mouseData.pzState == PZStateNone:
+  #       if self.evaluateHovering(event.pos):
+  #         self.invalidate()
+  #     else:
+  #       discard
+  #   of wEvent_LeftDown:
+  #     self.mouseData.clickPos = event.pos
+  #     self.mouseData.lastPos  = event.pos
+  #     self.mouseData.clickHitIds = self.doc.db.ptInRects(wmp)
+  #     if self.mouseData.clickHitIds.len > 0: # Click in rect
+  #       self.mouseData.dirtyIds = self.doc.db.rectInRects(self.mouseData.clickHitIds[^1])
+  #       self.mouseData.state = StateLMBDownInRect
+  #     else: # Click in clear area
+  #       self.mouseData.state = StateLMBDownInSpace
+  #   else:
+  #     discard
+  # of StateLMBDownInRect:
+  #   let hitid = self.mouseData.clickHitIds[^1]
+  #   case event.getEventType
+  #   of wEvent_MouseMove:
+  #     self.mouseData.state = StateDraggingRect
+  #   of wEvent_LeftUp:
+  #     if event.pos.PxPoint == self.mouseData.clickPos: # click and release in rect
+  #       var oldsel = self.doc.db.selected()
+  #       if not event.ctrlDown: # clear existing except this one
+  #         oldsel.excl(hitid)
+  #         self.doc.db.clearRectSelect(oldsel)
+  #       self.doc.db.toggleRectSelect(hitid) 
+  #       self.mouseData.dirtyIds = oldsel & hitid
+  #       self.invalidate()
+  #     self.mouseData.state = StateNone
+  #   else:
+  #     self.mouseData.state = StateNone
+  # of StateDraggingRect:
+  #   let hitid = self.mouseData.clickHitIds[^1]
+  #   let sel = self.doc.db.selected()
+  #   case event.getEventType
+  #   of wEvent_MouseMove:
+  #     let
+  #       scale = self.doc.grid.recommendScale(event.shiftDown)
+  #       lastSnap: WPoint = self.mouseData.lastPos.toWorld(vp).snap(self.doc.grid, scale=scale)
+  #       newSnap: WPoint = wmp.snap(self.doc.grid, scale=scale)
+  #       delta: WPoint = newSnap - lastSnap
+  #     if event.ctrlDown and hitid in sel:
+  #       # Group move should snap by grid amount even if not on grid to start
+  #       self.moveRectsBy(sel, delta)
+  #       # Todo: make snap-to-grid proc like this
+  #       # for id in sel:
+  #       #   let newPos = self.grid.mSnap(self.doc.db[id].pos + delta)
+  #       #   self.moveRectTo(id, newPos)
+  #     else: # Snap pos to nearest grid point
+  #       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
+  #       self.moveRectTo(hitid, newPos)
+  #     self.mouseData.lastPos = event.pos
+  #     self.invalidate()
+  #   else:
+  #     self.mouseData.state = StateNone
+  # of StateLMBDownInSpace:
+  #   case event.getEventType
+  #   of wEvent_MouseMove:
+  #     self.mouseData.state = StateDraggingSelect
+  #     if event.ctrlDown:
+  #       self.firmSelection = self.doc.db.selected()
+  #     else:
+  #       self.firmSelection.setLen(0)
+  #       self.doc.db.clearRectSelect()
+  #   of wEvent_LeftUp:
+  #     let oldsel = self.doc.db.clearRectSelect()
+  #     self.mouseData.dirtyIds = oldsel
+  #     self.mouseData.state = StateNone
+  #     self.invalidate()
+  #   else:
+  #     self.mouseData.state = StateNone
+  # of StateDraggingSelect:
+  #   case event.getEventType
+  #   of wEvent_MouseMove:
+  #     let pbox: PRect = normalizePRectCoords(self.mouseData.clickPos, event.pos)
+  #     self.selectBox = pbox
+  #     let newsel = self.doc.db.rectInRects(self.selectBox, vp)
+  #     self.doc.db.clearRectSelect()
+  #     self.doc.db.setRectSelect(self.firmSelection)
+  #     self.doc.db.setRectSelect(newsel)
+  #     self.invalidate()
+  #   of wEvent_LeftUp:
+  #     self.selectBox = (0,0,0,0)
+  #     self.mouseData.state = StateNone
+  #     self.invalidate()
+  #   else:
+  #     self.mouseData.state = StateNone
 
-proc processMouseWheelEvent*(self: Editor, event: wEvent) = 
+proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   echo "editor mouse wheel event"
 
-proc processMouseButtonEvent*(self: Editor, event: wEvent) = 
+proc processMouseButtonEvent*(self: Editor, event: MouseEvt) = 
   echo "editor mouse button event"
