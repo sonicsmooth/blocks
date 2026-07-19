@@ -6,13 +6,13 @@ import std/[enumerate,
             tables,
             ]
 import wNim/wTypes
-import sdl2
+import sdl2 except Color
 import sdl2/ttf
 import document, grid, editor
 import rects, utils, appopts
 import pixie except Color
 import pixieshapes
-import colors
+import colors, colors_sdl, colors_pixie
 import reporting
 from arange import arange
 
@@ -40,10 +40,15 @@ const
   defFontSize = 25
   alphaOffset = 20
   stepAlphas = arange(60 .. 255, alphaOffset).toSeq
+  rmask = 0xff.shl(24).uint32
+  gmask = 0xff.shl(16).uint32
+  bmask = 0xff.shl( 8).uint32
+  amask = 0xff.shl( 0).uint32
+
 
 proc newRenderer*(): Renderer =
   result = new Renderer
-  result.backgroundColor = MintCream.toColor
+  result.backgroundColor = MintCream
 
 proc isReady*(self: Renderer): bool =
   if self.doc.isNil: return reportNil("renderer.doc")
@@ -104,16 +109,16 @@ proc highlight(comp: DBComp): float =
   4. Pixie.Image, then update texture cache, then blit to sdlRenderer 
   5. Lock texture then draw with pixie, then unlock and blit to sdlRenderer ]# 
 
-proc renderFilledRect*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorU32) =
+proc renderFilledRect*(rp: RendererPtr, rect: PRect, fillColor, penColor: Color) =
   # explicit convertion to SDL2.Rect?
-  rp.setDrawColor(fillColor.toColor)
+  rp.setDrawColor(fillColor.toSdlColor())
   rp.fillRect(addr rect)
-  rp.setDrawColor(penColor.toColor)
+  rp.setDrawColor(penColor.toSdlColor())
   rp.drawRect(addr rect)
 
-proc renderOutlineRect(rp: RendererPtr, rect: PRect, penColor: ColorU32) =
+proc renderOutlineRect(rp: RendererPtr, rect: PRect, penColor: Color) =
   # explicit convertion to SDL2.Rect?
-  rp.setDrawColor(penColor.toColor)
+  rp.setDrawColor(penColor.toSdlColor())
   rp.drawRect(addr rect)
 
 proc renderCompOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport) =
@@ -124,7 +129,7 @@ proc renderCompOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport)
     fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
     opx: PxPoint = (fnx(comp.originToLeftEdge), fny(comp.originToTopEdge))
     extent = (10.0 * vp.zoom).round.cint
-  rp.setDrawColor(Black.toColor)
+  rp.setDrawColor(Black.toSDLColor())
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
@@ -137,7 +142,7 @@ proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, 
   let 
     (w, h) = (prect.w, prect.h)
     selstr = $comp.id & (if comp.selected: "*" else: "")
-    textSurface = font.renderUtf8Blended(selstr.cstring, Black.toColor)
+    textSurface = font.renderUtf8Blended(selstr.cstring, Black.toSdlColor())
     textTexture = rp.createTextureFromSurface(textSurface)
     (tsw, tsh) = (textSurface.w, textSurface.h)
     dstRect: PRect = (prect.x + (w div 2) - (tsw div 2),
@@ -170,15 +175,18 @@ proc renderDBCompPixie*(comp: DBComp, prect: PRect, vp: Viewport): SurfacePtr =
   pixiRect.y = 0.0
   pixiRect.w = prect.w.float32
   pixiRect.h = prect.h.float32
-  let fc = comp.fillColor
-  let col = rgba(fc.blue, fc.green, fc.red, fc.alpha)
+  let col = comp.fillColor.toPixieColor() # rgba(fc.r, fc.g, fc.b, fc.a)
+  # echo "in renderer, comp.fillColor is: ", comp.fillColor
+  # echo "in renderer, col is: ", col
+  #let col = rgba(0,0,255,255)
   let shape = basicBox(pixiRect, col)
   let pitch = prect.w * 4
+  # Swizzle the mask order because of endianness
   result = createRGBSurfaceFrom(
     shape.data[0].addr, 
     prect.w, prect.h, 
     32, pitch, 
-    rmask, gmask, bmask, amask)
+    amask, bmask, gmask, rmask)
 
   if result.isNil:
     echo "Create surface failed"
@@ -207,7 +215,7 @@ proc renderText*(self: Renderer, x,y: cint, txt: string) =
   discard sizeText(fnt, maxLine.cstring, addr txtSzW, addr txtSzH)
   txtSzH *= lines.len
   let dstRect: PRect = (x - txtSzW, y - txtSzH, txtSzW, txtSzH)
-  let txtSurface = renderTextBlendedWrapped(fnt, txt, Black.toColor(), 0)
+  let txtSurface = renderTextBlendedWrapped(fnt, txt, Black.toSdlColor(), 0)
   let txtTexture = self.sdlRenderer.createTextureFromSurface(txtSurface)
   discard self.sdlRenderer.copy(txtTexture, nil, addr dstRect)
   txtTexture.destroy()
@@ -315,7 +323,7 @@ proc drawScale(self: Renderer) =
     botMinor = size.h - 60
 
   # Major line
-  rp.setDrawColor(DarkSlateGray.toColor)
+  rp.setDrawColor(DarkSlateGray.toSdlColor())
   var r1, r2, r3: sdl2.Rect
   let ht = 11
   r1 = (left, botMajor - 1, majDeltaPx, 3)
@@ -364,7 +372,9 @@ proc drawGrid*(self: Renderer) =
 
     # Minor lines
     if grid.mDotsOrLines == Lines:
-      rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+      var lsg = LightSlateGray
+      lsg.a = lineAlpha(xStepPxColor).uint8
+      rp.setDrawColor(lsg.toSdlColor())
       for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
         rp.drawLine(xpx, 0, xpx, size.h - 1)
@@ -375,7 +385,9 @@ proc drawGrid*(self: Renderer) =
 
     elif grid.mDotsOrLines == Dots:
       var pts: seq[Point]
-      rp.setDrawColor(LightSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+      var lsg = LightSlateGray
+      lsg.a = lineAlpha(xStepPxColor).uint8
+      rp.setDrawColor(lsg.toSdlColor())
       for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
         for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
@@ -388,7 +400,9 @@ proc drawGrid*(self: Renderer) =
 
     # Major lines
     if grid.mDotsOrLines == Lines:
-      rp.setDrawColor(DarkSlateGray.toColorU32(lineAlpha(xStepPxColor)).toColor)
+      var lsg = LightSlateGray
+      lsg.a = lineAlpha(xStepPxColor).uint8
+      rp.setDrawColor(lsg.toSdlColor())
       for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
         rp.drawLine(xpx, 0, xpx, size.h - 1)
@@ -399,7 +413,7 @@ proc drawGrid*(self: Renderer) =
     
     elif grid.mDotsOrLines == Dots:
       var pts: seq[Point]
-      rp.setDrawColor(Black.toColor)
+      rp.setDrawColor(Black.toSdlColor())
       for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
         for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
@@ -420,7 +434,7 @@ proc drawGrid*(self: Renderer) =
       extent: PxType = 25.0 * vp.zoom
       o: PxPoint = (0, 0).toPixel(vp)
         
-    rp.setDrawColor(colors.DarkRed.toColor())
+    rp.setDrawColor(DarkRed.toSdlColor())
 
     # Horizontals
     rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
@@ -438,7 +452,7 @@ proc drawGrid*(self: Renderer) =
 proc drawEverything*(self: Renderer) =
   # Typically called from OnPaint
   let bg = self.backgroundColor
-  self.sdlRenderer.setDrawColor(bg.r, bg.g, bg.b)
+  self.sdlRenderer.setDrawColor(bg.toSdlColor())
   self.sdlRenderer.clear()
   self.drawGrid()
 

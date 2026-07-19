@@ -1,6 +1,6 @@
 import wnim
 import sdl2, sdl2/[image, ttf]
-import utils, colors
+import utils, colors, colors_sdl
 export sdl2, image, ttf, colors
 
 
@@ -11,7 +11,7 @@ type
   TestRect = tuple
     x, y: cint
     w, h: cint
-    color: Color
+    color: colors.Color
     dir: Direction
   wSDLPanel* = ref object of wPanel
     sdlWindow*: WindowPtr
@@ -24,7 +24,7 @@ type
   wSDLFrame = ref object of wFrame
     mPanel: wTestPanel
 
-proc rect(x,y,w,h: cint, color: Color, dir: Direction): TestRect =
+proc rect(x,y,w,h: cint, color: colors.Color, dir: Direction): TestRect =
   result.x = x
   result.y = y
   result.w = w
@@ -90,15 +90,15 @@ wClass(wSDLPanel of wPanel):
 
 wClass(wTestPanel of wSDLPanel):
   proc drawRect(self: wTestPanel, rect: TestRect) =
-    self.sdlRenderer.setDrawColor(rect.color)
+    self.sdlRenderer.setDrawColor(rect.color.toSdlColor())
     self.sdlRenderer.fillRect(cast[ptr sdl2.Rect](addr rect))
   proc drawRect(self: wTestPanel, rect: TestRect, texture: TexturePtr) =
     let dstrect = cast[ptr sdl2.Rect](addr rect)
     self.sdlRenderer.copy(texture, nil, dstrect)
   proc toTexture(self: wTestPanel, rect: TestRect): TexturePtr =
-    let surface = createRGBSurface(0, rect.w, rect.h, 32, 
-      rmask, gmask, bmask, amask)
-    surface.fillRect(nil, rect.color.toColorU32.uint32)
+    let surface = createRGBSurface(0, rect.w, rect.h, 32, 0xff000000'u32, 0x00ff0000'u32, 0x0000ff00'u32, 0x000000ff'u32)
+    #  rmask, gmask, bmask, amask)
+    surface.fillRect(nil, rect.color.toU32_RGBA())
     result = self.sdlRenderer.createTextureFromSurface(surface)
   proc updateRect(self: wTestPanel, rect: ptr TestRect) =
     let step = 2
@@ -134,19 +134,19 @@ wClass(wTestPanel of wSDLPanel):
   proc init*(self: wTestPanel, parent: wWindow) =
     echo "wTestPanel.init()"
     wSDLPanel(self).init(parent) #, style=wBorderSimple)
-    self.rects.add(rect( 10,  20, 100, 100, toColor(Red,     127), (Right, Down)))
-    self.rects.add(rect( 30,  40, 100, 100, toColor(Green,   127), (Right, Down)))
-    self.rects.add(rect( 50,  60, 100, 100, toColor(Blue,    127), (Right, Down)))
-    self.rects.add(rect( 70,  80, 100, 100, toColor(Cyan,    127), (Right, Down)))
-    self.rects.add(rect( 90, 100, 100, 100, toColor(Magenta, 127), (Right, Down)))
-    self.rects.add(rect(110, 120, 100, 100, toColor(Yellow,  127), (Right, Down)))
+    self.rects.add(rect( 10,  20, 100, 100, toColor(Red.toU32_RGB(),     127), (Right, Down)))
+    self.rects.add(rect( 30,  40, 100, 100, toColor(Green.toU32_RGB(),   127), (Right, Down)))
+    self.rects.add(rect( 50,  60, 100, 100, toColor(Blue.toU32_RGB(),    127), (Right, Down)))
+    self.rects.add(rect( 70,  80, 100, 100, toColor(Cyan.toU32_RGB(),    127), (Right, Down)))
+    self.rects.add(rect( 90, 100, 100, 100, toColor(Magenta.toU32_RGB(), 127), (Right, Down)))
+    self.rects.add(rect(110, 120, 100, 100, toColor(Yellow.toU32_RGB(),  127), (Right, Down)))
 
-    self.rects.add(rect(110, 120, 100, 100, toColor(Tomato,          200), (Left, Down)))
-    self.rects.add(rect(130, 140, 100, 100, toColor(LawnGreen,       200), (Left, Down)))
-    self.rects.add(rect(150, 160, 100, 100, toColor(LightCoral,      200), (Left, Down)))
-    self.rects.add(rect(170, 180, 100, 100, toColor(RoyalBlue,       200), (Left, Down)))
-    self.rects.add(rect(190, 200, 100, 100, toColor(Maroon,          200), (Left, Down)))
-    self.rects.add(rect(210, 220, 100, 100, toColor(MediumTurquoise, 200), (Left, Down)))
+    self.rects.add(rect(110, 120, 100, 100, toColor(Tomato.toU32_RGB(),          200), (Left, Down)))
+    self.rects.add(rect(130, 140, 100, 100, toColor(LawnGreen.toU32_RGB(),       200), (Left, Down)))
+    self.rects.add(rect(150, 160, 100, 100, toColor(LightCoral.toU32_RGB(),      200), (Left, Down)))
+    self.rects.add(rect(170, 180, 100, 100, toColor(RoyalBlue.toU32_RGB(),       200), (Left, Down)))
+    self.rects.add(rect(190, 200, 100, 100, toColor(Maroon.toU32_RGB(),          200), (Left, Down)))
+    self.rects.add(rect(210, 220, 100, 100, toColor(MediumTurquoise.toU32_RGB(), 200), (Left, Down)))
 
     for r in self.rects:
       self.rectTextures.add(self.toTexture(r))

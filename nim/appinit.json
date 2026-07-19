@@ -8,7 +8,8 @@
       "enableText": true,
       "enableHover": true,
       "compQty": 1,
-      "renderMethod": "PixieTexture"
+      "renderMethod": "PixieTexture",
+      "singleColor": "Lavender"
     },
     "Viewport": {
       "pan": "(400, 400)",
