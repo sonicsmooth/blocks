@@ -1,457 +1,359 @@
 
-import std/[bitops, math, strformat]
 from std/random import rand
-from wnim/private/wtypes import wColor
-from sdl2 import Color
+from std/math import round
+import std/tables
 
-# TODO: use std/colors instead
 type
-  ColorFormat = enum RGBA, ARGB, BGRA, ABGR
-  ColorU32* = distinct uint32 # Follows one of the above formats
-  RGBTuple*[T:range[0..255]] = tuple[r, g, b: T]
-  RGBATuple*[T:range[0..255]] = tuple[r, g, b, a: T]
-  #SomeColor = uint64|int64|uint32|int32|ColorU32|RGBTuple|RGBATuple|sdl2.Color
-  SomeColor = ColorU32|RGBTuple|RGBATuple|sdl2.Color
+  Color* = object
+    r*: uint8
+    g*: uint8
+    b*: uint8
+    a*: uint8
+
+proc toColor*(val: uint32): Color =
+  # Assume val is only RGB.
+  result.r = uint8((val shr 16) and 0xff)
+  result.g = uint8((val shr  8) and 0xff)
+  result.b = uint8((val shr  0) and 0xff)
+  result.a = uint8(255)
+
+proc toColor*(val: uint32, alpha: uint8): Color =
+  # Assume val is only RGB.
+  result.r = uint8((val shr 16) and 0xff)
+  result.g = uint8((val shr  8) and 0xff)
+  result.b = uint8((val shr  0) and 0xff)
+  result.a = alpha
+
+proc randColor*(): Color =
+  result.r = rand(255).uint8
+  result.g = rand(255).uint8
+  result.b = rand(255).uint8
+  result.a = 200'u8
+
+proc toU32_RGB*(val: Color): uint32 =
+  let
+    r: uint32 = val.r.uint32 shl 16
+    g: uint32 = val.g.uint32 shl  8
+    b: uint32 = val.b.uint32 shl  0
+  r or g or b
+
+proc toU32_RGBA*(val: Color): uint32 =
+  let
+    r: uint32 = val.r.uint32 shl 24
+    g: uint32 = val.g.uint32 shl 16
+    b: uint32 = val.b.uint32 shl  8
+    a: uint32 = val.a.uint32 shl  0
+  r or g or b or a
+
+proc `*`*(val: Color, scale: float): Color =
+  result.r = (val.r.float * scale).clamp(0, 255).round.uint8
+  result.g = (val.g.float * scale).clamp(0, 255).round.uint8
+  result.b = (val.b.float * scale).clamp(0, 255).round.uint8
+  result.a = val.a
+
+proc `$`*(val: Color): string =
+  result = "(r: " & $val.r.int & ", " &
+           " g: " & $val.g.int & ", " &
+           " b: " & $val.b.int & ", " &
+           " g: " & $val.a.int & ")"
 
 const
-  ColorFmt = 
-    when defined(argb):
-      ARGB
-    else:
-      RGBA
+  AliceBlue*            = toColor(0xF0F8FF'u32) #F0F8FF
+  AntiqueWhite*         = toColor(0xFAEBD7'u32) #FAEBD7
+  Aqua*                 = toColor(0x00FFFF'u32) #00FFFF
+  Aquamarine*           = toColor(0x7FFFD4'u32) #7FFFD4
+  Azure*                = toColor(0xF0FFFF'u32) #F0FFFF
+  Beige*                = toColor(0xF5F5DC'u32) #F5F5DC
+  Bisque*               = toColor(0xFFE4C4'u32) #FFE4C4
+  Black*                = toColor(0x000000'u32) #000000
+  BlanchedAlmond*       = toColor(0xFFEBCD'u32) #FFEBCD
+  Blue*                 = toColor(0x0000FF'u32) #0000FF
+  BlueViolet*           = toColor(0x8A2BE2'u32) #8A2BE2
+  Brown*                = toColor(0xA52A2A'u32) #A52A2A
+  BurlyWood*            = toColor(0xDEB887'u32) #DEB887
+  CadetBlue*            = toColor(0x5F9EA0'u32) #5F9EA0
+  Chartreuse*           = toColor(0x7FFF00'u32) #7FFF00
+  Chocolate*            = toColor(0xD2691E'u32) #D2691E
+  Coral*                = toColor(0xFF7F50'u32) #FF7F50
+  CornflowerBlue*       = toColor(0x6495ED'u32) #6495ED
+  Cornsilk*             = toColor(0xFFF8DC'u32) #FFF8DC
+  Crimson*              = toColor(0xDC143C'u32) #DC143C
+  Cyan*                 = toColor(0x00FFFF'u32) #00FFFF
+  DarkBlue*             = toColor(0x00008B'u32) #00008B
+  DarkCyan*             = toColor(0x008B8B'u32) #008B8B
+  DarkGoldenRod*        = toColor(0xB8860B'u32) #B8860B
+  DarkGray*             = toColor(0xA9A9A9'u32) #A9A9A9
+  DarkGreen*            = toColor(0x006400'u32) #006400
+  DarkGrey*             = toColor(0xA9A9A9'u32) #A9A9A9
+  DarkKhaki*            = toColor(0xBDB76B'u32) #BDB76B
+  DarkMagenta*          = toColor(0x8B008B'u32) #8B008B
+  DarkOliveGreen*       = toColor(0x556B2F'u32) #556B2F
+  Darkorange*           = toColor(0xFF8C00'u32) #FF8C00
+  DarkOrchid*           = toColor(0x9932CC'u32) #9932CC
+  DarkRed*              = toColor(0x8B0000'u32) #8B0000
+  DarkSalmon*           = toColor(0xE9967A'u32) #E9967A
+  DarkSeaGreen*         = toColor(0x8FBC8F'u32) #8FBC8F
+  DarkSlateBlue*        = toColor(0x483D8B'u32) #483D8B
+  DarkSlateGray*        = toColor(0x2F4F4F'u32) #2F4F4F
+  DarkSlateGrey*        = toColor(0x2F4F4F'u32) #2F4F4F
+  DarkTurquoise*        = toColor(0x00CED1'u32) #00CED1
+  DarkViolet*           = toColor(0x9400D3'u32) #9400D3
+  DeepPink*             = toColor(0xFF1493'u32) #FF1493
+  DeepSkyBlue*          = toColor(0x00BFFF'u32) #00BFFF
+  DimGray*              = toColor(0x696969'u32) #696969
+  DimGrey*              = toColor(0x696969'u32) #696969
+  DodgerBlue*           = toColor(0x1E90FF'u32) #1E90FF
+  FireBrick*            = toColor(0xB22222'u32) #B22222
+  FloralWhite*          = toColor(0xFFFAF0'u32) #FFFAF0
+  ForestGreen*          = toColor(0x228B22'u32) #228B22
+  Fuchsia*              = toColor(0xFF00FF'u32) #FF00FF
+  Gainsboro*            = toColor(0xDCDCDC'u32) #DCDCDC
+  GhostWhite*           = toColor(0xF8F8FF'u32) #F8F8FF
+  Gold*                 = toColor(0xFFD700'u32) #FFD700
+  GoldenRod*            = toColor(0xDAA520'u32) #DAA520
+  Gray*                 = toColor(0x808080'u32) #808080
+  Green*                = toColor(0x008000'u32) #008000
+  GreenYellow*          = toColor(0xADFF2F'u32) #ADFF2F
+  Grey*                 = toColor(0x808080'u32) #808080
+  HoneyDew*             = toColor(0xF0FFF0'u32) #F0FFF0
+  HotPink*              = toColor(0xFF69B4'u32) #FF69B4
+  IndianRed*            = toColor(0xCD5C5C'u32) #CD5C5C
+  Indigo*               = toColor(0x4B0082'u32) #4B0082
+  Ivory*                = toColor(0xFFFFF0'u32) #FFFFF0
+  Khaki*                = toColor(0xF0E68C'u32) #F0E68C
+  Lavender*             = toColor(0xE6E6FA'u32) #E6E6FA
+  LavenderBlush*        = toColor(0xFFF0F5'u32) #FFF0F5
+  LawnGreen*            = toColor(0x7CFC00'u32) #7CFC00
+  LemonChiffon*         = toColor(0xFFFACD'u32) #FFFACD
+  LightBlue*            = toColor(0xADD8E6'u32) #ADD8E6
+  LightCoral*           = toColor(0xF08080'u32) #F08080
+  LightCyan*            = toColor(0xE0FFFF'u32) #E0FFFF
+  LightGoldenRodYellow* = toColor(0xFAFAD2'u32) #FAFAD2
+  LightGray*            = toColor(0xD3D3D3'u32) #D3D3D3
+  LightGreen*           = toColor(0x90EE90'u32) #90EE90
+  LightGrey*            = toColor(0xD3D3D3'u32) #D3D3D3
+  LightPink*            = toColor(0xFFB6C1'u32) #FFB6C1
+  LightSalmon*          = toColor(0xFFA07A'u32) #FFA07A
+  LightSeaGreen*        = toColor(0x20B2AA'u32) #20B2AA
+  LightSkyBlue*         = toColor(0x87CEFA'u32) #87CEFA
+  LightSlateGray*       = toColor(0x778899'u32) #778899
+  LightSlateGrey*       = toColor(0x778899'u32) #778899
+  LightSteelBlue*       = toColor(0xB0C4DE'u32) #B0C4DE
+  LightYellow*          = toColor(0xFFFFE0'u32) #FFFFE0
+  Lime*                 = toColor(0x00FF00'u32) #00FF00
+  LimeGreen*            = toColor(0x32CD32'u32) #32CD32
+  Linen*                = toColor(0xFAF0E6'u32) #FAF0E6
+  Magenta*              = toColor(0xFF00FF'u32) #FF00FF
+  Maroon*               = toColor(0x800000'u32) #800000
+  MediumAquaMarine*     = toColor(0x66CDAA'u32) #66CDAA
+  MediumBlue*           = toColor(0x0000CD'u32) #0000CD
+  MediumOrchid*         = toColor(0xBA55D3'u32) #BA55D3
+  MediumPurple*         = toColor(0x9370DB'u32) #9370DB
+  MediumSeaGreen*       = toColor(0x3CB371'u32) #3CB371
+  MediumSlateBlue*      = toColor(0x7B68EE'u32) #7B68EE
+  MediumSpringGreen*    = toColor(0x00FA9A'u32) #00FA9A
+  MediumTurquoise*      = toColor(0x48D1CC'u32) #48D1CC
+  MediumVioletRed*      = toColor(0xC71585'u32) #C71585
+  MidnightBlue*         = toColor(0x191970'u32) #191970
+  MintCream*            = toColor(0xF5FFFA'u32) #F5FFFA
+  MistyRose*            = toColor(0xFFE4E1'u32) #FFE4E1
+  Moccasin*             = toColor(0xFFE4B5'u32) #FFE4B5
+  NavajoWhite*          = toColor(0xFFDEAD'u32) #FFDEAD
+  Navy*                 = toColor(0x000080'u32) #000080
+  OldLace*              = toColor(0xFDF5E6'u32) #FDF5E6
+  Olive*                = toColor(0x808000'u32) #808000
+  OliveDrab*            = toColor(0x6B8E23'u32) #6B8E23
+  Orange*               = toColor(0xFFA500'u32) #FFA500
+  OrangeRed*            = toColor(0xFF4500'u32) #FF4500
+  Orchid*               = toColor(0xDA70D6'u32) #DA70D6
+  PaleGoldenRod*        = toColor(0xEEE8AA'u32) #EEE8AA
+  PaleGreen*            = toColor(0x98FB98'u32) #98FB98
+  PaleTurquoise*        = toColor(0xAFEEEE'u32) #AFEEEE
+  PaleVioletRed*        = toColor(0xDB7093'u32) #DB7093
+  PapayaWhip*           = toColor(0xFFEFD5'u32) #FFEFD5
+  PeachPuff*            = toColor(0xFFDAB9'u32) #FFDAB9
+  Peru*                 = toColor(0xCD853F'u32) #CD853F
+  Pink*                 = toColor(0xFFC0CB'u32) #FFC0CB
+  Plum*                 = toColor(0xDDA0DD'u32) #DDA0DD
+  PowderBlue*           = toColor(0xB0E0E6'u32) #B0E0E6
+  Purple*               = toColor(0x800080'u32) #800080
+  RebeccaPurple*        = toColor(0x663399'u32) #663399
+  Red*                  = toColor(0xFF0000'u32) #FF0000
+  RosyBrown*            = toColor(0xBC8F8F'u32) #BC8F8F
+  RoyalBlue*            = toColor(0x4169E1'u32) #4169E1
+  SaddleBrown*          = toColor(0x8B4513'u32) #8B4513
+  Salmon*               = toColor(0xFA8072'u32) #FA8072
+  SandyBrown*           = toColor(0xF4A460'u32) #F4A460
+  SeaGreen*             = toColor(0x2E8B57'u32) #2E8B57
+  SeaShell*             = toColor(0xFFF5EE'u32) #FFF5EE
+  Sienna*               = toColor(0xA0522D'u32) #A0522D
+  Silver*               = toColor(0xC0C0C0'u32) #C0C0C0
+  SkyBlue*              = toColor(0x87CEEB'u32) #87CEEB
+  SlateBlue*            = toColor(0x6A5ACD'u32) #6A5ACD
+  SlateGray*            = toColor(0x708090'u32) #708090
+  SlateGrey*            = toColor(0x708090'u32) #708090
+  Snow*                 = toColor(0xFFFAFA'u32) #FFFAFA
+  SpringGreen*          = toColor(0x00FF7F'u32) #00FF7F
+  SteelBlue*            = toColor(0x4682B4'u32) #4682B4
+  Tan*                  = toColor(0xD2B48C'u32) #D2B48C
+  Teal*                 = toColor(0x008080'u32) #008080
+  Thistle*              = toColor(0xD8BFD8'u32) #D8BFD8
+  Tomato*               = toColor(0xFF6347'u32) #FF6347
+  Turquoise*            = toColor(0x40E0D0'u32) #40E0D0
+  Violet*               = toColor(0xEE82EE'u32) #EE82EE
+  Wheat*                = toColor(0xF5DEB3'u32) #F5DEB3
+  White*                = toColor(0xFFFFFF'u32) #FFFFFF
+  WhiteSmoke*           = toColor(0xF5F5F5'u32) #F5F5F5
+  Yellow*               = toColor(0xFFFF00'u32) #FFFF00
+  YellowGreen*          = toColor(0x9ACD32'u32) #9ACD32
 
-when ColorFmt == ARGB:
-  const
-    ASH = 24
-    RSH = 16
-    GSH =  8
-    BSH =  0
-elif ColorFmt == RGBA:
-  const
-    RSH = 24
-    GSH = 16
-    BSH =  8
-    ASH =  0
-elif ColorFmt == BGRA:
-  const
-    BSH = 24
-    GSH = 16
-    RSH =  8
-    ASH =  0
-elif ColorFmt == ABGR:
-  const
-    ASH = 24
-    BSH = 16
-    GSH =  8
-    RSH =  0
-
-const
-  rmask* = 0xff.shl(RSH).uint32
-  gmask* = 0xff.shl(GSH).uint32
-  bmask* = 0xff.shl(BSH).uint32
-  amask* = 0xff.shl(ASH).uint32
-
-proc `$`*(color: ColorU32): string =
-  fmt"{uint32(color):08x}"
-proc `==`*(c1: ColorU32|uint32, c2: ColorU32|uint32): bool =
-  c1.uint32 == c2.uint32
-
-# # Color tuple uses named fields
-# template red*  (color: Color): uint8 = color[0[
-# template green*(color: Color): uint8 = color[1]
-# template blue* (color: Color): uint8 = color[2]
-# template alpha*(color: Color): uint8 = color[3]
-
-# Color tuple uses named fields
-template red*  (color: RGBTuple): uint8 = color[0].uint8
-template green*(color: RGBTuple): uint8 = color[1].uint8
-template blue* (color: RGBTuple): uint8 = color[2].uint8
-template alpha*(color: RGBTuple): uint8 = 0xff'u8
-
-# Color tuple uses named fields
-template red*  (color: RGBATuple): uint8 = color[0].uint8
-template green*(color: RGBATuple): uint8 = color[1].uint8
-template blue* (color: RGBATuple): uint8 = color[2].uint8
-template alpha*(color: RGBATuple): uint8 = color[3].uint8
-
-# ColorU32 is one of RGBA, ARGB, BGRA, ABGR
-template red*  (color: ColorU32): uint8 = color.uint32.shr(RSH).uint8
-template green*(color: ColorU32): uint8 = color.uint32.shr(GSH).uint8
-template blue* (color: ColorU32): uint8 = color.uint32.shr(BSH).uint8
-template alpha*(color: ColorU32): uint8 = color.uint32.shr(ASH).uint8
-
-# SomeInteger is assumed to be RGB only; use opaque alpha
-template red*  (color: SomeInteger): uint8 = color.uint32.shr(16).uint8
-template green*(color: SomeInteger): uint8 = color.uint32.shr( 8).uint8
-template blue* (color: SomeInteger): uint8 = color.uint32.shr( 0).uint8
-template alpha*(color: SomeInteger): uint8 = 0xff'u8
-
-# wColor is known to be BGR only; use opaque alpha
-# wColor is not distinguishable from int32
-template red*  (color: wColor): uint8 = color.shr( 0).uint8
-template green*(color: wColor): uint8 = color.shr( 8).uint8
-template blue* (color: wColor): uint8 = color.shr(16).uint8
-template alpha*(color: wColor): uint8 = 0xff'u8
-
-proc assembleBits(r,g,b,a: uint32): ColorU32 =
-  when ColorFmt == RGBA: bitor(r.shl(24), g.shl(16), b.shl(8), a).ColorU32
-  elif ColorFmt == BGRA: bitor(b.shl(24), g.shl(16), r.shl(8), a).ColorU32
-  elif ColorFmt == ARGB: bitor(a.shl(24), r.shl(16), g.shl(8), b).ColorU32
-  elif ColorFmt == ABGR: bitor(a.shl(24), b.shl(16), g.shl(8), r).ColorU32
-
-
-proc toColorU32*(color: SomeColor|SomeInteger, a: range[0..255]): ColorU32 =
-  # Convert SomeColor to ColorU32 using a for alpha
-  # Use this to change alpha in Color or ColorU32
-  let
-    r: uint32 = color.red
-    g: uint32 = color.green
-    b: uint32 = color.blue
-    a: uint32 = a.uint32
-  assembleBits(r,g,b,a)
-
-proc toColorU32*(color: SomeColor|SomeInteger): ColorU32 =
-  # Convert SomeColor to ColorU32.
-  let
-    r: uint32 = color.red
-    g: uint32 = color.green
-    b: uint32 = color.blue
-    a: uint32 = color.alpha
-  assembleBits(r,g,b,a)
-
-template toColor*(color: SomeColor|SomeInteger, alpha: range[0..255]): Color =
-  (r: color.red, g: color.green, b: color.blue, a: alpha.uint8).Color
-
-template toColor*(color: SomeColor|SomeInteger): Color =
-  block:
-    when typeof(color) is Color:
-      color
-    else:
-      let alpha = if color.alpha > 0: color.alpha
-                  else: 255'u8
-      (r: color.red, g: color.green, b: color.blue, a: alpha).Color
-
-proc `*`*[T: SomeColor](color: T, num: float): T =
-  let
-    r = (color.red.float   * num).round.clamp(0.0 .. 255.0).uint8
-    g = (color.green.float * num).round.clamp(0.0 .. 255.0).uint8
-    b = (color.blue.float  * num).round.clamp(0.0 .. 255.0).uint8
-    a = color.alpha
-  when T is RGBTuple: (r,g,b)
-  elif T is RGBATuple: (r,g,b,a)
-  elif T is sdl2.Color: (r,g,b,a)
-  else: assembleBits(r,g,b,a)
-
-
-# proc `*`*(color: ColorU32, num: float): ColorU32 =
-#   let
-#     r = color.red.uint32   div num.uint32
-#     g = color.green.uint32 div num.uint32
-#     b = color.blue.uint32  div num.uint32
-#     a = color.alpha.uint32
-#   assembleBits(r,g,b,a)
-
-# proc `*`*(color: Color, num: float): Color =
-#   let
-#     r = color.red   div num.uint8
-#     g = color.green div num.uint8
-#     b = color.blue  div num.uint8
-#     a = color.alpha.uint8
-#   (r: color.red, g: color.green, b: color.blue, a: alpha).Color
-
-# proc `*`*(color: wColor, num: float): wColor =
-#   let
-#     r = (color.red.uint32   div num.uint32).shl( 0)
-#     g = (color.green.uint32 div num.uint32).shl( 8)
-#     b = (color.blue.uint32  div num.uint32).shl(16)
-#     a = color.alpha.uint32.shl(24)
-#   bitor(r,g,b,a).wColor
-
-proc randColor*(): ColorU32 = 
-  let
-    r = (rand(255) shl RSH)
-    g = (rand(255) shl GSH)
-    b = (rand(255) shl BSH)
-    a = (     200  shl ASH)
-  bitor(r,g,b,a).ColorU32 # rrggbbaa
-
-const
-  AliceBlue*            = toColorU32(0xF0F8FF'u32) #F0F8FF
-  AntiqueWhite*         = toColorU32(0xFAEBD7'u32) #FAEBD7
-  Aqua*                 = toColorU32(0x00FFFF'u32) #00FFFF
-  Aquamarine*           = toColorU32(0x7FFFD4'u32) #7FFFD4
-  Azure*                = toColorU32(0xF0FFFF'u32) #F0FFFF
-  Beige*                = toColorU32(0xF5F5DC'u32) #F5F5DC
-  Bisque*               = toColorU32(0xFFE4C4'u32) #FFE4C4
-  Black*                = toColorU32(0x000000'u32) #000000
-  BlanchedAlmond*       = toColorU32(0xFFEBCD'u32) #FFEBCD
-  Blue*                 = toColorU32(0x0000FF'u32) #0000FF
-  BlueViolet*           = toColorU32(0x8A2BE2'u32) #8A2BE2
-  Brown*                = toColorU32(0xA52A2A'u32) #A52A2A
-  BurlyWood*            = toColorU32(0xDEB887'u32) #DEB887
-  CadetBlue*            = toColorU32(0x5F9EA0'u32) #5F9EA0
-  Chartreuse*           = toColorU32(0x7FFF00'u32) #7FFF00
-  Chocolate*            = toColorU32(0xD2691E'u32) #D2691E
-  Coral*                = toColorU32(0xFF7F50'u32) #FF7F50
-  CornflowerBlue*       = toColorU32(0x6495ED'u32) #6495ED
-  Cornsilk*             = toColorU32(0xFFF8DC'u32) #FFF8DC
-  Crimson*              = toColorU32(0xDC143C'u32) #DC143C
-  Cyan*                 = toColorU32(0x00FFFF'u32) #00FFFF
-  DarkBlue*             = toColorU32(0x00008B'u32) #00008B
-  DarkCyan*             = toColorU32(0x008B8B'u32) #008B8B
-  DarkGoldenRod*        = toColorU32(0xB8860B'u32) #B8860B
-  DarkGray*             = toColorU32(0xA9A9A9'u32) #A9A9A9
-  DarkGreen*            = toColorU32(0x006400'u32) #006400
-  DarkGrey*             = toColorU32(0xA9A9A9'u32) #A9A9A9
-  DarkKhaki*            = toColorU32(0xBDB76B'u32) #BDB76B
-  DarkMagenta*          = toColorU32(0x8B008B'u32) #8B008B
-  DarkOliveGreen*       = toColorU32(0x556B2F'u32) #556B2F
-  Darkorange*           = toColorU32(0xFF8C00'u32) #FF8C00
-  DarkOrchid*           = toColorU32(0x9932CC'u32) #9932CC
-  DarkRed*              = toColorU32(0x8B0000'u32) #8B0000
-  DarkSalmon*           = toColorU32(0xE9967A'u32) #E9967A
-  DarkSeaGreen*         = toColorU32(0x8FBC8F'u32) #8FBC8F
-  DarkSlateBlue*        = toColorU32(0x483D8B'u32) #483D8B
-  DarkSlateGray*        = toColorU32(0x2F4F4F'u32) #2F4F4F
-  DarkSlateGrey*        = toColorU32(0x2F4F4F'u32) #2F4F4F
-  DarkTurquoise*        = toColorU32(0x00CED1'u32) #00CED1
-  DarkViolet*           = toColorU32(0x9400D3'u32) #9400D3
-  DeepPink*             = toColorU32(0xFF1493'u32) #FF1493
-  DeepSkyBlue*          = toColorU32(0x00BFFF'u32) #00BFFF
-  DimGray*              = toColorU32(0x696969'u32) #696969
-  DimGrey*              = toColorU32(0x696969'u32) #696969
-  DodgerBlue*           = toColorU32(0x1E90FF'u32) #1E90FF
-  FireBrick*            = toColorU32(0xB22222'u32) #B22222
-  FloralWhite*          = toColorU32(0xFFFAF0'u32) #FFFAF0
-  ForestGreen*          = toColorU32(0x228B22'u32) #228B22
-  Fuchsia*              = toColorU32(0xFF00FF'u32) #FF00FF
-  Gainsboro*            = toColorU32(0xDCDCDC'u32) #DCDCDC
-  GhostWhite*           = toColorU32(0xF8F8FF'u32) #F8F8FF
-  Gold*                 = toColorU32(0xFFD700'u32) #FFD700
-  GoldenRod*            = toColorU32(0xDAA520'u32) #DAA520
-  Gray*                 = toColorU32(0x808080'u32) #808080
-  Green*                = toColorU32(0x008000'u32) #008000
-  GreenYellow*          = toColorU32(0xADFF2F'u32) #ADFF2F
-  Grey*                 = toColorU32(0x808080'u32) #808080
-  HoneyDew*             = toColorU32(0xF0FFF0'u32) #F0FFF0
-  HotPink*              = toColorU32(0xFF69B4'u32) #FF69B4
-  IndianRed*            = toColorU32(0xCD5C5C'u32) #CD5C5C
-  Indigo*               = toColorU32(0x4B0082'u32) #4B0082
-  Ivory*                = toColorU32(0xFFFFF0'u32) #FFFFF0
-  Khaki*                = toColorU32(0xF0E68C'u32) #F0E68C
-  Lavender*             = toColorU32(0xE6E6FA'u32) #E6E6FA
-  LavenderBlush*        = toColorU32(0xFFF0F5'u32) #FFF0F5
-  LawnGreen*            = toColorU32(0x7CFC00'u32) #7CFC00
-  LemonChiffon*         = toColorU32(0xFFFACD'u32) #FFFACD
-  LightBlue*            = toColorU32(0xADD8E6'u32) #ADD8E6
-  LightCoral*           = toColorU32(0xF08080'u32) #F08080
-  LightCyan*            = toColorU32(0xE0FFFF'u32) #E0FFFF
-  LightGoldenRodYellow* = toColorU32(0xFAFAD2'u32) #FAFAD2
-  LightGray*            = toColorU32(0xD3D3D3'u32) #D3D3D3
-  LightGreen*           = toColorU32(0x90EE90'u32) #90EE90
-  LightGrey*            = toColorU32(0xD3D3D3'u32) #D3D3D3
-  LightPink*            = toColorU32(0xFFB6C1'u32) #FFB6C1
-  LightSalmon*          = toColorU32(0xFFA07A'u32) #FFA07A
-  LightSeaGreen*        = toColorU32(0x20B2AA'u32) #20B2AA
-  LightSkyBlue*         = toColorU32(0x87CEFA'u32) #87CEFA
-  LightSlateGray*       = toColorU32(0x778899'u32) #778899
-  LightSlateGrey*       = toColorU32(0x778899'u32) #778899
-  LightSteelBlue*       = toColorU32(0xB0C4DE'u32) #B0C4DE
-  LightYellow*          = toColorU32(0xFFFFE0'u32) #FFFFE0
-  Lime*                 = toColorU32(0x00FF00'u32) #00FF00
-  LimeGreen*            = toColorU32(0x32CD32'u32) #32CD32
-  Linen*                = toColorU32(0xFAF0E6'u32) #FAF0E6
-  Magenta*              = toColorU32(0xFF00FF'u32) #FF00FF
-  Maroon*               = toColorU32(0x800000'u32) #800000
-  MediumAquaMarine*     = toColorU32(0x66CDAA'u32) #66CDAA
-  MediumBlue*           = toColorU32(0x0000CD'u32) #0000CD
-  MediumOrchid*         = toColorU32(0xBA55D3'u32) #BA55D3
-  MediumPurple*         = toColorU32(0x9370DB'u32) #9370DB
-  MediumSeaGreen*       = toColorU32(0x3CB371'u32) #3CB371
-  MediumSlateBlue*      = toColorU32(0x7B68EE'u32) #7B68EE
-  MediumSpringGreen*    = toColorU32(0x00FA9A'u32) #00FA9A
-  MediumTurquoise*      = toColorU32(0x48D1CC'u32) #48D1CC
-  MediumVioletRed*      = toColorU32(0xC71585'u32) #C71585
-  MidnightBlue*         = toColorU32(0x191970'u32) #191970
-  MintCream*            = toColorU32(0xF5FFFA'u32) #F5FFFA
-  MistyRose*            = toColorU32(0xFFE4E1'u32) #FFE4E1
-  Moccasin*             = toColorU32(0xFFE4B5'u32) #FFE4B5
-  NavajoWhite*          = toColorU32(0xFFDEAD'u32) #FFDEAD
-  Navy*                 = toColorU32(0x000080'u32) #000080
-  OldLace*              = toColorU32(0xFDF5E6'u32) #FDF5E6
-  Olive*                = toColorU32(0x808000'u32) #808000
-  OliveDrab*            = toColorU32(0x6B8E23'u32) #6B8E23
-  Orange*               = toColorU32(0xFFA500'u32) #FFA500
-  OrangeRed*            = toColorU32(0xFF4500'u32) #FF4500
-  Orchid*               = toColorU32(0xDA70D6'u32) #DA70D6
-  PaleGoldenRod*        = toColorU32(0xEEE8AA'u32) #EEE8AA
-  PaleGreen*            = toColorU32(0x98FB98'u32) #98FB98
-  PaleTurquoise*        = toColorU32(0xAFEEEE'u32) #AFEEEE
-  PaleVioletRed*        = toColorU32(0xDB7093'u32) #DB7093
-  PapayaWhip*           = toColorU32(0xFFEFD5'u32) #FFEFD5
-  PeachPuff*            = toColorU32(0xFFDAB9'u32) #FFDAB9
-  Peru*                 = toColorU32(0xCD853F'u32) #CD853F
-  Pink*                 = toColorU32(0xFFC0CB'u32) #FFC0CB
-  Plum*                 = toColorU32(0xDDA0DD'u32) #DDA0DD
-  PowderBlue*           = toColorU32(0xB0E0E6'u32) #B0E0E6
-  Purple*               = toColorU32(0x800080'u32) #800080
-  RebeccaPurple*        = toColorU32(0x663399'u32) #663399
-  Red*                  = toColorU32(0xFF0000'u32) #FF0000
-  RosyBrown*            = toColorU32(0xBC8F8F'u32) #BC8F8F
-  RoyalBlue*            = toColorU32(0x4169E1'u32) #4169E1
-  SaddleBrown*          = toColorU32(0x8B4513'u32) #8B4513
-  Salmon*               = toColorU32(0xFA8072'u32) #FA8072
-  SandyBrown*           = toColorU32(0xF4A460'u32) #F4A460
-  SeaGreen*             = toColorU32(0x2E8B57'u32) #2E8B57
-  SeaShell*             = toColorU32(0xFFF5EE'u32) #FFF5EE
-  Sienna*               = toColorU32(0xA0522D'u32) #A0522D
-  Silver*               = toColorU32(0xC0C0C0'u32) #C0C0C0
-  SkyBlue*              = toColorU32(0x87CEEB'u32) #87CEEB
-  SlateBlue*            = toColorU32(0x6A5ACD'u32) #6A5ACD
-  SlateGray*            = toColorU32(0x708090'u32) #708090
-  SlateGrey*            = toColorU32(0x708090'u32) #708090
-  Snow*                 = toColorU32(0xFFFAFA'u32) #FFFAFA
-  SpringGreen*          = toColorU32(0x00FF7F'u32) #00FF7F
-  SteelBlue*            = toColorU32(0x4682B4'u32) #4682B4
-  Tan*                  = toColorU32(0xD2B48C'u32) #D2B48C
-  Teal*                 = toColorU32(0x008080'u32) #008080
-  Thistle*              = toColorU32(0xD8BFD8'u32) #D8BFD8
-  Tomato*               = toColorU32(0xFF6347'u32) #FF6347
-  Turquoise*            = toColorU32(0x40E0D0'u32) #40E0D0
-  Violet*               = toColorU32(0xEE82EE'u32) #EE82EE
-  Wheat*                = toColorU32(0xF5DEB3'u32) #F5DEB3
-  White*                = toColorU32(0xFFFFFF'u32) #FFFFFF
-  WhiteSmoke*           = toColorU32(0xF5F5F5'u32) #F5F5F5
-  Yellow*               = toColorU32(0xFFFF00'u32) #FFFF00
-  YellowGreen*          = toColorU32(0x9ACD32'u32) #9ACD32
-
-when isMainModule:
-  import sugar
-  import wnim/private/consts/wColors
-
-  echo "Main Module"
-  let sdlRed  : sdl2.Color = (r: 255, g: 0,   b: 0,   a: 127)
-  let sdlGreen: sdl2.Color = (r: 0,   g: 255, b: 0,   a: 127)
-  let sdlBlue : sdl2.Color = (r: 0,   g:0,    b: 255, a: 127)
-
-  dump ColorFmt
-  echo "Testing assertions"
-  assert sdlRed.toColorU32.red     == 0xff'u8
-  assert sdlRed.toColorU32.green   == 0x00'u8
-  assert sdlRed.toColorU32.blue    == 0x00'u8
-  assert sdlRed.toColorU32.alpha   == 0x7f'u8
-  assert sdlGreen.toColorU32.red   == 0x00'u8
-  assert sdlGreen.toColorU32.green == 0xff'u8
-  assert sdlGreen.toColorU32.blue  == 0x00'u8
-  assert sdlGreen.toColorU32.alpha == 0x7f'u8
-  assert sdlBlue.toColorU32.red    == 0x00'u8
-  assert sdlBlue.toColorU32.green  == 0x00'u8
-  assert sdlBlue.toColorU32.blue   == 0xff'u8
-  assert sdlBlue.toColorU32.alpha  == 0x7f'u8
-  assert wRed.red                  == 0xff'u8
-  assert wRed.green                == 0x00'u8
-  assert wRed.blue                 == 0x00'u8
-  assert wRed.alpha                == 0xff'u8
-  assert wGreen.red                == 0x00'u8
-  assert wGreen.green              == 0xff'u8
-  assert wGreen.blue               == 0x00'u8
-  assert wGreen.alpha              == 0xff'u8
-  assert wBlue.red                 == 0x00'u8
-  assert wBlue.green               == 0x00'u8
-  assert wBlue.blue                == 0xff'u8
-  assert wBlue.alpha               == 0xff'u8
-  assert 0xff0000.toColor          == (r: 255'u8, g:   0'u8, b:   0'u8, a: 255'u8).Color
-  assert 0x00ff00.toColor          == (r:   0'u8, g: 255'u8, b:   0'u8, a: 255'u8).Color
-  assert 0x0000ff.toColor          == (r:   0'u8, g:   0'u8, b: 255'u8, a: 255'u8).Color
-  assert sdlRed.toColor            == (r: 255'u8, g:   0'u8, b:   0'u8, a: 127'u8).Color
-  assert sdlGreen.toColor          == (r:   0'u8, g: 255'u8, b:   0'u8, a: 127'u8).Color
-  assert sdlBlue.toColor           == (r:   0'u8, g:   0'u8, b: 255'u8, a: 127'u8).Color
-  assert wRed.toColor              == (r: 255'u8, g:   0'u8, b:   0'u8, a: 255'u8).Color
-  assert wGreen.toColor            == (r:   0'u8, g: 255'u8, b:   0'u8, a: 255'u8).Color
-  assert wBlue.toColor             == (r:   0'u8, g:   0'u8, b: 255'u8, a: 255'u8).Color
-  assert Red.toColor               == (r: 255'u8, g:   0'u8, b:   0'u8, a: 255'u8).Color
-  assert Lime.toColor              == (r:   0'u8, g: 255'u8, b:   0'u8, a: 255'u8).Color
-  assert Blue.toColor              == (r:   0'u8, g:   0'u8, b: 255'u8, a: 255'u8).Color
-
-  when ColorFmt == RGBA:
-    assert sdlRed.toColorU32                == 0xff00007f'u32
-    assert sdlGreen.toColorU32              == 0x00ff007f'u32
-    assert sdlBlue.toColorU32               == 0x0000ff7f'u32
-    assert wRed.toColorU32                  == 0xff0000ff'u32
-    assert wGreen.toColorU32                == 0x00ff00ff'u32
-    assert wBlue.toColorU32                 == 0x0000ffff'u32
-    assert Red.toColorU32                   == 0xff0000ff'u32
-    assert Lime.toColorU32                  == 0x00ff00ff'u32
-    assert Blue.toColorU32                  == 0x0000ffff'u32
-    assert Red                              == 0xff0000ff'u32
-    assert Lime                             == 0x00ff00ff'u32
-    assert Blue                             == 0x0000ffff'u32
-    assert wRed.toColorU32(127)             == 0xff00007f'u32
-    assert wGreen.toColorU32(127)           == 0x00ff007f'u32
-    assert wBlue.toColorU32(127)            == 0x0000ff7f'u32
-    assert Red.toColorU32(127)              == 0xff00007f'u32
-    assert Lime.toColorU32(127)             == 0x00ff007f'u32
-    assert Blue.toColorU32(127)             == 0x0000ff7f'u32
-    assert Red.toColorU32.`*`(2)       == 0x7f0000ff'u32
-    assert Lime.toColorU32.`*`(2)      == 0x007f00ff'u32
-    assert Blue.toColorU32.`*`(2)      == 0x00007fff'u32
-    assert Red.`*`(2)                  == 0x7f0000ff'u32
-    assert Lime.`*`(2)                 == 0x007f00ff'u32
-    assert Blue.`*`(2)                 == 0x00007fff'u32
-    assert Red.toColorU32(127).`*`(2)  == 0x7f00007f'u32
-    assert Lime.toColorU32(127).`*`(2) == 0x007f007f'u32
-    assert Blue.toColorU32(127).`*`(2) == 0x00007f7f'u32
-
-    assert 0xff0000.toColorU32                 == 0xff0000ff'u32 
-    assert 0x00ff00.toColorU32                 == 0x00ff00ff'u32 
-    assert 0x0000ff.toColorU32                 == 0x0000ffff'u32 
-    assert 0xff0000.toColorU32(127)            == 0xff00007f'u32
-    assert 0x00ff00.toColorU32(127)            == 0x00ff007f'u32
-    assert 0x0000ff.toColorU32(127)            == 0x0000ff7f'u32
-    assert 0xabcdefaa_55ff0000.toColorU32      == 0xff0000ff'u32 
-    assert 0xabcdefaa_5500ff00.toColorU32      == 0x00ff00ff'u32 
-    assert 0xabcdefaa_550000ff.toColorU32      == 0x0000ffff'u32 
-    assert 0xabcdefaa_55ff0000.toColorU32(127) == 0xff00007f'u32
-    assert 0xabcdefaa_5500ff00.toColorU32(127) == 0x00ff007f'u32
-    assert 0xabcdefaa_550000ff.toColorU32(127) == 0x0000ff7f'u32
-
-
-
-  elif ColorFmt == ARGB:
-    assert sdlRed.toColorU32                   == 0x7fff0000'u32
-    assert sdlGreen.toColorU32                 == 0x7f00ff00'u32
-    assert sdlBlue.toColorU32                  == 0x7f0000ff'u32
-    assert wRed.toColorU32                     == 0xffff0000'u32
-    assert wGreen.toColorU32                   == 0xff00ff00'u32
-    assert wBlue.toColorU32                    == 0xff0000ff'u32
-    assert Red.toColorU32                   == 0xffff0000'u32
-    assert Lime.toColorU32                  == 0xff00ff00'u32
-    assert Blue.toColorU32                  == 0xff0000ff'u32
-    assert Red                              == 0xffff0000'u32
-    assert Lime                             == 0xff00ff00'u32
-    assert Blue                             == 0xff0000ff'u32
-    assert wRed.toColorU32(127)                == 0x7fff0000'u32
-    assert wGreen.toColorU32(127)              == 0x7f00ff00'u32
-    assert wBlue.toColorU32(127)               == 0x7f0000ff'u32
-    assert colRed.toColorU32(127)              == 0x7fff0000'u32
-    assert colLime.toColorU32(127)             == 0x7f00ff00'u32
-    assert colBlue.toColorU32(127)             == 0x7f0000ff'u32
-    assert colRed.toColorU32.div(2)            == 0xff7f0000'u32
-    assert colLime.toColorU32.div(2)           == 0xff007f00'u32
-    assert colBlue.toColorU32.div(2)           == 0xff00007f'u32
-    assert colRed.toColorU32(127).div(2)       == 0x7f7f0000'u32
-    assert colLime.toColorU32(127).div(2)      == 0x7f007f00'u32
-    assert colBlue.toColorU32(127).div(2)      == 0x7f00007f'u32
-    assert 0xff0000.toColorU32                 == 0xffff0000'u32
-    assert 0x00ff00.toColorU32                 == 0xff00ff00'u32
-    assert 0x0000ff.toColorU32                 == 0xff0000ff'u32
-    assert 0xff0000.toColorU32(127)            == 0x7fff0000'u32
-    assert 0x00ff00.toColorU32(127)            == 0x7f00ff00'u32
-    assert 0x0000ff.toColorU32(127)            == 0x7f0000ff'u32
-    assert 0xabcdefaa_55ff0000.toColorU32      == 0xffff0000'u32
-    assert 0xabcdefaa_5500ff00.toColorU32      == 0xff00ff00'u32
-    assert 0xabcdefaa_550000ff.toColorU32      == 0xff0000ff'u32
-    assert 0xabcdefaa_55ff0000.toColorU32(127) == 0x7fff0000'u32
-    assert 0xabcdefaa_5500ff00.toColorU32(127) == 0x7f00ff00'u32
-    assert 0xabcdefaa_550000ff.toColorU32(127) == 0x7f0000ff'u32
-
+const colorByName* = {
+  "AliceBlue": AliceBlue,
+  "AntiqueWhite": AntiqueWhite,
+  "Aqua": Aqua,
+  "Aquamarine": Aquamarine,
+  "Azure": Azure,
+  "Beige": Beige,
+  "Bisque": Bisque,
+  "Black": Black,
+  "BlanchedAlmond": BlanchedAlmond,
+  "Blue": Blue,
+  "BlueViolet": BlueViolet,
+  "Brown": Brown,
+  "BurlyWood": BurlyWood,
+  "CadetBlue": CadetBlue,
+  "Chartreuse": Chartreuse,
+  "Chocolate": Chocolate,
+  "Coral": Coral,
+  "CornflowerBlue": CornflowerBlue,
+  "Cornsilk": Cornsilk,
+  "Crimson": Crimson,
+  "Cyan": Cyan,
+  "DarkBlue": DarkBlue,
+  "DarkCyan": DarkCyan,
+  "DarkGoldenRod": DarkGoldenRod,
+  "DarkGray": DarkGray,
+  "DarkGreen": DarkGreen,
+  "DarkGrey": DarkGrey,
+  "DarkKhaki": DarkKhaki,
+  "DarkMagenta": DarkMagenta,
+  "DarkOliveGreen": DarkOliveGreen,
+  "Darkorange": Darkorange,
+  "DarkOrchid": DarkOrchid,
+  "DarkRed": DarkRed,
+  "DarkSalmon": DarkSalmon,
+  "DarkSeaGreen": DarkSeaGreen,
+  "DarkSlateBlue": DarkSlateBlue,
+  "DarkSlateGray": DarkSlateGray,
+  "DarkSlateGrey": DarkSlateGrey,
+  "DarkTurquoise": DarkTurquoise,
+  "DarkViolet": DarkViolet,
+  "DeepPink": DeepPink,
+  "DeepSkyBlue": DeepSkyBlue,
+  "DimGray": DimGray,
+  "DimGrey": DimGrey,
+  "DodgerBlue": DodgerBlue,
+  "FireBrick": FireBrick,
+  "FloralWhite": FloralWhite,
+  "ForestGreen": ForestGreen,
+  "Fuchsia": Fuchsia,
+  "Gainsboro": Gainsboro,
+  "GhostWhite": GhostWhite,
+  "Gold": Gold,
+  "GoldenRod": GoldenRod,
+  "Gray": Gray,
+  "Green": Green,
+  "GreenYellow": GreenYellow,
+  "Grey": Grey,
+  "HoneyDew": HoneyDew,
+  "HotPink": HotPink,
+  "IndianRed": IndianRed,
+  "Indigo": Indigo,
+  "Ivory": Ivory,
+  "Khaki": Khaki,
+  "Lavender": Lavender,
+  "LavenderBlush": LavenderBlush,
+  "LawnGreen": LawnGreen,
+  "LemonChiffon": LemonChiffon,
+  "LightBlue": LightBlue,
+  "LightCoral": LightCoral,
+  "LightCyan": LightCyan,
+  "LightGoldenRodYellow": LightGoldenRodYellow,
+  "LightGray": LightGray,
+  "LightGreen": LightGreen,
+  "LightGrey": LightGrey,
+  "LightPink": LightPink,
+  "LightSalmon": LightSalmon,
+  "LightSeaGreen": LightSeaGreen,
+  "LightSkyBlue": LightSkyBlue,
+  "LightSlateGray": LightSlateGray,
+  "LightSlateGrey": LightSlateGrey,
+  "LightSteelBlue": LightSteelBlue,
+  "LightYellow": LightYellow,
+  "Lime": Lime,
+  "LimeGreen": LimeGreen,
+  "Linen": Linen,
+  "Magenta": Magenta,
+  "Maroon": Maroon,
+  "MediumAquaMarine": MediumAquaMarine,
+  "MediumBlue": MediumBlue,
+  "MediumOrchid": MediumOrchid,
+  "MediumPurple": MediumPurple,
+  "MediumSeaGreen": MediumSeaGreen,
+  "MediumSlateBlue": MediumSlateBlue,
+  "MediumSpringGreen": MediumSpringGreen,
+  "MediumTurquoise": MediumTurquoise,
+  "MediumVioletRed": MediumVioletRed,
+  "MidnightBlue": MidnightBlue,
+  "MintCream": MintCream,
+  "MistyRose": MistyRose,
+  "Moccasin": Moccasin,
+  "NavajoWhite": NavajoWhite,
+  "Navy": Navy,
+  "OldLace": OldLace,
+  "Olive": Olive,
+  "OliveDrab": OliveDrab,
+  "Orange": Orange,
+  "OrangeRed": OrangeRed,
+  "Orchid": Orchid,
+  "PaleGoldenRod": PaleGoldenRod,
+  "PaleGreen": PaleGreen,
+  "PaleTurquoise": PaleTurquoise,
+  "PaleVioletRed": PaleVioletRed,
+  "PapayaWhip": PapayaWhip,
+  "PeachPuff": PeachPuff,
+  "Peru": Peru,
+  "Pink": Pink,
+  "Plum": Plum,
+  "PowderBlue": PowderBlue,
+  "Purple": Purple,
+  "RebeccaPurple": RebeccaPurple,
+  "Red": Red,
+  "RosyBrown": RosyBrown,
+  "RoyalBlue": RoyalBlue,
+  "SaddleBrown": SaddleBrown,
+  "Salmon": Salmon,
+  "SandyBrown": SandyBrown,
+  "SeaGreen": SeaGreen,
+  "SeaShell": SeaShell,
+  "Sienna": Sienna,
+  "Silver": Silver,
+  "SkyBlue": SkyBlue,
+  "SlateBlue": SlateBlue,
+  "SlateGray": SlateGray,
+  "SlateGrey": SlateGrey,
+  "Snow": Snow,
+  "SpringGreen": SpringGreen,
+  "SteelBlue": SteelBlue,
+  "Tan": Tan,
+  "Teal": Teal,
+  "Thistle": Thistle,
+  "Tomato": Tomato,
+  "Turquoise": Turquoise,
+  "Violet": Violet,
+  "Wheat": Wheat,
+  "White": White,
+  "WhiteSmoke": WhiteSmoke,
+  "Yellow": Yellow,
+  "YellowGreen": YellowGreen
+}.toTable

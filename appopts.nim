@@ -1,5 +1,6 @@
 import std/[os, parseopt, strutils, strformat]
 import appinit
+import colors
 
 type
   RenderMethod* = enum
@@ -12,11 +13,9 @@ type
     enableHover*: bool = true
     compQty*: int = 1
     renderMethod*: RenderMethod
+    singleColor*: string
 
 ## GLOBAL VAR FOR USE EVERYWHERE
-## TODO: Do something here with the .json file
-## To load up defaults which can be overridden by
-## cmd line args
 var
   gAppOpts*: AppOpts
 
@@ -36,7 +35,9 @@ proc showAppHelp*(opts: AppOpts) =
 proc parseAppOptions*(): AppOpts = 
   # Start with values in json file, then override 
   # with command line values
+  #echo "here1"
   result = gAppOptsJ.to(AppOpts)
+  #echo "here2"
   for kind, key, val in getopt():
     case kind
     of cmdArgument:
@@ -50,6 +51,7 @@ proc parseAppOptions*(): AppOpts =
       of "nohover": result.enableHover = false
       of "qty", "q": result.compQty = val.parseInt
       of "renderMethod": result.renderMethod = parseEnum[RenderMethod](val)
+      of "singleColor": result.singleColor = "Purple"
     of cmdEnd:
       echo "done parsing"
 

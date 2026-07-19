@@ -5,8 +5,8 @@ import std/[
             times ]
 import editor, renderer
 import wNim
-import winim except PRECT, Color
-import sdl2
+import winim except PRECT
+#import sdl2
 import rects, recttable, sdlframes
 import userMessages, appopts, routing, reporting
 
