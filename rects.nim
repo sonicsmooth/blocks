@@ -72,9 +72,9 @@ type
     label*: string
     origin*: WPoint
     rot*: Rotation
-    penColor*: Color
-    fillColor*: Color
-    hoverColor*: Color
+    penColor*: ColorRGBA
+    fillColor*: ColorRGBA
+    hoverColor*: ColorRGBA
     selected*: bool
     hovering*: bool
     mBbox*: Wrect

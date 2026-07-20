@@ -123,7 +123,6 @@ proc randomizeRectsAll*(table: var RectTable, region: WRect, qty: int, log: bool
     for i in 1..qty:
       let rid = i.CompID
       table[rid] = randRect(rid, region, log)
-  echo "in rra, fill color is: ", table[1].fillColor
 
 proc randomizeRectsPos*(table: RectTable, region: WRect) =
   for id, rect in table:

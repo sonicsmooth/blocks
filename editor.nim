@@ -269,7 +269,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   # so wEvent_LeftDown is mapped to MainSelector, which triggers
   # state change from None to StateSelectStartInRect
   # Also dragging is delayed by one event; fix it.
-  echo event
+  #echo event
   return
 
   
