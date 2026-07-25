@@ -70,6 +70,8 @@ type
     text*:         string
     fillArea*:     WType
     ratio:         float
+    hovering:      HoverTable
+    selected:      SelectedTable
     firmSelection: seq[CompID]
     invalidate*:   proc() {.gcsafe.}
 
@@ -97,7 +99,6 @@ proc `$`*(k: Key): string =
   if k.shift: result &= "shft-"
   result &= $k.keyCode
 
-
 proc newEditor*(zc: ZoomCtrl): Editor =
   result = new Editor
   # assign viewport like 
@@ -105,6 +106,8 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   # ... but zc was created before, with grid
   # all other fields can take their default values
   # and are assigned later
+  result.hovering = newHoverTable()
+  result.selected = newSelectTable()
 
 proc isReady*(self: Editor): bool =
   if self.doc.isNil: return reportNil("editor.doc")
@@ -157,7 +160,7 @@ proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   self.fillArea = self.doc.db.fillArea()
   self.invalidate()
 proc selectAll(self: Editor) =
-  self.doc.db.setRectSelect()
+  self.selected.setRectSelect()
   self.invalidate()
 proc selectNone(self: Editor) =
   self.doc.db.clearRectSelect()
@@ -260,7 +263,6 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.mouseData.state = StateNone
 
 proc processMouseMoveEvent*(self: Editor, event: MouseEvt) = 
-  # Unified event processing
   # Separate specific events (eg shft+LMB) from state changes
   # For example, StateLMBDownInRect should be renamed to
   # something like StateSelectStartInRect, and the event
@@ -270,12 +272,11 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   # state change from None to StateSelectStartInRect
   # Also dragging is delayed by one event; fix it.
   #echo event
-  return
-
+  #return
   
-  # let 
-  #   vp = self.viewport
-  #   wmp = event.pos.toWorld(vp)
+  let 
+    vp = self.viewport
+    wmp = event.pos.toWorld(vp)
   
   # case self.mouseData.pzState:
   # of PZStateNone:
@@ -310,26 +311,26 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   # else:
   #   discard
 
-  # case self.mouseData.state
-  # of StateNone:
-  #   case event.getEventType
-  #   of wEvent_MouseMove:
-  #     if self.mouseData.pzState == PZStateNone:
-  #       if self.evaluateHovering(event.pos):
-  #         self.invalidate()
-  #     else:
-  #       discard
-  #   of wEvent_LeftDown:
-  #     self.mouseData.clickPos = event.pos
-  #     self.mouseData.lastPos  = event.pos
-  #     self.mouseData.clickHitIds = self.doc.db.ptInRects(wmp)
-  #     if self.mouseData.clickHitIds.len > 0: # Click in rect
-  #       self.mouseData.dirtyIds = self.doc.db.rectInRects(self.mouseData.clickHitIds[^1])
-  #       self.mouseData.state = StateLMBDownInRect
-  #     else: # Click in clear area
-  #       self.mouseData.state = StateLMBDownInSpace
-  #   else:
-  #     discard
+  case self.mouseData.state
+  of StateNone:
+    # case event.getEventType
+    # of wEvent_MouseMove:
+    if self.mouseData.pzState == PZStateNone:
+      if self.evaluateHovering(event.pos):
+        self.invalidate()
+  else:
+    discard
+    # of wEvent_LeftDown:
+    #   self.mouseData.clickPos = event.pos
+    #   self.mouseData.lastPos  = event.pos
+    #   self.mouseData.clickHitIds = self.doc.db.ptInRects(wmp)
+    #   if self.mouseData.clickHitIds.len > 0: # Click in rect
+    #     self.mouseData.dirtyIds = self.doc.db.rectInRects(self.mouseData.clickHitIds[^1])
+    #     self.mouseData.state = StateLMBDownInRect
+    #   else: # Click in clear area
+    #     self.mouseData.state = StateLMBDownInSpace
+    # else:
+      # discard
   # of StateLMBDownInRect:
   #   let hitid = self.mouseData.clickHitIds[^1]
   #   case event.getEventType
@@ -401,8 +402,8 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   #     self.selectBox = (0,0,0,0)
   #     self.mouseData.state = StateNone
   #     self.invalidate()
-  #   else:
-  #     self.mouseData.state = StateNone
+    # else:
+    #   self.mouseData.state = StateNone
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   echo event

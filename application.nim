@@ -5,12 +5,15 @@ import reporting
 import sdlframes
 
 type
-  Application* = object
+  Application* = ref object
     wapp: wApp
     doc: Document
     editor: Editor
     renderer: Renderer
     mainFrame: wMainFrame
+
+proc newApplication*(): Application =
+  new Application
 
 proc isReady*(self: Application): bool =
   #if self.wapp.isNil: return reportNil(app.wapp)
@@ -24,7 +27,7 @@ proc isReady*(self: Application): bool =
   if not self.mainFrame.isReady(): return reportNotReady("app.mainFrame")
   true
 
-proc init*(self: var Application, w, h: int) =
+proc init*(self: Application, w, h: int) =
   # Create stuff
   self.wapp = wApp.App()
   self.mainFrame = MainFrame((w, h))
@@ -58,7 +61,8 @@ proc init*(self: var Application, w, h: int) =
   self.mainFrame.mainPanel.randomizeRectsAll()
 
   # Editor needs to be able to invalidate panel without knowing about panel
-  #!app.editor.invalidate = proc() {.closure.} = app.mainFrame.mainPanel.blockPanel.refresh(false)
+  let fn = proc() {.closure.} = self.mainFrame.mainPanel.blockPanel.refresh(false)
+  self.editor.invalidate = fn
 
 proc go*(app: Application) =
   app.mainFrame.center()

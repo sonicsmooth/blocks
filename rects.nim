@@ -75,12 +75,12 @@ type
     penColor*: ColorRGBA
     fillColor*: ColorRGBA
     hoverColor*: ColorRGBA
-    selected*: bool
-    hovering*: bool
+    #selected*: bool
+    #hovering*: bool
     mBbox*: Wrect
 
 const
-  scale = 10
+  scale = 30
   WRANGE* = (5*scale) .. (25*scale)
   HRANGE* = (5*scale) .. (25*scale)
   wcdf = makecdf(WRANGE.len, 100.0, 0.1)
@@ -289,8 +289,8 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
                          label: "whatevs",
                          origin: (10, 20),
                          rot: rand(Rotation),
-                         selected: false,
-                         hovering: false,
+                         #selected: false,
+                         #hovering: false,
                          penColor: penColor,
                          fillColor: fillColor,
                          hoverColor: Yellow)

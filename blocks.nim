@@ -25,7 +25,7 @@ when isMainModule:
     # anneal.init()
     
     # Main data and window
-    var app: Application
+    var app = newApplication()
     app.init(1200, 800)
     if not app.isReady():
       echo "Application not ready"
