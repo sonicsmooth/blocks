@@ -87,7 +87,7 @@ proc font(self: Renderer, size: int): FontPtr =
   # Return properly sized font ptr from cache based on size
   let clampSize = clamp(size, fontRange)
   if clampSize notin self.fontCache:
-    self.fontCache[clampSize] = openFont("fonts/DejaVuSans.ttf", clampSize)
+    self.fontCache[clampSize] = openFont("../fonts/DejaVuSans.ttf", clampSize)
   self.fontCache[clampSize]
 
 proc font(self: Renderer, comp: DBComp, zoom: float): FontPtr =
@@ -96,10 +96,11 @@ proc font(self: Renderer, comp: DBComp, zoom: float): FontPtr =
   let scaledSize = (px.float * fontScale * zoom).round.int
   self.font(scaledSize)
 
-proc highlight(comp: DBComp): float =
-  if   (comp.selected, comp.hovering) == (false, false): 1.0
-  elif (comp.selected, comp.hovering) == (false, true ): 1.2
-  elif (comp.selected, comp.hovering) == (true,  false): 1.5
+#proc highlight(comp: DBComp): float =
+proc highlight(selected, hovering: bool): float =
+  if   (selected, hovering) == (false, false): 1.0
+  elif (selected, hovering) == (false, true ): 1.2
+  elif (selected, hovering) == (true,  false): 1.5
   else: 1.9
 
 #[ Component rendering options:
@@ -133,7 +134,7 @@ proc renderCompOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport)
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
-proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, vp: Viewport) =
+proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect) =
   # Render component text
   # Text to texture, then texture to renderer surface.
   # This gets converted back to texture again after return
@@ -141,7 +142,7 @@ proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, 
   # creating cache
   let 
     (w, h) = (prect.w, prect.h)
-    selstr = $comp.id & (if comp.selected: "*" else: "")
+    selstr = $comp.id # & (if comp.selected: "*" else: "")
     textSurface = font.renderUtf8Blended(selstr.cstring, Black)
     textTexture = rp.createTextureFromSurface(textSurface)
     (tsw, tsh) = (textSurface.w, textSurface.h)
@@ -155,22 +156,21 @@ proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, 
   textTexture.destroy()
   # TODO: cache texts at different sizes
 
-proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, vp: Viewport) =
+proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, highlightFactor: float, prect: PRect) =
   # Draw rectangle, origin, and its text using SDL2 renderer
-  rp.renderFilledRect(prect, comp.fillColor * comp.highlight, comp.penColor)
-  rp.renderCompOrigin(comp, prect, vp)
+  rp.renderFilledRect(prect, comp.fillColor * highlightFactor, comp.penColor)
+  #rp.renderCompOrigin(comp, prect, vp)
   if gAppOpts.enableText:
-    rp.renderCompText(comp, font, prect, vp)
+    rp.renderCompText(comp, font, prect)
 
 
-proc renderDBCompPixie*(comp: DBComp, prect: PRect, vp: Viewport): SurfacePtr =
+proc renderDBCompPixie*(comp: DBComp, highlightFactor: float, prect: PRect): SurfacePtr =
   # Draw rectangle to new surface using pixie and return surface
-  # vp is Viewport, used for zoom
   # comp is database object
   # prect is target rectangle with same aspect ratio as comp
 
-  var col1 = comp.fillColor * 1.1
-  var col2 = comp.fillColor * 0.9
+  var col1 = comp.fillColor * 1.1 * highlightFactor
+  var col2 = comp.fillColor * 0.9 * highlightFactor
   col1.a = 200
   col2.a = 200
   let shape = gradientBox(prect.w, prect.h, comp.penColor, col1, col2)
@@ -247,22 +247,25 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   self.visibleComponents.setLen(0)
   for comp in self.doc.db.values:
     let bbw = comp.bbox
-    let bbp = bbw.toPRect(vp)
-    let font = self.font(comp, vp.zoom)
     if isRectSeparate(bbw, self.screenRectW): continue
+    let bbp = bbw.toPRect(vp)
     let cprect = self.clampRectSize(bbp)
     if cprect.w == 0 or cprect.h == 0: continue
+    let font = self.font(comp, vp.zoom)
+    let sel = self.editor.isSelected(comp.id)
+    let hov = self.editor.isHovering(comp.id)
+    let hlfact = highlight(sel, hov)
     if rmethod == Direct:
-      self.sdlRenderer.renderDBCompSDL(comp, font, cprect, vp)
+      self.sdlRenderer.renderDBCompSDL(comp, font, hlfact, cprect)
     else:
       var texture: TexturePtr
-      let key = (comp.id, comp.selected, comp.hovering)
+      let key = (comp.id, sel, hov)
       if not self.textureCache.hasKey(key):
         case rmethod
         of SDLSurface:
           let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
           let rp = surface.createSoftwareRenderer()
-          rp.renderDBCompSDL(comp, font, cprect.zero, vp)
+          rp.renderDBCompSDL(comp, font, hlfact, cprect.zero)
           texture = self.sdlRenderer.createTextureFromSurface(surface)
           self.textureCache[key] = texture
           surface.destroy()
@@ -270,11 +273,11 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
           let fmt = self.sdlWindow.getPixelFormat()
           texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)
           self.sdlRenderer.setRenderTarget(texture)
-          self.sdlRenderer.renderDBCompSDL(comp, font, cprect.zero, vp)
+          self.sdlRenderer.renderDBCompSDL(comp, font, hlfact, cprect.zero)
           self.sdlRenderer.setRenderTarget(nil)
           self.textureCache[key] = texture
         of PixieTexture:
-          let surface = renderDBCompPixie(comp, cprect, vp)
+          let surface = renderDBCompPixie(comp, hlfact, cprect)
           texture = self.sdlRenderer.createTextureFromSurface(surface)
           self.textureCache[key] = texture
           surface.destroy()

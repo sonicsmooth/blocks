@@ -1,7 +1,7 @@
 import wNim/[wApp, wWindow]
 import wNim/[wSlider, wStatusBar]
 import document, editor, renderer, mainframe
-import reporting
+import reporting, appinit
 import sdlframes
 
 type
@@ -28,6 +28,8 @@ proc isReady*(self: Application): bool =
   true
 
 proc init*(self: Application, w, h: int) =
+  # Load up json file
+  appInit()
   # Create stuff
   self.wapp = wApp.App()
   self.mainFrame = MainFrame((w, h))

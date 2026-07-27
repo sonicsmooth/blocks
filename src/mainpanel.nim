@@ -108,14 +108,12 @@ wClass(wMainPanel of wPanel):
   proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
     # TODO: delegate all this to something else, so we can 
     # TODO: get rid of self.blockpanel.editor,... etc.
-    # if self.blockPanel != nil and
-    #    self.blockPanel.editor != nil and
-    #    self.blockPanel.editor.doc != nil:
     if self.isReady():
-      var db = self.blockPanel.editor.doc.db
-      db.randomizeRectsAll(randRegion, qty, logRandomize)
+      # TODO: add new randomize to editor or algorithms or something
+      # TODO: Algorithms should have pointer to editor and doc
+      self.blockPanel.editor.randomizeRects(qty, randRegion)
       ##! Move updateRatio to algorithm, solve clearTextureCache
-      self.blockPanel.editor.fillArea = db.fillArea()
+      self.blockPanel.editor.fillArea = self.blockPanel.editor.doc.db.fillArea()
       self.blockPanel.editor.updateRatio()
       # if self.blockPanel.renderer != nil:
       self.blockPanel.renderer.clearTextureCache()

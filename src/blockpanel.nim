@@ -163,11 +163,11 @@ wClass(wBlockPanel of wSDLPanel):
       if gAppOpts.enableBbox:
         #! Move this to somewhere else
         self.editor.updateBoundingBox()
-    if self.renderer != nil:
-      let start = getMonoTime()
-      self.renderer.drawEverything()
-      let elapsed_ms = (getMonoTime() - start).inMilliseconds
-      echo $elapsed_ms & " milliseconds"
+    self.renderer.drawEverything()
+    # if self.renderer != nil:
+    #   let start = getMonoTime()
+    #   let elapsed_ms = (getMonoTime() - start).inMilliseconds
+    #   echo $elapsed_ms & " milliseconds"
   
   proc onFirstPaintKick(self: wBlockPanel) = 
       self.stopTimer()

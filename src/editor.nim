@@ -70,8 +70,8 @@ type
     text*:         string
     fillArea*:     WType
     ratio:         float
-    hovering:      HoverTable
-    selected:      SelectedTable
+    hovering*:     HoverSet
+    selected*:     SelectedSet
     firmSelection: seq[CompID]
     invalidate*:   proc() {.gcsafe.}
 
@@ -106,8 +106,8 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   # ... but zc was created before, with grid
   # all other fields can take their default values
   # and are assigned later
-  result.hovering = newHoverTable()
-  result.selected = newSelectTable()
+  result.hovering = newHoverSet()
+  result.selected = newSelectedSet()
 
 proc isReady*(self: Editor): bool =
   if self.doc.isNil: return reportNil("editor.doc")
@@ -115,6 +115,11 @@ proc isReady*(self: Editor): bool =
   if not self.doc.isReady(): return reportNotReady("editor.doc")
   if not self.viewport.isReady(): return reportNotReady("editor.viewport")
   true
+
+proc randomizeRects*(self: Editor, qty: int, region: WRect) =
+  self.doc.db.randomizeRectsAll(qty, region, true)
+  self.hovering[].clear()
+  self.selected[].clear()
 
 proc updateDestinationBox*(self: Editor) =
   let 
@@ -160,11 +165,19 @@ proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   self.fillArea = self.doc.db.fillArea()
   self.invalidate()
 proc selectAll(self: Editor) =
-  self.selected.setRectSelect()
+  self.selected.setAll(self.doc.db)
   self.invalidate()
 proc selectNone(self: Editor) =
-  self.doc.db.clearRectSelect()
+  self.selected.clearAll()
   self.invalidate()
+proc selectedItems*(self: Editor): seq[CompID] =
+  self.selected.trueItems
+proc hoveringItems*(self: Editor): seq[CompID] =
+  self.hovering.trueItems
+proc isSelected*(self: Editor, id: CompID): bool =
+  id in self.selected[]
+proc isHovering*(self: Editor, id: CompID): bool =
+  id in self.hovering[]
 # proc isModifierEvent(event: wEvent): bool = 
 #   event.keyCode == wKey_Ctrl or
 #   event.keyCode == wKey_Shift or
@@ -175,8 +188,8 @@ proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
   # Return true if something changed
   if gAppOpts.enableHover:
     let
-      cleared = self.doc.db.clearRectHovering()
-      newset = self.doc.db.setRectHovering(self.doc.db.ptInRects(pos, self.viewport))
+      cleared = self.hovering.clearAll()
+      newset = self.hovering.setSome(self.doc.db.ptInRects(pos, self.viewport))
     len(cleared) > 0 or len(newset) > 0
   else:
     false
@@ -197,8 +210,8 @@ proc processKeyDown*(self: Editor, key: Key) =
     resetMouseData()
     resetBox()
     if self.mouseData.state == StateDraggingSelect:
-      let clrsel = (self.doc.db.selected.toHashSet - self.firmSelection.toHashSet).toSeq
-      self.doc.db.clearRectSelect(clrsel)
+      let clrsel = (self.selected.trueItems.toHashSet - self.firmSelection.toHashSet).toSeq
+      self.selected.clearSome(clrsel)
       self.invalidate()
     self.mouseData.state = StateNone
 
@@ -208,7 +221,7 @@ proc processKeyDown*(self: Editor, key: Key) =
     escape()
     return
 
-  let sel = self.doc.db.selected()
+  let sel = self.selected.trueItems
   case cmdTable[key]:
   of CmdEscape:
     escape()

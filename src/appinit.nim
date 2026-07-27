@@ -13,10 +13,18 @@ export json
 # TODO: then stuff updates immediately
 # TODO: Use Jsony
 
-let
-  appInitsJ: JsonNode = parseFile("appinit.json")["appInits"]
-  gAppOptsJ*: JsonNode = appInitsJ["AppOpts"]
-  gViewportJ*: JsonNode = appInitsJ["Viewport"]
-  gZctrlJ*: JsonNode = appInitsJ["Zctrl"]
-  gGridSpecsJ*: JsonNode = appInitsJ["Grid"]
-  gPanelSpecsJ*: JsonNode = appInitsJ["MainPanel"]
+var
+  appInitsJ: JsonNode
+  gAppOptsJ*: JsonNode
+  gViewportJ*: JsonNode
+  gZctrlJ*: JsonNode
+  gGridSpecsJ*: JsonNode
+  gPanelSpecsJ*: JsonNode
+
+proc appInit*() =
+  appInitsJ = parseFile("../appinit.json")["appInits"]
+  gAppOptsJ = appInitsJ["AppOpts"]
+  gViewportJ = appInitsJ["Viewport"]
+  gZctrlJ = appInitsJ["Zctrl"]
+  gGridSpecsJ = appInitsJ["Grid"]
+  gPanelSpecsJ = appInitsJ["MainPanel"]

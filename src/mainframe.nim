@@ -27,7 +27,7 @@ type
 
 const
   singleFrames = false
-  pth = r"icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
+  pth = r"../icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
   res = [staticRead(pth & r"New document.bmp"),
          staticRead(pth & r"Folder.bmp"),
          staticRead(pth & r"Save.bmp"),
@@ -37,8 +37,8 @@ const
          staticRead(pth & r"Info.bmp"),
          staticRead(pth & r"Help book.bmp"),
          staticRead(pth & r"Add.bmp"),
-         staticRead(r"icons/grid.bmp"),
-         staticRead(r"icons/gridgears.bmp")]
+         staticRead(r"../icons/grid.bmp"),
+         staticRead(r"../icons/gridgears.bmp")]
 let
   small = MulDiv(16, wAppGetDpi(), 96)
   big = MulDiv(32, wAppGetDpi(), 96)
