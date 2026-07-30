@@ -6,9 +6,6 @@ export json
 # Various parts of the app read from here
 # for example grid visible is read by the toolbar,
 # the panel checkbox, and the grid itself
-# This is read only.  Any changes to shared state that 
-# happen after initial loading up of these values
-# has to be managed elsewhere
 # TODO: Make this file a live read so if you change
 # TODO: then stuff updates immediately
 # TODO: Use Jsony

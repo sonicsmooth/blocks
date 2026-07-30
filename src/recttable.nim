@@ -51,7 +51,7 @@ proc setPositions*[T:Table](table: var RectTable, pos: T) =
     rect.x = pos[id].x
     rect.y = pos[id].y
 
-proc ptInRects*(table: SomeComps, pt: WPoint): seq[CompID] = 
+proc ptInComps*(table: SomeComps, pt: WPoint): seq[CompID] = 
   # Returns seq of DBComp IDs from table if pt in comp's bbox
   # surrounds or contacts pt
   # Optimization? -- return after first one
@@ -59,22 +59,27 @@ proc ptInRects*(table: SomeComps, pt: WPoint): seq[CompID] =
     if isPointInRect(pt, comp.bbox):
       result.add(id)
 
-proc ptInRects*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] = 
+proc ptInComps*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] = 
   # Returns seq of DBComp IDs from table if pt in comp's bbox
   # Pre-select by checking without converting every rect
+  #! check logic here.  Not sure this is necessary
   let wpt = pt.toWorld(vp)
   var preBbs: seq[(CompID, WRect)]
+
+  # Add the model space bounding box if point is in it
   for id, comp in table:
     let bb = comp.bbox
     if isPointInRect(wpt, bb):
       preBbs.add((id, bb))
 
+  # Add the id if the point is in the bounding box in pixel space
+  # Seems like what we just did... not sure why this is the way it is
   for (id, bb) in preBbs:
     let prect = bb.toPRect(vp)
     if isPointInRect(pt, prect):
       result.add(id)
 
-proc rectInRects*(table: SomeComps, rect: WRect): seq[CompID] = 
+proc rectInComps*(table: SomeComps, rect: WRect): seq[CompID] = 
   # Return seq of DBComp IDs from table that intersect rect
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
@@ -85,7 +90,7 @@ proc rectInRects*(table: SomeComps, rect: WRect): seq[CompID] =
        isRectOverRect(rect, dbcomp.bbox):
       result.add(id)
 
-proc rectInRects*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
+proc rectInComps*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
   for id, dbcomp in table:
     let tpr = dbcomp.bbox.toPRect(vp)
@@ -93,9 +98,9 @@ proc rectInRects*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
        isRectOverRect(rect, tpr):
       result.add(id)
 
-proc rectInRects*(table: RectTable, compId: CompID): seq[CompID] = 
-  # Uses table[compId] and delegates to rectInRects above
-  table.rectInRects(table[compId].bbox)
+proc rectInComps*(table: RectTable, compId: CompID): seq[CompID] = 
+  # Uses table[compId] and delegates to rectInComps above
+  table.rectInComps(table[compId].bbox)
 
 
 
@@ -162,7 +167,7 @@ proc clearAll*(comps: CompSet): seq[CompID] {.discardable.} =
   result = comps.trueItems
   comps[].clear()
 
-proc setOne*(comps: CompSet, id: CompID): bool =
+proc setOne*(comps: CompSet, id: CompID): bool {.discardable.} =
   # Set specific id; return old value
   result = id in comps[]
   comps[].incl(id)

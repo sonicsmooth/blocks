@@ -12,14 +12,16 @@ import document
 type
   MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekDbl, 
                     mekWheelVert, mekWheelHoriz
-  MouseButton* = enum btnNone, btnLeft, btnMid, btnRight
+  #MouseButton* = enum mbNone, mbLeft, mbMid, mbRight
+  MouseEdge* = enum mbeNone, mbeLeftDown, mbeLeftUp, mbeMidDown, mbeMidUp, mbeRightDown, mbeRightUp
   MouseEvt* = tuple
-    kind:   MouseEventKind
     pos: PxPoint
-    btnLeft, btnMid, btnRight: bool # what else is true
+    kind: MouseEventKind
+    mbLeft, mbMid, mbRight: bool # what is true immediately after event
+    edge: MouseEdge # what button caused the event
     ctrl, alt, shift: bool
     wheelDelta: int
-    button: MouseButton # what caused the event
+    #button: MouseButton # what is true immediately after event
   KeyCode* = enum
     KeyNone, KeyEsc, KeySpace, KeyEnter,
     KeyDelete, KeyInsert, KeyBack, KeyPgUp, KeyPgDn,
@@ -43,17 +45,16 @@ type
 
   MouseState = enum
     StateNone
-    StateLMBDownInRect
+    StateLMBDownInComp
     StateLMBDownInSpace
-    StateDraggingRect
-    StateDraggingSelect
+    StateDraggingComp
+    StateDraggingSpace
   PanZoomState = enum
     PZStateNone
     PZStateRMBDown
     PZStateRMBMoving
   MouseData = tuple
     clickHitIds: seq[CompID]
-    dirtyIds:    seq[CompID]
     clickPos:    PxPoint
     lastPos:     PxPoint
     state:       MouseState
@@ -182,15 +183,15 @@ proc isHovering*(self: Editor, id: CompID): bool =
 #   event.keyCode == wKey_Ctrl or
 #   event.keyCode == wKey_Shift or
 #   event.keyCode == wKey_Alt
-#proc evaluateHovering(self: Editor, event: wEvent): bool {.discardable.} =
 proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
-  # clear and set hovering
+  # Mutate self.hovering
   # Return true if something changed
+  let oldhover = self.hovering[].toSeq()
   if gAppOpts.enableHover:
-    let
-      cleared = self.hovering.clearAll()
-      newset = self.hovering.setSome(self.doc.db.ptInRects(pos, self.viewport))
-    len(cleared) > 0 or len(newset) > 0
+    self.hovering.clearAll()
+    let hoveringComps = self.doc.db.ptInComps(pos, self.viewport)
+    self.hovering.setSome(hoveringComps)
+    hoveringComps != oldhover
   else:
     false
 proc processKeyDown*(self: Editor, key: Key) =
@@ -203,13 +204,13 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.invalidate()
   proc resetMouseData() = 
     self.mouseData.clickHitIds.setLen(0)
-    self.mouseData.dirtyIds.setLen(0)
+    # self.mouseData.dirtyIds.setLen(0)
     self.mouseData.clickPos = (0, 0)
     self.mouseData.lastPos = (0, 0)
   proc escape() =
     resetMouseData()
     resetBox()
-    if self.mouseData.state == StateDraggingSelect:
+    if self.mouseData.state == StateDraggingSpace:
       let clrsel = (self.selected.trueItems.toHashSet - self.firmSelection.toHashSet).toSeq
       self.selected.clearSome(clrsel)
       self.invalidate()
@@ -241,8 +242,8 @@ proc processKeyDown*(self: Editor, key: Key) =
     resetBox()
     self.mouseData.state = StateNone
   of CmdRotateCCW:
-    if self.mouseData.state == StateDraggingRect or 
-        self.mouseData.state == StateLMBDownInRect:
+    if self.mouseData.state == StateDraggingComp or 
+        self.mouseData.state == StateLMBDownInComp:
       self.rotateRects(@[self.mouseData.clickHitIds[^1]], R90)
       #self.evaluateHovering(event)
       self.evaluateHovering(self.mouseData.lastPos)
@@ -255,8 +256,8 @@ proc processKeyDown*(self: Editor, key: Key) =
       self.invalidate()
       self.mouseData.state = StateNone
   of CmdRotateCW:
-    if self.mouseData.state == StateDraggingRect or 
-        self.mouseData.state == StateLMBDownInRect:
+    if self.mouseData.state == StateDraggingComp or 
+        self.mouseData.state == StateLMBDownInComp:
       self.rotateRects(@[self.mouseData.clickHitIds[^1]], R270)
       #self.evaluateHovering(event)
       self.evaluateHovering(self.mouseData.lastPos)
@@ -277,7 +278,7 @@ proc processKeyDown*(self: Editor, key: Key) =
 
 proc processMouseMoveEvent*(self: Editor, event: MouseEvt) = 
   # Separate specific events (eg shft+LMB) from state changes
-  # For example, StateLMBDownInRect should be renamed to
+  # For example, StateLMBDownInComp should be renamed to
   # something like StateSelectStartInRect, and the event
   # that gets into that state is MainSelector which comes 
   # from mouseEvent == wEvent_LeftDown.
@@ -289,7 +290,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   
   let 
     vp = self.viewport
-    wmp = event.pos.toWorld(vp)
+    # wmp = event.pos.toWorld(vp)
   
   # case self.mouseData.pzState:
   # of PZStateNone:
@@ -336,19 +337,19 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     # of wEvent_LeftDown:
     #   self.mouseData.clickPos = event.pos
     #   self.mouseData.lastPos  = event.pos
-    #   self.mouseData.clickHitIds = self.doc.db.ptInRects(wmp)
+    #   self.mouseData.clickHitIds = self.doc.db.ptInComps(wmp)
     #   if self.mouseData.clickHitIds.len > 0: # Click in rect
-    #     self.mouseData.dirtyIds = self.doc.db.rectInRects(self.mouseData.clickHitIds[^1])
-    #     self.mouseData.state = StateLMBDownInRect
+    #     #self.mouseData.dirtyIds = self.doc.db.rectInComps(self.mouseData.clickHitIds[^1])
+    #     self.mouseData.state = StateLMBDownInComp
     #   else: # Click in clear area
     #     self.mouseData.state = StateLMBDownInSpace
     # else:
       # discard
-  # of StateLMBDownInRect:
+  # of StateLMBDownInComp:
   #   let hitid = self.mouseData.clickHitIds[^1]
   #   case event.getEventType
   #   of wEvent_MouseMove:
-  #     self.mouseData.state = StateDraggingRect
+  #     self.mouseData.state = StateDraggingComp
   #   of wEvent_LeftUp:
   #     if event.pos.PxPoint == self.mouseData.clickPos: # click and release in rect
   #       var oldsel = self.doc.db.selected()
@@ -356,12 +357,12 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   #         oldsel.excl(hitid)
   #         self.doc.db.clearRectSelect(oldsel)
   #       self.doc.db.toggleRectSelect(hitid) 
-  #       self.mouseData.dirtyIds = oldsel & hitid
+  #       #self.mouseData.dirtyIds = oldsel & hitid
   #       self.invalidate()
   #     self.mouseData.state = StateNone
   #   else:
   #     self.mouseData.state = StateNone
-  # of StateDraggingRect:
+  # of StateDraggingComp:
   #   let hitid = self.mouseData.clickHitIds[^1]
   #   let sel = self.doc.db.selected()
   #   case event.getEventType
@@ -388,7 +389,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   # of StateLMBDownInSpace:
   #   case event.getEventType
   #   of wEvent_MouseMove:
-  #     self.mouseData.state = StateDraggingSelect
+  #     self.mouseData.state = StateDraggingSpace
   #     if event.ctrlDown:
   #       self.firmSelection = self.doc.db.selected()
   #     else:
@@ -396,17 +397,17 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   #       self.doc.db.clearRectSelect()
   #   of wEvent_LeftUp:
   #     let oldsel = self.doc.db.clearRectSelect()
-  #     self.mouseData.dirtyIds = oldsel
+  #     #self.mouseData.dirtyIds = oldsel
   #     self.mouseData.state = StateNone
   #     self.invalidate()
   #   else:
   #     self.mouseData.state = StateNone
-  # of StateDraggingSelect:
+  # of StateDraggingSpace:
   #   case event.getEventType
   #   of wEvent_MouseMove:
   #     let pbox: PRect = normalizePRectCoords(self.mouseData.clickPos, event.pos)
   #     self.selectBox = pbox
-  #     let newsel = self.doc.db.rectInRects(self.selectBox, vp)
+  #     let newsel = self.doc.db.rectInComps(self.selectBox, vp)
   #     self.doc.db.clearRectSelect()
   #     self.doc.db.setRectSelect(self.firmSelection)
   #     self.doc.db.setRectSelect(newsel)
@@ -422,4 +423,30 @@ proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   echo event
 
 proc processMouseButtonEvent*(self: Editor, event: MouseEvt) = 
-  echo event
+  let hoveringComps = self.doc.db.ptInComps(event.pos, self.viewport)
+  let isHovering = hoveringComps.len > 0
+  # Down events can watch just the button of interest so 
+  # mouse state and zoom states can start independently
+  # But up events need to watch all buttons so as not to
+  # change the wrong state.  This 
+  if event.edge == mbeLeftDown:
+    self.mouseData.clickPos = event.pos
+    if isHovering:
+      self.mouseData.state = StateLMBDownInComp
+    else:
+      self.mouseData.state = StateLMBDownInSpace
+  elif event.edge == mbeLeftUp:
+    self.mouseData.state = StateNone
+    if isHovering:
+      let topComp = hoveringComps[^1]
+      if event.ctrl:
+        self.selected.toggleOne(topComp)
+      else:
+        self.selected.clearAll()
+        self.selected.setOne(topComp)
+    else:
+      self.selected.clearAll()
+    self.invalidate()
+  echo self.selected[]
+  echo self.mouseData.state
+

@@ -9,7 +9,7 @@
       "enableHover": true,
       "compQty": 1,
       "renderMethod": "Direct",
-      "singleColor": "Lavender"
+      "singleColor": "Maroon"
     },
     "Viewport": {
       "pan": "(400, 400)",

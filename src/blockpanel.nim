@@ -6,7 +6,6 @@ import std/[
 import editor, renderer
 import wNim
 import winim except PRECT
-#import sdl2
 import rects, recttable, sdlframes
 import userMessages, appopts, routing, reporting
 
@@ -104,16 +103,18 @@ wClass(wBlockPanel of wSDLPanel):
       discard
 
   proc fillMouse(self: wBlockPanel, event: wEvent): MouseEvt =
-    result = (kind: mekMove,
-              pos: event.mousePos,
-              btnLeft: event.leftDown,
-              btnMid: event.middleDown,
-              btnRight: event.rightDown,
+    result = (pos: event.mousePos,
+              kind: mekNone,
+              mbLeft: event.leftDown,
+              mbMid: event.middleDown,
+              mbRight: event.rightDown,
+              edge: mbeNone,
               ctrl: event.ctrlDown,
               alt: event.altDown,
               shift: event.shiftDown,
               wheelDelta: event.wheelRotation,
-              button: btnNone)
+              #button: mbNone
+              )
 
   proc processUIMouseMoveEvent*(self: wBlockPanel, event: wEvent) = 
     # Repackage specific event types and send to editor
@@ -138,17 +139,33 @@ wClass(wBlockPanel of wSDLPanel):
   proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
     if event.eventType == wEvent_LeftDown:
       SetFocus(self.mHwnd)
-    # Split events into two basis type -- left/mid/right and up/dn/dbl
     var mouseEvt = self.fillMouse(event)
     case event.eventType
-    of wEvent_LeftDown, wEvent_MiddleDown, wEvent_RightDown:  mouseEvt.kind = mekDown
-    of wEvent_LeftUp,   wEvent_MiddleUp,   wEvent_RightUp:    mouseEvt.kind = mekUp
-    of wEvent_LeftDoubleClick, wEvent_MiddleDoubleClick, wEvent_RightDoubleClick: mouseEvt.kind = mekDbl
-    else: return
-    case event.eventType
-    of wEvent_LeftDown,   wEvent_LeftUp,   wEvent_LeftDoubleClick:   mouseEvt.button = btnLeft
-    of wEvent_MiddleDown, wEvent_MiddleUp, wEvent_MiddleDoubleClick: mouseEvt.button = btnMid
-    of wEvent_RightDown,  wEvent_RightUp,  wEvent_RightDoubleClick:  mouseEvt.button = btnRight
+    of wEvent_LeftDown:
+      mouseEvt.kind = mekDown
+      mouseEvt.edge = mbeLeftDown
+    of wEvent_MiddleDown:
+      mouseEvt.kind = mekDown
+      mouseEvt.edge = mbeMidDown
+    of wEvent_RightDown:
+      mouseEvt.kind = mekDown
+      mouseEvt.edge = mbeRightDown
+    of wEvent_LeftUp:
+      mouseEvt.kind = mekUp
+      mouseEvt.edge = mbeLeftUp
+    of wEvent_MiddleUp:
+      mouseEvt.kind = mekUp
+      mouseEvt.edge = mbeMidUp
+    of wEvent_RightUp:
+      mouseEvt.kind = mekUp
+      mouseEvt.edge = mbeRightUp
+    of wEvent_LeftDoubleClick:
+      mouseEvt.kind = mekDbl
+    of wEvent_MiddleDoubleClick:
+      mouseEvt.kind = mekDbl
+    of wEvent_RightDoubleClick: 
+      mouseEvt.kind = mekDbl
+
     else: return
     self.editor.processMouseButtonEvent(mouseEvt)
 
