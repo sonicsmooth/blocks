@@ -41,7 +41,7 @@ For bounds we need rotated WRect from DBComp
 
 
 type 
-  CompID* = uint
+  CompID* = range[-1..int.high] # negative values indicate null component
   Rotation* = enum R0, R90, R180, R270
   Orientation* = enum Vertical, Horizontal
   PRect* = tuple[x, y, w, h: PxType]  # screen/pixel rectangle

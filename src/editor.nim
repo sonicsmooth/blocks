@@ -1,4 +1,5 @@
-import std/[sets, 
+import std/[options,
+            sets, 
             sequtils]
 import wNim
 import pointmath
@@ -54,8 +55,8 @@ type
     PZStateRMBDown
     PZStateRMBMoving
   MouseData = tuple
-    clickHitIds: seq[CompID]
-    clickPos:    PxPoint
+    clickHitId : Option[CompID]
+    clickPos:    Option[PxPoint]
     lastPos:     PxPoint
     state:       MouseState
     pzState:     PanZoomState
@@ -203,9 +204,9 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.selectBox = (0,0,0,0)
     self.invalidate()
   proc resetMouseData() = 
-    self.mouseData.clickHitIds.setLen(0)
+    self.mouseData.clickHitId = none(CompId)
     # self.mouseData.dirtyIds.setLen(0)
-    self.mouseData.clickPos = (0, 0)
+    self.mouseData.clickPos = some[PxPoint]((0, 0))
     self.mouseData.lastPos = (0, 0)
   proc escape() =
     resetMouseData()
@@ -244,7 +245,7 @@ proc processKeyDown*(self: Editor, key: Key) =
   of CmdRotateCCW:
     if self.mouseData.state == StateDraggingComp or 
         self.mouseData.state == StateLMBDownInComp:
-      self.rotateRects(@[self.mouseData.clickHitIds[^1]], R90)
+      self.rotateRects(@[self.mouseData.clickHitId.get], R90)
       #self.evaluateHovering(event)
       self.evaluateHovering(self.mouseData.lastPos)
       self.invalidate()
@@ -258,7 +259,7 @@ proc processKeyDown*(self: Editor, key: Key) =
   of CmdRotateCW:
     if self.mouseData.state == StateDraggingComp or 
         self.mouseData.state == StateLMBDownInComp:
-      self.rotateRects(@[self.mouseData.clickHitIds[^1]], R270)
+      self.rotateRects(@[self.mouseData.clickHitId.get], R270)
       #self.evaluateHovering(event)
       self.evaluateHovering(self.mouseData.lastPos)
       self.invalidate()
@@ -327,8 +328,6 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
 
   case self.mouseData.state
   of StateNone:
-    # case event.getEventType
-    # of wEvent_MouseMove:
     if self.mouseData.pzState == PZStateNone:
       if self.evaluateHovering(event.pos):
         self.invalidate()
@@ -425,27 +424,24 @@ proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
 proc processMouseButtonEvent*(self: Editor, event: MouseEvt) = 
   let hoveringComps = self.doc.db.ptInComps(event.pos, self.viewport)
   let isHovering = hoveringComps.len > 0
-  # Down events can watch just the button of interest so 
-  # mouse state and zoom states can start independently
-  # But up events need to watch all buttons so as not to
-  # change the wrong state.  This 
+  let topComp = if isHovering: some(hoveringComps[^1])
+                else:          none(CompID)
   if event.edge == mbeLeftDown:
-    self.mouseData.clickPos = event.pos
-    if isHovering:
-      self.mouseData.state = StateLMBDownInComp
-    else:
-      self.mouseData.state = StateLMBDownInSpace
+    self.mouseData.clickHitId = topComp
+    self.mouseData.clickPos = some(event.pos)
+    self.mouseData.state = if isHovering: StateLMBDownInComp
+                           else:          StateLMBDownInSpace
   elif event.edge == mbeLeftUp:
-    self.mouseData.state = StateNone
-    if isHovering:
-      let topComp = hoveringComps[^1]
-      if event.ctrl:
-        self.selected.toggleOne(topComp)
-      else:
-        self.selected.clearAll()
-        self.selected.setOne(topComp)
+    if isHovering and topComp == self.mouseData.clickHitId:
+      if not event.ctrl:
+        if self.selected[].len > 1:
+          self.selected.clearAll()
+      self.selected.toggleOne(topComp.get)
     else:
       self.selected.clearAll()
+    self.mouseData.clickHitId = none(CompID)
+    self.mouseData.clickPos = none(PxPoint)
+    self.mouseData.state = StateNone
     self.invalidate()
   echo self.selected[]
   echo self.mouseData.state
