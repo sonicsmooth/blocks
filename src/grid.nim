@@ -1,11 +1,9 @@
 import std/[algorithm, 
             math, 
             sequtils, 
-            #strformat
             ]
-#import sdl2
 import colors
-import viewport, pointmath #, renderer
+import viewport, pointmath
 import appinit
 import reporting
 import wNim/wTypes
@@ -35,11 +33,6 @@ proc isReady*(self: Grid): bool =
 
 # Forward decl
 proc minDelta*(grid: Grid, scale: Scale): WPoint
-
-# Return cached values
-# proc majorXSpace*(grid: Grid): WType = grid.mMajorXSpace
-# proc majorYSpace*(grid: Grid): WType = grid.mMajorYSpace
-# todo: minor, tiny 
 
 proc `refXSpace`*(grid: Grid): float = grid.mRefXSpace
 proc `refYSpace`*(grid: Grid): float = grid.mRefYSpace
@@ -242,6 +235,7 @@ proc newGrid*(zCtrl: ZoomCtrl): Grid =
 
 
 when isMainModule:
+  appInit()
   let zc = newZoomCtrl(base=4, clickDiv=2400, maxPwr=3,
                        density=1.0, dynamic=true, baseSync=true)
   let gr = newGrid(zc)
