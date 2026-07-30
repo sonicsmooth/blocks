@@ -308,6 +308,26 @@ proc rotate*(rect: DBComp, orient: Orientation) =
     else: rect.rot = R0
 
 # Procs for rects
+proc pRect*(x,y,w,h: PxType): PRect =
+  result.x = x
+  result.y = y
+  result.w = w
+  result.h = h
+proc shrink*(r: PRect, amt: int): PRect = 
+  result.x = r.x + amt
+  result.y = r.y + amt
+  result.w = r.w - amt * 2
+  result.h = r.h - amt * 2
+proc grow*(r: PRect, amt: int): PRect = 
+  result.x = r.x - amt
+  result.y = r.y - amt
+  result.w = r.w + amt * 2
+  result.h = r.h + amt * 2
+proc wRect*(x,y,w,h: WType): WRect =
+  result.x = x
+  result.y = y
+  result.w = w
+  result.h = h
 proc pos*(rect: SomeRect): auto  = (x: rect.x, y: rect.y)
 proc size*(rect: SomeRect): auto  = (w: rect.w, h: rect.h)
 proc lowerLeft*(rect: SomeRect): auto =

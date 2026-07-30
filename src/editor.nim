@@ -445,4 +445,4 @@ proc processMouseButtonEvent*(self: Editor, event: MouseEvt) =
     self.invalidate()
   echo self.selected[]
   echo self.mouseData.state
-
+  

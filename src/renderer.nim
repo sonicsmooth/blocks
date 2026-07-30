@@ -156,21 +156,29 @@ proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect) 
   textTexture.destroy()
   # TODO: cache texts at different sizes
 
-proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, highlightFactor: float, prect: PRect) =
+proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, hov, sel: bool, prect: PRect) =
   # Draw rectangle, origin, and its text using SDL2 renderer
+  let highlightFactor = highlight(hov, sel)
   rp.renderFilledRect(prect, comp.fillColor * highlightFactor, comp.penColor)
+  if sel:
+    rp.renderOutlineRect(prect.shrink(1), comp.penColor)
+    rp.renderOutlineRect(prect.grow(1), comp.penColor)
+    rp.renderOutlineRect(prect.grow(2), comp.penColor * 2)
+    rp.renderOutlineRect(prect.grow(3), comp.penColor * 3)
+    rp.renderOutlineRect(prect.grow(4), comp.penColor * 4)
   #rp.renderCompOrigin(comp, prect, vp)
   if gAppOpts.enableText:
     rp.renderCompText(comp, font, prect)
 
 
-proc renderDBCompPixie*(comp: DBComp, highlightFactor: float, prect: PRect): SurfacePtr =
+proc renderDBCompPixie*(comp: DBComp, hov, sel: bool, prect: PRect): SurfacePtr =
   # Draw rectangle to new surface using pixie and return surface
   # comp is database object
   # prect is target rectangle with same aspect ratio as comp
 
-  var col1 = comp.fillColor * 1.1 * highlightFactor
-  var col2 = comp.fillColor * 0.9 * highlightFactor
+  let highlightFactor = highlight(hov, sel)
+  var col1 = comp.fillColor * 1.0 * highlightFactor
+  var col2 = comp.fillColor * 0.8 * highlightFactor
   col1.a = 200
   col2.a = 200
   let shape = gradientBox(prect.w, prect.h, comp.penColor, col1, col2)
@@ -185,6 +193,7 @@ proc renderDBCompPixie*(comp: DBComp, highlightFactor: float, prect: PRect): Sur
     echo getError()
 
 
+# TODO: longestString
 proc longestLine(lines: openArray[string]): string =
   # Returns longest substring terminated by newline
   var
@@ -254,9 +263,9 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let font = self.font(comp, vp.zoom)
     let sel = self.editor.isSelected(comp.id)
     let hov = self.editor.isHovering(comp.id)
-    let hlfact = highlight(sel, hov)
+    #let hlfact = highlight(sel, hov)
     if rmethod == Direct:
-      self.sdlRenderer.renderDBCompSDL(comp, font, hlfact, cprect)
+      self.sdlRenderer.renderDBCompSDL(comp, font, hov, sel, cprect)
     else:
       var texture: TexturePtr
       let key = (comp.id, sel, hov)
@@ -265,7 +274,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
         of SDLSurface:
           let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
           let rp = surface.createSoftwareRenderer()
-          rp.renderDBCompSDL(comp, font, hlfact, cprect.zero)
+          rp.renderDBCompSDL(comp, font, hov, sel, cprect.zero)
           texture = self.sdlRenderer.createTextureFromSurface(surface)
           self.textureCache[key] = texture
           surface.destroy()
@@ -273,11 +282,11 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
           let fmt = self.sdlWindow.getPixelFormat()
           texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)
           self.sdlRenderer.setRenderTarget(texture)
-          self.sdlRenderer.renderDBCompSDL(comp, font, hlfact, cprect.zero)
+          self.sdlRenderer.renderDBCompSDL(comp, font, hov, sel, cprect.zero)
           self.sdlRenderer.setRenderTarget(nil)
           self.textureCache[key] = texture
         of PixieTexture:
-          let surface = renderDBCompPixie(comp, hlfact, cprect)
+          let surface = renderDBCompPixie(comp, hov, sel, cprect)
           texture = self.sdlRenderer.createTextureFromSurface(surface)
           self.textureCache[key] = texture
           surface.destroy()
