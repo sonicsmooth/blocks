@@ -166,7 +166,7 @@ proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, hov, sel: bo
     rp.renderOutlineRect(prect.grow(2), comp.penColor * 2)
     rp.renderOutlineRect(prect.grow(3), comp.penColor * 3)
     rp.renderOutlineRect(prect.grow(4), comp.penColor * 4)
-  #rp.renderCompOrigin(comp, prect, vp)
+  # rp.renderCompOrigin(comp, prect, vp)
   if gAppOpts.enableText:
     rp.renderCompText(comp, font, prect)
 

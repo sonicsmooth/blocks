@@ -124,18 +124,6 @@ wClass(wBlockPanel of wSDLPanel):
     SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
     self.editor.processMouseMoveEvent(self.fillMouse(event))
 
-  proc processUIMouseWheelEvent*(self: wBlockPanel, event: wEvent) =
-    var mouseEvt = self.fillMouse(event)
-    # event.wheelRotation doesn't work with horiz, so take wparam directly
-    let wp = event.wParam.uint  # make sure this is at least 32 bits wide, not truncated
-    let hiword = uint16((wp shr 16) and 0xFFFF)
-    mouseEvt.wheelDelta = cast[int16](hiword)
-    if event.eventType == wEvent_MouseWheel:
-      mouseEvt.kind = mekWheelVert
-    elif event.eventType == wEvent_MouseHorizontalWheel:
-      mouseEvt.kind = mekWheelHoriz
-    self.editor.processMouseWheelEvent(mouseEvt)
-
   proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
     if event.eventType == wEvent_LeftDown:
       SetFocus(self.mHwnd)
@@ -168,6 +156,18 @@ wClass(wBlockPanel of wSDLPanel):
 
     else: return
     self.editor.processMouseButtonEvent(mouseEvt)
+
+  proc processUIMouseWheelEvent*(self: wBlockPanel, event: wEvent) =
+    var mouseEvt = self.fillMouse(event)
+    # event.wheelRotation doesn't work with horiz, so take wparam directly
+    let wp = event.wParam.uint  # make sure this is at least 32 bits wide, not truncated
+    let hiword = uint16((wp shr 16) and 0xFFFF)
+    mouseEvt.wheelDelta = cast[int16](hiword)
+    if event.eventType == wEvent_MouseWheel:
+      mouseEvt.kind = mekWheelVert
+    elif event.eventType == wEvent_MouseHorizontalWheel:
+      mouseEvt.kind = mekWheelHoriz
+    self.editor.processMouseWheelEvent(mouseEvt)
 
   proc onResize*(self: wBlockPanel, event: wEvent) =
     if self.isReady():
