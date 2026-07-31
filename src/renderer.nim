@@ -10,7 +10,6 @@ import sdl2 except Color
 import sdl2/ttf
 import document, grid, editor
 import rects, utils, appopts
-#import pixie except ColorRGBA, Color
 import pixieshapes
 import colors, colors_sdl, colors_pixie
 import reporting
@@ -251,7 +250,7 @@ proc screenRectW(self: Renderer): WRect =
   (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
 
 
-proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
+proc drawDBComps(self: Renderer, rmethod: RenderMethod) =
   let vp = self.editor.viewport
   self.visibleComponents.setLen(0)
   for comp in self.doc.db.values:
@@ -263,7 +262,6 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let font = self.font(comp, vp.zoom)
     let sel = self.editor.isSelected(comp.id)
     let hov = self.editor.isHovering(comp.id)
-    #let hlfact = highlight(sel, hov)
     if rmethod == Direct:
       self.sdlRenderer.renderDBCompSDL(comp, font, hov, sel, cprect)
     else:
@@ -298,6 +296,13 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
       self.sdlRenderer.copy(self.textureCache[key], nil, addr bbp)
     self.visibleComponents.add(comp)
 
+proc drawSelectBox(self: Renderer) =
+  if self.editor.selectBox.w == 0 or
+     self.editor.selectBox.h == 0:
+      return
+  let fillColor = ColorRGBA(r: 0, g:102, b: 204, a:70)
+  let penColor = ColorRGBA(r: 0, g:120, b: 215, a:255)
+  self.sdlRenderer.renderFilledRect(self.editor.selectBox, fillColor, penColor)
 
 proc lineAlpha(step: int): int =
   let idx = max(0, step - alphaOffset)
@@ -459,11 +464,9 @@ proc drawEverything*(self: Renderer) =
   self.sdlRenderer.setDrawColor(bg)
   self.sdlRenderer.clear()
   self.drawGrid()
+  self.drawDBComps(gAppOpts.renderMethod)
+  self.drawSelectBox()
 
-  # Try a few methods to draw rectangles
-  self.renderDBComps(gAppOpts.renderMethod)
-
-  self.sdlRenderer.present()
   # # Draw various boxes and text, then done
   # #self.updateDestinationBox()
   # if gAppOpts.enableDstRect:
@@ -471,9 +474,7 @@ proc drawEverything*(self: Renderer) =
   # if gAppOpts.enableBbox:
   #   #self.updateBoundingBox()
   #   self.sdlRenderer.renderOutlineRect(self.editor.allBbox.toPRect(self.editor.viewport).grow(1), Green)
-  # self.sdlRenderer.renderFilledRect(self.editor.selectBox,
-  #                                   fillColor=(r:0, g:102, b:204, a:70).RGBATuple.toColorU32,
-  #                                   penColor=(r:0, g:120, b:215, a:255).RGBATuple.toColorU32)
+  self.sdlRenderer.present()
   # var txt: string
   # txt &= &"pan: {self.editor.viewport.pan}\n"
   # txt &= &"zClicks: {self.editor.viewport.zClicks}\n"

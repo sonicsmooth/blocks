@@ -1,4 +1,7 @@
-import std/[math, json, parseutils, strutils]
+import std/[json,
+            math, 
+            parseutils, 
+            strutils]
 
 # Type conversion to world coordinate types.
 # This is not pan/zoom.  See viewport for pan/zoom.

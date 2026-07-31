@@ -85,21 +85,23 @@ proc rectInComps*(table: SomeComps, rect: WRect): seq[CompID] =
   # Typically rect is moving around and touches objs in table
   # Or rect is a bounding box and we're looking for where 
   # it touches other blocks
-  for id, dbcomp in table:
-    if isRectInRect(rect, dbcomp.bbox) or 
-       isRectOverRect(rect, dbcomp.bbox):
+  for id, comp in table:
+    if isRectInRect(rect, comp.bbox) or 
+       isRectOverRect(rect, comp.bbox):
       result.add(id)
 
 proc rectInComps*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
-  for id, dbcomp in table:
-    let tpr = dbcomp.bbox.toPRect(vp)
+  for id, comp in table:
+    let tpr = comp.bbox.toPRect(vp)
     if isRectInRect(rect, tpr) or
        isRectOverRect(rect, tpr):
       result.add(id)
 
 proc rectInComps*(table: RectTable, compId: CompID): seq[CompID] = 
   # Uses table[compId] and delegates to rectInComps above
+  # I think this checks whether compId intersects with anything
+  # else in the table
   table.rectInComps(table[compId].bbox)
 
 
@@ -133,7 +135,7 @@ proc fillRatio*(rtable: RectTable): float =
   rtable.values.toSeq.bboxes.fillRatio()
 
 proc trueItems*(comps: CompSet): seq[CompID] =
-  comps[].toSeq()
+  comps[].toSeq
 
 proc falseItems*(comps: CompSet, table: RectTable): seq[CompID] =
   for id in table.keys:

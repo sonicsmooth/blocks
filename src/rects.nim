@@ -308,11 +308,19 @@ proc rotate*(rect: DBComp, orient: Orientation) =
     else: rect.rot = R0
 
 # Procs for rects
-proc pRect*(x,y,w,h: PxType): PRect =
+proc pRect*(x, y, w, h: PxType): PRect =
   result.x = x
   result.y = y
   result.w = w
   result.h = h
+proc pRect*(startPos, endPos: PxPoint): PRect =
+  # make sure that rect.x,y is always minimum (upper left for PRect)
+  let (sx, sy) = startPos
+  let (ex, ey) = endPos
+  (x: min(sx, ex),
+   y: min(sy, ey),
+   w: abs(ex - sx),
+   h: abs(ey - sy))
 proc shrink*(r: PRect, amt: int): PRect = 
   result.x = r.x + amt
   result.y = r.y + amt
@@ -323,11 +331,24 @@ proc grow*(r: PRect, amt: int): PRect =
   result.y = r.y - amt
   result.w = r.w + amt * 2
   result.h = r.h + amt * 2
+
 proc wRect*(x,y,w,h: WType): WRect =
   result.x = x
   result.y = y
   result.w = w
   result.h = h
+proc wRect*(startPos, endPos: WPoint): WRect =
+  # make sure that rect.x,y is always minimum (lower left for WRect)
+  let (sx, sy) = startPos
+  let (ex, ey) = endPos
+  (x: min(sx, ex),
+   y: min(sy, ey),
+   w: abs(ex - sx),
+   h: abs(ey - sy))
+
+
+
+
 proc pos*(rect: SomeRect): auto  = (x: rect.x, y: rect.y)
 proc size*(rect: SomeRect): auto  = (w: rect.w, h: rect.h)
 proc lowerLeft*(rect: SomeRect): auto =
@@ -446,15 +467,6 @@ proc grow*(rect: PRect, amt: PxType): PRect  =
    y: rect.y - amt,
    w: rect.w + amt * 2,
    h: rect.h + amt * 2)
-proc normalizePRectCoords*(startPos, endPos: PxPoint): PRect =
-  # make sure that rect.x,y is always minimum (upper left for PRect)
-  let (sx, sy) = startPos
-  let (ex, ey) = endPos
-  (x: min(sx, ex),
-   y: min(sy, ey),
-   w: abs(ex - sx),
-   h: abs(ey - sy))
-
 
 # Procs for edges
 proc x*[T](edge: VertEdge[T] ): auto = edge.pt0.x
