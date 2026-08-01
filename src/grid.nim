@@ -1,6 +1,5 @@
 import std/[algorithm, 
             math, 
-            sequtils, 
             ]
 import colors
 import viewport, pointmath

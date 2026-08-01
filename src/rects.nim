@@ -297,6 +297,9 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
 proc rotate*(rect: DBComp, amt: Rotation) =
   # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
+proc rotateAbout*(rect: DBComp, amt: Rotation, pos: WPoint) =
+  echo "TODO: implement rotateAbout: ", pos
+  rect.rot = rect.rot + amt
 proc rotate*(rect: DBComp, orient: Orientation) =
   # Rotate to either 0 or 90 based on aspect ratio and 
   # given orientation

@@ -38,8 +38,9 @@ type
     CmdMove
     CmdDelete
     CmdRotateCCW
+    CmdRotateCCWAbout
     CmdRotateCW
-    CmdSelect
+    CmdRotateCWAbout
     CmdSelectAll
 
   MouseState = enum
@@ -72,7 +73,7 @@ type
     ratio:         float
     hovering*:     HoverSet
     selected*:     SelectedSet
-    tmpSelected:  SelectedSet
+    tmpSelected:   SelectedSet
     invalidate*:   proc() {.gcsafe.}
 
 const 
@@ -89,6 +90,8 @@ const
      (keyCode: KeyDelete, ctrl: false, alt: false, shift: false ): CmdDelete,
      (keyCode: KeySpace,  ctrl: false, alt: false, shift: false ): CmdRotateCCW,
      (keyCode: KeySpace,  ctrl: false, alt: false, shift: true  ): CmdRotateCW,
+     (keyCode: KeySpace,  ctrl: true,  alt: false, shift: false ): CmdRotateCCWAbout,
+     (keyCode: KeySpace,  ctrl: true,  alt: false, shift: true  ): CmdRotateCWAbout,
      (keyCode: KeyA,      ctrl: true,  alt: false, shift: false ): CmdSelectAll }.toTable
   moveTable: array[KeyUp .. KeyRight, WPoint] =
     [(0, 1), (0, -1), (-1, 0), (1, 0)]
@@ -144,7 +147,6 @@ proc moveRectsBy(self: Editor, compIDs: seq[CompID], delta: WPoint) =
   # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
   for rect in self.doc.db[compIDs]:
     moveRectBy(rect, delta)
-  #self.invalidate()
 # proc moveRectBy(self: Editor, compID: CompID, delta: WPoint) =
 #   # Common proc to move one or more Rects; used by mouse and keyboard
 #   moveRectBy(self.doc.db[compID], delta)
@@ -154,10 +156,15 @@ proc moveRectTo(self: Editor, compID: CompID, delta: WPoint) =
   moveRectTo(self.doc.db[compID], delta)
   self.invalidate()
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation) =
+  # Rotate about each component's origin
   for id in compIDs:
     self.doc.db[id].rotate(amt)
     ##!!!!!self.clearTextureCache(id)
   self.invalidate()
+proc rotateRectsAbout(self: Editor, compIDs: seq[CompID], amt: Rotation, pos: WPoint) =
+  # Rotate about pos
+  for id in compIDs:
+    self.doc.db[id].rotateAbout(amt, pos)
 proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   for id in compIDs:
     self.doc.db.del(id) # Todo: check whether this deletes rect
@@ -197,6 +204,11 @@ proc resetMouseData(self: Editor) =
   self.mouseData.pzState = PZStateNone
 
 proc processKeyDown*(self: Editor, key: Key) =
+  let sel = self.selected.trueItems
+  let wmp = self.mouseData.lastPos.toWorld(self.viewport)
+  if key notin cmdTable:
+    echo "Key not recognized"
+    return
   case cmdTable[key]:
   of CmdEscape:
     self.resetMouseData()
@@ -208,32 +220,30 @@ proc processKeyDown*(self: Editor, key: Key) =
       sc = if key.shift: Tiny else: Minor
       md: WPoint = minDelta(self.doc.grid, scale=sc)
       moveby: WPoint = md .* moveTable[key.keyCode]
-    self.moveRectsBy(self.selected.trueItems, moveBy)
+    self.moveRectsBy(sel, moveBy)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
     self.invalidate()
   of CmdDelete:
-    self.deleteRects(self.selected.trueItems)
+    self.deleteRects(sel)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
     self.invalidate()
   # TODO: implement group rotation with ctrl
-  of CmdRotateCCW:
+  of CmdRotateCCW, CmdRotateCW, CmdRotateCCWAbout, CmdRotateCWAbout:
+    var amt: Rotation
+    case cmdTable[key]
+    of CmdRotateCCW, CmdRotateCCWAbout: amt = R90
+    of CmdRotateCW,  CmdRotateCWAbout:  amt = R270
+    else: raise newException(ValueError, "Rotate cmd error")
+
     case self.mouseData.state
     of StateNone:
-      self.rotateRects(self.selected.trueItems, R90)
+      if key.ctrl: self.rotateRectsAbout(sel, amt, wmp.snap(self.doc.grid, Minor))
+      else:        self.rotateRects(sel, amt)
     of StateSelectDownInComp, StateDraggingComp:
-      self.rotateRects(@[self.mouseData.clickHitId.get], R90)
-    of StateSelectDownInSpace, StateDraggingSpace:
-      self.selectBox = (0,0,0,0)
-      self.mouseData.state = StateNone
-    self.invalidate()
-  of CmdRotateCW:
-    case self.mouseData.state
-    of StateNone:
-      self.rotateRects(self.selected.trueItems, R270)
-    of StateSelectDownInComp, StateDraggingComp:
-      self.rotateRects(@[self.mouseData.clickHitId.get], R270)
+      if key.ctrl: self.rotateRectsAbout(@[self.mouseData.clickHitId.get], amt, wmp.snap(self.doc.grid, Minor))
+      else:        self.rotateRects(@[self.mouseData.clickHitId.get], amt)
     of StateSelectDownInSpace, StateDraggingSpace:
       self.selectBox = (0,0,0,0)
       self.mouseData.state = StateNone
@@ -243,8 +253,8 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
     self.invalidate()
-  else:
-    discard
+  # else:
+  #   discard
 
 proc processMouseMoveEvent*(self: Editor, event: MouseEvt) = 
   # Separate specific events (eg shft+LMB) from state changes
