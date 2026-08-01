@@ -142,14 +142,13 @@ proc updateRatio*(self: Editor) =
 proc moveRectsBy(self: Editor, compIDs: seq[CompID], delta: WPoint) =
   # Common proc to move one or more Rects; used by mouse and keyboard
   # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
-  let rects = self.doc.db[compIDs]
-  for rect in rects:
+  for rect in self.doc.db[compIDs]:
     moveRectBy(rect, delta)
-  self.invalidate()
-proc moveRectBy(self: Editor, compID: CompID, delta: WPoint) =
-  # Common proc to move one or more Rects; used by mouse and keyboard
-  moveRectBy(self.doc.db[compID], delta)
-  self.invalidate()
+  #self.invalidate()
+# proc moveRectBy(self: Editor, compID: CompID, delta: WPoint) =
+#   # Common proc to move one or more Rects; used by mouse and keyboard
+#   moveRectBy(self.doc.db[compID], delta)
+#   #self.invalidate()
 proc moveRectTo(self: Editor, compID: CompID, delta: WPoint) =
   # Common proc to move one or more Rects; used by mouse and keyboard
   moveRectTo(self.doc.db[compID], delta)
@@ -191,87 +190,61 @@ proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
     hoveringComps != oldhover
   else:
     false
+proc resetMouseData(self: Editor) = 
+  self.mouseData.clickHitId = none(CompId)
+  self.mouseData.clickPos = none(PxPoint)
+  self.mouseData.state = StateNone
+  self.mouseData.pzState = PZStateNone
+
 proc processKeyDown*(self: Editor, key: Key) =
-  when defined(debug):
-    echo $key
-  return
-  # # event must not be a modifier key
-  # proc resetBox() =
-  #   self.selectBox = (0,0,0,0)
-  #   #self.invalidate()
-  # proc resetMouseData() = 
-  #   self.mouseData.clickHitId = none(CompId)
-  #   # self.mouseData.dirtyIds.setLen(0)
-  #   self.mouseData.clickPos = some[PxPoint]((0, 0))
-  #   self.mouseData.lastPos = (0, 0)
-  # proc escape() =
-  #   resetMouseData()
-  #   resetBox()
-  #   if self.mouseData.state == StateDraggingSpace:
-  #     let clrsel = (self.selected.trueItems.toHashSet - self.firmSelection.toHashSet).toSeq
-  #     self.selected.clearSome(clrsel)
-  #     self.invalidate()
-  #   self.mouseData.state = StateNone
-
-  # # Stay only if we have a legitimate key combination
-  # #let k = (event.keycode, event.ctrlDown, event.shiftDown, event.altDown)
-  # if not (key in cmdTable):
-  #   escape()
-  #   return
-
-  # let sel = self.selected.trueItems
-  # case cmdTable[key]:
-  # of CmdEscape:
-  #   escape()
-  # of CmdMove:
-  #   let
-  #     md: WPoint = 
-  #       if key.shift:
-  #         minDelta(self.doc.grid, scale=Tiny)
-  #       else:
-  #         minDelta(self.doc.grid, scale=Minor)
-  #     moveby: WPoint = md .* moveTable[key.keyCode]
-  #   self.moveRectsBy(sel, moveBy)
-  #   resetBox()
-  #   self.mouseData.state = StateNone
-  # of CmdDelete:
-  #   self.deleteRects(sel)
-  #   resetBox()
-  #   self.mouseData.state = StateNone
-  # of CmdRotateCCW:
-  #   if self.mouseData.state == StateDraggingComp or 
-  #       self.mouseData.state == StateSelectDownInComp:
-  #     self.rotateRects(@[self.mouseData.clickHitId.get], R90)
-  #     #self.evaluateHovering(event)
-  #     self.evaluateHovering(self.mouseData.lastPos)
-  #     self.invalidate()
-  #   else:
-  #     self.rotateRects(sel, R90)
-  #     #self.evaluateHovering(event)
-  #     self.evaluateHovering(self.mouseData.lastPos)
-  #     resetBox()
-  #     self.invalidate()
-  #     self.mouseData.state = StateNone
-  # of CmdRotateCW:
-  #   if self.mouseData.state == StateDraggingComp or 
-  #       self.mouseData.state == StateSelectDownInComp:
-  #     self.rotateRects(@[self.mouseData.clickHitId.get], R270)
-  #     #self.evaluateHovering(event)
-  #     self.evaluateHovering(self.mouseData.lastPos)
-  #     self.invalidate()
-  #   else:
-  #     self.rotateRects(sel, R270)
-  #     #self.evaluateHovering(event)
-  #     self.evaluateHovering(self.mouseData.lastPos)
-  #     resetBox()
-  #     self.invalidate()
-  #     self.mouseData.state = StateNone
-  # of CmdSelect:
-  #   discard
-  # of CmdSelectAll:
-  #   self.selectAll()
-  #   self.selectBox = (0,0,0,0)
-  #   self.mouseData.state = StateNone
+  case cmdTable[key]:
+  of CmdEscape:
+    self.resetMouseData()
+    self.selectBox = (0,0,0,0)
+    self.tmpSelected.clearAll()
+    self.invalidate()
+  of CmdMove:
+    let
+      sc = if key.shift: Tiny else: Minor
+      md: WPoint = minDelta(self.doc.grid, scale=sc)
+      moveby: WPoint = md .* moveTable[key.keyCode]
+    self.moveRectsBy(self.selected.trueItems, moveBy)
+    self.resetMouseData()
+    self.selectBox = (0,0,0,0)
+    self.invalidate()
+  of CmdDelete:
+    self.deleteRects(self.selected.trueItems)
+    self.resetMouseData()
+    self.selectBox = (0,0,0,0)
+    self.invalidate()
+  # TODO: implement group rotation with ctrl
+  of CmdRotateCCW:
+    case self.mouseData.state
+    of StateNone:
+      self.rotateRects(self.selected.trueItems, R90)
+    of StateSelectDownInComp, StateDraggingComp:
+      self.rotateRects(@[self.mouseData.clickHitId.get], R90)
+    of StateSelectDownInSpace, StateDraggingSpace:
+      self.selectBox = (0,0,0,0)
+      self.mouseData.state = StateNone
+    self.invalidate()
+  of CmdRotateCW:
+    case self.mouseData.state
+    of StateNone:
+      self.rotateRects(self.selected.trueItems, R270)
+    of StateSelectDownInComp, StateDraggingComp:
+      self.rotateRects(@[self.mouseData.clickHitId.get], R270)
+    of StateSelectDownInSpace, StateDraggingSpace:
+      self.selectBox = (0,0,0,0)
+      self.mouseData.state = StateNone
+    self.invalidate()
+  of CmdSelectAll:
+    self.selected.setAll(self.doc.db)
+    self.resetMouseData()
+    self.selectBox = (0,0,0,0)
+    self.invalidate()
+  else:
+    discard
 
 proc processMouseMoveEvent*(self: Editor, event: MouseEvt) = 
   # Separate specific events (eg shft+LMB) from state changes
@@ -360,15 +333,17 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
 proc processMouseButtonEvent*(self: Editor, event: MouseEvt) = 
   case self.mouseData.state
   of StateNone:
-    let hoveringComps = self.doc.db.ptInComps(event.pos, self.viewport)
-    let isHovering = hoveringComps.len > 0
-    let topComp = if isHovering: some(hoveringComps[^1])
-                  else:          none(CompID)
     if event.edge == mbeLeftDown:
-      self.mouseData.clickHitId = topComp
-      self.mouseData.clickPos = some(event.pos)
-      self.mouseData.state = if isHovering: StateSelectDownInComp
-                             else:          StateSelectDownInSpace
+      let
+        hoveringComps = self.doc.db.ptInComps(event.pos, self.viewport)
+        isHovering = hoveringComps.len > 0
+        topComp = if isHovering: some(hoveringComps[^1])
+                  else:          none(CompID)
+      if event.edge == mbeLeftDown:
+        self.mouseData.clickHitId = topComp
+        self.mouseData.clickPos = some(event.pos)
+        self.mouseData.state = if isHovering: StateSelectDownInComp
+                               else:          StateSelectDownInSpace
   of StateSelectDownInComp:
     if event.edge == mbeLeftUp:
       let hitId = self.mouseData.clickHitId.get
@@ -379,29 +354,22 @@ proc processMouseButtonEvent*(self: Editor, event: MouseEvt) =
         self.selected.clearAll()
         if not wasSelected:
           self.selected.toggleOne(hitId)
-      self.mouseData.clickHitId = none(CompID)
-      self.mouseData.clickPos = none(PxPoint)
-      self.mouseData.state = StateNone
+      self.resetMouseData()
       self.invalidate()
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
-      self.mouseData.clickHitId = none(CompID)
-      self.mouseData.state = StateNone
+      self.resetMouseData()
       self.selected.clearAll()
       self.tmpSelected.clearAll()
       self.invalidate()
   of StateDraggingComp:
     if event.edge == mbeLeftUp:
-      self.mouseData.clickHitId = none(CompID)
-      self.mouseData.clickPos = none(PxPoint)
-      self.mouseData.state = StateNone
+      self.resetMouseData()
       self.selectBox = (0,0,0,0)
       self.invalidate()
   of StateDraggingSpace:
     if event.edge == mbeLeftUp:
-      self.mouseData.clickHitId = none(CompID)
-      self.mouseData.clickPos = none(PxPoint)
-      self.mouseData.state = StateNone
+      self.resetMouseData()
       self.selectBox = (0,0,0,0)
       self.selected.setSome(self.tmpSelected[].toSeq)
       self.invalidate()

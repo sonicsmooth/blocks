@@ -1,6 +1,5 @@
 import std/[os, parseopt, strutils, strformat]
 import appinit
-import colors
 
 type
   RenderMethod* = enum

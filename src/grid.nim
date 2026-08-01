@@ -45,7 +45,7 @@ proc `refYSpace=`*(grid: Grid, val: float) =
   grid.mRefYSpace = val
   grid.mMajorYSpace = grid.minDelta(Major).y
 
-proc allowedDivisions*(grid: Grid): seq[DivRange] =
+proc allowedDivisions*(grid: Grid): seq[int] =
   # Return list of allowable divisions, i.e., which
   # values in 2..16 divide major grid space evenly.
   # If the result for X and Y are different, then
@@ -56,7 +56,8 @@ proc allowedDivisions*(grid: Grid): seq[DivRange] =
     if grid.mMajorXSpace mod d == 0: xset.incl(d)
     if grid.mMajorYSpace mod d == 0: yset.incl(d)
   let isect = xset * yset
-  isect.toSeq
+  for i in isect:
+    result.add(i)
 
 proc allowedDivisionsStr*(grid: Grid): seq[string] =
   for d in grid.allowedDivisions:
