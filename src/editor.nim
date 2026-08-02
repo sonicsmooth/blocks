@@ -147,10 +147,6 @@ proc moveRectsBy(self: Editor, compIDs: seq[CompID], delta: WPoint) =
   # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
   for rect in self.doc.db[compIDs]:
     moveRectBy(rect, delta)
-# proc moveRectBy(self: Editor, compID: CompID, delta: WPoint) =
-#   # Common proc to move one or more Rects; used by mouse and keyboard
-#   moveRectBy(self.doc.db[compID], delta)
-#   #self.invalidate()
 proc moveRectTo(self: Editor, compID: CompID, delta: WPoint) =
   # Common proc to move one or more Rects; used by mouse and keyboard
   moveRectTo(self.doc.db[compID], delta)
@@ -171,16 +167,6 @@ proc deleteRects(self: Editor, compIDs: seq[CompID]) =
     ##!!!!!self.clearTextureCache(id)
   self.fillArea = self.doc.db.fillArea()
   self.invalidate()
-# proc selectAll(self: Editor) =
-#   self.selected.setAll(self.doc.db)
-#   self.invalidate()
-# proc selectNone(self: Editor) =
-#   self.selected.clearAll()
-#   self.invalidate()
-# proc selectedItems*(self: Editor): seq[CompID] =
-#   self.selected.trueItems
-# proc hoveringItems*(self: Editor): seq[CompID] =
-#   self.hovering.trueItems
 proc isSelected*(self: Editor, id: CompID): bool =
   id in self.selected[] or 
   id in self.tmpSelected[]
@@ -204,17 +190,16 @@ proc resetMouseData(self: Editor) =
   self.mouseData.pzState = PZStateNone
 
 proc processKeyDown*(self: Editor, key: Key) =
-  let sel = self.selected.trueItems
-  let wmp = self.mouseData.lastPos.toWorld(self.viewport)
   if key notin cmdTable:
     echo "Key not recognized"
     return
+  let sel = self.selected.trueItems
+  let wmp = self.mouseData.lastPos.toWorld(self.viewport)
   case cmdTable[key]:
   of CmdEscape:
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
     self.tmpSelected.clearAll()
-    self.invalidate()
   of CmdMove:
     let
       sc = if key.shift: Tiny else: Minor
@@ -223,12 +208,10 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.moveRectsBy(sel, moveBy)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
-    self.invalidate()
   of CmdDelete:
     self.deleteRects(sel)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
-    self.invalidate()
   # TODO: implement group rotation with ctrl
   of CmdRotateCCW, CmdRotateCW, CmdRotateCCWAbout, CmdRotateCWAbout:
     var amt: Rotation
@@ -236,7 +219,6 @@ proc processKeyDown*(self: Editor, key: Key) =
     of CmdRotateCCW, CmdRotateCCWAbout: amt = R90
     of CmdRotateCW,  CmdRotateCWAbout:  amt = R270
     else: raise newException(ValueError, "Rotate cmd error")
-
     case self.mouseData.state
     of StateNone:
       if key.ctrl: self.rotateRectsAbout(sel, amt, wmp.snap(self.doc.grid, Minor))
@@ -247,27 +229,14 @@ proc processKeyDown*(self: Editor, key: Key) =
     of StateSelectDownInSpace, StateDraggingSpace:
       self.selectBox = (0,0,0,0)
       self.mouseData.state = StateNone
-    self.invalidate()
   of CmdSelectAll:
     self.selected.setAll(self.doc.db)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
-    self.invalidate()
-  # else:
-  #   discard
+  self.invalidate()
 
 proc processMouseMoveEvent*(self: Editor, event: MouseEvt) = 
-  # Separate specific events (eg shft+LMB) from state changes
-  # For example, StateSelectDownInComp should be renamed to
-  # something like StateSelectStartInRect, and the event
-  # that gets into that state is MainSelector which comes 
-  # from mouseEvent == wEvent_LeftDown.
-  # so wEvent_LeftDown is mapped to MainSelector, which triggers
-  # state change from None to StateSelectStartInRect
-  # Also dragging is delayed by one event; fix it.
-  #echo event
-  #return
-  
+ 
   let 
     vp = self.viewport
     wmp = event.pos.toWorld(vp)
