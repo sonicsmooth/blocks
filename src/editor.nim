@@ -2,13 +2,14 @@ import std/[options,
             sets, 
             sequtils]
 import wNim
-import pointmath
 import appopts
-import zoomctrl
-import reporting
-from utils import excl
-import rects
 import document
+import pointmath
+import rects
+import reporting
+import rotation
+from utils import excl
+import zoomctrl
 
 type
   MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekDbl, 
@@ -74,6 +75,7 @@ type
     hovering*:     HoverSet
     selected*:     SelectedSet
     tmpSelected:   SelectedSet
+    groupRotation: bool # prevents deselection after rotation
     invalidate*:   proc() {.gcsafe.}
 
 const 
@@ -157,7 +159,7 @@ proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation) =
     self.doc.db[id].rotate(amt)
     ##!!!!!self.clearTextureCache(id)
   self.invalidate()
-proc rotateRectsAbout(self: Editor, compIDs: seq[CompID], amt: Rotation, pos: WPoint) =
+proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation, pos: WPoint) =
   # Rotate about pos
   for id in compIDs:
     self.doc.db[id].rotateAbout(amt, pos)
@@ -188,6 +190,8 @@ proc resetMouseData(self: Editor) =
   self.mouseData.clickPos = none(PxPoint)
   self.mouseData.state = StateNone
   self.mouseData.pzState = PZStateNone
+  self.groupRotation= false
+
 
 proc processKeyDown*(self: Editor, key: Key) =
   if key notin cmdTable:
@@ -212,21 +216,29 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.deleteRects(sel)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
-  # TODO: implement group rotation with ctrl
+  # TODO: implement group rotation
   of CmdRotateCCW, CmdRotateCW, CmdRotateCCWAbout, CmdRotateCWAbout:
     var amt: Rotation
     case cmdTable[key]
     of CmdRotateCCW, CmdRotateCCWAbout: amt = R90
     of CmdRotateCW,  CmdRotateCWAbout:  amt = R270
     else: raise newException(ValueError, "Rotate cmd error")
+    # Group rotate if mouse is pressed outside component,
+    # otherwise individual rotation
     case self.mouseData.state
     of StateNone:
-      if key.ctrl: self.rotateRectsAbout(sel, amt, wmp.snap(self.doc.grid, Minor))
-      else:        self.rotateRects(sel, amt)
-    of StateSelectDownInComp, StateDraggingComp:
-      if key.ctrl: self.rotateRectsAbout(@[self.mouseData.clickHitId.get], amt, wmp.snap(self.doc.grid, Minor))
-      else:        self.rotateRects(@[self.mouseData.clickHitId.get], amt)
-    of StateSelectDownInSpace, StateDraggingSpace:
+      self.rotateRects(sel, amt)
+    of StateSelectDownInComp:
+      self.rotateRects(@[self.mouseData.clickHitId.get], amt, wmp)
+    of StateDraggingComp:
+      if key.ctrl:
+        self.rotateRects(sel, amt, wmp)
+      else:
+        self.rotateRects(@[self.mouseData.clickHitId.get], amt)
+    of StateSelectDownInSpace:
+      self.rotateRects(sel, amt, wmp)
+      self.groupRotation = true
+    of StateDraggingSpace:
       self.selectBox = (0,0,0,0)
       self.mouseData.state = StateNone
   of CmdSelectAll:
@@ -309,7 +321,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     self.mouseData.state = StateDraggingSpace
     self.invalidate()
 
-proc processMouseButtonEvent*(self: Editor, event: MouseEvt) = 
+proc procesMouseClickEvent*(self: Editor, event: MouseEvt) = 
   case self.mouseData.state
   of StateNone:
     if event.edge == mbeLeftDown:
@@ -337,9 +349,10 @@ proc processMouseButtonEvent*(self: Editor, event: MouseEvt) =
       self.invalidate()
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
+      if not self.groupRotation:
+        self.selected.clearAll()
+        self.tmpSelected.clearAll()
       self.resetMouseData()
-      self.selected.clearAll()
-      self.tmpSelected.clearAll()
       self.invalidate()
   of StateDraggingComp:
     if event.edge == mbeLeftUp:

@@ -5,7 +5,7 @@ import wnim
 import winim/inc/windef except PRECT
 import winim/inc/winuser
 import userMessages
-import randrect, arange, recttable, world
+import randrect, arange, rotation, recttable, world
 import concurrent
 
 # At each temperature generate 100 randomized next states

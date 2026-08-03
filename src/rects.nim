@@ -1,7 +1,13 @@
-import std/[math, options, random, sets, sequtils, strutils, tables, ]
+import std/[math, 
+            options,
+            random, 
+            sets, 
+            sequtils, 
+            strutils, 
+            tables, ]
 import wNim/wTypes
 import wNim/private/wHelper
-import randrect
+import randrect, rotation
 import colors
 import world, viewport
 export world, viewport
@@ -42,7 +48,6 @@ For bounds we need rotated WRect from DBComp
 
 type 
   CompID* = range[-1..int.high] # negative values indicate null component
-  Rotation* = enum R0, R90, R180, R270
   Orientation* = enum Vertical, Horizontal
   PRect* = tuple[x, y, w, h: PxType]  # screen/pixel rectangle
   WRect* = tuple[x, y, w, h: WType ]  # world rectangle
@@ -75,8 +80,6 @@ type
     penColor*: ColorRGBA
     fillColor*: ColorRGBA
     hoverColor*: ColorRGBA
-    #selected*: bool
-    #hovering*: bool
     mBbox*: Wrect
 
 const
@@ -162,18 +165,6 @@ proc `$`*(rect: DBComp): string =
   for k, val in rect[].fieldPairs:
     strs.add(k & ": " & $val)
   result = strs.join(", ")
-# proc `x`*(comp: DBComp): WType = 
-#   echo "x getter"
-#   comp.x
-# proc `x=`*(comp: var DBComp, val: WType) = 
-#   echo "x setter"
-#   comp.x = val
-# proc `y`*(comp: DBComp): WType = comp.y
-# proc `y=`*(comp: var DBComp, val: WType) = comp.y = val
-# proc `w`*(comp: DBComp): WType = comp.w
-# proc `w=`*(comp: var DBComp, val: WType) = comp.w = val
-# proc `h`*(comp: DBComp): WType = comp.h
-# proc `h=`*(comp: var DBComp, val: WType) = comp.h = val
 proc `==`*(a, b: DBComp): bool =
   # Don't include id, just position, size and rotation
   a.x == b.x and
@@ -289,16 +280,17 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
                          label: "whatevs",
                          origin: (10, 20),
                          rot: rand(Rotation),
-                         #selected: false,
-                         #hovering: false,
                          penColor: penColor,
                          fillColor: fillColor,
                          hoverColor: Yellow)
 proc rotate*(rect: DBComp, amt: Rotation) =
   # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
-proc rotateAbout*(rect: DBComp, amt: Rotation, pos: WPoint) =
-  echo "TODO: implement rotateAbout: ", pos
+proc rotateAbout*(rect: DBComp, amt: Rotation, pivot: WPoint) =
+  var rpos = (x: rect.x, y: rect.y)
+  rpos = rpos.rotate(amt, pivot)
+  rect.x = rpos.x
+  rect.y = rpos.y
   rect.rot = rect.rot + amt
 proc rotate*(rect: DBComp, orient: Orientation) =
   # Rotate to either 0 or 90 based on aspect ratio and 
