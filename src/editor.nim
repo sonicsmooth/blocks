@@ -358,41 +358,29 @@ proc procesMouseClickEvent*(self: Editor, event: MouseEvt) =
       if event.ctrl:
         self.selected.toggleOne(hitId)
       else:
-        let lastLen = self.selected[].len
-        let wasSelected = hitId in self.selected[]
         if not self.groupRotation:
-          if lastLen == 0:
-            self.selected.toggleOne(hitId)
-          elif lastLen == 1:
+          if self.selected[].len > 0:
             self.selected.clearAll()
-            if wasSelected:
-              self.selected.toggleOne(hitId)
-            else:
-              self.selected.clearAll()
-              self.selected.toggleOne(hitId)
-          else: # > 1 selected
-            #if not wasSelected:
-              self.selected.clearAll()
-              self.selected.setOne(hitId)
-      self.resetMouseData()
+          self.selected.toggleOne(hitId)
+      #self.resetMouseData()
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
       if not self.groupRotation:
         self.selected.clearAll()
         self.tmpSelected.clearAll()
-      self.resetMouseData()
+      #self.resetMouseData()
   of StateDraggingComp:
     if event.edge == mbeLeftUp:
-      self.resetMouseData()
+      #self.resetMouseData()
       self.selectBox = (0,0,0,0)
   of StateDraggingSpace:
     if event.edge == mbeLeftUp:
-      self.resetMouseData()
+      #self.resetMouseData()
       self.selectBox = (0,0,0,0)
       self.selected.setSome(self.tmpSelected[].toSeq)
       self.tmpSelected.clearAll()
   if doInvalidate: self.invalidate()
-  # if doResetMouseData: self.resetMouseData()
+  if doResetMouseData: self.resetMouseData()
   # when defined(debug):
   #   s &= " -> " & $self.mouseData.state & " : " & $self.selected[]
   #   echo s
