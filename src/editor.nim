@@ -332,9 +332,6 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     self.invalidate()
 
 proc procesMouseClickEvent*(self: Editor, event: MouseEvt) = 
-    # when defined(debug):
-    #   var s: string
-    #   s &= $self.selected[] & " : " & $self.mouseData.state
   var doInvalidate = true
   var doResetMouseData = true
   case self.mouseData.state
@@ -362,28 +359,20 @@ proc procesMouseClickEvent*(self: Editor, event: MouseEvt) =
           if self.selected[].len > 0:
             self.selected.clearAll()
           self.selected.toggleOne(hitId)
-      #self.resetMouseData()
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
       if not self.groupRotation:
         self.selected.clearAll()
         self.tmpSelected.clearAll()
-      #self.resetMouseData()
   of StateDraggingComp:
-    if event.edge == mbeLeftUp:
-      #self.resetMouseData()
-      self.selectBox = (0,0,0,0)
+    discard
   of StateDraggingSpace:
     if event.edge == mbeLeftUp:
-      #self.resetMouseData()
-      self.selectBox = (0,0,0,0)
       self.selected.setSome(self.tmpSelected[].toSeq)
       self.tmpSelected.clearAll()
+  self.selectBox = (0,0,0,0)
   if doInvalidate: self.invalidate()
   if doResetMouseData: self.resetMouseData()
-  # when defined(debug):
-  #   s &= " -> " & $self.mouseData.state & " : " & $self.selected[]
-  #   echo s
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   when defined(debug):
