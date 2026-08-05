@@ -360,24 +360,20 @@ proc procesMouseClickEvent*(self: Editor, event: MouseEvt) =
       else:
         let lastLen = self.selected[].len
         let wasSelected = hitId in self.selected[]
-        if lastLen == 0:
-          if not self.groupRotation:
-            discard self.selected.setOne(hitId)
-          
-        elif lastLen == 1:
-          if not self.groupRotation:
-            discard self.selected.clearAll()
+        if not self.groupRotation:
+          if lastLen == 0:
+            self.selected.toggleOne(hitId)
+          elif lastLen == 1:
+            self.selected.clearAll()
             if wasSelected:
-              discard
-                #discard self.selected.clearAll()
+              self.selected.toggleOne(hitId)
             else:
-                discard self.selected.clearAll()
-                self.selected.toggleOne(hitId)
-        else: # > 1 selected
-          if not wasSelected:
-            if not self.groupRotation:
               self.selected.clearAll()
-              discard self.selected.setOne(hitId)
+              self.selected.toggleOne(hitId)
+          else: # > 1 selected
+            #if not wasSelected:
+              self.selected.clearAll()
+              self.selected.setOne(hitId)
       self.resetMouseData()
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
