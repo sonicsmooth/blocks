@@ -74,7 +74,7 @@ type
     ratio:         float
     hovering*:     HoverSet
     selected*:     SelectedSet
-    tmpSelected:   SelectedSet
+    tmpSelected:   SelectedSet # used during drag-select
     groupRotation: bool # prevents deselection after rotation
     invalidate*:   proc() {.gcsafe.}
 
@@ -190,6 +190,7 @@ proc resetMouseData(self: Editor) =
   self.mouseData.clickPos = none(PxPoint)
   self.mouseData.state = StateNone
   self.mouseData.pzState = PZStateNone
+  echo "clearing groupRotation"
   self.groupRotation= false
 
 
@@ -229,7 +230,12 @@ proc processKeyDown*(self: Editor, key: Key) =
     of StateNone:
       self.rotateRects(sel, amt)
     of StateSelectDownInComp:
-      self.rotateRects(@[self.mouseData.clickHitId.get], amt, wmp)
+      if sel.len == 0:
+        self.rotateRects(@[self.mouseData.clickHitId.get], amt, wmp)
+      else:
+        self.rotateRects(sel, amt, wmp)
+      echo "setting groupRotation"
+      self.groupRotation = true
     of StateDraggingComp:
       if key.ctrl:
         self.rotateRects(sel, amt, wmp)
@@ -237,6 +243,7 @@ proc processKeyDown*(self: Editor, key: Key) =
         self.rotateRects(@[self.mouseData.clickHitId.get], amt)
     of StateSelectDownInSpace:
       self.rotateRects(sel, amt, wmp)
+      echo "setting groupRotation"
       self.groupRotation = true
     of StateDraggingSpace:
       self.selectBox = (0,0,0,0)
@@ -322,6 +329,8 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     self.invalidate()
 
 proc procesMouseClickEvent*(self: Editor, event: MouseEvt) = 
+  var s: string
+  s &= $self.selected[] & " : " & $self.mouseData.state
   case self.mouseData.state
   of StateNone:
     if event.edge == mbeLeftDown:
@@ -339,17 +348,56 @@ proc procesMouseClickEvent*(self: Editor, event: MouseEvt) =
     if event.edge == mbeLeftUp:
       let hitId = self.mouseData.clickHitId.get
       if event.ctrl:
+        echo "ctrl; toggling " & $hitId
         self.selected.toggleOne(hitId)
       else:
+        let lastLen = self.selected[].len
         let wasSelected = hitId in self.selected[]
-        self.selected.clearAll()
-        if not wasSelected:
-          self.selected.toggleOne(hitId)
+        if lastLen == 0:
+          echo "none were selected"
+          if self.groupRotation:
+            discard
+          else:
+            discard self.selected.setOne(hitId)
+        elif lastLen == 1:
+          if wasSelected:
+            echo "== 1; this item was selected"
+            if self.groupRotation:
+              discard
+            else:
+              discard self.selected.clearOne(hitId)
+          else:
+            echo "== 1; this item was not selected"
+            if self.groupRotation:
+              discard
+            else:
+              discard self.selected.clearAll()
+              echo "cleared all"
+              discard self.selected.setOne(hitId)
+        else: # > 1 selected
+          if wasSelected:
+            #self.selected.clearAll()
+            #echo "cleared all"
+            #echo "> 1; this item was selected, reselecting ", $hitId, " after clearall"
+            discard #self.selected.setOne(hitId)
+          else:
+            if self.groupRotation:
+              discard
+            else:
+              self.selected.clearAll()
+              echo "cleared all"
+              echo "> 1; this item was not selected, selecting ", $hitId
+              discard self.selected.setOne(hitId)
+      echo "reset and invalidate"
       self.resetMouseData()
       self.invalidate()
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
-      if not self.groupRotation:
+      # If we just did a rotation, then LMB up should be ignored
+      if self.groupRotation:
+        echo "was rotated"
+      else:
+        echo "Clearing selected and tmpSelected from space"
         self.selected.clearAll()
         self.tmpSelected.clearAll()
       self.resetMouseData()
@@ -364,8 +412,12 @@ proc procesMouseClickEvent*(self: Editor, event: MouseEvt) =
       self.resetMouseData()
       self.selectBox = (0,0,0,0)
       self.selected.setSome(self.tmpSelected[].toSeq)
+      self.tmpSelected.clearAll()
       self.invalidate()
+  self.invalidate()
+  s &= " -> " & $self.mouseData.state & " : " & $self.selected[]
+  echo s
 
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
-  echo event
+  echo $self.selected[] & " " & $event

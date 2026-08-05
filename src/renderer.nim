@@ -8,7 +8,7 @@ import std/[enumerate,
 import wNim/wTypes
 import sdl2 except Color
 import sdl2/ttf
-import document, grid, editor
+import document, grid, editor, rotation
 import rects, utils, appopts
 import pixieshapes
 import colors, colors_sdl, colors_pixie

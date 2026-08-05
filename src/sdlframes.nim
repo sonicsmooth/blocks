@@ -47,6 +47,10 @@ wClass(wSDLPanel of wPanel):
   proc init*(self: wSDLPanel, parent: wWindow, style: wStyle=0) =
     when defined(debug):
       echo "wSDLPanel.init()"
+      var ver: SDL_VERSION
+      getVersion(ver)
+      echo "SDL Version: ", ver.major, ".", ver.minor
+      echo "SDL Patch: ", ver.patch
     wPanel(self).init(parent, style=style)
 
     self.sdlWindow = createWindowFrom(cast[pointer] (self.mHwnd))

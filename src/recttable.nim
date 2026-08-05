@@ -142,7 +142,7 @@ proc falseItems*(comps: CompSet, table: RectTable): seq[CompID] =
     if id notin comps[]:
       result.add(id)
 
-proc toggleOne*(comps: CompSet, id: CompID) = 
+proc toggleOne*(comps: CompSet, id: CompID) {.discardable.} = 
   if id in comps[]:
     comps[].excl(id)
   else:
@@ -155,7 +155,7 @@ proc toggleAll*(comps: CompSet, table: RectTable) =
     toggleOne(comps, id)
 
 proc clearOne*(comps: CompSet, id: CompID): bool =
-  # Clear a specific id; return the old value
+  # Clear a specific id; return if previously set
   result = id in comps[]
   comps[].excl(id)
 proc clearSome*(comps: CompSet, ids: seq[CompID]): seq[CompID] {.discardable.}=
@@ -170,7 +170,7 @@ proc clearAll*(comps: CompSet): seq[CompID] {.discardable.} =
   comps[].clear()
 
 proc setOne*(comps: CompSet, id: CompID): bool {.discardable.} =
-  # Set specific id; return old value
+  # Set specific id; return if already set
   result = id in comps[]
   comps[].incl(id)
 proc setSome*(comps: CompSet, ids: seq[CompID]): seq[CompID] {.discardable.} =
@@ -180,7 +180,7 @@ proc setSome*(comps: CompSet, ids: seq[CompID]): seq[CompID] {.discardable.} =
       result.add(id)
     comps[].incl(id)
 proc setAll*(comps: CompSet, table: RectTable): seq[CompID] {.discardable.} = 
-  # Set all unselected ids; preturn previous unselection
+  # Set all ids; preturn previous unselection
   result = comps.falseItems(table)
   for id in table.keys:
     comps[].incl(id)

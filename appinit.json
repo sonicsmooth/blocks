@@ -7,9 +7,9 @@
       "enableDstRect": false,
       "enableText": true,
       "enableHover": true,
-      "compQty": 1,
+      "compQty": 3,
       "renderMethod": "Direct",
-      "singleColor": "Maroon"
+      "singleColor": "Pink"
     },
     "Viewport": {
       "pan": "(400, 400)",
