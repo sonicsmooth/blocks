@@ -190,7 +190,6 @@ proc resetMouseData(self: Editor) =
   self.mouseData.clickPos = none(PxPoint)
   self.mouseData.state = StateNone
   self.mouseData.pzState = PZStateNone
-  echo "clearing groupRotation"
   self.groupRotation= false
 
 
@@ -234,16 +233,20 @@ proc processKeyDown*(self: Editor, key: Key) =
         self.rotateRects(@[self.mouseData.clickHitId.get], amt, wmp)
       else:
         self.rotateRects(sel, amt, wmp)
-      echo "setting groupRotation"
       self.groupRotation = true
     of StateDraggingComp:
-      if key.ctrl:
-        self.rotateRects(sel, amt, wmp)
-      else:
+      if sel.len == 0:
         self.rotateRects(@[self.mouseData.clickHitId.get], amt)
+      else:
+        if key.ctrl:
+          self.rotateRects(@[self.mouseData.clickHitId.get], amt)
+        else:
+          if self.mouseData.clickHitId.get in sel:
+            self.rotateRects(sel, amt, wmp)
+          else:
+            self.rotateRects(@[self.mouseData.clickHitId.get], amt)
     of StateSelectDownInSpace:
       self.rotateRects(sel, amt, wmp)
-      echo "setting groupRotation"
       self.groupRotation = true
     of StateDraggingSpace:
       self.selectBox = (0,0,0,0)
@@ -306,7 +309,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
       lastSnap: WPoint = self.mouseData.lastPos.toWorld(vp).snap(self.doc.grid, scale=scale)
       newSnap: WPoint = wmp.snap(self.doc.grid, scale=scale)
       delta: WPoint = newSnap - lastSnap
-    if event.ctrl and hitid in self.selected[]:
+    if not event.ctrl and hitid in self.selected[]:
       # Group move should snap by grid amount even if not on grid to start
       self.moveRectsBy(self.selected[].toSeq, delta)
     else: # Snap pos to nearest grid point
@@ -329,8 +332,11 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     self.invalidate()
 
 proc procesMouseClickEvent*(self: Editor, event: MouseEvt) = 
-  var s: string
-  s &= $self.selected[] & " : " & $self.mouseData.state
+    # when defined(debug):
+    #   var s: string
+    #   s &= $self.selected[] & " : " & $self.mouseData.state
+  var doInvalidate = true
+  var doResetMouseData = true
   case self.mouseData.state
   of StateNone:
     if event.edge == mbeLeftDown:
@@ -344,80 +350,57 @@ proc procesMouseClickEvent*(self: Editor, event: MouseEvt) =
         self.mouseData.clickPos = some(event.pos)
         self.mouseData.state = if isHovering: StateSelectDownInComp
                                else:          StateSelectDownInSpace
+    doInvalidate = false
+    doResetMouseData = false
   of StateSelectDownInComp:
     if event.edge == mbeLeftUp:
       let hitId = self.mouseData.clickHitId.get
       if event.ctrl:
-        echo "ctrl; toggling " & $hitId
         self.selected.toggleOne(hitId)
       else:
         let lastLen = self.selected[].len
         let wasSelected = hitId in self.selected[]
         if lastLen == 0:
-          echo "none were selected"
-          if self.groupRotation:
-            discard
-          else:
+          if not self.groupRotation:
             discard self.selected.setOne(hitId)
+          
         elif lastLen == 1:
-          if wasSelected:
-            echo "== 1; this item was selected"
-            if self.groupRotation:
+          if not self.groupRotation:
+            discard self.selected.clearAll()
+            if wasSelected:
               discard
+                #discard self.selected.clearAll()
             else:
-              discard self.selected.clearOne(hitId)
-          else:
-            echo "== 1; this item was not selected"
-            if self.groupRotation:
-              discard
-            else:
-              discard self.selected.clearAll()
-              echo "cleared all"
-              discard self.selected.setOne(hitId)
+                discard self.selected.clearAll()
+                self.selected.toggleOne(hitId)
         else: # > 1 selected
-          if wasSelected:
-            #self.selected.clearAll()
-            #echo "cleared all"
-            #echo "> 1; this item was selected, reselecting ", $hitId, " after clearall"
-            discard #self.selected.setOne(hitId)
-          else:
-            if self.groupRotation:
-              discard
-            else:
+          if not wasSelected:
+            if not self.groupRotation:
               self.selected.clearAll()
-              echo "cleared all"
-              echo "> 1; this item was not selected, selecting ", $hitId
               discard self.selected.setOne(hitId)
-      echo "reset and invalidate"
       self.resetMouseData()
-      self.invalidate()
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
-      # If we just did a rotation, then LMB up should be ignored
-      if self.groupRotation:
-        echo "was rotated"
-      else:
-        echo "Clearing selected and tmpSelected from space"
+      if not self.groupRotation:
         self.selected.clearAll()
         self.tmpSelected.clearAll()
       self.resetMouseData()
-      self.invalidate()
   of StateDraggingComp:
     if event.edge == mbeLeftUp:
       self.resetMouseData()
       self.selectBox = (0,0,0,0)
-      self.invalidate()
   of StateDraggingSpace:
     if event.edge == mbeLeftUp:
       self.resetMouseData()
       self.selectBox = (0,0,0,0)
       self.selected.setSome(self.tmpSelected[].toSeq)
       self.tmpSelected.clearAll()
-      self.invalidate()
-  self.invalidate()
-  s &= " -> " & $self.mouseData.state & " : " & $self.selected[]
-  echo s
-
+  if doInvalidate: self.invalidate()
+  # if doResetMouseData: self.resetMouseData()
+  # when defined(debug):
+  #   s &= " -> " & $self.mouseData.state & " : " & $self.selected[]
+  #   echo s
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
-  echo $self.selected[] & " " & $event
+  when defined(debug):
+    echo $self.selected[] & " " & $event
