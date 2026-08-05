@@ -155,7 +155,7 @@ wClass(wBlockPanel of wSDLPanel):
       mouseEvt.kind = mekDbl
 
     else: return
-    self.editor.procesMouseClickEvent(mouseEvt)
+    self.editor.processMouseClickEvent(mouseEvt)
 
   proc processUIMouseWheelEvent*(self: wBlockPanel, event: wEvent) =
     var mouseEvt = self.fillMouse(event)

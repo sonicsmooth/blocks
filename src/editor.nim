@@ -302,7 +302,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     if self.evaluateHovering(event.pos):
       self.invalidate()
   of StateSelectDownInComp, StateDraggingComp:
-    self.mouseData.state = StateDraggingComp
+    self.groupRotation = false
     let
       hitid = self.mouseData.clickHitId.get
       scale = self.doc.grid.recommendScale(event.shift)
@@ -316,11 +316,13 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
       self.moveRectTo(hitid, newPos)
     self.mouseData.lastPos = event.pos
+    self.mouseData.state = StateDraggingComp
     self.invalidate()
   of StateSelectDownInSpace, StateDraggingSpace:
     # Collect items to be selected in tmpselect.
     # Only clear main selection if ctrl is not pressed.
     # Then copy tmp to main selection when mouse is released
+    self.groupRotation = false
     self.selectBox = pRect(self.mouseData.clickPos.get, event.pos)
     let selectRectW = wRect(self.mouseData.clickPos.get.toWorld(vp), wmp)
     let touchingCompsW = rectInComps(self.doc.db, selectRectW)
@@ -331,7 +333,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     self.mouseData.state = StateDraggingSpace
     self.invalidate()
 
-proc procesMouseClickEvent*(self: Editor, event: MouseEvt) = 
+proc processMouseClickEvent*(self: Editor, event: MouseEvt) = 
   var doInvalidate = true
   var doResetMouseData = true
   case self.mouseData.state
