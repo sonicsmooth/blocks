@@ -356,9 +356,10 @@ proc procesMouseClickEvent*(self: Editor, event: MouseEvt) =
         self.selected.toggleOne(hitId)
       else:
         if not self.groupRotation:
-          if self.selected[].len > 0:
-            self.selected.clearAll()
-          self.selected.toggleOne(hitId)
+          let soloSel = self.selected[].len == 1 and hitId in self.selected[]
+          self.selected.clearAll()
+          if not soloSel:
+            self.selected.toggleOne(hitId)
   of StateSelectDownInSpace:
     if event.edge == mbeLeftUp:
       if not self.groupRotation:
