@@ -14,12 +14,16 @@ import zoomctrl
 type
   MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekDbl, 
                     mekWheelVert, mekWheelHoriz
-  MouseEdge* = enum mbeNone, mbeLeftDown, mbeLeftUp, mbeMidDown, mbeMidUp, mbeRightDown, mbeRightUp
+  MouseButton* = enum mbNone, mbLeft, mbMid, mbRight
+  MouseUpDown* = enum mbdirNone, mbDirUp, mbDirDown
+  #MouseEdge* = enum mbeNone, mbeLeftDown, mbeLeftUp, mbeMidDown, mbeMidUp, mbeRightDown, mbeRightUp
   MouseEvt* = tuple
     pos: PxPoint
     kind: MouseEventKind
-    mbLeft, mbMid, mbRight: bool # what is true immediately after event
-    edge: MouseEdge # what button caused the event
+    btnLeft, btnMid, btnRight: bool # what is true immediately after event
+    button: MouseButton # which button caused event
+    edgeDir: MouseUpDown # which way it went
+    #edge: MouseEdge # both button and event
     ctrl, alt, shift: bool
     wheelDelta: int
   KeyCode* = enum
@@ -45,21 +49,21 @@ type
     CmdSelectAll
 
   MouseState = enum
-    StateNone
+    StateSelectNone
     StateSelectDownInComp
     StateSelectDownInSpace
-    StateDraggingComp
-    StateDraggingSpace
-  PanZoomState = enum
-    PZStateNone
-    PZStateRMBDown
-    PZStateRMBMoving
+    StateSelectDraggingComp
+    StateSelectDraggingSpace
+  PanState = enum
+    PanStateNone
+    PanStateDown
+    PanStateMoving
   MouseData = tuple
     clickHitId : Option[CompID]
     clickPos:    Option[PxPoint]
     lastPos:     PxPoint
     state:       MouseState
-    pzState:     PanZoomState
+    panState:    PanState
 
 
   Editor* = ref object of RootObj
@@ -188,8 +192,8 @@ proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
 proc resetMouseData(self: Editor) = 
   self.mouseData.clickHitId = none(CompId)
   self.mouseData.clickPos = none(PxPoint)
-  self.mouseData.state = StateNone
-  self.mouseData.pzState = PZStateNone
+  self.mouseData.state = StateSelectNone
+  self.mouseData.panState = PanStateNone
   self.groupRotation= false
 
 
@@ -216,7 +220,6 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.deleteRects(sel)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
-  # TODO: implement group rotation
   of CmdRotateCCW, CmdRotateCW, CmdRotateCCWAbout, CmdRotateCWAbout:
     var amt: Rotation
     case cmdTable[key]
@@ -226,7 +229,7 @@ proc processKeyDown*(self: Editor, key: Key) =
     # Group rotate if mouse is pressed outside component,
     # otherwise individual rotation
     case self.mouseData.state
-    of StateNone:
+    of StateSelectNone:
       self.rotateRects(sel, amt)
     of StateSelectDownInComp:
       if sel.len == 0:
@@ -234,7 +237,7 @@ proc processKeyDown*(self: Editor, key: Key) =
       else:
         self.rotateRects(sel, amt, wmp)
       self.groupRotation = true
-    of StateDraggingComp:
+    of StateSelectDraggingComp:
       if sel.len == 0:
         self.rotateRects(@[self.mouseData.clickHitId.get], amt)
       else:
@@ -248,60 +251,24 @@ proc processKeyDown*(self: Editor, key: Key) =
     of StateSelectDownInSpace:
       self.rotateRects(sel, amt, wmp)
       self.groupRotation = true
-    of StateDraggingSpace:
+    of StateSelectDraggingSpace:
       self.selectBox = (0,0,0,0)
-      self.mouseData.state = StateNone
+      self.mouseData.state = StateSelectNone
   of CmdSelectAll:
     self.selected.setAll(self.doc.db)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
   self.invalidate()
 
-proc processMouseMoveEvent*(self: Editor, event: MouseEvt) = 
- 
+proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) = 
   let 
     vp = self.viewport
     wmp = event.pos.toWorld(vp)
-  
-  # case self.mouseData.pzState:
-  # of PZStateNone:
-  #   case event.getEventType
-  #   of wEvent_RightDown:
-  #     self.mouseData.clickPos = event.pos
-  #     self.mouseData.lastPos  = event.pos
-  #     self.mouseData.pzState = PZStateRMBDown
-  #   of wEvent_RightUp:
-  #     self.mouseData.pzState = PZStateNone
-  #   of wEvent_MouseWheel:
-  #     # Keep mouse location in the same spot during zoom.
-  #     doAdaptivePanZoom(self.viewport, event.wheelRotation, event.pos)
-  #     # Tell the world
-  #     sendToListeners(idMsgGridZoom, 0, 0)
-  #     #!!!!!!self.clearTextureCache()
-  #     self.invalidate()
-  #   else:
-  #     discard
-  # of PZStateRMBDown:
-  #   case event.getEventType
-  #   of wEvent_MouseMove:
-  #     let deltaPx: PxPoint = (event.pos.x - self.mouseData.lastPos.x,
-  #                             event.pos.y - self.mouseData.lastPos.y)
-  #     self.mouseData.lastPos = event.pos
-  #     self.viewport.doPan(deltaPx)
-  #     self.invalidate()
-  #   of wEvent_RightUp:
-  #     self.mouseData.pzState = PZStateNone
-  #   else:
-  #     discard
-  # else:
-  #   discard
-
   case self.mouseData.state
-  of StateNone:
-    self.mouseData.lastPos = event.pos
+  of StateSelectNone:
     if self.evaluateHovering(event.pos):
       self.invalidate()
-  of StateSelectDownInComp, StateDraggingComp:
+  of StateSelectDownInComp, StateSelectDraggingComp:
     self.groupRotation = false
     let
       hitid = self.mouseData.clickHitId.get
@@ -315,10 +282,9 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
     else: # Snap pos to nearest grid point
       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
       self.moveRectTo(hitid, newPos)
-    self.mouseData.lastPos = event.pos
-    self.mouseData.state = StateDraggingComp
+    self.mouseData.state = StateSelectDraggingComp
     self.invalidate()
-  of StateSelectDownInSpace, StateDraggingSpace:
+  of StateSelectDownInSpace, StateSelectDraggingSpace:
     # Collect items to be selected in tmpselect.
     # Only clear main selection if ctrl is not pressed.
     # Then copy tmp to main selection when mouse is released
@@ -330,29 +296,38 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
       self.selected.clearAll()
     self.tmpSelected.clearAll()
     self.tmpSelected.setSome(touchingCompsW)
-    self.mouseData.state = StateDraggingSpace
+    self.mouseData.state = StateSelectDraggingSpace
     self.invalidate()
 
-proc processMouseClickEvent*(self: Editor, event: MouseEvt) = 
-  var doInvalidate = true
-  var doResetMouseData = true
-  case self.mouseData.state
-  of StateNone:
-    if event.edge == mbeLeftDown:
+proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) = 
+  if self.mouseData.panState == PanStateDown or
+     self.mouseData.panState == PanStateMoving:
+    let deltaPx: PxPoint = (event.pos.x - self.mouseData.lastPos.x,
+                            event.pos.y - self.mouseData.lastPos.y)
+    self.viewport.doPan(deltaPx)
+    self.mouseData.panState = PanStateMoving
+    self.invalidate()
+
+proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
+  self.processMouseSelectMoveEvent(event)
+  self.processMousePanMoveEvent(event)
+  self.mouseData.lastPos = event.pos
+
+proc processLeftMouseClickEvent*(self: Editor, event: MouseEvt) = 
+  if event.edgeDir == mbDirDown:
+    if self.mouseData.state == StateSelectNone:
       let
         hoveringComps = self.doc.db.ptInComps(event.pos, self.viewport)
         isHovering = hoveringComps.len > 0
         topComp = if isHovering: some(hoveringComps[^1])
                   else:          none(CompID)
-      if event.edge == mbeLeftDown:
-        self.mouseData.clickHitId = topComp
-        self.mouseData.clickPos = some(event.pos)
-        self.mouseData.state = if isHovering: StateSelectDownInComp
-                               else:          StateSelectDownInSpace
-    doInvalidate = false
-    doResetMouseData = false
-  of StateSelectDownInComp:
-    if event.edge == mbeLeftUp:
+      self.mouseData.clickHitId = topComp
+      self.mouseData.clickPos = some(event.pos)
+      self.mouseData.state = if isHovering: StateSelectDownInComp
+                             else:          StateSelectDownInSpace
+  elif event.edgeDir == mbDirUp:
+    case self.mouseData.state
+    of StateSelectDownInComp:
       let hitId = self.mouseData.clickHitId.get
       if event.ctrl:
         self.selected.toggleOne(hitId)
@@ -362,21 +337,43 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
           self.selected.clearAll()
           if not soloSel:
             self.selected.toggleOne(hitId)
-  of StateSelectDownInSpace:
-    if event.edge == mbeLeftUp:
+    of StateSelectDownInSpace:
       if not self.groupRotation:
         self.selected.clearAll()
         self.tmpSelected.clearAll()
-  of StateDraggingComp:
-    discard
-  of StateDraggingSpace:
-    if event.edge == mbeLeftUp:
+    of StateSelectDraggingComp:
+      discard
+    of StateSelectDraggingSpace:
       self.selected.setSome(self.tmpSelected[].toSeq)
       self.tmpSelected.clearAll()
-  self.selectBox = (0,0,0,0)
-  if doInvalidate: self.invalidate()
-  if doResetMouseData: self.resetMouseData()
+    else:
+      discard
+    self.selectBox = (0,0,0,0)
+    self.invalidate()
+    self.resetMouseData()
+
+proc processMidMouseClickEvent*(self: Editor, event: MouseEvt) =
+  if event.edgeDir == mbDirDown:
+    echo "mid down"
+  elif event.edgeDir == mbDirUp:
+    echo "mid up"
+
+proc processRightMouseClickEvent*(self: Editor, event: MouseEvt) =
+  if event.edgeDir == mbDirDown:
+    if self.mouseData.panState == PanStateNone:
+      self.mouseData.panState = PanStateDown
+  elif event.edgeDir == mbDirUp:
+    self.mouseData.panState = PanStateNone
+
+proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
+  case event.button
+  of mbNone:  raise newException(ValueError, "Should not get mbNone here")
+  of mbLeft:  self.processLeftMouseClickEvent(event)
+  of mbMid:   self.processMidMouseClickEvent(event)
+  of mbRight: self.processRightMouseClickEvent(event)
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
-  when defined(debug):
-    echo $self.selected[] & " " & $event
+  self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
+  #sendToListeners(idMsgGridZoom, 0, 0)
+  self.invalidate()
+  #!!!!!!self.clearTextureCache()

@@ -105,15 +105,16 @@ wClass(wBlockPanel of wSDLPanel):
   proc fillMouse(self: wBlockPanel, event: wEvent): MouseEvt =
     result = (pos: event.mousePos,
               kind: mekNone,
-              mbLeft: event.leftDown,
-              mbMid: event.middleDown,
-              mbRight: event.rightDown,
-              edge: mbeNone,
+              btnLeft: event.leftDown,
+              btnMid: event.middleDown,
+              btnRight: event.rightDown,
+              button: mbNone,
+              #edge: mbeNone,
+              edgeDir: mbdirNone,
               ctrl: event.ctrlDown,
               alt: event.altDown,
               shift: event.shiftDown,
               wheelDelta: event.wheelRotation,
-              #button: mbNone
               )
 
   proc processUIMouseMoveEvent*(self: wBlockPanel, event: wEvent) = 
@@ -131,28 +132,37 @@ wClass(wBlockPanel of wSDLPanel):
     case event.eventType
     of wEvent_LeftDown:
       mouseEvt.kind = mekDown
-      mouseEvt.edge = mbeLeftDown
+      mouseEvt.button = mbLeft
+      mouseEvt.edgeDir = mbDirDown
     of wEvent_MiddleDown:
       mouseEvt.kind = mekDown
-      mouseEvt.edge = mbeMidDown
+      mouseEvt.button = mbMid
+      mouseEvt.edgeDir = mbDirDown
     of wEvent_RightDown:
       mouseEvt.kind = mekDown
-      mouseEvt.edge = mbeRightDown
+      mouseEvt.button = mbRight
+      mouseEvt.edgeDir = mbDirDown
     of wEvent_LeftUp:
       mouseEvt.kind = mekUp
-      mouseEvt.edge = mbeLeftUp
+      mouseEvt.button = mbLeft
+      mouseEvt.edgeDir = mbDirUp
     of wEvent_MiddleUp:
       mouseEvt.kind = mekUp
-      mouseEvt.edge = mbeMidUp
+      mouseEvt.button = mbMid
+      mouseEvt.edgeDir = mbDirUp
     of wEvent_RightUp:
       mouseEvt.kind = mekUp
-      mouseEvt.edge = mbeRightUp
+      mouseEvt.button = mbRight
+      mouseEvt.edgeDir = mbDirUp
     of wEvent_LeftDoubleClick:
       mouseEvt.kind = mekDbl
+      mouseEvt.button = mbLeft
     of wEvent_MiddleDoubleClick:
       mouseEvt.kind = mekDbl
+      mouseEvt.button = mbMid
     of wEvent_RightDoubleClick: 
       mouseEvt.kind = mekDbl
+      mouseEvt.button = mbRight
 
     else: return
     self.editor.processMouseClickEvent(mouseEvt)
