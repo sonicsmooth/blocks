@@ -288,14 +288,6 @@ proc drawDBComps(self: Renderer, rmethod: RenderMethod) =
       if not self.textureCache.hasKey(key):
         echo "creating texture for key ", key
         case rmethod
-        of SDLSurface:
-          let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
-          self.sdlSoftwareRenderer = createSoftwareRenderer(surface)
-          self.renderDBCompSDL(comp, cprect.zero, hov, sel)
-          texture = self.sdlRenderer.createTextureFromSurface(surface)
-          self.textureCache[key] = texture
-          surface.destroy()
-          self.sdlSoftwareRenderer = nil
         of SDLTexture:
           let fmt = self.sdlWindow.getPixelFormat()
           texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)

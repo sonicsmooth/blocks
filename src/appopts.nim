@@ -3,7 +3,7 @@ import appinit
 
 type
   RenderMethod* = enum
-    SDLDirect, SDLSurface, SDLTexture, PixieTexture, PixieLock
+    SDLDirect, SDLTexture, PixieTexture, PixieLock
   AppOpts* = ref object
     appHelp*: bool = false
     enableBbox*: bool = false # calc and show
