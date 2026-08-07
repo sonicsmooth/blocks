@@ -16,14 +16,12 @@ type
                     mekWheelVert, mekWheelHoriz
   MouseButton* = enum mbNone, mbLeft, mbMid, mbRight
   MouseUpDown* = enum mbdirNone, mbDirUp, mbDirDown
-  #MouseEdge* = enum mbeNone, mbeLeftDown, mbeLeftUp, mbeMidDown, mbeMidUp, mbeRightDown, mbeRightUp
   MouseEvt* = tuple
     pos: PxPoint
     kind: MouseEventKind
     btnLeft, btnMid, btnRight: bool # what is true immediately after event
     button: MouseButton # which button caused event
     edgeDir: MouseUpDown # which way it went
-    #edge: MouseEdge # both button and event
     ctrl, alt, shift: bool
     wheelDelta: int
   KeyCode* = enum
@@ -60,7 +58,7 @@ type
     PanStateMoving
   MouseData = tuple
     clickHitId : Option[CompID]
-    clickPos:    Option[PxPoint]
+    clickPos:    Option[PxPoint] # only used for select box
     lastPos:     PxPoint
     state:       MouseState
     panState:    PanState

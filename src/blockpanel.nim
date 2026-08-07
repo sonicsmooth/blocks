@@ -109,7 +109,6 @@ wClass(wBlockPanel of wSDLPanel):
               btnMid: event.middleDown,
               btnRight: event.rightDown,
               button: mbNone,
-              #edge: mbeNone,
               edgeDir: mbdirNone,
               ctrl: event.ctrlDown,
               alt: event.altDown,

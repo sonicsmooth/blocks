@@ -25,8 +25,9 @@ type
     editor*: Editor # For the decorations
 
     # Needed for drawing
-    backgroundColor*: ColorRGBA
+    backgroundColor: ColorRGBA
     sdlRenderer*: RendererPtr
+    sdlSoftwareRenderer: RendererPtr
     sdlWindow*: WindowPtr
     textureCache: Table[CacheKey, TexturePtr] 
     fontCache: Table[int, FontPtr]
@@ -155,9 +156,31 @@ proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect) 
   textTexture.destroy()
   # TODO: cache texts at different sizes
 
-proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, hov, sel: bool, prect: PRect) =
+# proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, hov, sel: bool, prect: PRect) =
+#   # Draw rectangle, origin, and its text using SDL2 renderer
+#   let highlightFactor = highlight(hov, sel)
+#   rp.renderFilledRect(prect, comp.fillColor * highlightFactor, comp.penColor)
+#   if sel:
+#     rp.renderOutlineRect(prect.shrink(1), comp.penColor)
+#     rp.renderOutlineRect(prect.grow(1), comp.penColor)
+#     rp.renderOutlineRect(prect.grow(2), comp.penColor * 2)
+#     rp.renderOutlineRect(prect.grow(3), comp.penColor * 3)
+#     rp.renderOutlineRect(prect.grow(4), comp.penColor * 4)
+#   # rp.renderCompOrigin(comp, prect, vp)
+#   if gAppOpts.enableText:
+#     rp.renderCompText(comp, font, prect)
+
+proc renderDBCompSDL*(self: Renderer, comp: DBComp, prect: PRect, hov, sel: bool) =
   # Draw rectangle, origin, and its text using SDL2 renderer
-  let highlightFactor = highlight(hov, sel)
+  let 
+    vp = self.editor.viewport
+    rp = if not self.sdlSoftwareRenderer.isNil:
+           self.sdlSoftwareRenderer
+         else:
+          self.sdlRenderer
+    highlightFactor = highlight(hov, sel)
+    font = self.font(comp, vp.zoom)
+
   rp.renderFilledRect(prect, comp.fillColor * highlightFactor, comp.penColor)
   if sel:
     rp.renderOutlineRect(prect.shrink(1), comp.penColor)
@@ -165,7 +188,7 @@ proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, hov, sel: bo
     rp.renderOutlineRect(prect.grow(2), comp.penColor * 2)
     rp.renderOutlineRect(prect.grow(3), comp.penColor * 3)
     rp.renderOutlineRect(prect.grow(4), comp.penColor * 4)
-  # rp.renderCompOrigin(comp, prect, vp)
+  rp.renderCompOrigin(comp, prect, vp)
   if gAppOpts.enableText:
     rp.renderCompText(comp, font, prect)
 
@@ -203,7 +226,6 @@ proc longestLine(lines: openArray[string]): string =
       maxLen = line.len
       maxi = i
   lines[maxi]
-
 proc renderText*(self: Renderer, x,y: cint, txt: string) =
   # Draws text at given location
   var txtSzW, txtSzH: cint
@@ -220,21 +242,19 @@ proc renderText*(self: Renderer, x,y: cint, txt: string) =
   discard self.sdlRenderer.copy(txtTexture, nil, addr dstRect)
   txtTexture.destroy()
   txtSurface.destroy()
-
 proc renderText*(self: Renderer, txt: string) =
   # Draws text at bottom right corner
   let window = self.sdlWindow
   self.renderText(window.getSize.x - 10,
                   window.getSize.y - 10, txt)
-
-
 proc clearTextureCache*(self: Renderer) =
+  echo "clearing texture cache"
   # Clear all textures
   for texture in self.textureCache.values:
     texture.destroy()
   self.textureCache.clear()
-
 proc clearTextureCache*(self: Renderer, id: CompID) =
+  echo "clearing texture cache for id ", id
   # Clear specific id from texture cache
   for sel in [false, true]:
     for hov in [false, true]:
@@ -242,45 +262,45 @@ proc clearTextureCache*(self: Renderer, id: CompID) =
       if key in self.textureCache:
         self.textureCache[key].destroy()
       self.textureCache.del(key)
-
 proc screenRectW(self: Renderer): WRect =
   let
     vp = self.editor.viewport
     sz = self.editor.viewport.clientSize
   (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
 
-
 proc drawDBComps(self: Renderer, rmethod: RenderMethod) =
-  let vp = self.editor.viewport
+  #let vp = self.editor.viewport
   self.visibleComponents.setLen(0)
   for comp in self.doc.db.values:
     let bbw = comp.bbox
     if isRectSeparate(bbw, self.screenRectW): continue
-    let bbp = bbw.toPRect(vp)
+    let bbp = bbw.toPRect(self.editor.viewport)
     let cprect = self.clampRectSize(bbp)
     if cprect.w == 0 or cprect.h == 0: continue
-    let font = self.font(comp, vp.zoom)
+    # let font = self.font(comp, vp.zoom)
     let sel = self.editor.isSelected(comp.id)
     let hov = self.editor.isHovering(comp.id)
-    if rmethod == Direct:
-      self.sdlRenderer.renderDBCompSDL(comp, font, hov, sel, cprect)
+    if rmethod == SDLDirect:
+      self.renderDBCompSDL(comp, cprect, hov, sel)
     else:
       var texture: TexturePtr
       let key = (comp.id, sel, hov)
       if not self.textureCache.hasKey(key):
+        echo "creating texture for key ", key
         case rmethod
         of SDLSurface:
           let surface = createRGBSurface(0, bbp.w, bbp.h, 32, rmask, gmask, bmask, amask)
-          let rp = surface.createSoftwareRenderer()
-          rp.renderDBCompSDL(comp, font, hov, sel, cprect.zero)
+          self.sdlSoftwareRenderer = createSoftwareRenderer(surface)
+          self.renderDBCompSDL(comp, cprect.zero, hov, sel)
           texture = self.sdlRenderer.createTextureFromSurface(surface)
           self.textureCache[key] = texture
           surface.destroy()
+          self.sdlSoftwareRenderer = nil
         of SDLTexture:
           let fmt = self.sdlWindow.getPixelFormat()
           texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, bbp.w, bbp.h)
           self.sdlRenderer.setRenderTarget(texture)
-          self.sdlRenderer.renderDBCompSDL(comp, font, hov, sel, cprect.zero)
+          self.renderDBCompSDL(comp, cprect.zero, hov, sel)
           self.sdlRenderer.setRenderTarget(nil)
           self.textureCache[key] = texture
         of PixieTexture:
