@@ -65,7 +65,7 @@ proc clampRectSize(self: Renderer, prect: PRect): PRect =
   # If both dimensions exceed client size, then return a PRect with the
   # same aspect ratio and with one dim that matches client dim.
   # Used for extreme zoom where the component is bigger than the viewing area
-  let sz: PxSize = self.editor.viewport.clientSize #!! or self.editor.viewport.clientSize ?
+  let sz: PxSize = self.editor.viewport.clientSize
   if prect.w <= sz.w or prect.h <= sz.h:
     prect
   else:
@@ -155,20 +155,6 @@ proc renderCompText(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect) 
   textSurface.destroy()
   textTexture.destroy()
   # TODO: cache texts at different sizes
-
-# proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, font: FontPtr, hov, sel: bool, prect: PRect) =
-#   # Draw rectangle, origin, and its text using SDL2 renderer
-#   let highlightFactor = highlight(hov, sel)
-#   rp.renderFilledRect(prect, comp.fillColor * highlightFactor, comp.penColor)
-#   if sel:
-#     rp.renderOutlineRect(prect.shrink(1), comp.penColor)
-#     rp.renderOutlineRect(prect.grow(1), comp.penColor)
-#     rp.renderOutlineRect(prect.grow(2), comp.penColor * 2)
-#     rp.renderOutlineRect(prect.grow(3), comp.penColor * 3)
-#     rp.renderOutlineRect(prect.grow(4), comp.penColor * 4)
-#   # rp.renderCompOrigin(comp, prect, vp)
-#   if gAppOpts.enableText:
-#     rp.renderCompText(comp, font, prect)
 
 proc renderDBCompSDL*(self: Renderer, comp: DBComp, prect: PRect, hov, sel: bool) =
   # Draw rectangle, origin, and its text using SDL2 renderer
@@ -269,7 +255,6 @@ proc screenRectW(self: Renderer): WRect =
   (0.PxType, 0.PxType, sz.w, sz.h).toWrect(vp)
 
 proc drawDBComps(self: Renderer, rmethod: RenderMethod) =
-  #let vp = self.editor.viewport
   self.visibleComponents.setLen(0)
   for comp in self.doc.db.values:
     let bbw = comp.bbox
@@ -277,7 +262,6 @@ proc drawDBComps(self: Renderer, rmethod: RenderMethod) =
     let bbp = bbw.toPRect(self.editor.viewport)
     let cprect = self.clampRectSize(bbp)
     if cprect.w == 0 or cprect.h == 0: continue
-    # let font = self.font(comp, vp.zoom)
     let sel = self.editor.isSelected(comp.id)
     let hov = self.editor.isHovering(comp.id)
     if rmethod == SDLDirect:
