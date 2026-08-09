@@ -174,7 +174,6 @@ wClass(wMainFrame of wFrame):
     of idCmdExit: self.destroy()
     of idCmdHelp: discard
     of idCmdInfo:
-      #if self.mainPanel != nil:
       if self.isReady():
         echo self.mainPanel.blockPanel.editor.doc.grid[]
         echo self.mainPanel.blockPanel.editor.viewport[]

@@ -128,9 +128,12 @@ proc isReady*(self: Editor): bool =
   true
 
 proc randomizeRects*(self: Editor, qty: int, region: WRect) =
+  self.hovering.clearAll()
+  self.selected.clearAll()
+  self.dirty.setAll(self.doc.db)
   self.doc.db.randomizeRectsAll(qty, region, true)
-  self.hovering[].clear()
-  self.selected[].clear()
+  #self.invalidate()
+
 
 proc updateDestinationBox*(self: Editor) =
   let 
@@ -159,22 +162,19 @@ proc moveRectTo(self: Editor, compID: CompID, delta: WPoint) =
   moveRectTo(self.doc.db[compID], delta)
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation) =
   # Rotate about each component's origin
-  #self.dirty.setSome(compIDs)
   for id in compIDs:
     self.doc.db[id].rotate(amt)
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation, pos: WPoint) =
   # Rotate about pos
-  self.dirty.setSome(compIDs)
   for id in compIDs:
     self.doc.db[id].rotateAbout(amt, pos)
 proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   self.hovering.clearSome(compIDs)
   self.selected.clearSome(compIDs)
-  self.dirty.clearSome(compIDs)
+  self.dirty.setSome(compIDs)
   for id in compIDs:
     self.doc.db.del(id) # Todo: check whether this deletes rect
   self.fillArea = self.doc.db.fillArea()
-  self.invalidate()
 proc isSelected*(self: Editor, id: CompID): bool =
   id in self.selected[] or 
   id in self.tmpSelected[]
@@ -183,12 +183,12 @@ proc isHovering*(self: Editor, id: CompID): bool =
 proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
   # Mutate self.hovering
   # Return true if something changed
-  let oldhover = self.hovering[].toSeq()
+  let oldhover = self.hovering[]
   if gAppOpts.enableHover:
     self.hovering.clearAll()
     let hoveringComps = self.doc.db.ptInComps(pos, self.viewport)
     self.hovering.setSome(hoveringComps)
-    hoveringComps != oldhover
+    hoveringComps.toHashSet != oldhover
   else:
     false
 proc resetMouseData(self: Editor) = 

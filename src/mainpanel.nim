@@ -185,14 +185,16 @@ wClass(wMainPanel of wPanel):
     self.randomizeRectsAll(qty)
     if self.blockPanel != nil:
       self.blockPanel.editor.updateRatio()
-    self.refresh(false)
+    self.blockPanel.editor.invalidate()
+    #self.refresh(false)
 
   proc onSpinTextEnter(self: wMainPanel) =
     if self.spnr.value > 0:
       self.randomizeRectsAll(self.spnr.value)
       if self.blockPanel != nil:
         self.blockPanel.editor.updateRatio()
-      self.refresh(false)
+      self.blockPanel.editor.invalidate()
+      #self.refresh(false)
 
   proc onStrategyRadioButton(self: wMainPanel, event: wEvent) =
     if self.ctrb1.value: # No strategy
@@ -223,7 +225,8 @@ wClass(wMainPanel of wPanel):
     if self.blockPanel != nil:
       self.randomizeRectsAll(self.spnr.value)
       self.blockPanel.editor.updateRatio()
-      self.refresh(false)
+      self.blockPanel.editor.invalidate()
+      #self.refresh(false)
   
   proc onButtonrandomizePos(self: wMainPanel) =
     if self.blockPanel != nil:

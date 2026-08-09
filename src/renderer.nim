@@ -29,7 +29,7 @@ type
     sdlRenderer*: RendererPtr
     sdlSoftwareRenderer: RendererPtr
     sdlWindow*: WindowPtr
-    textureCache: Table[CacheKey, TexturePtr] 
+    textureCache*: Table[CacheKey, TexturePtr] 
     fontCache: Table[int, FontPtr]
     visibleComponents*: seq[DBComp]
 
@@ -263,7 +263,7 @@ proc clearTextureCache*(self: Renderer) =
     texture.destroy()
   self.textureCache.clear()
 
-proc clearTextureCache*(self: Renderer, id: CompID) =
+proc clearTextureCache(self: Renderer, id: CompID) =
   # Clear specific id from texture cache
   for hov in [false, true]:
     for sel in [false, true]:
@@ -283,7 +283,29 @@ proc screenRectP(self: Renderer): PRect =
     sz = self.editor.viewport.clientSize
   (0.PxType, 0.PxType, sz.w, sz.h)
 
-# proc buildTexture(): TexturePtr = 
+proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod, 
+                  hov, sel: bool, texSz: PxSize): TexturePtr = 
+  case rmethod
+  of SDLTexture:
+    let fmt = self.sdlWindow.getPixelFormat()
+    result = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
+    self.sdlRenderer.setRenderTarget(result)
+    self.renderDBCompSDL(comp, hov, sel, false)
+    self.sdlRenderer.setRenderTarget(nil)
+  of PixieTexture:
+    let surface = renderDBCompPixie(comp, hov, sel)
+    result = self.sdlRenderer.createTextureFromSurface(surface)
+    surface.destroy()
+  of PixieLock:
+    raise newException(ValueError, "PixieLock rendering not yet implemented")
+  else:
+    raise newException(ValueError, &"Unsupported cached render method: {rmethod}")
+
+proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Viewport) =
+  let
+    tgtRect = comp.localPRect(vp)
+    pivot = comp.rotationPoint(vp)
+  self.sdlRenderer.copyEx(texture, nil, addr tgtRect, -comp.rot.toFloat, addr pivot)
 
 proc drawDBComps(self: Renderer, rmethod: RenderMethod) =
   self.visibleComponents.setLen(0)
@@ -299,33 +321,11 @@ proc drawDBComps(self: Renderer, rmethod: RenderMethod) =
     if rmethod == SDLDirect:
       self.renderDBCompSDL(comp, hov, sel, true)
     else:
-      var texture: TexturePtr
       let key = (comp.id, hov, sel)
+      let texSz = comp.pxSize(vp)
       if key notin self.textureCache:
-        let texSz = comp.pxSize(vp)
-        case rmethod
-        of SDLTexture:
-          let fmt = self.sdlWindow.getPixelFormat()
-          texture = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
-          self.sdlRenderer.setRenderTarget(texture)
-          self.renderDBCompSDL(comp, hov, sel, false)
-          self.sdlRenderer.setRenderTarget(nil)
-          self.textureCache[key] = texture
-        of PixieTexture:
-          let surface = renderDBCompPixie(comp, hov, sel)
-          texture = self.sdlRenderer.createTextureFromSurface(surface)
-          self.textureCache[key] = texture
-          surface.destroy()
-        of PixieLock:
-          echo "another method"
-          return
-        else:
-          echo "error"
-      let tgtRect = comp.localPRect(vp)
-      let pt = comp.rotationPoint(vp)
-      self.sdlRenderer.copyEx(self.textureCache[key], nil, addr tgtRect, -comp.rot.toFloat, addr pt)
-      self.sdlRenderer.setDrawColor(Red)
-      self.sdlRenderer.drawRect(addr cprect)
+        self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel, texSz)
+      self.drawCachedTexture(comp, self.textureCache[key], vp)
     self.visibleComponents.add(comp)
 
 proc drawSelectBox(self: Renderer) =
