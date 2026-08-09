@@ -8,7 +8,7 @@ import pointmath
 import rects
 import reporting
 import rotation
-from utils import excl
+#from utils import excl
 import zoomctrl
 
 type
@@ -77,8 +77,10 @@ type
     hovering*:     HoverSet
     selected*:     SelectedSet
     tmpSelected:   SelectedSet # used during drag-select
+    dirty*:        DirtySet
     groupRotation: bool # prevents deselection after rotation
-    invalidate*:   proc() {.gcsafe.}
+    onZoomChanged*: proc() {.gcsafe.}
+    invalidate*:    proc() {.gcsafe.}
 
 const 
   cmdTable: CmdTable = 
@@ -116,6 +118,7 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   result.hovering = newHoverSet()
   result.selected = newSelectedSet()
   result.tmpSelected = newSelectedSet()
+  result.dirty = newDirtySet()
 
 proc isReady*(self: Editor): bool =
   if self.doc.isNil: return reportNil("editor.doc")
@@ -154,21 +157,22 @@ proc moveRectsBy(self: Editor, compIDs: seq[CompID], delta: WPoint) =
 proc moveRectTo(self: Editor, compID: CompID, delta: WPoint) =
   # Common proc to move one or more Rects; used by mouse and keyboard
   moveRectTo(self.doc.db[compID], delta)
-  self.invalidate()
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation) =
   # Rotate about each component's origin
+  #self.dirty.setSome(compIDs)
   for id in compIDs:
     self.doc.db[id].rotate(amt)
-    ##!!!!!self.clearTextureCache(id)
-  self.invalidate()
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation, pos: WPoint) =
   # Rotate about pos
+  self.dirty.setSome(compIDs)
   for id in compIDs:
     self.doc.db[id].rotateAbout(amt, pos)
 proc deleteRects(self: Editor, compIDs: seq[CompID]) =
+  self.hovering.clearSome(compIDs)
+  self.selected.clearSome(compIDs)
+  self.dirty.clearSome(compIDs)
   for id in compIDs:
     self.doc.db.del(id) # Todo: check whether this deletes rect
-    ##!!!!!self.clearTextureCache(id)
   self.fillArea = self.doc.db.fillArea()
   self.invalidate()
 proc isSelected*(self: Editor, id: CompID): bool =
@@ -373,5 +377,6 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
   #sendToListeners(idMsgGridZoom, 0, 0)
+  self.dirty.setAll(self.doc.db)
+  self.onZoomChanged()
   self.invalidate()
-  #!!!!!!self.clearTextureCache()

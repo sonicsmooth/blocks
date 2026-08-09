@@ -80,7 +80,7 @@ type
     penColor*: ColorRGBA
     fillColor*: ColorRGBA
     hoverColor*: ColorRGBA
-    mBbox*: Wrect
+
 
 const
   scale = 30
@@ -110,7 +110,7 @@ proc `==`*(a, b: DBComp): bool =
 proc pos*(comp: DBComp): WPoint = (comp.x, comp.y)
 # proc invalidateBbox*(comp: DBComp) = 
 #   comp.mBbox = (0,0,0,0)
-proc bbox*(rect: DBComp, rot: bool=true): WRect {.inline.} =
+proc wbbox*(comp: DBComp): WRect {.inline.} =
   # Conversion from DBComp to WRect.
   # This is basis of upper/lower/left/right/edge/bounding box functions
   # Looks at rotation, then returns barebones rectangle x,y,w,h with
@@ -118,65 +118,108 @@ proc bbox*(rect: DBComp, rot: bool=true): WRect {.inline.} =
   # TODO: Use rotation/translation matrix with shortcuts for 0/90/180/270
   # TODO: cache or memoize WRect either in DBComp or in some other table
   let
-    (w, h)   = (rect.w, rect.h)
-    (x, y)   = (rect.x, rect.y)
-    (ox, oy) = (rect.origin.x, rect.origin.y)
+    (w, h)   = (comp.w, comp.h)
+    (x, y)   = (comp.x, comp.y)
+    (ox, oy) = (comp.origin.x, comp.origin.y)
   var outx, outy, outw, outh: WType
-  if rect.rot == R0 or rot == false:
+  if comp.rot == R0:
     outx = x - ox
     outy = y - oy
     outw = w
     outh = h
-  elif rect.rot == R90:
+  elif comp.rot == R90:
     outx = x + oy - h
     outy = y - ox
     outw = h
     outh = w
-  elif rect.rot == R180:
+  elif comp.rot == R180:
     outx = x + ox - w
     outy = y + oy - h
     outw = w
     outh = h
-  elif rect.rot == R270:
+  elif comp.rot == R270:
     outx = x - oy
     outy = y + ox - w
     outw = h
     outh = w
-  rect.mBbox = (outx, outy, outw, outh)
-  rect.mBbox
-proc bboxes*[T:DBComp](rects: openArray[T]): seq[WRect] =
+  (outx, outy, outw, outh)
+
+
+# declaration
+proc toPRect*(rect: WRect, vp: Viewport): PRect
+proc pbbox*(comp: DBComp, vp: Viewport): PRect {.inline.} =
+  comp.wbbox.toPRect(vp)
+
+
+proc localWRect*(comp: DBComp): WRect =
+  # Unrotated position+size in world space, regardless of comp.rot --
+  # this is what the geometry would be if rotation were R0.
+  # Rectangle today: trivial (comp.origin offset). Arbitrary shape later:
+  # needs its own translation logic, not necessarily this formula.
+  (x: comp.x - comp.origin.x, y: comp.y - comp.origin.y, w: comp.w, h: comp.h)
+
+proc localPRect*(comp: DBComp, vp: Viewport): PRect =
+  comp.localWRect.toPRect(vp)
+
+
+proc pxSize*(comp: DBComp, vp: Viewport): PxSize {.inline.} =
+  let w = (comp.w * vp.zoom).PxType
+  let h = (comp.h * vp.zoom).PxType
+  (w: w, h: h)
+
+proc wbboxes*[T:DBComp](rects: openArray[T]): seq[WRect] =
   for rect in rects:
-    result.add(rect.bbox)
+    result.add(rect.wbbox)
 proc boundingBox*(rects: openArray[DBComp]): WRect  =
-  rects.bboxes.boundingBox
-proc originToLeftEdge*(rect: DBComp): WType =
-  # Horizontal distance from left edge to origin after rotation
-  case rect.rot:
-  of R0:   rect.origin.x
-  of R90:  rect.h - rect.origin.y
-  of R180: rect.w - rect.origin.x
-  of R270: rect.origin.y
-proc originToRightEdge*(rect: DBComp): WType =
-  # Horizontal distance from right edge to origin after rotation
-  case rect.rot:
-  of R0:   rect.w - rect.origin.x
-  of R90:  rect.origin.y
-  of R180: rect.origin.x
-  of R270: rect.h - rect.origin.y
-proc originToBottomEdge*(rect: DBComp): WType =
-  # Vertical distance from bottom edge to origin after rotation
-  case rect.rot:
-  of R0:   rect.origin.y
-  of R90:  rect.origin.x
-  of R180: rect.h - rect.origin.y
-  of R270: rect.w - rect.origin.x
-proc originToTopEdge*(rect: DBComp): WType =
-  # Vertical distance from top edge to origin after rotation
-  case rect.rot:
-  of R0 :  rect.h - rect.origin.y
-  of R90:  rect.w - rect.origin.x
-  of R180: rect.origin.y
-  of R270: rect.origin.x
+  rects.wbboxes.boundingBox
+proc originToLeftEdge*(rect: DBComp, rot: bool=true): WType =
+  # Horizontal distance from left edge to origin w/wout rotation
+  if not rot:
+    rect.origin.x
+  else:
+    case rect.rot:
+    of R0:   rect.origin.x
+    of R90:  rect.h - rect.origin.y
+    of R180: rect.w - rect.origin.x
+    of R270: rect.origin.y
+proc originToRightEdge*(rect: DBComp, rot: bool=true): WType =
+  # Horizontal distance from right edge to origin w/wout rotation
+  if not rot:
+    rect.w - rect.origin.x
+  else:
+    case rect.rot:
+    of R0:   rect.w - rect.origin.x
+    of R90:  rect.origin.y
+    of R180: rect.origin.x
+    of R270: rect.h - rect.origin.y
+proc originToBottomEdge*(rect: DBComp, rot: bool=true): WType =
+  # Vertical distance from bottom edge to origin w/wout rotation
+  if not rot:
+    rect.origin.y
+  else:
+    case rect.rot:
+    of R0:   rect.origin.y
+    of R90:  rect.origin.x
+    of R180: rect.h - rect.origin.y
+    of R270: rect.w - rect.origin.x
+proc originToTopEdge*(rect: DBComp, rot: bool=true): WType =
+  # Vertical distance from top edge to origin w/wout rotation
+  if not rot:
+    rect.h - rect.origin.y
+  else:
+    case rect.rot:
+    of R0 :  rect.h - rect.origin.y
+    of R90:  rect.w - rect.origin.x
+    of R180: rect.origin.y
+    of R270: rect.origin.x
+
+proc rotationPoint*(comp: DBComp, vp: Viewport): PxPoint =
+  # Provide rotation point for copyEx
+  # copyEx requires distance from upper left of blit target
+  # Steal a couple lines from above
+  (comp.origin.x * vp.zoom,
+  (comp.h - comp.origin.y) * vp.zoom)
+
 proc ids*(rects: openArray[DBComp]): seq[CompID] =
   # Get all CompIDs
   for rect in rects:
@@ -344,11 +387,11 @@ proc toPRect*(rect: WRect, vp: Viewport): PRect  =
     width  = (rect.w.float * vp.zoom).round.cint
     height = (rect.h.float * vp.zoom).round.cint
   (origin.x, origin.y + 1, width, height)
-proc zero*(rect: SomeRect): auto  =
-  when SomeRect is WRect:
-    (x: 0.WType, y: 0.WType, w: rect.w, h: rect.h)
-  elif SomeRect is PRect:
-    (x: 0.PxType, y: 0.PxType, w: rect.w, h: rect.h)
+# proc zero*(rect: SomeRect): auto  =
+#   when SomeRect is WRect:
+#     (x: 0.WType, y: 0.WType, w: rect.w, h: rect.h)
+#   elif SomeRect is PRect:
+#     (x: 0.PxType, y: 0.PxType, w: rect.w, h: rect.h)
 proc area*(rect: SomeRect): auto  =
   rect.w * rect.h
 proc aspectRatio*(rect: SomeRect): float =
@@ -468,102 +511,19 @@ proc isRectOverRect*[T: SomeRect](rect1, rect2: T): bool =
 
 proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
   # Returns true if rect1 and rect2 do not have any overlap
-  # This works for any rect where all points are >= its origin
-  rect1.bottomEdge > rect2.topEdge or
-  rect1.rightEdge  < rect2.leftEdge or
-  rect1.topEdge    < rect2.bottomEdge or
-  rect1.leftEdge   > rect2.rightEdge
-
+  when T is WRect:
+    rect1.bottomEdge > rect2.topEdge or
+    rect1.topEdge    < rect2.bottomEdge or
+    rect1.rightEdge  < rect2.leftEdge or
+    rect1.leftEdge   > rect2.rightEdge
+  elif T is PRect:
+    rect1.bottomEdge < rect2.topEdge or
+    rect1.topEdge    > rect2.bottomEdge or
+    rect1.rightEdge  < rect2.leftEdge or
+    rect1.leftEdge   > rect2.rightEdge
 
 converter toSize*(size: wSize): PxSize = (size.width, size.height)
 converter toPxPoint*(pt: wPoint): PxPoint = (pt.x, pt.y)
 
-
-proc testRots() =
-  var rot: Rotation
-  assert R0.toFloat == 0.0
-  assert R90.toFloat == 90.0
-  assert R180.toFloat == 180.0
-  assert R270.toFloat == 270.0
-  rot.inc; assert rot == R90
-  rot.inc; assert rot == R180
-  rot.inc; assert rot == R270
-  rot.inc; assert rot == R0
-  rot.dec; assert rot == R270
-  rot.dec; assert rot == R180
-  rot.dec; assert rot == R90
-  rot.dec; assert rot == R0
-  assert R0   + R0   == R0
-  assert R0   + R90  == R90
-  assert R0   + R180 == R180
-  assert R0   + R270 == R270
-  assert R90  + R0   == R90
-  assert R90  + R90  == R180
-  assert R90  + R180 == R270
-  assert R90  + R270 == R0
-  assert R180 + R0   == R180
-  assert R180 + R90  == R270
-  assert R180 + R180 == R0
-  assert R180 + R270 == R90
-  assert R270 + R0   == R270
-  assert R270 + R90  == R0
-  assert R270 + R180 == R90
-  assert R270 + R270 == R180
-  assert R90  + R0   == R90
-  assert R180 + R0   == R180
-  assert R270 + R0   == R270
-  assert R0   + R90  == R90
-  assert R90  + R90  == R180
-  assert R180 + R90  == R270
-  assert R270 + R90  == R0
-  assert R0   + R180 == R180
-  assert R90  + R180 == R270
-  assert R180 + R180 == R0
-  assert R270 + R180 == R90
-  assert R0   + R270 == R270
-  assert R90  + R270 == R0
-  assert R180 + R270 == R90
-  assert R270 + R270 == R180
-  assert R0   - R0   == R0
-  assert R0   - R90  == R270
-  assert R0   - R180 == R180
-  assert R0   - R270 == R90
-  assert R90  - R0   == R90
-  assert R90  - R90  == R0
-  assert R90  - R180 == R270
-  assert R90  - R270 == R180
-  assert R180 - R0   == R180
-  assert R180 - R90  == R90
-  assert R180 - R180 == R0
-  assert R180 - R270 == R270
-  assert R270 - R0   == R270
-  assert R270 - R90  == R180
-  assert R270 - R180 == R90
-  assert R270 - R270 == R0
-  assert R90  - R0   == R90
-  assert R180 - R0   == R180
-  assert R270 - R0   == R270
-  assert R0   - R90  == R270
-  assert R90  - R90  == R0
-  assert R180 - R90  == R90
-  assert R270 - R90  == R180
-  assert R0   - R180 == R180
-  assert R90  - R180 == R270
-  assert R180 - R180 == R0
-  assert R270 - R180 == R90
-  assert R0   - R270 == R90
-  assert R90  - R270 == R180
-  assert R180 - R270 == R270
-  assert R270 - R270 == R0
-
-
-
-proc testRectsRects() =
-  discard
-
-
-when isMainModule:
-  testRots()
-  testRectsRects()
 
 

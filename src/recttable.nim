@@ -19,6 +19,7 @@ type
   CompSet = ref HashSet[CompID] #Table[CompID, bool]
   HoverSet* = CompSet # Probably meant to be shared
   SelectedSet* = CompSet # Probably meant to be shared
+  DirtySet* = CompSet
   SomeComps* = RectTable | seq[(CompID, DBComp)]
 
 proc newRectTable*(): RectTable =
@@ -28,6 +29,9 @@ proc newHoverSet*(): HoverSet =
   new result # init is automatic
 
 proc newSelectedSet*(): SelectedSet =
+  new result # init is automatic
+
+proc newDirtySet*(): DirtySet =
   new result # init is automatic
 
 proc `$`*(table: RectTable): string =
@@ -56,7 +60,7 @@ proc ptInComps*(table: SomeComps, pt: WPoint): seq[CompID] =
   # surrounds or contacts pt
   # Optimization? -- return after first one
   for id, comp in table:
-    if isPointInRect(pt, comp.bbox):
+    if isPointInRect(pt, comp.wbbox):
       result.add(id)
 
 proc ptInComps*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] = 
@@ -68,7 +72,7 @@ proc ptInComps*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] =
 
   # Add the model space bounding box if point is in it
   for id, comp in table:
-    let bb = comp.bbox
+    let bb = comp.wbbox
     if isPointInRect(wpt, bb):
       preBbs.add((id, bb))
 
@@ -86,14 +90,14 @@ proc rectInComps*(table: SomeComps, rect: WRect): seq[CompID] =
   # Or rect is a bounding box and we're looking for where 
   # it touches other blocks
   for id, comp in table:
-    if isRectInRect(rect, comp.bbox) or 
-       isRectOverRect(rect, comp.bbox):
+    if isRectInRect(rect, comp.wbbox) or 
+       isRectOverRect(rect, comp.wbbox):
       result.add(id)
 
 proc rectInComps*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
   for id, comp in table:
-    let tpr = comp.bbox.toPRect(vp)
+    let tpr = comp.wbbox.toPRect(vp)
     if isRectInRect(rect, tpr) or
        isRectOverRect(rect, tpr):
       result.add(id)
@@ -102,7 +106,7 @@ proc rectInComps*(table: RectTable, compId: CompID): seq[CompID] =
   # Uses table[compId] and delegates to rectInComps above
   # I think this checks whether compId intersects with anything
   # else in the table
-  table.rectInComps(table[compId].bbox)
+  table.rectInComps(table[compId].wbbox)
 
 
 
@@ -129,10 +133,10 @@ proc boundingBox*(table: RectTable): WRect =
 
 proc fillArea*(rtable: RectTable): WType = 
   # Just the rectangle area
-  rtable.values.toSeq.bboxes.fillArea()
+  rtable.values.toSeq.wbboxes.fillArea()
 
 proc fillRatio*(rtable: RectTable): float =
-  rtable.values.toSeq.bboxes.fillRatio()
+  rtable.values.toSeq.wbboxes.fillRatio()
 
 proc trueItems*(comps: CompSet): seq[CompID] =
   comps[].toSeq

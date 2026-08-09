@@ -7,7 +7,7 @@
       "enableDstRect": false,
       "enableText": true,
       "enableHover": true,
-      "compQty": 3,
+      "compQty": 1,
       "renderMethod": "SDLTexture",
       "singleColor": "Pink"
     },

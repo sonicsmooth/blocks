@@ -68,13 +68,13 @@ proc isYAscending*(direction: CompactDir): bool =
 proc rectCmpX(r1, r2: DBComp): int = 
   # Sort first by x position, then by id
   # Can't inline because it's passed as arg to sort
-  result = cmp(r1.bbox.x, r2.bbox.x)
+  result = cmp(r1.wbbox.x, r2.wbbox.x)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
 proc rectCmpY(r1, r2: DBComp): int = 
   # Sort first by y position, then by id
-  result = cmp(r1.bbox.y, r2.bbox.y)
+  result = cmp(r1.wbbox.y, r2.wbbox.y)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
@@ -108,11 +108,11 @@ proc makeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
   if axis == X:
     proc(node: Node): WType =
       if node != RootNode:
-        result = rectTable[node].bbox.w
+        result = rectTable[node].wbbox.w
   else: # axis == Y:
     proc(node: Node): WType =
       if node != RootNode:
-        result = rectTable[node].bbox.h
+        result = rectTable[node].wbbox.h
 
 proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
                   axis: Axis, sortOrder: SortOrder): Graph = 
@@ -134,15 +134,15 @@ proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
 
 proc posChooser(ax: MajMin): proc(rect: DBComp): WType =
   if ax == Major:
-    proc(rect: DBComp): WType =  rect.bbox.x
+    proc(rect: DBComp): WType =  rect.wbbox.x
   else:
-    proc(rect: DBComp): WType =  rect.bbox.y
+    proc(rect: DBComp): WType =  rect.wbbox.y
 
 proc sizeChooser(ax: MajMin): proc(rect: DBComp): WType =
   if ax == Major:
-    proc(rect: DBComp): WType = rect.bbox.w
+    proc(rect: DBComp): WType = rect.wbbox.w
   else:
-    proc(rect: DBComp): WType = rect.bbox.h
+    proc(rect: DBComp): WType = rect.wbbox.h
 
 proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
   let

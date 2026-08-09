@@ -1,3 +1,4 @@
+import std/[sets, sequtils]
 import wNim/[wApp, wWindow]
 import wNim/[wSlider, wStatusBar]
 import document, editor, renderer, mainframe
@@ -63,8 +64,12 @@ proc init*(self: Application, w, h: int) =
   self.mainFrame.mainPanel.randomizeRectsAll()
 
   # Editor needs to be able to invalidate panel without knowing about panel
-  let fn = proc() {.closure.} = self.mainFrame.mainPanel.blockPanel.refresh(false)
-  self.editor.invalidate = fn
+  self.editor.invalidate = proc() {.closure.} = 
+    self.renderer.syncTextureCache()
+    self.mainFrame.mainPanel.blockPanel.refresh(false)
+
+  self.editor.onZoomChanged = proc() {.closure.} =
+    self.renderer.clearTextureCache()
 
 proc go*(app: Application) =
   app.mainFrame.center()

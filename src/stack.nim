@@ -20,8 +20,8 @@ For rect in rects:
 
 
 # Comparison procs
-proc vertCmp (r1, r2: DBComp): int = cmp(r1.bbox.h, r2.bbox.h)
-proc horizCmp(r1, r2: DBComp): int = cmp(r1.bbox.w, r2.bbox.w)
+proc vertCmp (r1, r2: DBComp): int = cmp(r1.wbbox.h, r2.wbbox.h)
+proc horizCmp(r1, r2: DBComp): int = cmp(r1.wbbox.w, r2.wbbox.w)
 
 proc stackCompactSub(table: var RectTable, rects: seq[CompID], dstRect: var WRect, direction: CompactDir) =
   # Compact given IDs into given rect
@@ -100,7 +100,7 @@ proc stackCompact*(table: var RectTable, dstRect: WRect, direction: CompactDir) 
       # Todo: how to get this without inf?
       let maxval = 1e10
       let minval = -1e10
-    let rgd = rect.bbox.greatestDim
+    let rgd = rect.wbbox.greatestDim
     rect.x = if isXAscending(direction): maxval - rgd  # stack from left to right
              else:                       minval + rgd  # stack from right to left
     rect.y = if isYAscending(direction): maxval - rgd  # stack from bottom to top
