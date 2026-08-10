@@ -2,7 +2,7 @@ import std/[sets, sequtils]
 import wNim/[wApp, wWindow]
 import wNim/[wSlider, wStatusBar]
 import document, editor, renderer, mainframe
-import reporting, appinit
+import reporting, jsoninit
 import sdlframes
 
 type
@@ -29,8 +29,8 @@ proc isReady*(self: Application): bool =
   true
 
 proc init*(self: Application, w, h: int) =
-  # Load up json file
-  appInit()
+  # # Load up json file
+  # jsonInit()
   # Create stuff
   self.wapp = wApp.App()
   self.mainFrame = MainFrame((w, h))
@@ -53,6 +53,7 @@ proc init*(self: Application, w, h: int) =
   # that is created when the panel is created
   self.renderer.sdlRenderer = self.mainFrame.mainPanel.blockPanel.sdlRenderer
   self.renderer.sdlWindow   = self.mainFrame.mainPanel.blockPanel.sdlWindow
+  self.renderer.init()
 
   # Set up initial values of UI elements
   if self.mainFrame.isReady():

@@ -3,7 +3,7 @@ import std/[algorithm,
             ]
 import colors
 import viewport, pointmath
-import appinit
+import jsoninit
 import reporting
 import wNim/wTypes
 
@@ -235,7 +235,7 @@ proc newGrid*(zCtrl: ZoomCtrl): Grid =
 
 
 when isMainModule:
-  appInit()
+  jsonInit()
   let zc = newZoomCtrl(base=4, clickDiv=2400, maxPwr=3,
                        density=1.0, dynamic=true, baseSync=true)
   let gr = newGrid(zc)

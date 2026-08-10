@@ -1,5 +1,5 @@
 from std/math import floor
-import appinit
+import jsoninit
 
 type
   ZoomCtrl* = ref object

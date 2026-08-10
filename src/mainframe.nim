@@ -4,7 +4,7 @@ from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
 import winim/inc/windef
 
-import appinit, routing
+import jsoninit, routing
 import editor, document, viewport, utils
 import mainpanel, aboutframe, gridctrlframe, grid
 import reporting

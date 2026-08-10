@@ -1,6 +1,6 @@
 import std/[random]
 import wNim/[wApp,wUtils]
-import appopts, appinit, document
+import appopts, jsoninit, document
 import application
 
 
@@ -9,7 +9,7 @@ when isMainModule:
     echo "profiling"
     import std/nimprof
   try:
-    appInit() # move to application
+    jsonInit() # move to application
     gAppOpts = parseAppOptions()
     if gAppOpts.appHelp:
       showAppHelp(gAppOpts)

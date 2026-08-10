@@ -189,7 +189,7 @@ wClass(wBlockPanel of wSDLPanel):
       if gAppOpts.enableBbox:
         #! Move this to somewhere else
         self.editor.updateBoundingBox()
-    self.renderer.drawEverything()
+    self.renderer.renderEverything()
     # if self.renderer != nil:
     #   let start = getMonoTime()
     #   let elapsed_ms = (getMonoTime() - start).inMilliseconds

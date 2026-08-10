@@ -1,5 +1,5 @@
 import std/[os, parseopt, strutils, strformat]
-import appinit
+import jsoninit
 
 type
   RenderMethod* = enum
