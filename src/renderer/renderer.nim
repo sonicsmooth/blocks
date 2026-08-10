@@ -8,10 +8,11 @@ import std/[enumerate,
 import wNim/wTypes
 import sdl2 except Color
 import sdl2/ttf
+import pixie
 import document, grid, editor, rotation
 import rects, appopts
-import pixieshapes
-import colors, colors_sdl
+# import pixieshapes
+import colors, colors_sdl, colors_pixie
 import reporting
 from arange import arange
 
@@ -25,7 +26,7 @@ type
     editor*: Editor # For the decorations
 
     # Needed for drawing
-    backgroundColor: ColorRGBA
+    backgroundColor: colors.ColorRGBA
     sdlRenderer*: RendererPtr
     sdlSoftwareRenderer: RendererPtr
     sdlWindow*: WindowPtr
@@ -112,14 +113,14 @@ proc highlight(selected, hovering: bool): float =
   4. Pixie.Image, then update texture cache, then blit to sdlRenderer 
   5. Lock texture then draw with pixie, then unlock and blit to sdlRenderer ]# 
 
-proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: colors.ColorRGBA) =
   # explicit convertion to SDL2.Rect?
   rp.setDrawColor(fillColor)
   rp.fillRect(addr rect)
   rp.setDrawColor(penColor)
   rp.drawRect(addr rect)
 
-proc drawOutlineRectSDL(rp: RendererPtr, rect: PRect, penColor: ColorRGBA) =
+proc drawOutlineRectSDL(rp: RendererPtr, rect: PRect, penColor: colors.ColorRGBA) =
   # explicit convertion to SDL2.Rect?
   rp.setDrawColor(penColor)
   rp.drawRect(addr rect)
@@ -203,24 +204,49 @@ proc renderDBCompSDL(self: Renderer, comp: DBComp, prect: PRect, hov, sel: bool,
   if gAppOpts.enableText:
     rp.renderCompTextSDL(comp, font, prect, rot)
 
+
 proc renderDBCompPixie*(self: Renderer, comp: DBComp, texSz: PxSize, hov, sel: bool): SurfacePtr =
   # Draw rectangle to new surface using pixie and return surface
   # comp is database object
   # prect is target rectangle with same aspect ratio as comp
   # let prect = self.choosePRect(comp, false)
   #  vp = self.editor.viewport
-  let highlightFactor = highlight(hov, sel)
-  var col1 = comp.fillColor * 1.0 * highlightFactor
-  var col2 = comp.fillColor * 0.8 * highlightFactor
-  col1.a = 200
-  col2.a = 200
-  let shape = gradientBox(texSz.w, texSz.h, comp.penColor, col1, col2)
+  var fillColor = comp.fillColor.toPixieColorFloat
+  fillColor.a = 200.0 / 255.0
+  var fc1 = fillColor.lighten(0.1)
+  var fc2 = fillColor.darken(0.1)
+  var pc = fillColor.darken(0.25)
+  pc.a = 1.0
+  let image = newImage(texSz.w, texSz.h)
+  var paint = newPaint(LinearGradientPaint)
+  paint.gradientStops = @[colorStop(fc1, 0), colorStop(fc2, 1)]
+  paint.gradientHandlePositions = @[vec2(0, 0), vec2(0, texSz.h.float)]
+  image.fillGradient(paint)
+  let ctx = image.newContext()
+  ctx.strokeStyle.color = pc
+  ctx.lineWidth = 40
+  for i in 0..20:
+    let y = i*3
+    ctx.beginPath()
+    ctx.moveTo(vec2(10, y + 5.0))
+    ctx.lineTo(vec2(60, y + 5.0))
+    ctx.lineWidth = 1.0
+    ctx.stroke()
+
+  ctx.lineWidth = 4
+  ctx.strokeRect(pixie.rect(0.0, 0.0, texSz.w.float, texSz.h.float))
+  if hov and not sel:
+    ctx.strokeRect(pixie.rect(1.0, 1.0, texSz.w.float-2.0, texSz.h.float-2.0))
+    ctx.strokeRect(pixie.rect(2.0, 2.0, texSz.w.float-4.0, texSz.h.float-4.0))
+  elif sel:
+    ctx.strokeRect(pixie.rect(1.0, 1.0, texSz.w.float-2.0, texSz.h.float-2.0))
+    ctx.strokeRect(pixie.rect(2.0, 2.0, texSz.w.float-4.0, texSz.h.float-4.0))
+    ctx.strokeRect(pixie.rect(3.0, 3.0, texSz.w.float-6.0, texSz.h.float-6.0))
+    ctx.strokeRect(pixie.rect(4.0, 4.0, texSz.w.float-8.0, texSz.h.float-8.0))
+
   # Swizzle the mask order because of endianness
-  result = createRGBSurfaceFrom(
-    shape.data[0].addr, 
-    texSz.w, texSz.h, 
-    32, texSz.w * 4, 
-    amask, bmask, gmask, rmask)
+  result = createRGBSurfaceFrom(image.data[0].addr, texSz.w, texSz.h, 
+                                32, texSz.w * 4, amask, bmask, gmask, rmask)
   if result.isNil:
     echo "Create surface failed"
     echo getError()
@@ -335,8 +361,8 @@ proc drawSelectBox(self: Renderer) =
   if self.editor.selectBox.w == 0 or
      self.editor.selectBox.h == 0:
       return
-  let fillColor = ColorRGBA(r: 0, g:102, b: 204, a:70)
-  let penColor = ColorRGBA(r: 0, g:120, b: 215, a:255)
+  let fillColor = colors.ColorRGBA(r: 0, g:102, b: 204, a:70)
+  let penColor = colors.ColorRGBA(r: 0, g:120, b: 215, a:255)
   self.sdlRenderer.drawFilledOutlineRectSDL(self.editor.selectBox, fillColor, penColor)
 
 proc lineAlpha(step: int): int =

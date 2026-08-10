@@ -8,7 +8,6 @@ import pointmath
 import rects
 import reporting
 import rotation
-#from utils import excl
 import zoomctrl
 
 type
