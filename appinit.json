@@ -7,8 +7,8 @@
       "enableDstRect": false,
       "enableText": true,
       "enableHover": true,
-      "compQty": 100,
-      "renderMethod": "SDLDirect",
+      "compQty": 2,
+      "renderMethod": "SDLTexture",
       "singleColor": "Pink"
     },
     "Viewport": {
