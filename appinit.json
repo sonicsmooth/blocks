@@ -3,12 +3,14 @@
     "AppOpts": {
       "_comment": "not implemented",
       "appHelp": false,
+      "compQty": 2,
       "enableBbox": false,
       "enableDstRect": false,
       "enableText": true,
       "enableHover": true,
-      "compQty": 2,
-      "renderMethod": "SDLTexture",
+      "renderMethod": "PixieTexture",
+      "reTextureOnZoom": true,
+      "showScale": true,
       "singleColor": "Pink"
     },
     "Viewport": {

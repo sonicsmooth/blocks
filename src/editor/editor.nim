@@ -391,10 +391,12 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
   #sendToListeners(idMsgGridZoom, 0, 0)
-  #self.dirty.setAll(self.doc.db)
-  #self.onZoomChanged()
+  if gAppOpts.reTextureOnZoom:
+    self.onZoomChanged()
   # TODO set up delayed zoom rendering
   # TODO ie zoom by bitmap scaling initially,
   # TODO then slowly build up cache so user
   # TODO doesn't notice delay too much
-  self.invalidate()
+  # These two go together
+  #self.dirty.setAll(self.doc.db)
+  #self.invalidate()

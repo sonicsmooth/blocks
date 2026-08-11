@@ -17,7 +17,6 @@ proc newApplication*(): Application =
   new Application
 
 proc isReady*(self: Application): bool =
-  #if self.wapp.isNil: return reportNil(app.wapp)
   if self.doc.isNil: return reportNil("app.doc")
   if self.editor.isNil: return reportNil("app.editor")
   if self.renderer.isNil: return reportNil("app.renderer")
@@ -64,13 +63,15 @@ proc init*(self: Application, w, h: int) =
   # Initialize data
   self.mainFrame.mainPanel.randomizeRectsAll()
 
+  self.editor.onZoomChanged = proc() {.closure.} =
+    self.renderer.clearTextureCache()
+
   # Editor needs to be able to invalidate panel without knowing about panel
+  # refresh has been moved to timer
   self.editor.invalidate = proc() {.closure.} = 
     self.renderer.syncTextureCache()
     #self.mainFrame.mainPanel.blockPanel.refresh(false)
 
-  # self.editor.onZoomChanged = proc() {.closure.} =
-  #   self.renderer.clearTextureCache()
 
 proc go*(app: Application) =
   app.mainFrame.center()

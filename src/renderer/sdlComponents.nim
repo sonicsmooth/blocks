@@ -12,8 +12,6 @@ import rotation
 import rects
 
 
-
-
 proc highlight(selected, hovering: bool): float =
   if   (selected, hovering) == (false, false): 1.0
   elif (selected, hovering) == (false, true ): 1.2
@@ -84,8 +82,6 @@ proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport,
   # Generally SDLDirect will use rot=true and false otherwise
   
   let 
-    # vp = self.editor.viewport
-    # rp = self.chooseRendererSDL()
     highlightFactor = highlight(hov, sel)
     font = font(comp, vp.zoom)
   rp.drawFilledOutlineRectSDL(prect, comp.fillColor * highlightFactor, comp.penColor)

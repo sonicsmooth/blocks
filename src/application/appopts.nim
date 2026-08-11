@@ -6,12 +6,14 @@ type
     SDLDirect, SDLTexture, PixieTexture, PixieLock
   AppOpts* = ref object
     appHelp*: bool = false
+    compQty*: int = 1
     enableBbox*: bool = false # calc and show
     enableDstRect*: bool = false # show (calc always anyway)
     enableText*: bool = true
     enableHover*: bool = true
-    compQty*: int = 1
     renderMethod*: RenderMethod
+    reTextureOnZoom*: bool = false
+    showScale*: bool = true
     singleColor*: string
 
 ## GLOBAL VAR FOR USE EVERYWHERE

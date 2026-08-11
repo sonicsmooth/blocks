@@ -15,8 +15,8 @@ proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool): SurfacePtr
   fillColor.a = 200.0 / 255.0
   var fc1 = fillColor.lighten(0.1)
   var fc2 = fillColor.darken(0.1)
-  var pc = fillColor.darken(0.25)
-  pc.a = 1.0
+  var pc = fillColor.darken(0.2)
+  #pc.a = 1.0
   let image = newImage(texSz.w, texSz.h)
   var paint = newPaint(LinearGradientPaint)
   paint.gradientStops = @[colorStop(fc1, 0), colorStop(fc2, 1)]

@@ -54,28 +54,32 @@ proc isReady*(self: Renderer): bool =
   if not self.editor.isReady(): return reportNotReady("renderer.editor")
   true
 
-proc clampRectSize(self: Renderer, prect: PRect): PRect =
+proc clampSize(self: Renderer, pxSz: PxSize): PxSize =
   # Return the given prect if one or more of its dimensions fits in client area
   # If both dimensions exceed client size, then return a PRect with the
   # same aspect ratio and with one dim that matches client dim.
   # Used for extreme zoom where the component is bigger than the viewing area
-  let sz: PxSize = self.editor.viewport.clientSize
-  if prect.w <= sz.w or prect.h <= sz.h:
-    prect
+  let clientSize: PxSize = self.editor.viewport.clientSize
+  if pxSz.w <= clientSize.w or pxSz.h <= clientSize.h:
+    pxSz
   else:
     let 
-      rectRatio: float = prect.w.float / prect.h.float
-      clientRatio: float = sz.w / sz.h
+      rectRatio: float = pxSz.w.float / pxSz.h.float
+      clientRatio: float = clientSize.w / clientSize.h
     var neww, newh: int
     if rectRatio <= clientRatio:
       # Set rect width to client width
-      neww = self.editor.viewport.clientSize.w
+      neww = clientSize.w
       newh = (neww.float / rectRatio).round.int
     else:
       # Set rect height to client height
-      newh = sz.h
+      newh = clientSize.h
       neww = (newh.float * rectRatio).round.int
-    (x: prect.x, y: prect.y, w: neww, h: newh)
+    (neww, newh)
+
+proc clampRect(self: Renderer, prect: PRect): PRect = 
+  let newsz: PxSize = self.clampSize((prect.w, prect.h))
+  (prect.x, prect.y, newsz.w, newsz.h)
 
 
 
@@ -86,21 +90,6 @@ proc clampRectSize(self: Renderer, prect: PRect): PRect =
   4. Pixie.Image, then update texture cache, then blit to sdlRenderer 
   5. Lock texture then draw with pixie, then unlock and blit to sdlRenderer ]# 
 
-
-# proc chooseRendererSDL(self: Renderer): RendererPtr =
-#   if self.sdlSoftwareRenderer.isNil:
-#     self.sdlRenderer
-#   else:
-#     self.sdlSoftwareRenderer
-
-proc choosePRect(self: Renderer, comp: DBComp, rot: bool): PRect =
-  # Rot true means return the real screen bounding box
-  # Rot false means return zero-origin rectangle from unrotated comp
-  if rot:
-    comp.pbbox(self.editor.viewport)
-  else:
-    let psize = comp.pxSize(self.editor.viewport)
-    (x: 0, y:0, w: psize.w, h: psize.h)
 
 proc clearTextureCache*(self: Renderer) =
   # Clear all textures
@@ -118,6 +107,7 @@ proc clearTextureCache(self: Renderer, id: CompID) =
       self.textureCache.del(key)
 
 proc syncTextureCache*(self: Renderer) =
+  # Clear texture for dirty items
   for id in self.editor.dirty.trueItems:
     self.clearTextureCache(id)
   self.editor.dirty.clearAll()
@@ -129,16 +119,17 @@ proc screenRectP(self: Renderer): PRect =
 proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod, 
                   hov, sel: bool): TexturePtr = 
   let texSz = comp.pxSize(self.editor.viewport)
+  let cTexSz = self.clampSize(texSz)
+  let cprect: PRect = (0, 0, cTexSz.w, cTexSz.h)
   case rmethod
   of SDLTexture:
     let fmt = self.sdlWindow.getPixelFormat()
     result = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
     self.sdlRenderer.setRenderTarget(result)
-    let prect = self.choosePRect(comp, false)
-    self.sdlRenderer.renderDBCompSDL(comp, prect, self.editor.viewport, hov, sel, false)
+    self.sdlRenderer.renderDBCompSDL(comp, cprect, self.editor.viewport, hov, sel, false)
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
-    let surface = renderDBCompPixie(comp, texSz, hov, sel)
+    let surface = renderDBCompPixie(comp, cTexSz, hov, sel)
     result = self.sdlRenderer.createTextureFromSurface(surface)
     if result.isNil:
       echo getError()
@@ -160,11 +151,10 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   for comp in self.doc.db.values:
     let pbb = comp.pbbox(vp) # rotated
     if isRectSeparate(pbb, self.screenRectP): continue
-    let cprect = self.clampRectSize(pbb)
-    if cprect.w == 0 or cprect.h == 0: continue
     let hov = self.editor.isHovering(comp.id)
     let sel = self.editor.isSelected(comp.id)
     if rmethod == SDLDirect:
+      let cprect = self.clampRect(pbb)
       self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, true)
     else:
       let key = (comp.id, hov, sel)
@@ -192,7 +182,8 @@ proc renderEverything*(self: Renderer) =
   self.sdlRenderer.clear()
   self.sdlRenderer.drawGrid(vp, grid)
   self.renderDBComps(gAppOpts.renderMethod)
-  self.sdlRenderer.drawScale(vp, grid, font(defFontSize) )
+  if gAppOpts.showScale:
+    self.sdlRenderer.drawScale(vp, grid, font(defFontSize) )
   self.drawSelectBox()
 
   # # Draw various boxes and text, then done
