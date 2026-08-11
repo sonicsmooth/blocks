@@ -235,7 +235,7 @@ proc newGrid*(zCtrl: ZoomCtrl): Grid =
 
 
 when isMainModule:
-  jsonInit()
+  jsonInitGlobals()
   let zc = newZoomCtrl(base=4, clickDiv=2400, maxPwr=3,
                        density=1.0, dynamic=true, baseSync=true)
   let gr = newGrid(zc)

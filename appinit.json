@@ -8,7 +8,7 @@
       "enableText": true,
       "enableHover": true,
       "compQty": 100,
-      "renderMethod": "PixieTexture",
+      "renderMethod": "SDLDirect",
       "singleColor": "Pink"
     },
     "Viewport": {

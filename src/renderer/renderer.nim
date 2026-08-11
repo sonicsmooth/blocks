@@ -1,25 +1,24 @@
-import std/[enumerate,
-            sequtils,
+import std/[sequtils,
             strutils, 
             strformat, 
             math,
-            monotimes,
             tables,
-            times
             ]
 import wNim/wTypes
 import sdl2 except Color
 import sdl2/ttf
-import pixie except Color, ColorRGBA
 
 import appopts
 import background
-import colors, colors_sdl, colors_pixie
+import colors, colors_sdl
+import common
 import document
 import editor
 import rects
 import reporting
 import rotation
+import sdlComponents
+import pixieComponents
 
 
 
@@ -39,17 +38,6 @@ type
     visibleComponents*: seq[DBComp]
 
 
-const
-  fontRange: Slice[int] = 6..100  
-  fontScale = 0.45
-  defFontSize = 25
-  rmask = 0xff.shl(24).uint32
-  gmask = 0xff.shl(16).uint32
-  bmask = 0xff.shl( 8).uint32
-  amask = 0xff.shl( 0).uint32
-
-var
-  gFontCache: Table[int, FontPtr]
 
 proc newRenderer*(): Renderer =
   result = new Renderer
@@ -89,24 +77,7 @@ proc clampRectSize(self: Renderer, prect: PRect): PRect =
       neww = (newh.float * rectRatio).round.int
     (x: prect.x, y: prect.y, w: neww, h: newh)
 
-proc font(size: int): FontPtr =
-  # Return properly sized font ptr from cache based on size
-  let clampSize = clamp(size, fontRange)
-  if clampSize notin gFontCache:
-    gFontCache[clampSize] = openFont("../fonts/DejaVuSans.ttf", clampSize)
-  gFontCache[clampSize]
 
-proc font(comp: DBComp, zoom: float): FontPtr =
-  # Return properly sized font ptr from cache based on comp size
-  let px = min(comp.wbbox.w, comp.wbbox.h)
-  let scaledSize = (px.float * fontScale * zoom).round.int
-  font(scaledSize)
-
-proc highlight(selected, hovering: bool): float =
-  if   (selected, hovering) == (false, false): 1.0
-  elif (selected, hovering) == (false, true ): 1.2
-  elif (selected, hovering) == (true,  false): 1.5
-  else: 1.9
 
 #[ Component rendering options:
   1. Default renderer -> rp.drawRect
@@ -115,63 +86,12 @@ proc highlight(selected, hovering: bool): float =
   4. Pixie.Image, then update texture cache, then blit to sdlRenderer 
   5. Lock texture then draw with pixie, then unlock and blit to sdlRenderer ]# 
 
-proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
-  # explicit convertion to SDL2.Rect?
-  rp.setDrawColor(fillColor)
-  rp.fillRect(addr rect)
-  rp.setDrawColor(penColor)
-  rp.drawRect(addr rect)
 
-proc drawOutlineRectSDL(rp: RendererPtr, rect: PRect, penColor: ColorRGBA) =
-  # explicit convertion to SDL2.Rect?
-  rp.setDrawColor(penColor)
-  rp.drawRect(addr rect)
-
-proc renderCompOriginSDL(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport, rot: bool) =
-  # Todo: There is something to be said here about model space
-  # TODO: to world space to pixel space
-  # Pass rot to origin..edge functions.
-  # When rot is false, everything is treated as an unrotated component
-  # The opx here is identical to comp.rotationPoint(vp) when rot is false
-  # There appears to be a -1 in here for some reason
-  let
-    fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
-    fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
-    opx: PxPoint = (fnx(comp.originToLeftEdge(rot)), fny(comp.originToTopEdge(rot)))
-    extent = (10.0 * vp.zoom).round.cint
-  rp.setDrawColor(Black)
-  rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
-  rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
-
-proc renderCompTextSDL(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, rot: bool) =
-  # Render component text
-  # Text to texture, then texture to renderer surface.
-  # This gets converted back to texture again after return
-  # So this could clearly be optimized and assembled when
-  # creating cache
-  let 
-    (w, h) = (prect.w, prect.h)
-    selstr = $comp.id # & (if comp.selected: "*" else: "")
-    textSurface = font.renderUtf8Blended(selstr.cstring, Black)
-    textTexture = rp.createTextureFromSurface(textSurface)
-    (tsw, tsh) = (textSurface.w, textSurface.h)
-    texRect: PRect = (prect.x + (w div 2) - (tsw div 2),
-                      prect.y + (h div 2) - (tsh div 2), tsw, tsh)
-  if textTexture.isNil:
-    raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
-
-  if rot:
-    rp.copyEx(textTexture, nil, addr texRect, comp.rot.toFloat, nil)
-  else:
-    rp.copyEx(textTexture, nil, addr texRect, 0, nil)
-  textSurface.destroy()
-  textTexture.destroy()
-
-proc chooseRendererSDL(self: Renderer): RendererPtr =
-  if self.sdlSoftwareRenderer.isNil:
-    self.sdlRenderer
-  else:
-    self.sdlSoftwareRenderer
+# proc chooseRendererSDL(self: Renderer): RendererPtr =
+#   if self.sdlSoftwareRenderer.isNil:
+#     self.sdlRenderer
+#   else:
+#     self.sdlSoftwareRenderer
 
 proc choosePRect(self: Renderer, comp: DBComp, rot: bool): PRect =
   # Rot true means return the real screen bounding box
@@ -181,78 +101,6 @@ proc choosePRect(self: Renderer, comp: DBComp, rot: bool): PRect =
   else:
     let psize = comp.pxSize(self.editor.viewport)
     (x: 0, y:0, w: psize.w, h: psize.h)
-
-proc renderDBCompSDL(self: Renderer, comp: DBComp, prect: PRect, hov, sel: bool, rot: bool) =
-  # Draw rectangle, origin, and its text using SDL2 renderer to prect
-  # prect is rectangle in pixels
-  # hov, sel is whether this is hovering and/or selected
-  # rot: true means use default rotated bbox and rotate text
-  # rot: false means render as R0, with text unrotated, and box zero'd
-  # Generally SDLDirect will use rot=true and false otherwise
-  
-  let 
-    vp = self.editor.viewport
-    rp = self.chooseRendererSDL()
-    highlightFactor = highlight(hov, sel)
-    font = font(comp, vp.zoom)
-
-  rp.drawFilledOutlineRectSDL(prect, comp.fillColor * highlightFactor, comp.penColor)
-  if sel:
-    rp.drawOutlineRectSDL(prect.shrink(1), comp.penColor    )
-    rp.drawOutlineRectSDL(prect.shrink(2), comp.penColor * 2)
-    rp.drawOutlineRectSDL(prect.shrink(3), comp.penColor * 3)
-    rp.drawOutlineRectSDL(prect.shrink(4), comp.penColor * 4)
-  rp.renderCompOriginSDL(comp, prect, vp, rot)
-  if gAppOpts.enableText:
-    rp.renderCompTextSDL(comp, font, prect, rot)
-
-proc renderDBCompPixie*(self: Renderer, comp: DBComp, texSz: PxSize, hov, sel: bool): SurfacePtr =
-  # Draw rectangle to new surface using pixie and return surface
-  # comp is database object
-  # prect is target rectangle with same aspect ratio as comp
-  # let prect = self.choosePRect(comp, false)
-  #  vp = self.editor.viewport
-  var fillColor = comp.fillColor.toPixieColorFloat
-  fillColor.a = 200.0 / 255.0
-  var fc1 = fillColor.lighten(0.1)
-  var fc2 = fillColor.darken(0.1)
-  var pc = fillColor.darken(0.25)
-  pc.a = 1.0
-  let image = newImage(texSz.w, texSz.h)
-  var paint = newPaint(LinearGradientPaint)
-  paint.gradientStops = @[colorStop(fc1, 0), colorStop(fc2, 1)]
-  paint.gradientHandlePositions = @[vec2(0, 0), vec2(0, texSz.h.float)]
-  image.fillGradient(paint)
-  let ctx = image.newContext()
-  ctx.strokeStyle.color = pc
-  ctx.lineWidth = 40
-  # for i in 0..20:
-  #   let y = i*3
-  #   ctx.beginPath()
-  #   ctx.moveTo(vec2(10, y + 5.0))
-  #   ctx.lineTo(vec2(60, y + 5.0))
-  #   ctx.lineWidth = 1.0
-  #   ctx.stroke()
-
-  ctx.lineWidth = 4
-  ctx.strokeRect(pixie.rect(0.0, 0.0, texSz.w.float, texSz.h.float))
-  if hov and not sel:
-    ctx.strokeRect(pixie.rect(1.0, 1.0, texSz.w.float-2.0, texSz.h.float-2.0))
-    ctx.strokeRect(pixie.rect(2.0, 2.0, texSz.w.float-4.0, texSz.h.float-4.0))
-  elif sel:
-    ctx.strokeRect(pixie.rect(1.0, 1.0, texSz.w.float-2.0, texSz.h.float-2.0))
-    ctx.strokeRect(pixie.rect(2.0, 2.0, texSz.w.float-4.0, texSz.h.float-4.0))
-    ctx.strokeRect(pixie.rect(3.0, 3.0, texSz.w.float-6.0, texSz.h.float-6.0))
-    ctx.strokeRect(pixie.rect(4.0, 4.0, texSz.w.float-8.0, texSz.h.float-8.0))
-
-  # Swizzle the mask order because of endianness
-  result = createRGBSurfaceFrom(image.data[0].addr, texSz.w, texSz.h, 
-                                32, texSz.w * 4, amask, bmask, gmask, rmask)
-  if result.isNil:
-    echo "Create surface failed"
-    echo getError()
-
-
 
 proc clearTextureCache*(self: Renderer) =
   # Clear all textures
@@ -287,10 +135,10 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
     result = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
     self.sdlRenderer.setRenderTarget(result)
     let prect = self.choosePRect(comp, false)
-    self.renderDBCompSDL(comp, prect, hov, sel, false)
+    self.sdlRenderer.renderDBCompSDL(comp, prect, self.editor.viewport, hov, sel, false)
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
-    let surface = self.renderDBCompPixie(comp, texSz, hov, sel)
+    let surface = renderDBCompPixie(comp, texSz, hov, sel)
     result = self.sdlRenderer.createTextureFromSurface(surface)
     if result.isNil:
       echo getError()
@@ -317,7 +165,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let hov = self.editor.isHovering(comp.id)
     let sel = self.editor.isSelected(comp.id)
     if rmethod == SDLDirect:
-      self.renderDBCompSDL(comp, cprect, hov, sel, true)
+      self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, true)
     else:
       let key = (comp.id, hov, sel)
       if key notin self.textureCache:

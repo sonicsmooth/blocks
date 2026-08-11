@@ -18,10 +18,14 @@ var
   gGridSpecsJ*: JsonNode
   gPanelSpecsJ*: JsonNode
 
-proc jsonInit*() =
-  initsJ = parseFile("../appinit.json")["appInits"]
-  gAppOptsJ = initsJ["AppOpts"]
-  gViewportJ = initsJ["Viewport"]
-  gZctrlJ = initsJ["Zctrl"]
-  gGridSpecsJ = initsJ["Grid"]
-  gPanelSpecsJ = initsJ["MainPanel"]
+proc jsonInitGlobals*() =
+  try:
+    initsJ = parseFile("../appinit.json")["appInits"]
+    gAppOptsJ = initsJ["AppOpts"]
+    gViewportJ = initsJ["Viewport"]
+    gZctrlJ = initsJ["Zctrl"]
+    gGridSpecsJ = initsJ["Grid"]
+    gPanelSpecsJ = initsJ["MainPanel"]
+  except CatchableError as e:
+    echo "Key not found: blabla bla"
+    echo e.msg

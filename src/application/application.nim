@@ -30,7 +30,7 @@ proc isReady*(self: Application): bool =
 
 proc init*(self: Application, w, h: int) =
   # # Load up json file
-  # jsonInit()
+  # jsonInitGlobals()
   # Create stuff
   self.wapp = wApp.App()
   self.mainFrame = MainFrame((w, h))

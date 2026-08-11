@@ -34,9 +34,12 @@ proc showAppHelp*(opts: AppOpts) =
 proc parseAppOptions*(): AppOpts = 
   # Start with values in json file, then override 
   # with command line values
-  #echo "here1"
-  result = gAppOptsJ.to(AppOpts)
-  #echo "here2"
+  try:
+    result = gAppOptsJ.to(AppOpts)
+  except CatchableError as e:
+    echo "Caught a bug with ", e.name
+    echo e.msg
+    quit(-1)
   for kind, key, val in getopt():
     case kind
     of cmdArgument:

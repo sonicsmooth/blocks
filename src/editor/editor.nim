@@ -393,4 +393,8 @@ proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   #sendToListeners(idMsgGridZoom, 0, 0)
   #self.dirty.setAll(self.doc.db)
   #self.onZoomChanged()
+  # TODO set up delayed zoom rendering
+  # TODO ie zoom by bitmap scaling initially,
+  # TODO then slowly build up cache so user
+  # TODO doesn't notice delay too much
   self.invalidate()

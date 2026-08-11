@@ -9,7 +9,7 @@ when isMainModule:
     echo "profiling"
     import std/nimprof
   try:
-    jsonInit() # move to application
+    jsonInitGlobals() # move to application
     gAppOpts = parseAppOptions()
     if gAppOpts.appHelp:
       showAppHelp(gAppOpts)

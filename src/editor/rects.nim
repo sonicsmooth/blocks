@@ -1,4 +1,4 @@
-import std/[math, 
+import std/[math,
             options,
             random, 
             sets, 
@@ -249,17 +249,17 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
 
   let fillColor = randColor()
   let penColor   = fillColor * 0.25
-  result = rects.DBComp( x: rectPosX,
-                         y: rectPosY,
-                         w: rw / 2,
-                         h: rh / 2,
-                         id: id, 
-                         label: "whatevs",
-                         origin: (10, 20),
-                         rot: rand(Rotation),
-                         penColor: penColor,
-                         fillColor: fillColor,
-                         hoverColor: Yellow)
+  result = DBComp( x: rectPosX,
+                   y: rectPosY,
+                   w: rw / 2,
+                   h: rh / 2,
+                   id: id, 
+                   label: "whatevs",
+                   origin: (10, 20),
+                   rot: rand(Rotation),
+                   penColor: penColor,
+                   fillColor: fillColor,
+                   hoverColor: Yellow)
 proc rotate*(rect: DBComp, amt: Rotation) =
   # Rotate by given amount.  Modifies rect.
   rect.rot = rect.rot + amt
