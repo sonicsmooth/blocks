@@ -67,10 +67,10 @@ proc init*(self: Application, w, h: int) =
   # Editor needs to be able to invalidate panel without knowing about panel
   self.editor.invalidate = proc() {.closure.} = 
     self.renderer.syncTextureCache()
-    self.mainFrame.mainPanel.blockPanel.refresh(false)
+    #self.mainFrame.mainPanel.blockPanel.refresh(false)
 
-  self.editor.onZoomChanged = proc() {.closure.} =
-    self.renderer.clearTextureCache()
+  # self.editor.onZoomChanged = proc() {.closure.} =
+  #   self.renderer.clearTextureCache()
 
 proc go*(app: Application) =
   app.mainFrame.center()

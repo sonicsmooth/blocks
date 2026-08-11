@@ -92,84 +92,82 @@ proc `-`*(r1, r2: Rotation): Rotation =
     of R180: R90
     of R270: R0
 
-
-proc testRots() =
-  var rot: Rotation
-  assert R0.toFloat == 0.0
-  assert R90.toFloat == 90.0
-  assert R180.toFloat == 180.0
-  assert R270.toFloat == 270.0
-  rot.inc; assert rot == R90
-  rot.inc; assert rot == R180
-  rot.inc; assert rot == R270
-  rot.inc; assert rot == R0
-  rot.dec; assert rot == R270
-  rot.dec; assert rot == R180
-  rot.dec; assert rot == R90
-  rot.dec; assert rot == R0
-  assert R0   + R0   == R0
-  assert R0   + R90  == R90
-  assert R0   + R180 == R180
-  assert R0   + R270 == R270
-  assert R90  + R0   == R90
-  assert R90  + R90  == R180
-  assert R90  + R180 == R270
-  assert R90  + R270 == R0
-  assert R180 + R0   == R180
-  assert R180 + R90  == R270
-  assert R180 + R180 == R0
-  assert R180 + R270 == R90
-  assert R270 + R0   == R270
-  assert R270 + R90  == R0
-  assert R270 + R180 == R90
-  assert R270 + R270 == R180
-  assert R90  + R0   == R90
-  assert R180 + R0   == R180
-  assert R270 + R0   == R270
-  assert R0   + R90  == R90
-  assert R90  + R90  == R180
-  assert R180 + R90  == R270
-  assert R270 + R90  == R0
-  assert R0   + R180 == R180
-  assert R90  + R180 == R270
-  assert R180 + R180 == R0
-  assert R270 + R180 == R90
-  assert R0   + R270 == R270
-  assert R90  + R270 == R0
-  assert R180 + R270 == R90
-  assert R270 + R270 == R180
-  assert R0   - R0   == R0
-  assert R0   - R90  == R270
-  assert R0   - R180 == R180
-  assert R0   - R270 == R90
-  assert R90  - R0   == R90
-  assert R90  - R90  == R0
-  assert R90  - R180 == R270
-  assert R90  - R270 == R180
-  assert R180 - R0   == R180
-  assert R180 - R90  == R90
-  assert R180 - R180 == R0
-  assert R180 - R270 == R270
-  assert R270 - R0   == R270
-  assert R270 - R90  == R180
-  assert R270 - R180 == R90
-  assert R270 - R270 == R0
-  assert R90  - R0   == R90
-  assert R180 - R0   == R180
-  assert R270 - R0   == R270
-  assert R0   - R90  == R270
-  assert R90  - R90  == R0
-  assert R180 - R90  == R90
-  assert R270 - R90  == R180
-  assert R0   - R180 == R180
-  assert R90  - R180 == R270
-  assert R180 - R180 == R0
-  assert R270 - R180 == R90
-  assert R0   - R270 == R90
-  assert R90  - R270 == R180
-  assert R180 - R270 == R270
-  assert R270 - R270 == R0
-
-
 when isMainModule:
+  proc testRots() =
+    var rot: Rotation
+    assert R0.toFloat == 0.0
+    assert R90.toFloat == 90.0
+    assert R180.toFloat == 180.0
+    assert R270.toFloat == 270.0
+    rot.inc; assert rot == R90
+    rot.inc; assert rot == R180
+    rot.inc; assert rot == R270
+    rot.inc; assert rot == R0
+    rot.dec; assert rot == R270
+    rot.dec; assert rot == R180
+    rot.dec; assert rot == R90
+    rot.dec; assert rot == R0
+    assert R0   + R0   == R0
+    assert R0   + R90  == R90
+    assert R0   + R180 == R180
+    assert R0   + R270 == R270
+    assert R90  + R0   == R90
+    assert R90  + R90  == R180
+    assert R90  + R180 == R270
+    assert R90  + R270 == R0
+    assert R180 + R0   == R180
+    assert R180 + R90  == R270
+    assert R180 + R180 == R0
+    assert R180 + R270 == R90
+    assert R270 + R0   == R270
+    assert R270 + R90  == R0
+    assert R270 + R180 == R90
+    assert R270 + R270 == R180
+    assert R90  + R0   == R90
+    assert R180 + R0   == R180
+    assert R270 + R0   == R270
+    assert R0   + R90  == R90
+    assert R90  + R90  == R180
+    assert R180 + R90  == R270
+    assert R270 + R90  == R0
+    assert R0   + R180 == R180
+    assert R90  + R180 == R270
+    assert R180 + R180 == R0
+    assert R270 + R180 == R90
+    assert R0   + R270 == R270
+    assert R90  + R270 == R0
+    assert R180 + R270 == R90
+    assert R270 + R270 == R180
+    assert R0   - R0   == R0
+    assert R0   - R90  == R270
+    assert R0   - R180 == R180
+    assert R0   - R270 == R90
+    assert R90  - R0   == R90
+    assert R90  - R90  == R0
+    assert R90  - R180 == R270
+    assert R90  - R270 == R180
+    assert R180 - R0   == R180
+    assert R180 - R90  == R90
+    assert R180 - R180 == R0
+    assert R180 - R270 == R270
+    assert R270 - R0   == R270
+    assert R270 - R90  == R180
+    assert R270 - R180 == R90
+    assert R270 - R270 == R0
+    assert R90  - R0   == R90
+    assert R180 - R0   == R180
+    assert R270 - R0   == R270
+    assert R0   - R90  == R270
+    assert R90  - R90  == R0
+    assert R180 - R90  == R90
+    assert R270 - R90  == R180
+    assert R0   - R180 == R180
+    assert R90  - R180 == R270
+    assert R180 - R180 == R0
+    assert R270 - R180 == R90
+    assert R0   - R270 == R90
+    assert R90  - R270 == R180
+    assert R180 - R270 == R270
+    assert R270 - R270 == R0
+
   testRots()

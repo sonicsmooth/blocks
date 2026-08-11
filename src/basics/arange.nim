@@ -6,9 +6,9 @@ iterator arange*[A:SomeNumber](slice: HSlice[A,A], step: A ): A =
   let up = slice.b >= slice.a
   let stp = if up: abs(step) else: -abs(step)
   var x = slice.a
+  assert step != 0
   when A is SomeInteger:
-    assert step > 0
-    if slice.b >= slice.a:
+    if up:
       while x <= slice.b:
         yield x
         x += stp
@@ -18,7 +18,7 @@ iterator arange*[A:SomeNumber](slice: HSlice[A,A], step: A ): A =
         x += stp
   else:
     let numStps = (abs(slice.a - slice.b) / abs(step)).ceil().uint
-    if slice.b >= slice.a:
+    if up:
       for i in 0 .. numStps:
         x = i.float * stp + slice.a
         if x < slice.b or almostEqual(x, slice.b, 10):

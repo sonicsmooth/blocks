@@ -1,6 +1,8 @@
-import std/[options,
+import std/[monotimes,
+            options,
             sets, 
-            sequtils]
+            sequtils,
+            times]
 import wNim
 import appopts
 import document
@@ -61,6 +63,7 @@ type
     lastPos:     PxPoint
     state:       MouseState
     panState:    PanState
+    #cachedSelectSeq: seq[]
 
 
   Editor* = ref object of RootObj
@@ -133,7 +136,6 @@ proc randomizeRects*(self: Editor, qty: int, region: WRect) =
   self.doc.db.randomizeRectsAll(qty, region, true)
   #self.invalidate()
 
-
 proc updateDestinationBox*(self: Editor) =
   let 
     marg = 25
@@ -151,14 +153,23 @@ proc updateRatio*(self: Editor) =
     let ratio = self.fillArea.float / self.allBbox.area.float
     if ratio != self.ratio:
       self.ratio = ratio
-proc moveRectsBy(self: Editor, compIDs: seq[CompID], delta: WPoint) =
-  # Common proc to move one or more Rects; used by mouse and keyboard
-  # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
-  for rect in self.doc.db[compIDs]:
+
+# proc moveRectsBy(self: Editor, compIDs: seq[CompID], delta: WPoint) =
+#   # Common proc to move one or more Rects; used by mouse and keyboard
+#   # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
+#   # for rect in self.doc.db[compIDs]:
+#   #   moveRectBy(rect, delta)
+#   for id in compIDs:
+#     moveRectBy(self.doc.db[id], delta)
+
+proc moveSelectedRectsBy(self: Editor, delta: WPoint) =
+  for rect in self.doc.db[self.selected]:
     moveRectBy(rect, delta)
+
 proc moveRectTo(self: Editor, compID: CompID, delta: WPoint) =
   # Common proc to move one or more Rects; used by mouse and keyboard
   moveRectTo(self.doc.db[compID], delta)
+
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation) =
   # Rotate about each component's origin
   for id in compIDs:
@@ -214,7 +225,8 @@ proc processKeyDown*(self: Editor, key: Key) =
       sc = if key.shift: Tiny else: Minor
       md: WPoint = minDelta(self.doc.grid, scale=sc)
       moveby: WPoint = md .* moveTable[key.keyCode]
-    self.moveRectsBy(sel, moveBy)
+    #self.moveRectsBy(sel, moveBy)
+    self.moveSelectedRectsBy(moveBy)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
   of CmdDelete:
@@ -262,6 +274,7 @@ proc processKeyDown*(self: Editor, key: Key) =
   self.invalidate()
 
 proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) = 
+  # let t0 = getMonoTime()
   let 
     vp = self.viewport
     wmp = event.pos.toWorld(vp)
@@ -279,7 +292,8 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
       delta: WPoint = newSnap - lastSnap
     if not event.ctrl and hitid in self.selected[]:
       # Group move should snap by grid amount even if not on grid to start
-      self.moveRectsBy(self.selected[].toSeq, delta)
+      #self.moveRectsBy(self.selected[].toSeq, delta)
+      self.moveSelectedRectsBy(delta)
     else: # Snap pos to nearest grid point
       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
       self.moveRectTo(hitid, newPos)
@@ -299,6 +313,7 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.tmpSelected.setSome(touchingCompsW)
     self.mouseData.state = StateSelectDraggingSpace
     self.invalidate()
+  # echo (getMonoTime() - t0).inMicroseconds, " us"
 
 proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) = 
   if self.mouseData.panState == PanStateDown or
@@ -376,6 +391,6 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
   #sendToListeners(idMsgGridZoom, 0, 0)
-  self.dirty.setAll(self.doc.db)
-  self.onZoomChanged()
+  #self.dirty.setAll(self.doc.db)
+  #self.onZoomChanged()
   self.invalidate()

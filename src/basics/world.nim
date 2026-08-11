@@ -20,7 +20,7 @@ elif defined(worldFloat):
   type WType* = float
 else:
   static:
-    echo "WType not defined; defaulting to float"
+    echo "WType not defined by -d:worldInt or -d:worldFloat; defaulting to float"
   type WType* = float
 
 type

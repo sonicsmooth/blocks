@@ -38,9 +38,28 @@ proc `$`*(table: RectTable): string =
   for k,v in table:
     result.add(&"{k}: {v}\n")
 
-proc `[]`*(table: RectTable, idxs: openArray[CompID]): seq[rects.DBComp] =
+# iterator `[]`*(table: RectTable, idxs: openArray[CompID]): rects.DBComp =
+#   for idx in idxs:
+#     yield table[idx]
+
+# iterator `[]`*(table: RectTable, idxs: CompSet): rects.DBComp =
+#   for idx in idxs[]:
+#     yield table[idx]
+
+# TODO Move these generic [] somewhere else
+iterator `[]`*[K, V](table: ref Table[K, V], idxs: openArray[K]): V =
   for idx in idxs:
-    result.add(table[idx])
+    yield table[idx]
+
+iterator `[]`*[K, V](table: ref Table[K, V], idxs: ref HashSet[K]): V =
+  for idx in idxs[]:
+    yield table[idx]
+
+proc dbComps*(table: RectTable, idxs: openArray[CompID]): seq[DBComp] =
+  for comp in table[idxs]:
+    result.add(comp)
+  # for idx in idxs:
+  #   result.add(table[idx])
 
 proc add*(table: RectTable, rect: rects.DBComp) =
   table[rect.id] = rect

@@ -1,6 +1,7 @@
-import std/[
-            monotimes,
-            segfaults, 
+import std/[monotimes,
+            segfaults,
+            strformat,
+            strutils, 
             tables,
             times ]
 import editor, renderer
@@ -120,8 +121,8 @@ wClass(wBlockPanel of wSDLPanel):
     # Repackage specific event types and send to editor
     # Send mouse message for x,y position displayed in Frame
     # Maybe get rid of this and resend from editor somehow
-    let hWnd = GetAncestor(self.handle, GA_ROOT)
-    SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
+    #let hWnd = GetAncestor(self.handle, GA_ROOT)
+    #SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
     self.editor.processMouseMoveEvent(self.fillMouse(event))
 
   proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
@@ -184,21 +185,49 @@ wClass(wBlockPanel of wSDLPanel):
       self.editor.updateDestinationBox()
     event.skip()
 
+  when defined(monotime_profile):
+    var lastPaintTime: MonoTime
+
   proc onPaint(self: wBlockPanel, event: wEvent) =
-    if self.editor != nil:
-      if gAppOpts.enableBbox:
-        #! Move this to somewhere else
-        self.editor.updateBoundingBox()
+
+    # if self.editor != nil:
+    #   if gAppOpts.enableBbox:
+    #     #! Move this to somewhere else
+    #     self.editor.updateBoundingBox()
+
+    when defined(monotime_profile):
+      let now = getMonoTime()
+      let lpt_ms = (now - lastPaintTime).inMilliseconds
+      lastPaintTime = now
+
+    when defined(monotime_profile):
+      let t0_render = getMonoTime()
     self.renderer.renderEverything()
-    # if self.renderer != nil:
-    #   let start = getMonoTime()
-    #   let elapsed_ms = (getMonoTime() - start).inMilliseconds
-    #   echo $elapsed_ms & " milliseconds"
-  
-  proc onFirstPaintKick(self: wBlockPanel) = 
-      self.stopTimer()
+    when defined(monotime_profile):
+      let renderTime_us = (getMonoTime() - t0_render).inMicroseconds 
+
+    when defined(monotime_profile):
+      let t0_present = getMonoTime()
+    self.renderer.sdlRenderer.present()
+    when defined(monotime_profile):
+      let presentTime_us = (getMonoTime() - t0_present).inMicroseconds
+
+    when defined(monotime_profile):
+      var s: string
+      s = s & "last: " & $lpt_ms & " ms; "
+      s = s & "render: " & $renderTime_us & " us; "
+      s = s & "present: " & $presentTime_us & " us"
+      echo s
+
+
+  proc onTimer(self: wBlockPanel, event: wEvent) = 
+    if event.timerId == 1:
+      self.stopTimer(event.timerId)
       self.refresh(true)
       self.setFocus()
+    elif event.timerID == 2:
+      self.refresh(true)
+
 
   proc init*(self: wBlockPanel, parent: wWindow) = 
     when defined(debug):
@@ -206,22 +235,23 @@ wClass(wBlockPanel of wSDLPanel):
     initSDL()
     wSDLPanel(self).init(parent, style=wBorderSimple)
 
-    self.wEvent_Size                 do (event: wEvent): flushEvents(0,uint32.high); self.onResize(event)
-    self.wEvent_Paint                do (event: wEvent): flushEvents(0,uint32.high); self.onPaint(event)
-    self.wEvent_MouseMove            do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseMoveEvent(event)
-    self.wEvent_LeftDown             do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_LeftUp               do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_LeftDoubleClick      do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_MiddleDown           do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_MiddleUp             do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_MiddleDoubleClick    do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_RightDown            do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_RightUp              do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_RightDoubleClick     do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseButtonEvent(event)
-    self.wEvent_MouseWheel           do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseWheelEvent(event)
-    self.wEvent_MouseHorizontalWheel do (event: wEvent): flushEvents(0,uint32.high); self.processUIMouseWheelEvent(event)
-    self.wEvent_KeyDown              do (event: wEvent): flushEvents(0,uint32.high); self.processUIKeyEvent(event)
-    self.wEvent_KeyUp                do (event: wEvent): flushEvents(0,uint32.high); self.processUIKeyEvent(event)
-    self.wEvent_Timer                do (): self.onFirstPaintKick()
-    self.startTimer(0.0)
+    self.wEvent_Size                 do (event: wEvent): self.onResize(event)
+    self.wEvent_Paint                do (event: wEvent): self.onPaint(event)
+    self.wEvent_MouseMove            do (event: wEvent): self.processUIMouseMoveEvent(event)
+    self.wEvent_LeftDown             do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_LeftUp               do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_LeftDoubleClick      do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_MiddleDown           do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_MiddleUp             do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_MiddleDoubleClick    do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_RightDown            do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_RightUp              do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_RightDoubleClick     do (event: wEvent): self.processUIMouseButtonEvent(event)
+    self.wEvent_MouseWheel           do (event: wEvent): self.processUIMouseWheelEvent(event)
+    self.wEvent_MouseHorizontalWheel do (event: wEvent): self.processUIMouseWheelEvent(event)
+    self.wEvent_KeyDown              do (event: wEvent): self.processUIKeyEvent(event)
+    self.wEvent_KeyUp                do (event: wEvent): self.processUIKeyEvent(event)
+    self.wEvent_Timer                do (event: wEvent): self.onTimer(event)
+    self.startTimer(0.0, id=1) # one-shot to start
+    self.startTimer(1/60.0, id=2) # ongoing timer for refresh
     

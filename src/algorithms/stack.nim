@@ -30,7 +30,7 @@ proc stackCompactSub(table: var RectTable, rects: seq[CompID], dstRect: var WRec
     accRects.add(rect.id)
     compact(table, direction.primax, direction.primAsc, dstRect, accRects)
     compact(table, direction.secax,  direction.secAsc,  dstRect, accRects)
-    let bbox = boundingBox(table[accRects])
+    let bbox = boundingBox(table.dbComps(accRects))
 
     # Left  arrow = stack from left to right, which is x ascending
     # Right arrow = stack from right to left, which is x descending

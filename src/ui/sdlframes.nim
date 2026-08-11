@@ -69,7 +69,7 @@ wClass(wSDLPanel of wPanel):
       if info.name == "opengl": oglIndex = i
 
     let flags = Renderer_Accelerated or 
-                Renderer_PresentVsync or
+                #Renderer_PresentVsync or
                 Renderer_TargetTexture
     self.sdlRenderer = self.sdlWindow.createRenderer(index = d3d11Index, flags=flags)
     sdlFailIf(self.sdlRenderer.isNil):

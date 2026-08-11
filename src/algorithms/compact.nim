@@ -4,7 +4,9 @@ import wnim
 import wnim/wTypes
 import winim/inc/[winuser, windef]
 import concurrent
+
 #import recttable, userMessages
+from recttable import `[]`, dbComps
 import document, userMessages
 
 type 
@@ -79,6 +81,7 @@ proc rectCmpY(r1, r2: DBComp): int =
     result = cmp(r1.id, r2.id)
 
 # TODO: change to in-place sorting
+# TODO: change to iterator
 proc sortedRectsIds(rects: seq[rects.DBComp], axis: Axis, sortOrder: SortOrder): seq[CompID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
@@ -182,13 +185,14 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
       line.mid.delete(line.mid.find(edge.id))
     line.appendField(edge.etype, edge.id)
 
+    # TODO: fix the issue with [] and iterators to minimize copies
     line.sorted = concat(line.top, line.mid, line.bot)
     if line.sorted.len > 1:
-      line.sorted = sortedRectsIds(rectTable[line.sorted], axis, sortOrder)
+      line.sorted = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
     if line.top.len > 1:
-      line.top = sortedRectsIds(rectTable[line.top], axis, sortOrder)
+      line.top = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
     if line.bot.len > 1:
-      line.bot = sortedRectsIds(rectTable[line.bot], axis, sortOrder)
+      line.bot = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
     lastpos = edge.pos
   result.add(line)
 
