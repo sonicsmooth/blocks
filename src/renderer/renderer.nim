@@ -118,6 +118,7 @@ proc screenRectP(self: Renderer): PRect =
 
 proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod, 
                   hov, sel: bool): TexturePtr = 
+  let vp = self.editor.viewport
   let texSz = comp.pxSize(self.editor.viewport)
   let cTexSz = self.clampSize(texSz)
   let cprect: PRect = (0, 0, cTexSz.w, cTexSz.h)
@@ -126,10 +127,10 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
     let fmt = self.sdlWindow.getPixelFormat()
     result = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
     self.sdlRenderer.setRenderTarget(result)
-    self.sdlRenderer.renderDBCompSDL(comp, cprect, self.editor.viewport, hov, sel, false)
+    self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, false)
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
-    let surface = renderDBCompPixie(comp, cTexSz, hov, sel)
+    let surface = renderDBCompPixie(comp, cTexSz, hov, sel, vp)
     result = self.sdlRenderer.createTextureFromSurface(surface)
     if result.isNil:
       echo getError()

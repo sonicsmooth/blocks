@@ -8,6 +8,7 @@ import sdl2/ttf
 import appopts
 import colors, colors_sdl
 import common
+import pointmath
 import rotation
 import rects
 
@@ -24,17 +25,15 @@ proc drawOutlineRectSDL(rp: RendererPtr, rect: PRect, penColor: ColorRGBA) =
   rp.drawRect(addr rect)
 
 proc renderCompOriginSDL(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport, rot: bool) =
-  # Todo: There is something to be said here about model space
-  # TODO: to world space to pixel space
-  # Pass rot to origin..edge functions.
-  # When rot is false, everything is treated as an unrotated component
+  # When rot is false/true, everything is treated as an un/rotated component
   # The opx here is identical to comp.rotationPoint(vp) when rot is false
-  # There appears to be a -1 in here for some reason
-  let
-    fnx = proc(x: WType): PxType = (x.float * vp.zoom).round.cint
-    fny = proc(y: WType): PxType = (y.float * vp.zoom).round.cint - 1
-    opx: PxPoint = (fnx(comp.originToLeftEdge(rot)), fny(comp.originToTopEdge(rot)))
-    extent = (10.0 * vp.zoom).round.cint
+  # There appears to be a -1 in here for some reason, I think when you're measuring
+  # from the opposite side, ie origin-to-top, you have to adjust.
+  # Here we check against distance to top edge because we want y=0 to 
+  # be at maximum pixels away from the top
+  let extent = (10.0 * vp.zoom).round.cint
+  var opx = comp.originToTopLeft(rot).toPixelScale(vp)
+  #opx.y -= 1
   rp.setDrawColor(Black)
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)

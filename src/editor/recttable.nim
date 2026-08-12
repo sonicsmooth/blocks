@@ -38,13 +38,6 @@ proc `$`*(table: RectTable): string =
   for k,v in table:
     result.add(&"{k}: {v}\n")
 
-# iterator `[]`*(table: RectTable, idxs: openArray[CompID]): rects.DBComp =
-#   for idx in idxs:
-#     yield table[idx]
-
-# iterator `[]`*(table: RectTable, idxs: CompSet): rects.DBComp =
-#   for idx in idxs[]:
-#     yield table[idx]
 
 # TODO Move these generic [] somewhere else
 iterator `[]`*[K, V](table: ref Table[K, V], idxs: openArray[K]): V =

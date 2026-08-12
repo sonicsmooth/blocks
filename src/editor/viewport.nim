@@ -116,16 +116,29 @@ proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
 
 # Convert from anything to pixels through viewport
 # pixel = world * zoom + pan.  Flip zoom for y
-proc toPixelX*[T:SomeNumber](x: T, vp: Viewport): PxType =
+proc toPixelX*[T:WType](x: T, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
   (x.float * vp.mZoom + vp.mPan.x.float)
 
-proc toPixelY*[T:SomeNumber](y: T, vp: Viewport): PxType =
+proc toPixelY*[T:WType](y: T, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
   (y.float * (-vp.mZoom) + vp.mPan.y.float)
 
-proc toPixel*[T:SomePoint](pt: T, vp: Viewport): PxPoint =
+proc toPixel*[T:WPoint](pt: T, vp: Viewport): PxPoint =
   (pt[0].toPixelX(vp), pt[1].toPixelY(vp))
+
+# # Same as above, but without the pan offset
+# proc toPixelXScale*[T:WType](x: T, vp: Viewport): PxType =
+#   # Implicit conversion to PxType which includes rounding
+#   x.float * vp.mZoom
+
+# proc toPixelYScale*[T:WType](y: T, vp: Viewport): PxType =
+#   # Implicit conversion to PxType which includes rounding
+#   # Note the lack of negative sign here
+#   y.float * vp.mZoom
+
+proc toPixelScale*[T:WPoint](pt: T, vp: Viewport): PxPoint =
+  (pt[0] * vp.zoom, pt[1] * vp.zoom)
 
 
 # Convert from pixels to world through viewport

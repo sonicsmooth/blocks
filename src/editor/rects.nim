@@ -172,6 +172,14 @@ proc wbboxes*[T:DBComp](rects: openArray[T]): seq[WRect] =
     result.add(rect.wbbox)
 proc boundingBox*(rects: openArray[DBComp]): WRect  =
   rects.wbboxes.boundingBox
+
+# These "originTo..." are based on x and y increasing up and left
+# So x direction in world coords matches x direction in pixels
+# So y direction in world coords matches -y direction in pixels
+# A simple multiplication by zoom gives you pixels.  No need
+# to multiply by -zoom as the y value of originTo[Top|Bottom]
+# has already taken this into account
+
 proc originToLeftEdge*(rect: DBComp, rot: bool=true): WType =
   # Horizontal distance from left edge to origin w/wout rotation
   if not rot:
@@ -213,12 +221,24 @@ proc originToTopEdge*(rect: DBComp, rot: bool=true): WType =
     of R180: rect.origin.y
     of R270: rect.origin.x
 
+proc originToTopLeft*(rect: DBComp, rot: bool=true): WPoint =
+  (rect.originToLeftEdge(rot), rect.originToTopEdge(rot))
+
+proc originToTopRight*(rect: DBComp, rot: bool=true): WPoint =
+  (rect.originToRightEdge(rot), rect.originToTopEdge(rot))
+
+proc originToBottomLeft*(rect: DBComp, rot: bool=true): WPoint =
+  (rect.originToLeftEdge(rot), rect.originToBottomEdge(rot))
+
+proc originToBottomRight*(rect: DBComp, rot: bool=true): WPoint =
+  (rect.originToRightEdge(rot), rect.originToBottomEdge(rot))
+
 proc rotationPoint*(comp: DBComp, vp: Viewport): PxPoint =
   # Provide rotation point for copyEx
   # copyEx requires distance from upper left of blit target
   # Steal a couple lines from above
   (comp.origin.x * vp.zoom,
-  (comp.h - comp.origin.y) * vp.zoom)
+  (comp.h - comp.origin.y) * vp.zoom ) #- 1)
 
 proc ids*(rects: openArray[DBComp]): seq[CompID] =
   # Get all CompIDs

@@ -50,6 +50,8 @@ converter toPxType*[T:SomeNumber](a: T): PxType =
   elif T is SomeFloat:
     a.round.PxType
 
+# converter toFloat*(a: PxType): float = a.float
+# converter toFloat*(a: WType): float = a.float
 
 converter toWPoint*[T:SomeNumber](pt: tuple[x, y: T]): WPoint  =
   (pt[0],  pt[1]) # toWType is called implicitly for each part of tuple
