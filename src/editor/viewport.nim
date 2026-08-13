@@ -140,6 +140,9 @@ proc toPixel*[T:WPoint](pt: T, vp: Viewport): PxPoint =
 proc toPixelScale*[T:WPoint](pt: T, vp: Viewport): PxPoint =
   (pt[0] * vp.zoom, pt[1] * vp.zoom)
 
+proc toPixelScale*[T:WPoint](pt: T, zoom: float): PxPoint =
+  (pt[0] * zoom, pt[1] * zoom)
+
 
 # Convert from pixels to world through viewport
 # world = (pixel - pan) / zoom.  Flip zoom for y

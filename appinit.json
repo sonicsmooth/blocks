@@ -8,7 +8,8 @@
       "enableDstRect": false,
       "enableText": true,
       "enableHover": true,
-      "renderMethod": "PixieTexture",
+      "oneOffset": false,
+      "renderMethod": "SDLTexture",
       "reTextureOnZoom": true,
       "showScale": true,
       "singleColor": "Pink"

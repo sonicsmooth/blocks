@@ -15,6 +15,15 @@ type
     b*: float32
     a*: float32
 
+proc colorRGBA*(r,g,b: uint8): ColorRGBA =
+  ColorRGBA(r: r, g: g, b: b, a: 255)
+
+proc colorRGBA*(r,g,b,a,: uint8): ColorRGBA =
+  ColorRGBA(r: r, g: g, b: b, a: a)
+
+proc setAlpha*(c: ColorRGBA, a: uint8): ColorRGBA =
+  ColorRGBA(r: c.r, g: c.g, b: c.b, a: a)
+
 proc toColorRGBA*(val: uint32): ColorRGBA =
   # Assume val is only RGB.
   result.r = ((val shr 16) and 0xff).uint8

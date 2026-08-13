@@ -2,7 +2,9 @@ import std/[sequtils,
             strutils, 
             strformat, 
             math,
+            monotimes,
             tables,
+            times
             ]
 import wNim/wTypes
 import sdl2 except Color
@@ -37,6 +39,11 @@ type
     textureCache*: Table[CacheKey, TexturePtr] 
     visibleComponents*: seq[DBComp]
 
+const
+  rmask* = 0xff.shl(24).uint32
+  gmask* = 0xff.shl(16).uint32
+  bmask* = 0xff.shl( 8).uint32
+  amask* = 0xff.shl( 0).uint32
 
 
 proc newRenderer*(): Renderer =
@@ -130,7 +137,13 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
     self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, false)
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
-    let surface = renderDBCompPixie(comp, cTexSz, hov, sel, vp)
+    let image = renderDBCompPixie(comp, cTexSz, hov, sel, vp.zoom)
+    # swizzle mask order because of endianness
+    let surface = createRGBSurfaceFrom(image.data[0].addr, texSz.w, texSz.h, 
+                                32, texSz.w * 4, amask, bmask, gmask, rmask)
+    if surface.isNil:
+      echo "Create surface failed"
+      echo getError()
     result = self.sdlRenderer.createTextureFromSurface(surface)
     if result.isNil:
       echo getError()
@@ -146,6 +159,7 @@ proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Vi
     pivot = comp.rotationPoint(vp)
   self.sdlRenderer.copyEx(texture, nil, addr tgtRect, -comp.rot.toFloat, addr pivot)
 
+
 proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   self.visibleComponents.setLen(0)
   let vp = self.editor.viewport
@@ -160,7 +174,11 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     else:
       let key = (comp.id, hov, sel)
       if key notin self.textureCache:
-        self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)
+        when defined(textureProfile):
+          timeit("Texture time"):
+            self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
+        else:
+          self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
       self.drawCachedTexture(comp, self.textureCache[key], vp)
     self.visibleComponents.add(comp)
 

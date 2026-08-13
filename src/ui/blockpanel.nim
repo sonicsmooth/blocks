@@ -185,7 +185,7 @@ wClass(wBlockPanel of wSDLPanel):
       self.editor.updateDestinationBox()
     event.skip()
 
-  when defined(monotime_profile):
+  when defined(loopProfile):
     var lastPaintTime: MonoTime
 
   proc onPaint(self: wBlockPanel, event: wEvent) =

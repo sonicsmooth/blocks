@@ -126,7 +126,7 @@ proc randomizeRectsAll*(table: var RectTable, qty: int, region: WRect, log: bool
   table.clear()
   if qty == 1:
     table[ 1] = DBComp(id:  1, x: 0, y:  0, w: 52, h: 102, origin: (0, 0), rot: R0, 
-                penColor: Red, fillColor: colorByName[gAppOpts.singleColor])
+                penColor: Red, fillColor: colorByName[gAppOpts.singleColor].setAlpha(180))
   else:
     for i in 1..qty:
       let rid = i.CompID

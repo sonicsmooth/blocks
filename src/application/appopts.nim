@@ -11,6 +11,7 @@ type
     enableDstRect*: bool = false # show (calc always anyway)
     enableText*: bool = true
     enableHover*: bool = true
+    oneOffset*: bool = false
     renderMethod*: RenderMethod
     reTextureOnZoom*: bool = false
     showScale*: bool = true

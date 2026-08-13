@@ -1,13 +1,25 @@
-import std/[os, strformat, sugar]
+import std/[os,
+            strformat,
+            strutils,
+            sugar
+            ]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
 import winim/inc/windef
 
-import jsoninit, routing
-import editor, document, viewport, utils
-import mainpanel, aboutframe, gridctrlframe, grid
+import aboutframe
+import appopts
+import document
+import editor
+import grid
+import gridctrlframe
+import jsoninit
+import mainpanel
 import reporting
+import routing
+import utils
+import viewport
 export mainpanel
 
 # TODO: mainframe should have ref to editor, doc
@@ -19,10 +31,11 @@ type
     gridCtrlFrameShowing: bool
     mainPanel*: wMainPanel
     bandToolBars: seq[wToolBar]
+    invalidate*: proc() {.gcsafe.}
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
-              idCmdOptions,
+              idCmdOptions, idCmdDropDown,
               idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout
 
 const
@@ -125,7 +138,7 @@ wClass(wMainFrame of wFrame):
     tb1.addTool(idCmdNew, "New", bmpNewBg)
     tb1.addTool(idCmdOpen, "Open", bmpOpenBg)
     tb1.addTool(idCmdSave, "Save", bmpSaveBg)
-    self.bandToolBars.add(tb1)
+    self.bandToolBars.add(tb1) # self.bandToolBars[0]
     
     # 2. Grid controls    
     let tb2 = ToolBar(result)
@@ -134,19 +147,19 @@ wClass(wMainFrame of wFrame):
     tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
     tb2.addtool(idCmdGridSetting, "Grid settings", bmpGearsBg)
 
-    let ddcb = ComboBox(tb2, 0, "My dropdown")
+    let ddcb = ComboBox(tb2, idCmdDropDown, "Render Method")
     ddcb.size = (self.dpiScale(150), ddcb.size.height)
-    ddcb.append("Option 1")
-    ddcb.append("Option 2")
+    ddcb.append("SDL Direct")
+    ddcb.append("SDL Texture")
+    ddcb.append("Pixie Texture")
     ddcb.position = (self.dpiScale(150), self.dpiScale(10))
-
-    self.bandToolBars.add(tb2)
+    self.bandToolBars.add(tb2) # self.bandToolBars[1]
     
     # 3. Close
     let tb3 = ToolBar(result)
     tb3.addTool(idCmdInfo, "Info", bmpInfoBg)
     tb3.addTool(idCmdClose, "Close", bmpCloseBg)
-    self.bandToolBars.add(tb3)
+    self.bandToolBars.add(tb3) # self.bandToolBars[2]
 
     # Put toolbars things in rebar
     let bid1 = result.addBand(tb1)
@@ -170,6 +183,10 @@ wClass(wMainFrame of wFrame):
       var files = FileDialog(nil, defaultDir=getCurrentDir(), style=wFdMultiple).display()
       echo files
     of idCmdSave: discard
+    of idCmdDropDown:
+      let v = event.window.wComboBox.value.replace(" ")
+      gAppOpts.renderMethod = parseEnum[RenderMethod](v)
+      self.invalidate()
     of idCmdClose: self.destroy()
     of idCmdExit: self.destroy()
     of idCmdHelp: discard
@@ -341,6 +358,7 @@ wClass(wMainFrame of wFrame):
     # Connect internal Events
     self.wEvent_Size do (event: wEvent): self.onResize(event)
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
+    self.wEvent_ComboBox do (event: wEvent): self.onToolEvent(event)
 
     # Respond to buttons & send msg
     self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)

@@ -1,5 +1,7 @@
 
 import std/[math,
+            options,
+            os,
             strformat,
             tables
             ]
@@ -8,9 +10,43 @@ import sdl2/ttf
 import appopts
 import colors, colors_sdl
 import common
-import pointmath
 import rotation
 import rects
+
+
+const
+  gFontScale = 0.45
+
+var
+  gFontCache: Table[int, FontPtr]
+  gFontName: Option[string]
+
+proc tryFont(size: float): FontPtr =
+  for p in fontCandidates():
+    if isNone(gFontName) and not fileExists(p):
+      echo "Could not find ", p
+      continue
+    result = ttf.openFont(p.cstring, size.round.cint)
+    if not result.isNil:
+      if gFontName.isNone:
+        gFontName = some(p)
+        echo "SDL Loaded ", p, " with size ", size
+        echo getStackTrace()
+      return result
+
+# TODO: see whether other places need this, not just components
+proc font*(size: cint): FontPtr =
+  # Return properly sized font ptr from cache based on size
+  if size notin gFontCache:
+    gFontCache[size] = tryFont(size)
+  gFontCache[size]
+
+proc font*(comp: DBComp, zoom: float): FontPtr =
+  # Return properly sized font ptr from cache based on comp size
+  let wbb = comp.wbbox
+  let fsz = min(wbb.w, wbb.h).float
+  let scaledSize = (fsz * gFontScale * zoom).round.int.clamp(fontRange)
+  font(scaledSize)
 
 
 proc highlight(selected, hovering: bool): float =
@@ -24,16 +60,17 @@ proc drawOutlineRectSDL(rp: RendererPtr, rect: PRect, penColor: ColorRGBA) =
   rp.setDrawColor(penColor)
   rp.drawRect(addr rect)
 
-proc renderCompOriginSDL(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport, rot: bool) =
+proc renderCompOriginSDL(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
   # When rot is false/true, everything is treated as an un/rotated component
   # The opx here is identical to comp.rotationPoint(vp) when rot is false
   # There appears to be a -1 in here for some reason, I think when you're measuring
   # from the opposite side, ie origin-to-top, you have to adjust.
   # Here we check against distance to top edge because we want y=0 to 
   # be at maximum pixels away from the top
-  let extent = (10.0 * vp.zoom).round.cint
-  var opx = comp.originToTopLeft(rot).toPixelScale(vp)
-  #opx.y -= 1
+  let extent = (10.0 * zoom).round.cint
+  var opx = comp.originToTopLeft(rot).toPixelScale(zoom)
+  if gAppOpts.oneOffset:
+    opx.y -= 1
   rp.setDrawColor(Black)
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
@@ -89,6 +126,6 @@ proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport,
     rp.drawOutlineRectSDL(prect.shrink(2), comp.penColor * 2)
     rp.drawOutlineRectSDL(prect.shrink(3), comp.penColor * 3)
     rp.drawOutlineRectSDL(prect.shrink(4), comp.penColor * 4)
-  rp.renderCompOriginSDL(comp, prect, vp, rot)
+  rp.renderCompOriginSDL(comp, prect, vp.zoom, rot)
   if gAppOpts.enableText:
     rp.renderCompTextSDL(comp, font, prect, rot)

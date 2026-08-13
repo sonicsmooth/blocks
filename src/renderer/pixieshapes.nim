@@ -1,7 +1,7 @@
 
 import pixie
 import colors, colors_pixie
-export Rect
+#export Rect
 
 proc newFont(typeface: Typeface, size: float32, color: pixie.Color): Font =
   result = newFont(typeface)
