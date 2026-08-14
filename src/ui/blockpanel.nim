@@ -206,17 +206,11 @@ wClass(wBlockPanel of wSDLPanel):
     when defined(monotime_profile):
       let renderTime_us = (getMonoTime() - t0_render).inMicroseconds 
 
-    when defined(monotime_profile):
-      let t0_present = getMonoTime()
-    self.renderer.sdlRenderer.present()
-    when defined(monotime_profile):
-      let presentTime_us = (getMonoTime() - t0_present).inMicroseconds
 
     when defined(monotime_profile):
       var s: string
       s = s & "last: " & $lpt_ms & " ms; "
       s = s & "render: " & $renderTime_us & " us; "
-      s = s & "present: " & $presentTime_us & " us"
       echo s
 
 
@@ -232,7 +226,6 @@ wClass(wBlockPanel of wSDLPanel):
   proc init*(self: wBlockPanel, parent: wWindow) = 
     when defined(debug):
       echo "blockpanel init"
-    initSDL()
     wSDLPanel(self).init(parent, style=wBorderSimple)
 
     self.wEvent_Size                 do (event: wEvent): self.onResize(event)

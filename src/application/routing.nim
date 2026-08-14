@@ -1,4 +1,4 @@
-import std/[sets, tables]
+import std/[sets, sequtils, tables]
 from winim/inc/windef import WPARAM, LPARAM, HANDLE
 from winim/inc/winuser import SendMessage
 from wnim/private/wTypes import wWindow, wEvent
@@ -11,7 +11,7 @@ export usermessages
 type MsgProc* = proc(self: wWindow, event: wEvent) {.nimcall.}
 
 # Any given message int maps to one or more targets
-var gEventListeners = initTable[int, seq[HANDLE]]()
+var gEventListeners = initTable[int32, seq[HANDLE]]()
 
 proc uniqueHandles(): HashSet[HANDLE] =
   # Return set of unique handles

@@ -1,7 +1,8 @@
+import std/tables
 import wnim
 import sdl2, sdl2/[image, ttf]
-import utils, colors, colors_sdl
-export sdl2, image, ttf, colors
+import utils, colors, colors_sdl, sdlcommon
+
 
 
 type
@@ -32,19 +33,10 @@ proc rect(x,y,w,h: cint, color: ColorRGBA, dir: Direction): TestRect =
   result.color = color
   result.dir = dir
 
-proc initSDL*() =
-  sdlFailIf(not sdl2.init(INIT_VIDEO or INIT_TIMER or INIT_EVENTS)):
-    "SDL2 initialization failed"
-  sdlFailIf(not setHint("SDL_RENDER_SCALE_QUALITY", "2")):
-    "Linear texture filtering could not be enabled"  
-  const imgFlags: cint = IMG_INIT_PNG
-  sdlFailIf(image.init(imgFlags) != imgFlags):
-    "SDL2 Image initialization failed"
-  sdlFailIf(ttfInit() == SdlError):
-    "SDL2 TTF initialization failed"
 
 wClass(wSDLPanel of wPanel):
   proc init*(self: wSDLPanel, parent: wWindow, style: wStyle=0) =
+    initSDL()
     when defined(debug):
       echo "wSDLPanel.init()"
       var ver: SDL_VERSION
@@ -59,25 +51,19 @@ wClass(wSDLPanel of wPanel):
     
     # Choose Direct3D 11; default of 9 deletes its
     # textures when screen is resized
-    var oglIndex, oglesIndex, d3d11Index, d3d12Index, swIndex = -1
+    echo "Available renderers"
+    var renderIndex: Table[string, int32]
     for i in 0 ..< getNumRenderDrivers():
       var info: RendererInfo
       discard getRenderDriverInfo(i, info)
-      when defined(debug):
-        echo i, ": ", info.name
-      case info.name
-      of "direct3d11": d3d11Index = i
-      of "direct3d12": d3d12Index = i
-      of "opengl": oglIndex = i
-      of "opengles": oglesIndex = i
-      of "software": swIndex = i
+      echo "  ", i, ": ", info.name
+      renderIndex[$info.name] = i
 
-    let flags = Renderer_Accelerated or 
-                Renderer_PresentVsync or
-                Renderer_TargetTexture
-    self.sdlRenderer = self.sdlWindow.createRenderer(index = d3d11Index, flags=flags)
-    sdlFailIf(self.sdlRenderer.isNil):
-      "Renderer could not be created"
+    self.sdlRenderer =
+      self.sdlWindow.createRenderer(
+        renderIndex["direct3d11"],
+        flags = Renderer_Accelerated or Renderer_PresentVsync or Renderer_TargetTexture)
+    sdlFailIf(self.sdlRenderer.isNil): "Renderer could not be created"
     self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
 
     when defined(debug):

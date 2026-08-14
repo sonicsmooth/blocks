@@ -12,15 +12,17 @@ import sdl2/ttf
 
 import appopts
 import background
-import colors, colors_sdl
+import colors
+import colors_sdl
 import common
 import document
 import editor
 import rects
 import reporting
 import rotation
-import sdlComponents
-import pixieComponents
+import sdlcomponents
+import sdlcommon
+import pixiecomponents
 
 
 
@@ -39,11 +41,6 @@ type
     textureCache*: Table[CacheKey, TexturePtr] 
     visibleComponents*: seq[DBComp]
 
-const
-  rmask* = 0xff.shl(24).uint32
-  gmask* = 0xff.shl(16).uint32
-  bmask* = 0xff.shl( 8).uint32
-  amask* = 0xff.shl( 0).uint32
 
 var
   gCumtime: Duration
@@ -217,6 +214,7 @@ proc renderEverything*(self: Renderer) =
     self.sdlRenderer.drawScale(vp, grid, font(defFontSize) )
   self.drawSelectBox()
 
+  self.sdlRenderer.present()
   # # Draw various boxes and text, then done
   # #self.updateDestinationBox()
   # if gAppOpts.enableDstRect:

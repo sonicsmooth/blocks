@@ -9,7 +9,7 @@
       "enableText": true,
       "enableHover": true,
       "oneOffset": false,
-      "renderMethod": "SDLTexture",
+      "renderMethod": "SDLDirect",
       "blockFill": "Solid",
       "reTextureOnZoom": true,
       "showScale": true,
