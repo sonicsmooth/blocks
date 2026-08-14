@@ -48,7 +48,6 @@ proc clearTypefaceCache*() =
   gTypefaceCache.clear()
   gFont = none[Font]()
 
-
 proc drawGradient(image: Image, fillColor: Color) =
   # Implicit conversion using colors_pixie.toPixieColorFloat
   let gradCol1 = fillColor.lighten(0.1)
@@ -77,6 +76,12 @@ proc drawBorder(ctx: Context, penColor: Color, hov, sel: bool, zoom: float) =
     ctx.strokeRect(pixie.rect(3.0, 3.0, w - 6.0, h - 6.0))
     ctx.strokeRect(pixie.rect(4.0, 4.0, w - 8.0, h - 8.0))
 
+proc drawCompText(image: Image, comp: DBComp, zoom: float) =
+  let fnt = font(comp, zoom)
+  let spans = @[newSpan($comp.id, fnt)]
+  let (w,h) = (image.width.float, image.height.float)
+  let arrangement = typeset(spans, vec2(w, h), CenterAlign, MiddleAlign)
+  image.fillText(arrangement)#, translate(vec2(10, 10)))
 
 proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, extent: int, zoom: float) = 
   let
@@ -96,11 +101,6 @@ proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, extent: int, zoom: 
   ctx.lineTo(vec2(midh,  bottom ))
   ctx.stroke()
 
-proc drawCompText(image: Image, comp: DBComp, zoom: float) =
-  let fnt = font(comp, zoom)
-  let spans = @[newSpan($comp.id, fnt)]
-  image.fillText(typeset(spans, vec2(180, 180)), translate(vec2(10, 10)))
-
 proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool, zoom: float): Image =
   # Draw rectangle to new surface using pixie and return surface
   # comp is database object
@@ -109,7 +109,10 @@ proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool, zoom: float
   #  vp = self.editor.viewport
   let image = newImage(texSz.w, texSz.h)
   let ctx = image.newContext()
-  image.drawGradient(comp.fillColor)
+  if gAppOpts.blockFill == Solid:
+    image.drawSolid(comp.fillColor)
+  elif gAppOPts.blockFill == Gradient:
+    image.drawGradient(comp.fillColor)
   ctx.drawBorder(comp.penColor, hov, sel, zoom)
   ctx.drawOrigin(comp.pxOrigin(zoom), comp.penColor, 10, zoom)
   if gAppOpts.enableText:

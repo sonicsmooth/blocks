@@ -53,7 +53,6 @@ proc clearFontCache*() =
     f.close() # is this equivalent to destroy in other objects?
   gFontCache.clear()
 
-
 proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
   # explicit convertion to SDL2.Rect?
   rp.setDrawColor(fillColor)
@@ -61,12 +60,15 @@ proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor
   rp.setDrawColor(penColor)
   rp.drawRect(addr rect)
 
-
 proc highlight(selected, hovering: bool): float =
   if   (selected, hovering) == (false, false): 1.0
   elif (selected, hovering) == (false, true ): 1.2
   elif (selected, hovering) == (true,  false): 1.5
   else: 1.9
+
+proc drawSolid(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+  # this local fn calls the "api" fn, which is used by others
+  drawFilledOutlineRectSDL(rp, rect, fillColor, penColor)
 
 proc drawBorder(rp: RendererPtr, rect: PRect, color: ColorRGBA, hov, sel: bool) =
   if hov and not sel:
@@ -89,11 +91,6 @@ proc drawBorder(rp: RendererPtr, rect: PRect, color: ColorRGBA, hov, sel: bool) 
     rp.drawRect(addr r3)
     rp.setDrawColor(color * 4)
     rp.drawRect(addr r4)
-
-
-proc drawSolid(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
-  # this local fn calls the "api" fn, which is used by others
-  drawFilledOutlineRectSDL(rp, rect, fillColor, penColor)
 
 proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
   # Render component text

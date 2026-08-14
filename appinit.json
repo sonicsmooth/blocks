@@ -10,6 +10,7 @@
       "enableHover": true,
       "oneOffset": false,
       "renderMethod": "SDLTexture",
+      "blockFill": "Solid",
       "reTextureOnZoom": true,
       "showScale": true,
       "singleColor": "Pink"

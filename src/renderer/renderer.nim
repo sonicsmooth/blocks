@@ -139,9 +139,11 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
   let cprect: PRect = (0, 0, cTexSz.w, cTexSz.h)
   case rmethod
   of SDLTexture:
-    let fmt = self.sdlWindow.getPixelFormat()
-    result = self.sdlRenderer.createTexture(fmt, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
+    result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
+    result.setTextureBlendMode(BlendMode_Blend)
     self.sdlRenderer.setRenderTarget(result)
+    self.sdlRenderer.setDrawColor(0, 0, 0, 0)
+    self.sdlRenderer.clear()
     self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, false)
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:

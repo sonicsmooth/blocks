@@ -59,17 +59,21 @@ wClass(wSDLPanel of wPanel):
     
     # Choose Direct3D 11; default of 9 deletes its
     # textures when screen is resized
-    var oglIndex, d3d11Index = -1
+    var oglIndex, oglesIndex, d3d11Index, d3d12Index, swIndex = -1
     for i in 0 ..< getNumRenderDrivers():
       var info: RendererInfo
       discard getRenderDriverInfo(i, info)
       when defined(debug):
         echo i, ": ", info.name
-      if info.name == "direct3d11": d3d11Index = i
-      if info.name == "opengl": oglIndex = i
+      case info.name
+      of "direct3d11": d3d11Index = i
+      of "direct3d12": d3d12Index = i
+      of "opengl": oglIndex = i
+      of "opengles": oglesIndex = i
+      of "software": swIndex = i
 
     let flags = Renderer_Accelerated or 
-                #Renderer_PresentVsync or
+                Renderer_PresentVsync or
                 Renderer_TargetTexture
     self.sdlRenderer = self.sdlWindow.createRenderer(index = d3d11Index, flags=flags)
     sdlFailIf(self.sdlRenderer.isNil):

@@ -4,6 +4,7 @@ import jsoninit
 type
   RenderMethod* = enum
     SDLDirect, SDLTexture, PixieTexture, PixieLock
+  FillMethod* = enum Solid, Gradient
   AppOpts* = ref object
     appHelp*: bool = false
     compQty*: int = 1
@@ -13,6 +14,7 @@ type
     enableHover*: bool = true
     oneOffset*: bool = false
     renderMethod*: RenderMethod
+    blockFill*: FillMethod
     reTextureOnZoom*: bool = false
     showScale*: bool = true
     singleColor*: string
