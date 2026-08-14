@@ -31,7 +31,6 @@ proc tryFont(size: float): FontPtr =
       if gFontName.isNone:
         gFontName = some(p)
         echo "SDL Loaded ", p, " with size ", size
-        echo getStackTrace()
       return result
 
 # TODO: see whether other places need this, not just components
@@ -54,7 +53,6 @@ proc clearFontCache*() =
   gFontCache.clear()
 
 proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
-  # explicit convertion to SDL2.Rect?
   rp.setDrawColor(fillColor)
   rp.fillRect(addr rect)
   rp.setDrawColor(penColor)
@@ -67,51 +65,43 @@ proc highlight(selected, hovering: bool): float =
   else: 1.9
 
 proc drawSolid(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
-  # this local fn calls the "api" fn, which is used by others
-  drawFilledOutlineRectSDL(rp, rect, fillColor, penColor)
+  rp.setDrawColor(fillColor)
+  rp.fillRect(addr rect)
 
 proc drawBorder(rp: RendererPtr, rect: PRect, color: ColorRGBA, hov, sel: bool) =
-  if hov and not sel:
-    let r1 = rect.shrink(1)
-    let r2 = rect.shrink(2)
+  if not hov and not sel:
+    rp.setDrawColor(color)
+    rp.drawRect(addr rect)
+  elif hov and not sel:
+    let r1 = rect.shrink(0)
+    let r2 = rect.shrink(1)
     rp.setDrawColor(color)
     rp.drawRect(addr r1)
-    rp.setDrawColor(color * 2)
+    rp.setDrawColor(color)
     rp.drawRect(addr r2)
   elif sel:
-    let r1 = rect.shrink(1)
+    let r1 = rect.shrink(0)
     let r2 = rect.shrink(1)
     let r3 = rect.shrink(2)
-    let r4 = rect.shrink(3)
     rp.setDrawColor(color)
     rp.drawRect(addr r1)
-    rp.setDrawColor(color * 2)
+    rp.setDrawColor(color)
     rp.drawRect(addr r2)
-    rp.setDrawColor(color * 3)
+    rp.setDrawColor(color)
     rp.drawRect(addr r3)
-    rp.setDrawColor(color * 4)
-    rp.drawRect(addr r4)
 
 proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
-  # Render component text
-  # Text to texture, then texture to renderer surface.
-  let fnt = font(comp, zoom)
-  if fnt.isNil:
-    return
+  # Render component text to surface->texture->renderer
   let 
+    fnt = font(comp, zoom)
     (w, h) = (prect.w, prect.h)
-    textSurface = fnt.renderUtf8Blended(($comp.id).cstring, Black)
+    textSurface = fnt.renderUtf8Blended(($comp.id).cstring, comp.penColor)
     textTexture = rp.createTextureFromSurface(textSurface)
     (tsw, tsh) = (textSurface.w, textSurface.h)
     texRect: PRect = (prect.x + (w div 2) - (tsw div 2),
                       prect.y + (h div 2) - (tsh div 2), tsw, tsh)
-  if textTexture.isNil:
-    raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
-
-  if rot:
-    rp.copyEx(textTexture, nil, addr texRect, -comp.rot.toFloat, nil)
-  else:
-    rp.copyEx(textTexture, nil, addr texRect, 0, nil)
+    rotAmt = if rot: -comp.rot.toFloat else: 0.0
+  rp.copyEx(textTexture, nil, addr texRect, rotAmt, nil)
   textSurface.destroy()
   textTexture.destroy()
 

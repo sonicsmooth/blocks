@@ -78,6 +78,18 @@ proc `*`*(val: ColorRGBA, scale: float): ColorRGBA =
   result.b = (val.b.float * scale).clamp(0, 255).round.uint8
   result.a = val.a
 
+proc `-`*(val: ColorRGBA, amt: uint8): ColorRGBA =
+  result.r = if val.r - amt <= val.r: val.r - amt else: 0
+  result.g = if val.g - amt <= val.g: val.g - amt else: 0
+  result.b = if val.b - amt <= val.b: val.b - amt else: 0
+  result.a = val.a
+
+proc `+`*(val: ColorRGBA, amt: uint8): ColorRGBA =
+  result.r = if val.r + amt >= val.r: val.r + amt else: 255
+  result.g = if val.g + amt >= val.g: val.g + amt else: 255
+  result.b = if val.b + amt >= val.b: val.b + amt else: 255
+  result.a = val.a
+
 proc `$`*(val: ColorRGBA): string =
   result = "(r: " & $val.r.int & ", " &
            " g: " & $val.g.int & ", " &

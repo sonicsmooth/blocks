@@ -268,7 +268,7 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
     rh = rand(HRANGE)
 
   let fillColor = randColor()
-  let penColor   = fillColor * 0.25
+  let penColor   = (fillColor - 50).setAlpha(255)
   result = DBComp( x: rectPosX,
                    y: rectPosY,
                    w: rw / 2,

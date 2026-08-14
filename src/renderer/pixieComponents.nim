@@ -5,6 +5,7 @@ import std/[options,
             
 import pixie
 import appopts
+import colors
 import colors_pixie
 import common
 import rects
@@ -36,9 +37,10 @@ proc tryFont(size: float): Font =
         continue
 
 proc font*(comp: DBComp, zoom: float): Font =
-  let wbb = comp.wbbox
-  let fsz = min(wbb.w, wbb.h).float
-  let scaledSize = (fsz * gFontScale * zoom).round.int.clamp(fontRange)
+  let 
+    wbb = comp.wbbox
+    fsz = min(wbb.w, wbb.h).float
+    scaledSize = (fsz * gFontScale * zoom).round.int.clamp(fontRange)
   result = tryFont(scaledSize)
   if not result.isNil:
     result.size = scaledSize.float
@@ -63,50 +65,44 @@ proc drawSolid(image: Image, fillColor: Color) =
 proc drawBorder(ctx: Context, penColor: Color, hov, sel: bool, zoom: float) =
   let w = ctx.image.width.float
   let h = ctx.image.height.float
-
-  ctx.lineWidth = 4 * zoom
-  ctx.strokeStyle.color = penColor.darken(0.2)
-  ctx.strokeRect(pixie.rect(0.0, 0.0, w, h))
-  if hov and not sel:
+  ctx.lineWidth = 1 * zoom
+  ctx.strokeStyle.color = penColor
+  if not hov and not sel:
+    ctx.strokeRect(pixie.rect(0.0, 0.0, w,       h      ))
+  elif hov and not sel:
+    ctx.strokeRect(pixie.rect(0.0, 0.0, w,       h      ))
     ctx.strokeRect(pixie.rect(1.0, 1.0, w - 2.0, h - 2.0))
-    ctx.strokeRect(pixie.rect(2.0, 2.0, w - 4.0, h - 4.0))
   elif sel:
+    ctx.strokeRect(pixie.rect(0.0, 0.0, w,       h      ))
     ctx.strokeRect(pixie.rect(1.0, 1.0, w - 2.0, h - 2.0))
     ctx.strokeRect(pixie.rect(2.0, 2.0, w - 4.0, h - 4.0))
-    ctx.strokeRect(pixie.rect(3.0, 3.0, w - 6.0, h - 6.0))
-    ctx.strokeRect(pixie.rect(4.0, 4.0, w - 8.0, h - 8.0))
 
 proc drawCompText(image: Image, comp: DBComp, zoom: float) =
-  let fnt = font(comp, zoom)
-  let spans = @[newSpan($comp.id, fnt)]
-  let (w,h) = (image.width.float, image.height.float)
-  let arrangement = typeset(spans, vec2(w, h), CenterAlign, MiddleAlign)
-  image.fillText(arrangement)#, translate(vec2(10, 10)))
-
-proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, extent: int, zoom: float) = 
   let
+    fnt = font(comp, zoom) # includes modified comp.penColor 
+    spans = @[newSpan($comp.id, fnt)]
+    (w,h) = (image.width.float, image.height.float)
+    arrangement = typeset(spans, vec2(w, h), CenterAlign, MiddleAlign)
+  image.fillText(arrangement)
+
+proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, zoom: float) = 
+  let
+    extent = 10 * zoom
     offset = if gAppOpts.oneoffset: 1 else: 0
-    midh:   float = opx.x
+    midh:   float = opx.x.float
     left:   float = midh - extent
     right:  float = midh + extent
-    midv:   float = opx.y - offset
+    midv:   float = opx.y.float - offset
     top:    float = midv - extent
     bottom: float = midv + extent
-  ctx.strokeStyle.color = penColor
-  ctx.lineWidth = 1.0 * zoom
-  ctx.beginPath()
-  ctx.moveTo(vec2(left,  midv   ))
-  ctx.lineTo(vec2(right, midv   ))
-  ctx.moveTo(vec2(midh,  top    ))
-  ctx.lineTo(vec2(midh,  bottom ))
-  ctx.stroke()
+  ctx.fillStyle = color(penColor.r, penColor.g, penColor.b, 1.0).darken(0.2)
+  ctx.fillRect(left, midv, right-left, 1) # Horizontal
+  ctx.fillRect(midh, top,  1, bottom-top) # Vertical
 
 proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool, zoom: float): Image =
-  # Draw rectangle to new surface using pixie and return surface
+  # Draw rectangle to new image using pixie and return image
   # comp is database object
   # PxSize is size of texture to draw to
-  # let prect = self.choosePRect(comp, false)
-  #  vp = self.editor.viewport
   let image = newImage(texSz.w, texSz.h)
   let ctx = image.newContext()
   if gAppOpts.blockFill == Solid:
@@ -114,7 +110,7 @@ proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool, zoom: float
   elif gAppOPts.blockFill == Gradient:
     image.drawGradient(comp.fillColor)
   ctx.drawBorder(comp.penColor, hov, sel, zoom)
-  ctx.drawOrigin(comp.pxOrigin(zoom), comp.penColor, 10, zoom)
+  ctx.drawOrigin(comp.pxOrigin(zoom), comp.penColor, zoom)
   if gAppOpts.enableText:
     image.drawCompText(comp, zoom)
 
