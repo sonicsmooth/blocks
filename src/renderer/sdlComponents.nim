@@ -48,6 +48,19 @@ proc font*(comp: DBComp, zoom: float): FontPtr =
   let scaledSize = (fsz * gFontScale * zoom).round.int.clamp(fontRange)
   font(scaledSize)
 
+proc clearFontCache*() = 
+  for f in gFontCache.values:
+    f.close() # is this equivalent to destroy in other objects?
+  gFontCache.clear()
+
+
+proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+  # explicit convertion to SDL2.Rect?
+  rp.setDrawColor(fillColor)
+  rp.fillRect(addr rect)
+  rp.setDrawColor(penColor)
+  rp.drawRect(addr rect)
+
 
 proc highlight(selected, hovering: bool): float =
   if   (selected, hovering) == (false, false): 1.0
@@ -55,12 +68,57 @@ proc highlight(selected, hovering: bool): float =
   elif (selected, hovering) == (true,  false): 1.5
   else: 1.9
 
-proc drawOutlineRectSDL(rp: RendererPtr, rect: PRect, penColor: ColorRGBA) =
-  # explicit convertion to SDL2.Rect?
-  rp.setDrawColor(penColor)
-  rp.drawRect(addr rect)
+proc drawBorder(rp: RendererPtr, rect: PRect, color: ColorRGBA, hov, sel: bool) =
+  if hov and not sel:
+    let r1 = rect.shrink(1)
+    let r2 = rect.shrink(2)
+    rp.setDrawColor(color)
+    rp.drawRect(addr r1)
+    rp.setDrawColor(color * 2)
+    rp.drawRect(addr r2)
+  elif sel:
+    let r1 = rect.shrink(1)
+    let r2 = rect.shrink(1)
+    let r3 = rect.shrink(2)
+    let r4 = rect.shrink(3)
+    rp.setDrawColor(color)
+    rp.drawRect(addr r1)
+    rp.setDrawColor(color * 2)
+    rp.drawRect(addr r2)
+    rp.setDrawColor(color * 3)
+    rp.drawRect(addr r3)
+    rp.setDrawColor(color * 4)
+    rp.drawRect(addr r4)
 
-proc renderCompOriginSDL(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
+
+proc drawSolid(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+  # this local fn calls the "api" fn, which is used by others
+  drawFilledOutlineRectSDL(rp, rect, fillColor, penColor)
+
+proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
+  # Render component text
+  # Text to texture, then texture to renderer surface.
+  let fnt = font(comp, zoom)
+  if fnt.isNil:
+    return
+  let 
+    (w, h) = (prect.w, prect.h)
+    textSurface = fnt.renderUtf8Blended(($comp.id).cstring, Black)
+    textTexture = rp.createTextureFromSurface(textSurface)
+    (tsw, tsh) = (textSurface.w, textSurface.h)
+    texRect: PRect = (prect.x + (w div 2) - (tsw div 2),
+                      prect.y + (h div 2) - (tsh div 2), tsw, tsh)
+  if textTexture.isNil:
+    raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
+
+  if rot:
+    rp.copyEx(textTexture, nil, addr texRect, -comp.rot.toFloat, nil)
+  else:
+    rp.copyEx(textTexture, nil, addr texRect, 0, nil)
+  textSurface.destroy()
+  textTexture.destroy()
+
+proc drawOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
   # When rot is false/true, everything is treated as an un/rotated component
   # The opx here is identical to comp.rotationPoint(vp) when rot is false
   # There appears to be a -1 in here for some reason, I think when you're measuring
@@ -75,40 +133,6 @@ proc renderCompOriginSDL(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: floa
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
-proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
-  # explicit convertion to SDL2.Rect?
-  rp.setDrawColor(fillColor)
-  rp.fillRect(addr rect)
-  rp.setDrawColor(penColor)
-  rp.drawRect(addr rect)
-
-proc renderCompTextSDL(rp: RendererPtr, comp: DBComp, font: FontPtr, prect: PRect, rot: bool) =
-  # Render component text
-  # Text to texture, then texture to renderer surface.
-  # This gets converted back to texture again after return
-  # So this could clearly be optimized and assembled when
-  # creating cache
-  if font.isNil:
-    return
-  let 
-    (w, h) = (prect.w, prect.h)
-    selstr = $comp.id
-    textSurface = font.renderUtf8Blended(selstr.cstring, Black)
-  let textTexture = rp.createTextureFromSurface(textSurface)
-  let
-    (tsw, tsh) = (textSurface.w, textSurface.h)
-    texRect: PRect = (prect.x + (w div 2) - (tsw div 2),
-                      prect.y + (h div 2) - (tsh div 2), tsw, tsh)
-  if textTexture.isNil:
-    raise newException(ValueError, &"Text Texture pointer is nil: {getError()}")
-
-  if rot:
-    rp.copyEx(textTexture, nil, addr texRect, comp.rot.toFloat, nil)
-  else:
-    rp.copyEx(textTexture, nil, addr texRect, 0, nil)
-  textSurface.destroy()
-  textTexture.destroy()
-
 proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport, hov, sel: bool, rot: bool) =
   # Draw rectangle, origin, and its text using SDL2 renderer to prect
   # prect is rectangle in pixels
@@ -117,15 +141,8 @@ proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport,
   # rot: false means render as R0, with text unrotated, and box zero'd
   # Generally SDLDirect will use rot=true and false otherwise
   
-  let 
-    highlightFactor = highlight(hov, sel)
-    font = font(comp, vp.zoom)
-  rp.drawFilledOutlineRectSDL(prect, comp.fillColor * highlightFactor, comp.penColor)
-  if sel:
-    rp.drawOutlineRectSDL(prect.shrink(1), comp.penColor    )
-    rp.drawOutlineRectSDL(prect.shrink(2), comp.penColor * 2)
-    rp.drawOutlineRectSDL(prect.shrink(3), comp.penColor * 3)
-    rp.drawOutlineRectSDL(prect.shrink(4), comp.penColor * 4)
-  rp.renderCompOriginSDL(comp, prect, vp.zoom, rot)
+  rp.drawSolid(prect, comp.fillColor * highlight(hov, sel), comp.penColor)
+  rp.drawBorder(prect, comp.penColor, hov, sel)
+  rp.drawOrigin(comp, prect, vp.zoom, rot)
   if gAppOpts.enableText:
-    rp.renderCompTextSDL(comp, font, prect, rot)
+    rp.drawCompText(comp, prect, vp.zoom, rot)

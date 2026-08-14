@@ -31,7 +31,7 @@ type
     gridCtrlFrameShowing: bool
     mainPanel*: wMainPanel
     bandToolBars: seq[wToolBar]
-    invalidate*: proc() {.gcsafe.}
+    invalidate*: proc()
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
@@ -152,6 +152,7 @@ wClass(wMainFrame of wFrame):
     ddcb.append("SDL Direct")
     ddcb.append("SDL Texture")
     ddcb.append("Pixie Texture")
+    ddcb.select(gAppOpts.renderMethod.int)
     ddcb.position = (self.dpiScale(150), self.dpiScale(10))
     self.bandToolBars.add(tb2) # self.bandToolBars[1]
     
@@ -176,7 +177,7 @@ wClass(wMainFrame of wFrame):
     result.setStatusWidths([-1, -1, -1])
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
-    echo event.id.MenuCmdID
+    #echo event.id.MenuCmdID
     case event.id
     of idCmdNew: discard
     of idCmdOpen:

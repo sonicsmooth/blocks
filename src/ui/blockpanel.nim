@@ -252,6 +252,6 @@ wClass(wBlockPanel of wSDLPanel):
     self.wEvent_KeyDown              do (event: wEvent): self.processUIKeyEvent(event)
     self.wEvent_KeyUp                do (event: wEvent): self.processUIKeyEvent(event)
     self.wEvent_Timer                do (event: wEvent): self.onTimer(event)
-    self.startTimer(0.0, id=1) # one-shot to start
-    self.startTimer(1/60.0, id=2) # ongoing timer for refresh
+    self.startTimer(0.0,   id=1) # one-shot to start
+    self.startTimer(1/5.0, id=2) # ongoing timer for refresh
     

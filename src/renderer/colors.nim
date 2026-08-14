@@ -82,7 +82,7 @@ proc `$`*(val: ColorRGBA): string =
   result = "(r: " & $val.r.int & ", " &
            " g: " & $val.g.int & ", " &
            " b: " & $val.b.int & ", " &
-           " g: " & $val.a.int & ")"
+           " a: " & $val.a.int & ")"
 
 const
   AliceBlue*            = toColorRGBA(0xF0F8FF'u32) #F0F8FF

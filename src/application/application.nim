@@ -63,8 +63,9 @@ proc init*(self: Application, w, h: int) =
   # Initialize data
   self.mainFrame.mainPanel.randomizeRectsAll()
 
-  self.mainFrame.invalidate = proc(){.closure.} =
+  self.mainFrame.invalidate = proc() =
     self.renderer.clearTextureCache()
+    self.renderer.clearFontCaches()
 
   self.editor.onZoomChanged = proc() {.closure.} =
     self.renderer.clearTextureCache()

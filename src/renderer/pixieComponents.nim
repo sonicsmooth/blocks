@@ -5,7 +5,7 @@ import std/[options,
             
 import pixie
 import appopts
-import colors, colors_pixie
+import colors_pixie
 import common
 import rects
 export Image
@@ -15,26 +15,20 @@ const
 
 var
   gTypefaceCache: Table[string, Typeface]
-  #gFontName: Option[string]
   gFont: Option[Font] # a cache of 1
 
 proc typeface(name: string): Typeface =
   if name notin gTypefaceCache:
-    echo "reading typeface: ", name
     gTypefaceCache[name] = readTypeface(name)
-  gTypefaceCache[name]
+  result = gTypefaceCache[name]
     
 proc tryFont(size: float): Font =
-  echo "tryfont ", size
-  echo "gfont issome: ", gFont.isSome
   if gFont.isSome:
-    echo "returning font"
     return gFont.get
   for p in fontCandidates():
     if fileExists(p):
       result = newFont(typeface(p))
       if not result.isNil:
-        echo "Pixie Loaded ", p, " with size ", size
         gFont = some(result)
         return result
       else:
@@ -49,6 +43,11 @@ proc font*(comp: DBComp, zoom: float): Font =
   if not result.isNil:
     result.size = scaledSize.float
     result.paint.color = comp.penColor
+
+proc clearTypefaceCache*() = 
+  gTypefaceCache.clear()
+  gFont = none[Font]()
+
 
 proc drawGradient(image: Image, fillColor: Color) =
   # Implicit conversion using colors_pixie.toPixieColorFloat
@@ -78,6 +77,7 @@ proc drawBorder(ctx: Context, penColor: Color, hov, sel: bool, zoom: float) =
     ctx.strokeRect(pixie.rect(3.0, 3.0, w - 6.0, h - 6.0))
     ctx.strokeRect(pixie.rect(4.0, 4.0, w - 8.0, h - 8.0))
 
+
 proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, extent: int, zoom: float) = 
   let
     offset = if gAppOpts.oneoffset: 1 else: 0
@@ -96,10 +96,10 @@ proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, extent: int, zoom: 
   ctx.lineTo(vec2(midh,  bottom ))
   ctx.stroke()
 
-# TODO: Move to common
-proc pxOrigin(comp: DBComp, zoom: float): PxPoint =
-  # Return the origin position in pixels
-  comp.originToTopLeft(false).toPixelScale(zoom)
+proc drawCompText(image: Image, comp: DBComp, zoom: float) =
+  let fnt = font(comp, zoom)
+  let spans = @[newSpan($comp.id, fnt)]
+  image.fillText(typeset(spans, vec2(180, 180)), translate(vec2(10, 10)))
 
 proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool, zoom: float): Image =
   # Draw rectangle to new surface using pixie and return surface
@@ -112,11 +112,8 @@ proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool, zoom: float
   image.drawGradient(comp.fillColor)
   ctx.drawBorder(comp.penColor, hov, sel, zoom)
   ctx.drawOrigin(comp.pxOrigin(zoom), comp.penColor, 10, zoom)
-
-  # Text
-  let fnt = font(comp, zoom)
-  let spans = @[newSpan($comp.id, fnt)]
-  image.fillText(typeset(spans, vec2(180, 180)), translate(vec2(10, 10)))
+  if gAppOpts.enableText:
+    image.drawCompText(comp, zoom)
 
 
 

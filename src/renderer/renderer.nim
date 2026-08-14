@@ -45,6 +45,9 @@ const
   bmask* = 0xff.shl( 8).uint32
   amask* = 0xff.shl( 0).uint32
 
+var
+  gCumtime: Duration
+
 
 proc newRenderer*(): Renderer =
   result = new Renderer
@@ -103,6 +106,7 @@ proc clearTextureCache*(self: Renderer) =
   for texture in self.textureCache.values:
     texture.destroy()
   self.textureCache.clear()
+  gCumtime = initDuration()
 
 proc clearTextureCache(self: Renderer, id: CompID) =
   # Clear specific id from texture cache
@@ -118,6 +122,10 @@ proc syncTextureCache*(self: Renderer) =
   for id in self.editor.dirty.trueItems:
     self.clearTextureCache(id)
   self.editor.dirty.clearAll()
+
+proc clearFontCaches*(self: Renderer) =
+  clearTypefaceCache()
+  clearFontCache()
 
 proc screenRectP(self: Renderer): PRect =
   let sz = self.editor.viewport.clientSize
@@ -159,7 +167,6 @@ proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Vi
     pivot = comp.rotationPoint(vp)
   self.sdlRenderer.copyEx(texture, nil, addr tgtRect, -comp.rot.toFloat, addr pivot)
 
-
 proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   self.visibleComponents.setLen(0)
   let vp = self.editor.viewport
@@ -169,18 +176,21 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let hov = self.editor.isHovering(comp.id)
     let sel = self.editor.isSelected(comp.id)
     if rmethod == SDLDirect:
+      # let t0 = now()
       let cprect = self.clampRect(pbb)
       self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, true)
+      # gCumtime += (now() - t0)
     else:
       let key = (comp.id, hov, sel)
       if key notin self.textureCache:
-        when defined(textureProfile):
-          timeit("Texture time"):
-            self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
-        else:
-          self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
+        # let t0 = now()
+        self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
+        # gCumtime += (now() - t0)
       self.drawCachedTexture(comp, self.textureCache[key], vp)
     self.visibleComponents.add(comp)
+  # if gCumTime.inNanoseconds > 0:
+    # echo "duration (ms): ", gCumTime.inMilliseconds
+  # gCumTime = initDuration()
 
 proc drawSelectBox(self: Renderer) =
   if self.editor.selectBox.w == 0 or

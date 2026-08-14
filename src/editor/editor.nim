@@ -63,7 +63,6 @@ type
     lastPos:     PxPoint
     state:       MouseState
     panState:    PanState
-    #cachedSelectSeq: seq[]
 
 
   Editor* = ref object of RootObj
