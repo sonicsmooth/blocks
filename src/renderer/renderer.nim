@@ -175,21 +175,14 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let hov = self.editor.isHovering(comp.id)
     let sel = self.editor.isSelected(comp.id)
     if rmethod == SDLDirect:
-      # let t0 = now()
       let cprect = self.clampRect(pbb)
       self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, true)
-      # gCumtime += (now() - t0)
     else:
       let key = (comp.id, hov, sel)
       if key notin self.textureCache:
-        # let t0 = now()
         self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
-        # gCumtime += (now() - t0)
       self.drawCachedTexture(comp, self.textureCache[key], vp)
     self.visibleComponents.add(comp)
-  # if gCumTime.inNanoseconds > 0:
-    # echo "duration (ms): ", gCumTime.inMilliseconds
-  # gCumTime = initDuration()
 
 proc drawSelectBox(self: Renderer) =
   if self.editor.selectBox.w == 0 or
