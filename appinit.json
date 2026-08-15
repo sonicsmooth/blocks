@@ -3,7 +3,7 @@
     "AppOpts": {
       "_comment": "not implemented",
       "appHelp": false,
-      "compQty": 10,
+      "compQty": 1,
       "enableBbox": false,
       "enableDstRect": false,
       "enableText": true,

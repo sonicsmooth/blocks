@@ -10,7 +10,7 @@ const
   gCandidates = ["../fonts/DejaVuSans.ttf",
                  "../fonts/Roboto-Regular_1.ttf",
                  "../fonts/Ubuntu-Regular_1.ttf"]
-  fontRange*: Slice[int] = 4..1000
+  fontRange*: Slice[int] = 1..50000
   defFontSize* = 25
 
 

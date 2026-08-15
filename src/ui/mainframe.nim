@@ -100,7 +100,8 @@ wClass(wMainFrame of wFrame):
   
   proc onResize(self: wMainFrame, event: wEvent) =
     if self.statusBar != nil:
-      self.statusBar.setStatusText($self.clientSize, index=1)
+      #self.statusBar.setStatusText($self.clientSize, index=1)
+      self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
     event.skip()
   
   proc refreshCanvas(self: wMainFrame) =

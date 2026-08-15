@@ -407,11 +407,6 @@ proc toPRect*(rect: WRect, vp: Viewport): PRect  =
     width  = (rect.w.float * vp.zoom).round.cint
     height = (rect.h.float * vp.zoom).round.cint
   (origin.x, origin.y + 1, width, height)
-# proc zero*(rect: SomeRect): auto  =
-#   when SomeRect is WRect:
-#     (x: 0.WType, y: 0.WType, w: rect.w, h: rect.h)
-#   elif SomeRect is PRect:
-#     (x: 0.PxType, y: 0.PxType, w: rect.w, h: rect.h)
 proc area*(rect: SomeRect): auto  =
   rect.w * rect.h
 proc aspectRatio*(rect: SomeRect): float =
@@ -541,6 +536,35 @@ proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
     rect1.topEdge    > rect2.bottomEdge or
     rect1.rightEdge  < rect2.leftEdge or
     rect1.leftEdge   > rect2.rightEdge
+
+
+proc intersection*(client, rect: PRect): PRect =
+  # Common rectangle shared by client and component rectangles
+  # The size is used to create the texture.
+  # The position is used for final blitting
+  # When rotation becomes other than 90 deg, this rectangle
+  # can be through of as taking a chunk out of the component's
+  # unrestricted full-size, rotated, rectangle
+  # 01234567
+  # cccc      # c.x=0; c.w=4
+  #     rrrr  # r.x=4, r.w=4
+  # there should be no overlap, intersection should be 0 width
+
+  # 01234567
+  # cccc      # c.x=0; c.w=4
+  #    rrrr   # r.x=3, r.w=4
+  # there should be overlap, intersection should be 1 width
+
+  let 
+    ileft = max(client.left, rect.left)
+    iright = min(client.right, rect.right)
+    itop = max(client.top, rect.top)
+    ibot = min(client.bottom, rect.bottom)
+    w = max(0, iright - ileft + 1)
+    h = max(0, ibot - itop + 1)
+  (ileft, itop, w, h)
+
+
 
 converter toSize*(size: wSize): PxSize = (size.width, size.height)
 converter toPxPoint*(pt: wPoint): PxPoint = (pt.x, pt.y)
