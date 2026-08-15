@@ -175,9 +175,12 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     let hov = self.editor.isHovering(comp.id)
     let sel = self.editor.isSelected(comp.id)
     if rmethod == SDLDirect:
-      #let cprect = self.clampRect(pbb)
       self.sdlRenderer.renderDBCompSDL(comp, pbb, vp, hov, sel, true)
     else:
+      let csz = self.editor.viewport.clientSize
+      let clientRect: prect(0, 0, csz.w, csz.h)
+      let isect = intersect(clientRect, pbb)
+      echo isect
       let key = (comp.id, hov, sel)
       if key notin self.textureCache:
         self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
