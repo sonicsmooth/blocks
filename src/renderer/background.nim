@@ -6,7 +6,7 @@ import sdl2 except Color
 import sdl2/ttf
 
 import arange
-import colors, colors_sdl
+import colors, sdlcolors
 import grid
 import viewport
 import world

@@ -1,4 +1,5 @@
-import std/[sets, sequtils, tables]
+import std/[sets, 
+            tables]
 from winim/inc/windef import WPARAM, LPARAM, HANDLE
 from winim/inc/winuser import SendMessage
 from wnim/private/wTypes import wWindow, wEvent

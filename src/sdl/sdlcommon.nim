@@ -3,6 +3,7 @@ import std/strformat
 import sdl2
 import sdl2/image
 import sdl2/ttf
+#export sdl2, image, ttf
 
 
 type

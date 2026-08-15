@@ -1,5 +1,5 @@
 import std/[algorithm,
-            sugar,
+            #sugar,
             sequtils, 
             tables]
 

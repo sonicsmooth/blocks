@@ -2,7 +2,9 @@ import std/[algorithm, locks, sugar, tables]
 import sequtils
 import wnim
 import wnim/wTypes
-import winim/inc/[winuser, windef]
+import winim/inc/[winuser, 
+                  #windef
+                  ]
 import concurrent
 
 #import recttable, userMessages

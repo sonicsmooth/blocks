@@ -1,21 +1,17 @@
-import std/[sequtils,
-            strutils, 
-            strformat, 
+import std/[strformat, 
             math,
-            monotimes,
-            tables,
-            times
+            tables
             ]
+#import std/[monotimes, times]
 export tables
 
 import wNim/wTypes
 import sdl2 except Color
-import sdl2/ttf
 
 import appopts
 import background
 import colors
-import colors_sdl
+import sdlcolors
 import common
 import document
 import editor
@@ -45,8 +41,9 @@ type
     visibleComponents*: seq[DBComp]
 
 
-var
-  gCumtime: Duration
+when defined(profile):
+  var
+    gCumtime: Duration
 
 
 proc newRenderer*(): Renderer =
@@ -106,7 +103,8 @@ proc clearTextureCache*(self: Renderer) =
   for texture in self.textureCache.values:
     texture.destroy()
   self.textureCache.clear()
-  gCumtime = initDuration()
+  when defined(profile):
+    gCumtime = initDuration()
 
 proc clearTextureCache(self: Renderer, id: CompID) =
   # Clear specific id from texture cache

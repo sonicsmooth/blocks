@@ -2,7 +2,6 @@
 import std/[math,
             options,
             os,
-            strformat,
             tables
             ]
 import sdl2 except Color
@@ -10,7 +9,7 @@ import sdl2/ttf
 
 import appopts
 import colors
-import colors_sdl
+import sdlcolors
 import common
 import rotation
 import rects

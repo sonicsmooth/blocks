@@ -1,22 +1,21 @@
-import std/[monotimes,
-            segfaults,
-            strformat,
-            strutils, 
-            tables,
-            times ]
+import std/[segfaults,
+            #strformat,
+            #strutils, 
+            tables]
 
+#import std/[monotimes, times]
 import wNim
 import winim except PRECT
 
-import appopts
+#import appopts
 import editor
 import rects
 import recttable
 import reporting
 import renderer
-import routing
+#import routing
 import sdlframes
-import userMessages
+#import userMessages
 import viewport
 
 # TODO: blockpanel should have refs to editor, renderer, doc, viewport
@@ -83,7 +82,6 @@ const
     ].toTable
  
 
-var k,m: int
 wClass(wBlockPanel of wSDLPanel):
   proc isReady*(self: wBlockPanel): bool =
     if self.editor.isNil: return reportNil("blockPanel.editor")

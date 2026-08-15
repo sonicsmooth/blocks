@@ -41,7 +41,7 @@ const
   panelBackgroundColor = 0xf9f9f9
   buttonAreaColor = 0xf0f0f0
 
-var gFrameShowing: bool
+#var gFrameShowing: bool
 
 proc edges(w: wWindow): tuple[left, right, top, bot: int] =
   (left:  w.position.x,
@@ -65,9 +65,9 @@ let errcol = proc(event: wEvent) =
     SetBkColor(event.wParam, RGB(255, 199, 206))
     SetTextColor(event.wParam, RGB(156, 0, 6))
 
-let goodcol = proc(event: wEvent) =
-    SetBkColor(event.wParam, RGB(0xc6, 0xef, 0xce)) #c6efce
-    SetTextColor(event.wParam, RGB(0, 0x61, 0)) #006100
+# let goodcol = proc(event: wEvent) =
+#     SetBkColor(event.wParam, RGB(0xc6, 0xef, 0xce)) #c6efce
+#     SetTextColor(event.wParam, RGB(0, 0x61, 0)) #006100
 
 
 wClass(wGridControlPanel of wPanel):
@@ -179,7 +179,6 @@ wClass(wGridControlPanel of wPanel):
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  var cnt: int = 0
   proc eventMatchAndStrip(self: wGridControlPanel, event: wEvent): (wWindow, string) =
     let txtCtrls = [self.txtSizeX, self.txtSizeY]
     let comboBoxes = [self.mCbDivisions]

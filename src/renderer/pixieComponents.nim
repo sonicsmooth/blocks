@@ -5,8 +5,7 @@ import std/[options,
             
 import pixie
 import appopts
-import colors
-import colors_pixie
+import pixiecolors
 import common
 import rects
 export Image
@@ -51,7 +50,7 @@ proc clearTypefaceCache*() =
   gFont = none[Font]()
 
 proc drawGradient(image: Image, fillColor: Color) =
-  # Implicit conversion using colors_pixie.toPixieColorFloat
+  # Implicit conversion using pixiecolors.toPixieColorFloat
   let gradCol1 = fillColor.lighten(0.1)
   let gradCol2 = fillColor.darken(0.1)
   var paint = newPaint(LinearGradientPaint)

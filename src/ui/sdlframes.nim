@@ -1,7 +1,10 @@
 import std/tables
 import wnim
-import sdl2, sdl2/[image, ttf]
-import utils, colors, colors_sdl, sdlcommon
+import sdl2
+
+import colors
+import sdlcolors
+import sdlcommon
 
 
 

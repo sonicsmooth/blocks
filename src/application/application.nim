@@ -1,9 +1,16 @@
-import std/[sets, sequtils]
+#import std/[sets, sequtils]
 import wNim/[wApp, wWindow]
 import wNim/[wSlider, wStatusBar]
-import document, editor, renderer, mainframe
-import reporting, jsoninit
+
+import document
+import editor
+#import jsoninit
+import mainframe
+import renderer
+import reporting
 import sdlframes
+
+export document, editor, renderer
 
 type
   Application* = ref object
