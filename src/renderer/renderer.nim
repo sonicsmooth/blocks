@@ -6,6 +6,8 @@ import std/[sequtils,
             tables,
             times
             ]
+export tables
+
 import wNim/wTypes
 import sdl2 except Color
 import sdl2/ttf
@@ -17,14 +19,15 @@ import colors_sdl
 import common
 import document
 import editor
+import pixiecomponents
 import rects
 import reporting
 import rotation
 import sdlcomponents
 import sdlcommon
-import pixiecomponents
+import viewport
 
-
+export document, editor, sdl2
 
 type
   CacheKey = tuple[id:CompID, hovering, selected: bool]
@@ -116,7 +119,7 @@ proc clearTextureCache(self: Renderer, id: CompID) =
 
 proc syncTextureCache*(self: Renderer) =
   # Clear texture for dirty items
-  for id in self.editor.dirty.trueItems:
+  for id in self.editor.dirty[].items: #.trueItems:
     self.clearTextureCache(id)
   self.editor.dirty.clearAll()
 
@@ -178,11 +181,12 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
       self.sdlRenderer.renderDBCompSDL(comp, pbb, vp, hov, sel, true)
     else:
       let csz = self.editor.viewport.clientSize
-      let clientRect: prect(0, 0, csz.w, csz.h)
+      let clientRect = prect(0, 0, csz.w, csz.h)
       let isect = intersect(clientRect, pbb)
-      echo isect
+      #if isect.w == 0 or isect.h == 0: raise newException(RangeDefect, "Component out of bounds")
       let key = (comp.id, hov, sel)
       if key notin self.textureCache:
+        echo "rerendering ", comp.id
         self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
       self.drawCachedTexture(comp, self.textureCache[key], vp)
     self.visibleComponents.add(comp)

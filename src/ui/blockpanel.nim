@@ -4,11 +4,20 @@ import std/[monotimes,
             strutils, 
             tables,
             times ]
-import editor, renderer
+
 import wNim
 import winim except PRECT
-import rects, recttable, sdlframes
-import userMessages, appopts, routing, reporting
+
+import appopts
+import editor
+import rects
+import recttable
+import reporting
+import renderer
+import routing
+import sdlframes
+import userMessages
+import viewport
 
 # TODO: blockpanel should have refs to editor, renderer, doc, viewport
 
@@ -181,7 +190,8 @@ wClass(wBlockPanel of wSDLPanel):
 
   proc onResize*(self: wBlockPanel, event: wEvent) =
     if self.isReady():
-      self.editor.viewport.clientSize = event.size # should invoke converter
+      self.editor.viewport.resize(event.size) # should invoke converter
+      self.editor.doFitCheck()
       self.editor.updateDestinationBox()
     event.skip()
 
@@ -246,5 +256,5 @@ wClass(wBlockPanel of wSDLPanel):
     self.wEvent_KeyUp                do (event: wEvent): self.processUIKeyEvent(event)
     self.wEvent_Timer                do (event: wEvent): self.onTimer(event)
     self.startTimer(0.0,   id=1) # one-shot to start
-    self.startTimer(1/60.0, id=2) # ongoing timer for refresh
+    self.startTimer(1/5.0, id=2) # ongoing timer for refresh
     

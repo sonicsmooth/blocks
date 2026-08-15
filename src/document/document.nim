@@ -1,4 +1,7 @@
-import recttable, grid, reporting
+import grid
+import recttable
+import reporting
+import zoomctrl
 export recttable, grid
 
 type

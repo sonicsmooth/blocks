@@ -1,7 +1,13 @@
-import std/[algorithm, sugar, sequtils]
-from rects import DBComp
+import std/[algorithm,
+            sugar,
+            sequtils, 
+            tables]
+
 #import recttable, compact
-import document, compact
+
+import compact
+import document
+from rects import DBComp
 
 
 #[

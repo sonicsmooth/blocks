@@ -1,12 +1,13 @@
 import std/[algorithm, 
             math, 
             ]
-import colors
-import viewport, pointmath
-import jsoninit
-import reporting
 import wNim/wTypes
 
+import colors
+import jsoninit
+import pointmath
+import reporting
+import viewport
 
 type
   Scale* = enum None, Tiny, Minor, Major
@@ -15,14 +16,14 @@ type
   Grid* = ref object
     mRefXSpace: float # Major Spacing when zoom level is 0
     mRefYSpace: float # Major Spacing when zoom level is 0
-    mMajorXSpace*: WType # Written to by minDelta
-    mMajorYSpace*: WType # Written to by minDelta
+    mMajorXSpace*:   WType # Written to by minDelta
+    mMajorYSpace*:   WType # Written to by minDelta
     mDivisions:      DivRange
     mVisible*:       bool
     mOriginVisible*: bool
     mSnap*:          bool
-    mDotsOrLines*: DotsOrLines = Lines
-    mZctrl*:       ZoomCtrl
+    mDotsOrLines*:   DotsOrLines = Lines
+    mZctrl*:         ZoomCtrl
 
 # TODO: delete m prefix
 

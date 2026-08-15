@@ -1,8 +1,14 @@
 import std/[random, sets, strformat, tables]
 from std/sequtils import toSeq
 import wNim/[wTypes]
-import rects, colors, appopts, rotation
-export rects, tables
+
+
+import appopts
+import colors
+import rects
+import rotation
+import viewport
+export rects
 
 
 # TODO: Migrate move, rotate, etc., to this module
@@ -16,43 +22,37 @@ type
   RectTable* = ref Table[CompID, DBComp]   # meant to be shared
   PosRot = tuple[x: WType, y: WType, rot: Rotation]
   PosTable* = Table[CompID, PosRot] # meant to have value semantics
-  CompSet = ref HashSet[CompID] #Table[CompID, bool]
-  HoverSet* = CompSet # Probably meant to be shared
-  SelectedSet* = CompSet # Probably meant to be shared
-  DirtySet* = CompSet
+  CompSet* = ref HashSet[CompID] #Table[CompID, bool]
+  # HoverSet* = CompSet # Probably meant to be shared
+  # SelectedSet* = CompSet # Probably meant to be shared
+  # DirtySet* = CompSet
   SomeComps* = RectTable | seq[(CompID, DBComp)]
 
 proc newRectTable*(): RectTable =
   newTable[CompID, DBComp]()
 
-proc newHoverSet*(): HoverSet =
-  new result # init is automatic
-
-proc newSelectedSet*(): SelectedSet =
-  new result # init is automatic
-
-proc newDirtySet*(): DirtySet =
-  new result # init is automatic
+proc newCompSet*(): CompSet =
+  new result
 
 proc `$`*(table: RectTable): string =
   for k,v in table:
     result.add(&"{k}: {v}\n")
 
-
 # TODO Move these generic [] somewhere else
 iterator `[]`*[K, V](table: ref Table[K, V], idxs: openArray[K]): V =
+  # Iterate through elements of a ref table given a seq/array of keys
   for idx in idxs:
     yield table[idx]
 
 iterator `[]`*[K, V](table: ref Table[K, V], idxs: ref HashSet[K]): V =
+  # Iterate through elements of a ref table given a ref set of keys
   for idx in idxs[]:
     yield table[idx]
 
 proc dbComps*(table: RectTable, idxs: openArray[CompID]): seq[DBComp] =
+  # Return seq of components given seq/array of component ids
   for comp in table[idxs]:
     result.add(comp)
-  # for idx in idxs:
-  #   result.add(table[idx])
 
 proc add*(table: RectTable, rect: rects.DBComp) =
   table[rect.id] = rect
@@ -150,8 +150,11 @@ proc fillArea*(rtable: RectTable): WType =
 proc fillRatio*(rtable: RectTable): float =
   rtable.values.toSeq.wbboxes.fillRatio()
 
-proc trueItems*(comps: CompSet): seq[CompID] =
-  comps[].toSeq
+# TODO: Move compset stuff to another module
+
+# proc trueItems*(comps: CompSet): seq[CompID] =
+#   comps[].toSeq
+
 
 proc falseItems*(comps: CompSet, table: RectTable): seq[CompID] =
   for id in table.keys:
@@ -182,7 +185,8 @@ proc clearSome*(comps: CompSet, ids: seq[CompID]): seq[CompID] {.discardable.}=
     comps[].excl(id)
 proc clearAll*(comps: CompSet): seq[CompID] {.discardable.} = 
   # Clear all selected ids, return previous selection
-  result = comps.trueItems
+  #result = comps.trueItems
+  result = comps[].toSeq
   comps[].clear()
 
 proc setOne*(comps: CompSet, id: CompID): bool {.discardable.} =

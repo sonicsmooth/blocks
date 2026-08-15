@@ -20,6 +20,7 @@ export world, zoomctrl
 type
   Viewport* = ref object
     clientSize*: PxSize # size of panel
+    clientRect*: tuple[x, y, w, h: PxType]
     # These are controlled by user
     mPan:     PxPoint
     mZclicks: float   # counts wheel zClicks; there are div zClicks between levels
@@ -55,6 +56,7 @@ proc newViewport*(): Viewport =
   let j = gViewportJ
   result = new Viewport
   result.clientSize = (0, 0)
+  result.clientRect = (0, 0, 0, 0)
   result.mPan = j["pan"].toPxPoint
   result.mZclicks = j["zClicks"].getFloat
   result.mZctrl = newZoomCtrl()
@@ -65,6 +67,7 @@ proc newViewport*(pan: PxPoint, clicks: float, zCtrl: ZoomCtrl): Viewport =
   # zctrl must be passed already properly formed by caller
   result = new Viewport
   result.clientSize = (0, 0)
+  result.clientRect = (0, 0, 0, 0)
   result.mPan = pan
   result.mZclicks = clicks
   result.mZctrl = zCtrl
@@ -74,6 +77,10 @@ proc newViewport*(pan: PxPoint, clicks: float, zCtrl: ZoomCtrl): Viewport =
 proc isReady*(self: Viewport): bool =
   if self.mZctrl.isNil: return reportNil("viewport.mZctrl")
   true
+
+proc resize*(self: Viewport, size: PxSize) =
+  self.clientSize = size
+  self.clientRect = (0, 0, size.w, size.h)
 
 proc doPan*(vp: var Viewport, delta: PxPoint) = 
   # Just pan by the pixel amount
@@ -139,9 +146,7 @@ proc toPixel*[T:WPoint](pt: T, vp: Viewport): PxPoint =
 
 proc toPixelScale*[T:WPoint](pt: T, vp: Viewport): PxPoint =
   (pt[0] * vp.zoom, pt[1] * vp.zoom)
-
-proc toPixelScale*[T:WPoint](pt: T, zoom: float): PxPoint =
-  (pt[0] * zoom, pt[1] * zoom)
+# There is also a toPixelScale in render/common.nim
 
 
 # Convert from pixels to world through viewport
@@ -156,13 +161,11 @@ proc toWorldY*(y: PxType, vp: Viewport): WType =
 proc toWorld*[T: SomePoint](pt: T, vp: Viewport): WPoint =
   (pt[0].toWorldX(vp), pt[1].toWorldY(vp))
 
-proc isPointVisible*(wpt: WPoint, vp: Viewport): bool =
-  # Returns true if pt is visible on screen
-  let pxpt: PxPoint = wpt.toPixel(vp)
-  pxpt.x >= 0 and pxpt.x < vp.clientSize.w and
-  pxpt.y >= 0 and pxpt.y < vp.clientSize.h
-
-
+# proc isPointVisible*(wpt: WPoint, vp: Viewport): bool =
+#   # Returns true if pt is visible on screen
+#   let pxpt: PxPoint = wpt.toPixel(vp)
+#   pxpt.x >= 0 and pxpt.x < vp.clientSize.w and
+#   pxpt.y >= 0 and pxpt.y < vp.clientSize.h
 
 when isMainModule:
   when WType is int:

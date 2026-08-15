@@ -1,16 +1,22 @@
-import std/[monotimes,
-            options,
+import std/[options,
             sets, 
             sequtils,
-            times]
+            tables]
+#import std[monotimes, times]
+export sets
+
 import wNim
 import appopts
 import document
 import pointmath
 import rects
+import recttable
 import reporting
 import rotation
+import viewport
 import zoomctrl
+
+export document, rects, viewport, world
 
 type
   MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekDbl, 
@@ -46,7 +52,6 @@ type
     CmdRotateCW
     CmdRotateCWAbout
     CmdSelectAll
-
   MouseState = enum
     StateSelectNone
     StateSelectDownInComp
@@ -75,10 +80,11 @@ type
     text*:         string
     fillArea*:     WType
     ratio:         float
-    hovering*:     HoverSet
-    selected*:     SelectedSet
-    tmpSelected:   SelectedSet # used during drag-select
-    dirty*:        DirtySet
+    hovering*:     CompSet
+    selected*:     CompSet
+    tmpSelected:   CompSet # used during drag-select
+    dirty*:        CompSet # which to clear from cache
+    fat*:          CompSet # which are too big for screen
     groupRotation: bool # prevents deselection after rotation
     onZoomChanged*: proc() {.gcsafe.}
     invalidate*:    proc() {.gcsafe.}
@@ -116,10 +122,11 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   # ... but zc was created before, with grid
   # all other fields can take their default values
   # and are assigned later
-  result.hovering = newHoverSet()
-  result.selected = newSelectedSet()
-  result.tmpSelected = newSelectedSet()
-  result.dirty = newDirtySet()
+  result.hovering    = newCompSet() #newHoverSet()
+  result.selected    = newCompSet() #newSelectedSet()
+  result.tmpSelected = newCompSet() #newSelectedSet()
+  result.dirty       = newCompSet() #newDirtySet()
+  result.fat         = newCompSet()
 
 proc isReady*(self: Editor): bool =
   if self.doc.isNil: return reportNil("editor.doc")
@@ -153,37 +160,44 @@ proc updateRatio*(self: Editor) =
     if ratio != self.ratio:
       self.ratio = ratio
 
-# proc moveRectsBy(self: Editor, compIDs: seq[CompID], delta: WPoint) =
-#   # Common proc to move one or more Rects; used by mouse and keyboard
-#   # Refer to comments as late as 27ff3c9a056c7b49ffe30d6560e1774091c0ae93
-#   # for rect in self.doc.db[compIDs]:
-#   #   moveRectBy(rect, delta)
-#   for id in compIDs:
-#     moveRectBy(self.doc.db[id], delta)
+proc dirtifyFatComponents(self: Editor) =
+  # Copy the ids that are fat into the dirty set
+  # So they get removed from texture cache
+  for id in self.fat[].items:
+    self.dirty.setOne(id)
 
 proc moveSelectedRectsBy(self: Editor, delta: WPoint) =
-  for rect in self.doc.db[self.selected]:
-    moveRectBy(rect, delta)
+  for comp in self.doc.db[self.selected]:
+    rects.moveRectBy(comp, delta) # "rects." added for clarity not necessity
+  #self.dirtifyFatComponents()
 
-proc moveRectTo(self: Editor, compID: CompID, delta: WPoint) =
+proc moveRectTo(self: Editor, compId: CompID, delta: WPoint) =
   # Common proc to move one or more Rects; used by mouse and keyboard
-  moveRectTo(self.doc.db[compID], delta)
+  rects.moveRectTo(self.doc.db[compID], delta) # "rects." added for clarity not necessity
+  if compId in self.fat[]:
+    self.dirty.setOne(compId)
 
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation) =
   # Rotate about each component's origin
   for id in compIDs:
     self.doc.db[id].rotate(amt)
+  #self.dirtifyFatComponents()
+
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation, pos: WPoint) =
   # Rotate about pos
   for id in compIDs:
     self.doc.db[id].rotateAbout(amt, pos)
+  #self.dirtifyFatComponents()
+
 proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   self.hovering.clearSome(compIDs)
   self.selected.clearSome(compIDs)
+  self.fat.clearSome(compIDs)
   self.dirty.setSome(compIDs)
   for id in compIDs:
     self.doc.db.del(id) # Todo: check whether this deletes rect
   self.fillArea = self.doc.db.fillArea()
+
 proc isSelected*(self: Editor, id: CompID): bool =
   id in self.selected[] or 
   id in self.tmpSelected[]
@@ -200,6 +214,14 @@ proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
     hoveringComps.toHashSet != oldhover
   else:
     false
+proc doFitCheck*(self: Editor) =
+  # Which components fit on screen?
+  self.fat.clearAll()
+  for id, comp in self.doc.db[]:
+    let pbb = comp.pbbox(self.viewport)
+    if pbb.doesntFit(self.viewport.clientSize):
+      echo "adding ", id, " to fat set"
+      self.fat.setOne(id)
 proc resetMouseData(self: Editor) = 
   self.mouseData.clickHitId = none(CompId)
   self.mouseData.clickPos = none(PxPoint)
@@ -212,7 +234,8 @@ proc processKeyDown*(self: Editor, key: Key) =
   if key notin cmdTable:
     echo "Key not recognized"
     return
-  let sel = self.selected.trueItems
+  #let sel = self.selected.trueItems
+  let sel = self.selected[].toSeq
   let wmp = self.mouseData.lastPos.toWorld(self.viewport)
   case cmdTable[key]:
   of CmdEscape:
@@ -270,10 +293,10 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.selected.setAll(self.doc.db)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
+  self.dirtifyFatComponents()
   self.invalidate()
 
 proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) = 
-  # let t0 = getMonoTime()
   let 
     vp = self.viewport
     wmp = event.pos.toWorld(vp)
@@ -291,12 +314,12 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
       delta: WPoint = newSnap - lastSnap
     if not event.ctrl and hitid in self.selected[]:
       # Group move should snap by grid amount even if not on grid to start
-      #self.moveRectsBy(self.selected[].toSeq, delta)
       self.moveSelectedRectsBy(delta)
-    else: # Snap pos to nearest grid point
+    else: # Single move. Snap pos to nearest grid point
       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
       self.moveRectTo(hitid, newPos)
     self.mouseData.state = StateSelectDraggingComp
+    self.dirtifyFatComponents()
     self.invalidate()
   of StateSelectDownInSpace, StateSelectDraggingSpace:
     # Collect items to be selected in tmpselect.
@@ -311,8 +334,8 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.tmpSelected.clearAll()
     self.tmpSelected.setSome(touchingCompsW)
     self.mouseData.state = StateSelectDraggingSpace
+    self.dirtifyFatComponents()
     self.invalidate()
-  # echo (getMonoTime() - t0).inMicroseconds, " us"
 
 proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) = 
   if self.mouseData.panState == PanStateDown or
@@ -321,6 +344,7 @@ proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) =
                             event.pos.y - self.mouseData.lastPos.y)
     self.viewport.doPan(deltaPx)
     self.mouseData.panState = PanStateMoving
+    self.dirtifyFatComponents()
     self.invalidate()
 
 proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
@@ -391,6 +415,7 @@ proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
   #sendToListeners(idMsgGridZoom, 0, 0)
   if gAppOpts.reTextureOnZoom:
+    self.doFitCheck()
     self.onZoomChanged()
   # TODO set up delayed zoom rendering
   # TODO ie zoom by bitmap scaling initially,

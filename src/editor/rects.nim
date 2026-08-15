@@ -7,10 +7,12 @@ import std/[math,
             tables, ]
 import wNim/wTypes
 import wNim/private/wHelper
-import randrect, rotation
 import colors
-import world, viewport
-export world, viewport
+import randrect
+import rotation
+import world
+import viewport
+export world
 
 # Generally,
 #  DBComp is a domain rectangle in the database
@@ -45,6 +47,7 @@ Then blit and rotate around origin
 For bounds we need rotated WRect from DBComp
 ]#
 
+# TODO: split dbcomp out into another module
 
 type 
   CompID* = range[-1..int.high] # negative values indicate null component
@@ -221,17 +224,17 @@ proc originToTopEdge*(rect: DBComp, rot: bool=true): WType =
     of R180: rect.origin.y
     of R270: rect.origin.x
 
-proc originToTopLeft*(rect: DBComp, rot: bool=true): WPoint =
-  (rect.originToLeftEdge(rot), rect.originToTopEdge(rot))
+proc originToTopLeft*(comp: DBComp, rot: bool=true): WPoint =
+  (comp.originToLeftEdge(rot), comp.originToTopEdge(rot))
 
-proc originToTopRight*(rect: DBComp, rot: bool=true): WPoint =
-  (rect.originToRightEdge(rot), rect.originToTopEdge(rot))
+proc originToTopRight*(comp: DBComp, rot: bool=true): WPoint =
+  (comp.originToRightEdge(rot), comp.originToTopEdge(rot))
 
-proc originToBottomLeft*(rect: DBComp, rot: bool=true): WPoint =
-  (rect.originToLeftEdge(rot), rect.originToBottomEdge(rot))
+proc originToBottomLeft*(comp: DBComp, rot: bool=true): WPoint =
+  (comp.originToLeftEdge(rot), comp.originToBottomEdge(rot))
 
-proc originToBottomRight*(rect: DBComp, rot: bool=true): WPoint =
-  (rect.originToRightEdge(rot), rect.originToBottomEdge(rot))
+proc originToBottomRight*(comp: DBComp, rot: bool=true): WPoint =
+  (comp.originToRightEdge(rot), comp.originToBottomEdge(rot))
 
 proc rotationPoint*(comp: DBComp, vp: Viewport): PxPoint =
   # Provide rotation point for copyEx
@@ -244,12 +247,12 @@ proc ids*(rects: openArray[DBComp]): seq[CompID] =
   # Get all CompIDs
   for rect in rects:
     result.add(rect.id)
-proc moveRectBy*(rect: DBComp, delta: WPoint) =
-  rect.x += delta.x
-  rect.y += delta.y
-proc moveRectTo*(rect: DBComp, pos: WPoint) = 
-  rect.x = pos.x
-  rect.y = pos.y
+proc moveRectBy*(comp: DBComp, delta: WPoint) =
+  comp.x += delta.x
+  comp.y += delta.y
+proc moveRectTo*(comp: DBComp, pos: WPoint) = 
+  comp.x = pos.x
+  comp.y = pos.y
 proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp = 
   # Creat a DBComp with random position, size, color
   var rw: WType
@@ -537,8 +540,7 @@ proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
     rect1.rightEdge  < rect2.leftEdge or
     rect1.leftEdge   > rect2.rightEdge
 
-
-proc intersection*(client, rect: PRect): PRect =
+proc intersect*(rect, client: PRect): PRect =
   # Common rectangle shared by client and component rectangles
   # The size is used to create the texture.
   # The position is used for final blitting
@@ -564,6 +566,11 @@ proc intersection*(client, rect: PRect): PRect =
     h = max(0, ibot - itop + 1)
   (ileft, itop, w, h)
 
+proc doesntFit*(rect: PRect, clientSize: PxSize): bool =
+  rect.w >= clientSize.w and
+  rect.w >= clientSize.h and
+  rect.h >= clientSize.w and
+  rect.h >= clientSize.h
 
 
 converter toSize*(size: wSize): PxSize = (size.width, size.height)

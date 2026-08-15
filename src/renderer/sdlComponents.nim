@@ -7,12 +7,14 @@ import std/[math,
             ]
 import sdl2 except Color
 import sdl2/ttf
+
 import appopts
-import colors, colors_sdl
+import colors
+import colors_sdl
 import common
 import rotation
 import rects
-
+import viewport
 
 const
   gFontScale = 0.45
