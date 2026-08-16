@@ -121,7 +121,7 @@ proc drawOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: b
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
-proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport, hov, sel: bool, rot: bool) =
+proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport, hov, sel, rot: bool) =
   # Draw rectangle, origin, and its text using SDL2 renderer to prect
   # prect is rectangle in pixels
   # hov, sel is whether this is hovering and/or selected

@@ -556,6 +556,10 @@ proc intersect*(rect, client: PRect): PRect =
   # cccc      # c.x=0; c.w=4
   #    rrrr   # r.x=3, r.w=4
   # there should be overlap, intersection should be 1 width
+  # For general rotations this function becomes "project" as in,
+  # we project the client rectangle onto the texture, then take
+  # the bounding box of that projection.  This will give us the
+  # texture size, and it should work for textures of any size.
 
   let 
     ileft = max(client.left, rect.left)
