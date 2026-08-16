@@ -1,5 +1,6 @@
 import std/[strformat, 
             math,
+            options,
             tables
             ]
 #import std/[monotimes, times]
@@ -26,7 +27,7 @@ import viewport
 export document, editor, sdl2
 
 type
-  CacheKey = tuple[id:CompID, hovering, selected: bool]
+  CacheKey = tuple[id:CompID, hovering, selected: bool, rect: Option[PRect]]
   Renderer* = ref object of RootObj
     # Read-only domain data
     doc*: Document # For the design data
@@ -84,9 +85,9 @@ proc clampSize(self: Renderer, pxSz: PxSize): PxSize =
       neww = (newh.float * rectRatio).round.int
     (neww, newh)
 
-proc clampRect(self: Renderer, prect: PRect): PRect = 
-  let newsz: PxSize = self.clampSize((prect.w, prect.h))
-  (prect.x, prect.y, newsz.w, newsz.h)
+# proc clampRect(self: Renderer, prect: PRect): PRect = 
+#   let newsz: PxSize = self.clampSize((prect.w, prect.h))
+#   (prect.x, prect.y, newsz.w, newsz.h)
 
 
 
@@ -107,13 +108,14 @@ proc clearTextureCache*(self: Renderer) =
     gCumtime = initDuration()
 
 proc clearTextureCache(self: Renderer, id: CompID) =
-  # Clear specific id from texture cache
-  for hov in [false, true]:
-    for sel in [false, true]:
-      let key = (id, hov, sel)
-      if key in self.textureCache:
-        self.textureCache[key].destroy()
-      self.textureCache.del(key)
+  # Clear all texture cache entries for a specific component id
+  var toRemove: seq[CacheKey]
+  for k in self.textureCache.keys:
+    if k.id == id:
+      toRemove.add(k)
+  for k in toRemove:
+    self.textureCache[k].destroy()
+    self.textureCache.del(k)
 
 proc syncTextureCache*(self: Renderer) =
   # Clear texture for dirty items
@@ -130,11 +132,14 @@ proc screenRectP(self: Renderer): PRect =
   (0.PxType, 0.PxType, sz.w, sz.h)
 
 proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod, 
-                  hov, sel: bool): TexturePtr = 
+                  isect: PRect, hov, sel: bool): TexturePtr = 
   let vp = self.editor.viewport
-  let texSz = comp.pxSize(self.editor.viewport)
-  let cTexSz = self.clampSize(texSz)
-  let cprect: PRect = (0, 0, cTexSz.w, cTexSz.h)
+  let texSz = case comp.rot
+              of R0, R180: pxSize(isect.w, isect.h)
+              else: pxSize(isect.h, isect.w)
+  let texRect: PRect = (0, 0, texSz.w, texSz.h)
+  let fullRect: PRect = comp.pbbox(vp)
+  echo fullRect, " -> ", texRect
   case rmethod
   of SDLTexture:
     result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
@@ -142,19 +147,15 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
     self.sdlRenderer.setRenderTarget(result)
     self.sdlRenderer.setDrawColor(0, 0, 0, 0)
     self.sdlRenderer.clear()
-    self.sdlRenderer.renderDBCompSDL(comp, cprect, vp, hov, sel, false)
+    self.sdlRenderer.renderDBCompSDL(comp, texRect, vp, hov, sel, false)
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
-    let image = renderDBCompPixie(comp, cTexSz, hov, sel, vp.zoom)
-    # swizzle mask order because of endianness
+    let image = renderDBCompPixie(comp, texSz, vp.zoom, hov, sel)
     let surface = createRGBSurfaceFrom(image.data[0].addr, texSz.w, texSz.h, 
                                 32, texSz.w * 4, amask, bmask, gmask, rmask)
-    if surface.isNil:
-      echo "Create surface failed"
-      echo getError()
+    sdlFailIf(surface.isNil): "Create surface failed"
     result = self.sdlRenderer.createTextureFromSurface(surface)
-    if result.isNil:
-      echo getError()
+    sdlFailIf(result.isNil): "CreateTextureFromSurface failed"
     surface.destroy()
   of PixieLock:
     raise newException(ValueError, "PixieLock rendering not yet implemented")
@@ -178,14 +179,16 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     if rmethod == SDLDirect:
       self.sdlRenderer.renderDBCompSDL(comp, pbb, vp, hov, sel, true)
     else:
-      let csz = self.editor.viewport.clientSize
-      let clientRect = prect(0, 0, csz.w, csz.h)
+      #let csz = self.editor.viewport.clientSize
+      let clientRect = self.editor.viewport.clientRect
       let isect = intersect(clientRect, pbb)
       #if isect.w == 0 or isect.h == 0: raise newException(RangeDefect, "Component out of bounds")
-      let key = (comp.id, hov, sel)
+      let key = if comp.id in self.editor.fat[]:
+                  (comp.id, hov, sel, some(isect))
+                else:
+                  (comp.id, hov, sel, none(PRect))
       if key notin self.textureCache:
-        echo "rerendering ", comp.id
-        self.textureCache[key] = self.buildTexture(comp, rmethod, hov, sel)  
+        self.textureCache[key] = self.buildTexture(comp, rmethod, isect, hov, sel)  
       self.drawCachedTexture(comp, self.textureCache[key], vp)
     self.visibleComponents.add(comp)
 

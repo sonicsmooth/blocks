@@ -98,7 +98,7 @@ proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, zoom: float) =
   ctx.fillRect(left, midv, right-left, 1) # Horizontal
   ctx.fillRect(midh, top,  1, bottom-top) # Vertical
 
-proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, hov, sel: bool, zoom: float): Image =
+proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, zoom: float, hov, sel: bool): Image =
   # Draw rectangle to new image using pixie and return image
   # comp is database object
   # PxSize is size of texture to draw to

@@ -65,6 +65,9 @@ converter toPxPoint*[T:SomeNumber](pt: tuple[x, y: T]): PxPoint =
 converter toPxSize*[T:SomeNumber](pt: tuple[w, h: T]): PxSize  =
   (pt[0], pt[1]) # toPxType is called implicitly for each part of tuple
 
+proc pxSize*(w, h: SomeNumber): PxSize =
+  (w, h)
+
 proc toPxPoint*(jn: JsonNode): PxPoint =
   let
     sp = captureBetween(jn.getStr, '(', ')').split(',')
