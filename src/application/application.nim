@@ -80,6 +80,7 @@ proc init*(self: Application, w, h: int) =
   # Editor needs to be able to invalidate panel without knowing about panel
   # refresh has been moved to timer
   self.editor.invalidate = proc() {.closure.} = 
+    self.editor.dirtifyFatComponents()
     self.renderer.syncTextureCache()
     #self.mainFrame.mainPanel.blockPanel.refresh(false)
 

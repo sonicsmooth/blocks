@@ -128,7 +128,6 @@ proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport,
   # rot: true means use default rotated bbox and rotate text
   # rot: false means render as R0, with text unrotated, and box zero'd
   # Generally SDLDirect will use rot=true and false otherwise
-  
   rp.drawSolid(prect, comp.fillColor * highlight(hov, sel), comp.penColor)
   rp.drawBorder(prect, comp.penColor, hov, sel)
   rp.drawOrigin(comp, prect, vp.zoom, rot)

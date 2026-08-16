@@ -160,16 +160,18 @@ proc updateRatio*(self: Editor) =
     if ratio != self.ratio:
       self.ratio = ratio
 
-proc dirtifyFatComponents(self: Editor) =
+proc dirtifyFatComponents*(self: Editor) =
   # Copy the ids that are fat into the dirty set
   # So they get removed from texture cache
+  # If we want to regenerate fat components on move
+  # or rotate, this gets called from invalidate
+  # closure in application.nim
   for id in self.fat[].items:
     self.dirty.setOne(id)
 
 proc moveSelectedRectsBy(self: Editor, delta: WPoint) =
   for comp in self.doc.db[self.selected]:
     rects.moveRectBy(comp, delta) # "rects." added for clarity not necessity
-  #self.dirtifyFatComponents()
 
 proc moveRectTo(self: Editor, compId: CompID, delta: WPoint) =
   # Common proc to move one or more Rects; used by mouse and keyboard
@@ -181,13 +183,11 @@ proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation) =
   # Rotate about each component's origin
   for id in compIDs:
     self.doc.db[id].rotate(amt)
-  #self.dirtifyFatComponents()
 
 proc rotateRects(self: Editor, compIDs: seq[CompID], amt: Rotation, pos: WPoint) =
   # Rotate about pos
   for id in compIDs:
     self.doc.db[id].rotateAbout(amt, pos)
-  #self.dirtifyFatComponents()
 
 proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   self.hovering.clearSome(compIDs)
@@ -215,12 +215,11 @@ proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
   else:
     false
 proc doFitCheck*(self: Editor) =
-  # Which components fit on screen?
+  # Which components are bigger than client area?
   self.fat.clearAll()
   for id, comp in self.doc.db[]:
     let pbb = comp.pbbox(self.viewport)
     if pbb.doesntFit(self.viewport.clientSize):
-      echo "adding ", id, " to fat set"
       self.fat.setOne(id)
 proc resetMouseData(self: Editor) = 
   self.mouseData.clickHitId = none(CompId)
@@ -293,7 +292,6 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.selected.setAll(self.doc.db)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
-  self.dirtifyFatComponents()
   self.invalidate()
 
 proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) = 
@@ -319,7 +317,7 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
       self.moveRectTo(hitid, newPos)
     self.mouseData.state = StateSelectDraggingComp
-    self.dirtifyFatComponents()
+    #self.dirtifyComponents()
     self.invalidate()
   of StateSelectDownInSpace, StateSelectDraggingSpace:
     # Collect items to be selected in tmpselect.
@@ -334,7 +332,6 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.tmpSelected.clearAll()
     self.tmpSelected.setSome(touchingCompsW)
     self.mouseData.state = StateSelectDraggingSpace
-    self.dirtifyFatComponents()
     self.invalidate()
 
 proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) = 
@@ -344,7 +341,6 @@ proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) =
                             event.pos.y - self.mouseData.lastPos.y)
     self.viewport.doPan(deltaPx)
     self.mouseData.panState = PanStateMoving
-    self.dirtifyFatComponents()
     self.invalidate()
 
 proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
@@ -421,6 +417,3 @@ proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   # TODO ie zoom by bitmap scaling initially,
   # TODO then slowly build up cache so user
   # TODO doesn't notice delay too much
-  # These two go together
-  #self.dirty.setAll(self.doc.db)
-  #self.invalidate()
