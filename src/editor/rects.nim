@@ -540,6 +540,10 @@ proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
     rect1.rightEdge  < rect2.leftEdge or
     rect1.leftEdge   > rect2.rightEdge
 
+proc isRectTooBig*(prect: PRect, maxSize: uint): bool =
+  prect.w > maxSize or
+  prect.h > maxSize
+
 proc intersect*(rect, client: PRect): PRect =
   # Common rectangle shared by client and component rectangles
   # The size is used to create the texture.

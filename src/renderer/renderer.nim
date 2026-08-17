@@ -169,6 +169,8 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   for comp in self.doc.db.values:
     let pbb = comp.pbbox(vp) # rotated
     if isRectSeparate(pbb, self.screenRectP): continue
+    echo pbb.w, " x ", pbb.h
+    #if isRectTooBig(pbb, 16384): echo "too big"; continue
     let hov = self.editor.isHovering(comp.id)
     let sel = self.editor.isSelected(comp.id)
     if rmethod == SDLDirect:
