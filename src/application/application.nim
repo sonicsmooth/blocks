@@ -2,9 +2,9 @@
 import wNim/[wApp, wWindow]
 import wNim/[wSlider, wStatusBar]
 
+import appopts
 import document
 import editor
-#import jsoninit
 import mainframe
 import renderer
 import reporting
@@ -75,12 +75,17 @@ proc init*(self: Application, w, h: int) =
     self.renderer.clearFontCaches()
 
   self.editor.onZoomChanged = proc() {.closure.} =
-    self.renderer.clearTextureCache()
+    if gAppOpts.retextureAllOnZoom:
+      # Redo all the textures for nice images
+      self.renderer.clearTextureCache()
 
   # Editor needs to be able to invalidate panel without knowing about panel
   # refresh has been moved to timer
   self.editor.invalidate = proc() {.closure.} = 
-    self.editor.dirtifyFatComponents()
+    if gAppOpts.retextureFatOnMove:
+      # For every move, we redo the textures that are
+      # too big to fit on the screen
+      self.editor.dirtifyFatComponents()
     self.renderer.syncTextureCache()
     #self.mainFrame.mainPanel.blockPanel.refresh(false)
 

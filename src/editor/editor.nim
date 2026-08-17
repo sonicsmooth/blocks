@@ -86,8 +86,8 @@ type
     dirty*:        CompSet # which to clear from cache
     fat*:          CompSet # which are too big for screen
     groupRotation: bool # prevents deselection after rotation
-    onZoomChanged*: proc() {.gcsafe.}
-    invalidate*:    proc() {.gcsafe.}
+    onZoomChanged*: proc() #{.gcsafe.}
+    invalidate*:    proc() #{.gcsafe.}
 
 const 
   cmdTable: CmdTable = 
@@ -410,10 +410,11 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
   #sendToListeners(idMsgGridZoom, 0, 0)
-  if gAppOpts.reTextureOnZoom:
-    self.doFitCheck()
-    self.onZoomChanged()
+  self.doFitCheck()
+  self.onZoomChanged() # checks appopts whether to retexture
   # TODO set up delayed zoom rendering
   # TODO ie zoom by bitmap scaling initially,
   # TODO then slowly build up cache so user
   # TODO doesn't notice delay too much
+
+  

@@ -15,7 +15,8 @@ type
     oneOffset*: bool = false
     renderMethod*: RenderMethod
     blockFill*: FillMethod
-    reTextureOnZoom*: bool = false
+    reTextureAllOnZoom*: bool = false
+    reTextureFatOnMove*: bool = false
     showScale*: bool = true
     singleColor*: string
 
