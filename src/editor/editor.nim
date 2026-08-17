@@ -317,7 +317,6 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
       self.moveRectTo(hitid, newPos)
     self.mouseData.state = StateSelectDraggingComp
-    #self.dirtifyComponents()
     self.invalidate()
   of StateSelectDownInSpace, StateSelectDraggingSpace:
     # Collect items to be selected in tmpselect.
@@ -332,6 +331,7 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.tmpSelected.clearAll()
     self.tmpSelected.setSome(touchingCompsW)
     self.mouseData.state = StateSelectDraggingSpace
+    self.doFitCheck()
     self.invalidate()
 
 proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) = 

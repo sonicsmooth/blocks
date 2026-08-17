@@ -26,8 +26,16 @@ import viewport
 
 export document, editor, sdl2
 
+
+# TODO: fat+rotated components can render incorrectly or disappear.
+# The crop-to-screen logic assumes canonical (unrotated) space derivable
+# from a simple w/h swap, which only holds when isect == the full pbb.
+# Needs proper local-space cropping (inverse-rotate screen crop into
+# component space) -- deferred until origin-at-(0,0) refactor + arbitrary
+# rotation land, since this will be rebuilt on that foundation anyway.
+
 type
-  CacheKey = tuple[id:CompID, hovering, selected: bool]
+  CacheKey = tuple[id:CompID, hovering, selected: bool, rect: Option[PRect]]
   Renderer* = ref object of RootObj
     # Read-only domain data
     doc*: Document # For the design data
@@ -132,9 +140,14 @@ proc screenRectP(self: Renderer): PRect =
   (0.PxType, 0.PxType, sz.w, sz.h)
 
 proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod, 
-                  texRect: PRect, hov, sel: bool): TexturePtr = 
+                  isect: PRect, hov, sel: bool): TexturePtr = 
   let vp = self.editor.viewport
-  let texSz = pxSize(texRect.w, texRect.h) 
+  let texSz = case comp.rot
+              of R0, R180: pxSize(isect.w, isect.h)
+              else: pxSize(isect.h, isect.w)
+  let texRect: PRect = (0, 0, texSz.w, texSz.h)
+  let fullRect: PRect = comp.pbbox(vp)
+  echo fullRect, " -> ", texRect
   case rmethod
   of SDLTexture:
     result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
@@ -157,11 +170,9 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
   else:
     raise newException(ValueError, &"Unsupported cached render method: {rmethod}")
 
-proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Viewport) =
-  let
-    tgtRect = comp.localPRect(vp)
-    pivot = comp.rotationPoint(vp)
-  self.sdlRenderer.copyEx(texture, nil, addr tgtRect, -comp.rot.toFloat, addr pivot)
+proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Viewport, dstRect: PRect) =
+  let pivot = comp.rotationPoint(vp)
+  self.sdlRenderer.copyEx(texture, nil, addr dstRect, -comp.rot.toFloat, addr pivot)
 
 proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   self.visibleComponents.setLen(0)
@@ -176,12 +187,15 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     if rmethod == SDLDirect:
       self.sdlRenderer.renderDBCompSDL(comp, pbb, vp, hov, sel, true)
     else:
-      let key = (comp.id, hov, sel)
+      let
+        isFat = comp.id in self.editor.fat[]
+        buildRect = if isFat: intersect(self.editor.viewport.clientRect, pbb) else: pbb
+        key = if isFat: (comp.id, hov, sel, some(buildRect))
+              else:     (comp.id, hov, sel, none(PRect))
       if key notin self.textureCache:
-        echo "generating"
-        let texRect = prect(0, 0, pbb.w, pbb.h)
-        self.textureCache[key] = self.buildTexture(comp, rmethod, texRect, hov, sel)  
-      self.drawCachedTexture(comp, self.textureCache[key], vp)
+        self.textureCache[key] = self.buildTexture(comp, rmethod, buildRect, hov, sel)  
+      let dstRect = if isFat: buildRect else: comp.localPRect(vp)
+      self.drawCachedTexture(comp, self.textureCache[key], vp, dstRect)
     self.visibleComponents.add(comp)
 
 proc drawSelectBox(self: Renderer) =
