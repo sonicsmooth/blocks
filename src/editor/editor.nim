@@ -234,7 +234,6 @@ proc processKeyDown*(self: Editor, key: Key) =
   if key notin cmdTable:
     echo "Key not recognized"
     return
-  #let sel = self.selected.trueItems
   let sel = self.selected[].toSeq
   let wmp = self.mouseData.lastPos.toWorld(self.viewport)
   case cmdTable[key]:
@@ -334,6 +333,7 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.tmpSelected.clearAll()
     self.tmpSelected.setSome(touchingCompsW)
     self.mouseData.state = StateSelectDraggingSpace
+    self.doFitCheck()
     self.dirtifyFatComponents()
     self.invalidate()
 

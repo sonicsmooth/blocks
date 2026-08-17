@@ -162,11 +162,9 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
   else:
     raise newException(ValueError, &"Unsupported cached render method: {rmethod}")
 
-proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Viewport) =
-  let
-    tgtRect = comp.localPRect(vp)
-    pivot = comp.rotationPoint(vp)
-  self.sdlRenderer.copyEx(texture, nil, addr tgtRect, -comp.rot.toFloat, addr pivot)
+proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Viewport, dstRect: PRect) =
+  let pivot = comp.rotationPoint(vp)
+  self.sdlRenderer.copyEx(texture, nil, addr dstRect, -comp.rot.toFloat, addr pivot)
 
 proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   self.visibleComponents.setLen(0)
@@ -179,17 +177,15 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     if rmethod == SDLDirect:
       self.sdlRenderer.renderDBCompSDL(comp, pbb, vp, hov, sel, true)
     else:
-      #let csz = self.editor.viewport.clientSize
-      let clientRect = self.editor.viewport.clientRect
-      let isect = intersect(clientRect, pbb)
-      #if isect.w == 0 or isect.h == 0: raise newException(RangeDefect, "Component out of bounds")
-      let key = if comp.id in self.editor.fat[]:
-                  (comp.id, hov, sel, some(isect))
-                else:
-                  (comp.id, hov, sel, none(PRect))
+      let
+        isFat = comp.id in self.editor.fat[]
+        buildRect = if isFat: intersect(self.editor.viewport.clientRect, pbb) else: pbb
+        key = if isFat: (comp.id, hov, sel, some(buildRect))
+              else:     (comp.id, hov, sel, none(PRect))
       if key notin self.textureCache:
-        self.textureCache[key] = self.buildTexture(comp, rmethod, isect, hov, sel)  
-      self.drawCachedTexture(comp, self.textureCache[key], vp)
+        self.textureCache[key] = self.buildTexture(comp, rmethod, buildRect, hov, sel)  
+      let dstRect = if isFat: buildRect else: comp.localPRect(vp)
+      self.drawCachedTexture(comp, self.textureCache[key], vp, dstRect)
     self.visibleComponents.add(comp)
 
 proc drawSelectBox(self: Renderer) =
