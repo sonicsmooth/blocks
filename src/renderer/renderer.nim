@@ -26,6 +26,14 @@ import viewport
 
 export document, editor, sdl2
 
+
+# TODO: fat+rotated components can render incorrectly or disappear.
+# The crop-to-screen logic assumes canonical (unrotated) space derivable
+# from a simple w/h swap, which only holds when isect == the full pbb.
+# Needs proper local-space cropping (inverse-rotate screen crop into
+# component space) -- deferred until origin-at-(0,0) refactor + arbitrary
+# rotation land, since this will be rebuilt on that foundation anyway.
+
 type
   CacheKey = tuple[id:CompID, hovering, selected: bool, rect: Option[PRect]]
   Renderer* = ref object of RootObj
