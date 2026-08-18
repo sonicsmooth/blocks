@@ -147,7 +147,6 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
               else: pxSize(isect.h, isect.w)
   let texRect: PRect = (0, 0, texSz.w, texSz.h)
   let fullRect: PRect = comp.pbbox(vp)
-  echo fullRect, " -> ", texRect
   case rmethod
   of SDLTexture:
     result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
@@ -180,8 +179,8 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
   for comp in self.doc.db.values:
     let pbb = comp.pbbox(vp) # rotated
     if isRectSeparate(pbb, self.screenRectP): continue
-    echo pbb.w, " x ", pbb.h
-    #if isRectTooBig(pbb, 16384): echo "too big"; continue
+    # Not really needed since we limit texture size
+    if isRectTooBig(pbb, 16384): continue
     let hov = self.editor.isHovering(comp.id)
     let sel = self.editor.isSelected(comp.id)
     if rmethod == SDLDirect:
