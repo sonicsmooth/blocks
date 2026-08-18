@@ -194,9 +194,10 @@ wClass(wMainFrame of wFrame):
     of idCmdHelp: discard
     of idCmdInfo:
       if self.isReady():
-        echo self.mainPanel.blockPanel.editor.doc.grid[]
-        echo self.mainPanel.blockPanel.editor.viewport[]
-        echo self.mainPanel.blockPanel.editor.doc.grid.mZctrl[]
+        # echo self.mainPanel.blockPanel.editor.doc.grid[]
+        # echo self.mainPanel.blockPanel.editor.viewport[]
+        # echo self.mainPanel.blockPanel.editor.doc.grid.mZctrl[]
+        echo self.mainPanel.blockPanel.editor
     of idCmdAbout:
       let f = AboutFrame(self)
       f.show()
@@ -357,6 +358,9 @@ wClass(wMainFrame of wFrame):
     self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()
     
+    var accel = self.AcceleratorTable()
+    accel.add('i', idCmdInfo)
+
     # Connect internal Events
     self.wEvent_Size do (event: wEvent): self.onResize(event)
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)

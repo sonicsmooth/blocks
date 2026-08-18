@@ -11,7 +11,7 @@
       "oneOffset": true,
       "renderMethod": "SDLTexture",
       "blockFill": "Solid",
-      "reTextureAllOnZoom": false,
+      "reTextureAllOnZoom": true,
       "reTextureFatOnMove": true,
       "showScale": true,
       "singleColor": "Pink"

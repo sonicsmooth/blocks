@@ -115,6 +115,21 @@ proc `$`*(k: Key): string =
   if k.shift: result &= "shft-"
   result &= $k.keyCode
 
+
+proc `$`*(self: Editor): string = 
+  for k, v in self[].fieldPairs:
+    result &= $k & " -> "
+    when v is (proc):
+      result &= (if v.isNil: "nil" else: "<proc>")
+    elif v is ref:
+      if v.isNil:
+        result &= "nil"
+      else:
+        result &= $v[]
+    else:
+      result &= $v
+    result &= "\n"
+
 proc newEditor*(zc: ZoomCtrl): Editor =
   result = new Editor
   # assign viewport like 
@@ -134,6 +149,7 @@ proc isReady*(self: Editor): bool =
   if not self.doc.isReady(): return reportNotReady("editor.doc")
   if not self.viewport.isReady(): return reportNotReady("editor.viewport")
   true
+
 
 proc randomizeRects*(self: Editor, qty: int, region: WRect) =
   self.hovering.clearAll()
