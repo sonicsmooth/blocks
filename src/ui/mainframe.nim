@@ -347,6 +347,15 @@ wClass(wMainFrame of wFrame):
     wFrame.show(self)
     self.refreshCanvas()
   
+  proc onTimer(self: wMainFrame, event: wEvent) = 
+    if event.timerId == 1:
+      self.stopTimer(event.timerId)
+      if self.statusBar != nil:
+        # Same as onresize
+        self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
+      event.skip()
+
+
   proc init*(self: wMainFrame, size: wSize) = 
     when defined(debug):
       echo "mainframe init"
@@ -365,10 +374,14 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Size do (event: wEvent): self.onResize(event)
     self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
     self.wEvent_ComboBox do (event: wEvent): self.onToolEvent(event)
+git oc    self.wEvent_Timer         do (event: wEvent): self.onTimer(event)
 
     # Respond to buttons & send msg
     self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
     self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
+
+    # Startup
+    self.startTimer(0.0,   id=1) # one-shot to start
     
     # # Respond to incoming messages
     self.registerListener(idMsgGridRequestX,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
@@ -386,7 +399,6 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idMsgGridLines,   (w:wWindow, e:wEvent)=>onMsgGridLines(w.wMainFrame, e))
     #--
     self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
-
     self.mainPanel = MainPanel(self)
     when defined(debug):
       echo "Main frame done initting"
