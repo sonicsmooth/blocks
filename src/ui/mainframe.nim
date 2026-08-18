@@ -371,10 +371,10 @@ wClass(wMainFrame of wFrame):
     accel.add('i', idCmdInfo)
 
     # Connect internal Events
-    self.wEvent_Size do (event: wEvent): self.onResize(event)
-    self.wEvent_Tool do (event: wEvent): self.onToolEvent(event)
+    self.wEvent_Size     do (event: wEvent): self.onResize(event)
+    self.wEvent_Tool     do (event: wEvent): self.onToolEvent(event)
     self.wEvent_ComboBox do (event: wEvent): self.onToolEvent(event)
-git oc    self.wEvent_Timer         do (event: wEvent): self.onTimer(event)
+    self.wEvent_Timer    do (event: wEvent): self.onTimer(event)
 
     # Respond to buttons & send msg
     self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
