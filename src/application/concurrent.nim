@@ -1,7 +1,7 @@
 import std/locks
 
 const
-  numThreads* = 2
+  gNumThreads* = 2
 
 var
   #gCond*: Cond

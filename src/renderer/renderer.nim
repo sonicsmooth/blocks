@@ -1,9 +1,9 @@
 import std/[strformat, 
             math,
             options,
-            tables
-            ]
-#import std/[monotimes, times]
+            tables]
+when defined(monotime_profile):
+  import std/[monotimes, times]
 export tables
 
 import wNim/wTypes
@@ -70,28 +70,28 @@ proc isReady*(self: Renderer): bool =
   if not self.editor.isReady(): return reportNotReady("renderer.editor")
   true
 
-proc clampSize(self: Renderer, pxSz: PxSize): PxSize =
-  # Return the given prect if one or more of its dimensions fits in client area
-  # If both dimensions exceed client size, then return a PRect with the
-  # same aspect ratio and with one dim that matches client dim.
-  # Used for extreme zoom where the component is bigger than the viewing area
-  let clientSize: PxSize = self.editor.viewport.clientSize
-  if pxSz.w <= clientSize.w or pxSz.h <= clientSize.h:
-    pxSz
-  else:
-    let 
-      rectRatio: float = pxSz.w.float / pxSz.h.float
-      clientRatio: float = clientSize.w / clientSize.h
-    var neww, newh: int
-    if rectRatio <= clientRatio:
-      # Set rect width to client width
-      neww = clientSize.w
-      newh = (neww.float / rectRatio).round.int
-    else:
-      # Set rect height to client height
-      newh = clientSize.h
-      neww = (newh.float * rectRatio).round.int
-    (neww, newh)
+# proc clampSize(self: Renderer, pxSz: PxSize): PxSize =
+#   # Return the given prect if one or more of its dimensions fits in client area
+#   # If both dimensions exceed client size, then return a PRect with the
+#   # same aspect ratio and with one dim that matches client dim.
+#   # Used for extreme zoom where the component is bigger than the viewing area
+#   let clientSize: PxSize = self.editor.viewport.clientSize
+#   if pxSz.w <= clientSize.w or pxSz.h <= clientSize.h:
+#     pxSz
+#   else:
+#     let 
+#       rectRatio: float = pxSz.w.float / pxSz.h.float
+#       clientRatio: float = clientSize.w / clientSize.h
+#     var neww, newh: int
+#     if rectRatio <= clientRatio:
+#       # Set rect width to client width
+#       neww = clientSize.w
+#       newh = (neww.float / rectRatio).round.int
+#     else:
+#       # Set rect height to client height
+#       newh = clientSize.h
+#       neww = (newh.float * rectRatio).round.int
+#     (neww, newh)
 
 # proc clampRect(self: Renderer, prect: PRect): PRect = 
 #   let newsz: PxSize = self.clampSize((prect.w, prect.h))
@@ -146,14 +146,11 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
               of R0, R180: pxSize(isect.w, isect.h)
               else: pxSize(isect.h, isect.w)
   let texRect: PRect = (0, 0, texSz.w, texSz.h)
-  let fullRect: PRect = comp.pbbox(vp)
   case rmethod
   of SDLTexture:
     result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
     result.setTextureBlendMode(BlendMode_Blend)
     self.sdlRenderer.setRenderTarget(result)
-    # self.sdlRenderer.setDrawColor(0, 0, 0, 0)
-    # self.sdlRenderer.clear()
     self.sdlRenderer.renderDBCompSDL(comp, texRect, vp, hov, sel, false)
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
@@ -205,6 +202,16 @@ proc drawSelectBox(self: Renderer) =
   let penColor = ColorRGBA(r: 0, g:120, b: 215, a:255)
   self.sdlRenderer.drawFilledOutlineRectSDL(self.editor.selectBox, fillColor, penColor)
 
+proc drawPlacementBox(self: Renderer) =
+  if self.editor.dstRect.w == 0 or
+     self.editor.dstRect.h == 0:
+      return
+  let fillColor = DarkOrchid.setAlpha(10)
+  let penColor = DarkOrchid
+  let dstRectP = self.editor.dstRect.toPRect(self.editor.viewport)
+  self.sdlRenderer.drawFilledOutlineRectSDL(dstRectP, fillColor, penColor)
+
+
 
 proc renderEverything*(self: Renderer) =
   # Typically called from OnPaint
@@ -220,11 +227,10 @@ proc renderEverything*(self: Renderer) =
     self.sdlRenderer.drawScale(vp, grid, font(defFontSize) )
   self.drawSelectBox()
 
-  self.sdlRenderer.present()
-  # # Draw various boxes and text, then done
-  # #self.updateDestinationBox()
-  # if gAppOpts.enableDstRect:
-  #   self.sdlRenderer.drawOutlineRectSDL(self.editor.texRect.toPRect(self.editor.viewport), DarkOrchid)
+  # Draw various boxes and text, then done
+  #self.updateDestinationBox()
+  if gAppOpts.enableDstRect:
+    self.drawPlacementBox()
   # if gAppOpts.enableBbox:
   #   #self.updateBoundingBox()
   #   self.sdlRenderer.drawOutlineRectSDL(self.editor.allBbox.toPRect(self.editor.viewport).grow(1), Green)
@@ -242,6 +248,6 @@ proc renderEverything*(self: Renderer) =
   # txt &= &"majorPx: {pxwidth}"
   
   # self.renderText(txt)
-  # self.sdlRenderer.present()
+  self.sdlRenderer.present()
 
   # release(gLock)

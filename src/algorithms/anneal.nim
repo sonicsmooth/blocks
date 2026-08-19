@@ -71,11 +71,12 @@ const
   MaxTemp = 100.0
   MinTemp = 0.0
   TempStep = 1.0
+  ChannelSize = 5
   # MinProb = 0.1   # low end of probability distribution function
   # MaxProb = 10.0  # high end of probability distribution function
 
 var
-  gAnnealComms*: array[numThreads, AnnealComm]
+  gAnnealComms*: array[gNumThreads, AnnealComm]
 
 
 
@@ -83,9 +84,9 @@ proc init*() =
   for i in gAnnealComms.low..gAnnealComms.high:
     gAnnealComms[i] = new AnnealComm
     gAnnealComms[i].index = i
-    gAnnealComms[i].sendChan.open(10)
-    gAnnealComms[i].idChan.open(10)
-    gAnnealComms[i].ackChan.open(10)
+    gAnnealComms[i].sendChan.open(ChannelSize)
+    gAnnealComms[i].idChan.open(ChannelSize)
+    gAnnealComms[i].ackChan.open(ChannelSize)
 
 proc deinit*() =
   for i in gAnnealComms.low..gAnnealComms.high:

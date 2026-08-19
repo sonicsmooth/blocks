@@ -2,14 +2,14 @@ import std/[algorithm, locks, sugar, tables]
 import sequtils
 import wnim
 import wnim/wTypes
-import winim/inc/[winuser, 
-                  #windef
-                  ]
+import winim/inc/winuser
 import concurrent
 
 #import recttable, userMessages
 from recttable import `[]`, dbComps
-import document, userMessages
+import document
+import rotation
+import userMessages
 
 type 
   Axis* = enum X=true, Y=false
@@ -206,6 +206,20 @@ proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq
   let lines = scanLines(rectTable, axis, sortOrder, ids)
   result = composeGraph(lines, rectTable, axis, sortOrder)
 
+proc positionDiffs(t1, t2: PosTable): PosTable =
+  for k in t1.keys:
+    let
+      p1 = t1[k]
+      p2 = t2[k]
+    result[k] = (x: p2.x - p1.x, y: p2.y - p1.y, rot: p2.rot - p1.rot)
+
+proc zeroDiffs(t1: PosTable): PosTable =
+  for k, pos in t1:
+    if pos.x == 0.0 and pos.y == 0.0 and pos.rot == R0:
+      echo "continuing"
+      continue
+    result[k] = pos
+
 
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
   for node in nodes:
@@ -246,8 +260,10 @@ proc compact*(rectTable: RectTable,
     for id in nodes:
       rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originToBottomEdge
 
+var compactCtr: int
 proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
   # Run compact function until rectTable doesn't change
+  compactCtr = 0
   var pos, lastPos: PosTable
   pos = rectTable.positions
   while pos != lastPos:
@@ -255,6 +271,9 @@ proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
     compact(rectTable, direction.secax, direction.secAsc, dstRect)
     lastPos = pos
     pos = rectTable.positions
+    #echo "iter diff ", compactCtr, " -> ", positionDiffs(lastPos, pos)
+    # echo "iter diff ", compactCtr, " -> ", zeroDiffs(pos)
+    inc compactCtr
 
 proc compactWorker*(arg: CompactArg) {.thread.} =
   {.gcsafe.}:

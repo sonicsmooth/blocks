@@ -1,6 +1,6 @@
 import std/[random]
 import wNim/[wApp,wUtils]
-import appopts, jsoninit, document
+import appopts, document
 import application
 
 
@@ -9,21 +9,10 @@ when isMainModule:
     echo "profiling"
     import std/nimprof
   try:
-    jsonInitGlobals() # move to application
     gAppOpts = parseAppOptions()
     if gAppOpts.appHelp:
       showAppHelp(gAppOpts)
       system.quit()
-
-    randomize()
-    wSetSystemDpiAware()
-    when defined(debug):
-      echo "DPI: ", wAppGetDpi()
-
-    # TODO: Move to application
-    # Start stuff
-    # concurrent.init()
-    # anneal.init()
     
     # Main data and window
     var app = newApplication()
@@ -35,9 +24,7 @@ when isMainModule:
 
     # ... wait for user to shut down ... #
 
-    # Shut down
-    #concurrent.deinit()
-    #anneal.deinit()
+    app.deinit()
       
   except Exception as e:
     echo "Exception!"

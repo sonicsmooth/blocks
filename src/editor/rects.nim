@@ -279,7 +279,7 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
                    id: id, 
                    label: "whatevs",
                    origin: (10, 20),
-                   rot: rand(Rotation),
+                   rot: R0, #rand(Rotation),
                    penColor: penColor,
                    fillColor: fillColor,
                    hoverColor: Yellow)

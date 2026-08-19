@@ -40,6 +40,7 @@ proc showAppHelp*(opts: AppOpts) =
 proc parseAppOptions*(): AppOpts = 
   # Start with values in json file, then override 
   # with command line values
+  jsonInitGlobals()
   try:
     result = gAppOptsJ.to(AppOpts)
   except CatchableError as e:

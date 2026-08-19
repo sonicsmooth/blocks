@@ -3,9 +3,9 @@
     "AppOpts": {
       "_comment": "not implemented",
       "appHelp": false,
-      "compQty": 1,
+      "compQty": 3,
       "enableBbox": false,
-      "enableDstRect": false,
+      "enableDstRect": true,
       "enableText": true,
       "enableHover": true,
       "oneOffset": true,

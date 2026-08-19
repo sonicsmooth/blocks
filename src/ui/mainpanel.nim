@@ -27,7 +27,6 @@ type
     buttons: array[17, wButton]
 
 const 
-  logRandomize = true
   randRegion: WRect = (-400, -400, 801, 801)
 
 
@@ -70,11 +69,11 @@ wClass(wMainPanel of wPanel):
     yPosAcc += bmarg + self.txt.size.height
 
     # Selection strategy pos, size
-    self.ctrb1.position = (bmarg,            yPosAcc); yPosAcc += bh
-    self.ctrb2.position = (bmarg,            yPosAcc)
+    self.ctrb1.position = (bmarg,        yPosAcc); yPosAcc += bh
+    self.ctrb2.position = (bmarg,        yPosAcc)
     self.ctrb3.position = (bmarg + bwd2, yPosAcc)
 
-    self.ctrb1.size     = (bw,       bh)
+    self.ctrb1.size     = (bw,   bh)
     self.ctrb2.size     = (bwd2, bh)
     self.ctrb3.size     = (bwd2, bh)
     yPosAcc += bmarg + bh
@@ -115,11 +114,9 @@ wClass(wMainPanel of wPanel):
       ##! Move updateRatio to algorithm, solve clearTextureCache
       self.blockPanel.editor.fillArea = self.blockPanel.editor.doc.db.fillArea()
       self.blockPanel.editor.updateRatio()
-      # if self.blockPanel.renderer != nil:
       self.blockPanel.renderer.clearTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
-    #echo GC_getStatistics()
     ##! Move updateratio to algorithm
     if self.blockPanel != nil:
       var db = self.blockPanel.editor.doc.db
@@ -134,17 +131,19 @@ wClass(wMainPanel of wPanel):
     if self.blockPanel.isNil: return
     if gCompactThread.running: return
     for i in gAnnealComms.low .. gAnnealComms.high:
-      if gAnnealComms[i].thread.running: return
+      if gAnnealComms[i].thread.running:
+        return
     let dstRect = self.blockPanel.editor.dstRect
     let dbaddr = addr self.blockPanel.editor.doc.db
-    
     if self.ctrb1.value: # Not anneal, just normal 2d compact
       let arg: CompactArg = (pRectTable:  dbaddr,
                              direction:   direction,
                              window:      self,
                              dstRect:     dstRect)
       gCompactThread.createThread(compactWorker, arg)
+      echo "2d here 5"
       gCompactThread.joinThread()
+      echo "2d here 6"
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
    
@@ -152,9 +151,9 @@ wClass(wMainPanel of wPanel):
       proc compactfn() {.closure.} = 
         iterCompact(self.blockPanel.editor.doc.db, direction, dstRect)
       let strat = if self.aStratRb1.value: Strat1
-                  else:                     Strat2
+                  else:                    Strat2
       let perturbFn = if self.aStratRb3.value: makeWiggler[PosTable, ptr RectTable](dstRect)
-                      else:                     makeSwapper[PosTable, ptr RectTable]()
+                      else:                    makeSwapper[PosTable, ptr RectTable]()
       for i in gAnnealComms.low .. gAnnealComms.high:
         let arg: AnnealArg = (pRectTable: dbaddr,
                               strategy:   strat,
@@ -186,7 +185,6 @@ wClass(wMainPanel of wPanel):
     if self.blockPanel != nil:
       self.blockPanel.editor.updateRatio()
     self.blockPanel.editor.invalidate()
-    #self.refresh(false)
 
   proc onSpinTextEnter(self: wMainPanel) =
     if self.spnr.value > 0:
@@ -194,7 +192,6 @@ wClass(wMainPanel of wPanel):
       if self.blockPanel != nil:
         self.blockPanel.editor.updateRatio()
       self.blockPanel.editor.invalidate()
-      #self.refresh(false)
 
   proc onStrategyRadioButton(self: wMainPanel, event: wEvent) =
     if self.ctrb1.value: # No strategy
@@ -226,7 +223,6 @@ wClass(wMainPanel of wPanel):
       self.randomizeRectsAll(self.spnr.value)
       self.blockPanel.editor.updateRatio()
       self.blockPanel.editor.invalidate()
-      #self.refresh(false)
   
   proc onButtonrandomizePos(self: wMainPanel) =
     if self.blockPanel != nil:
@@ -274,15 +270,15 @@ wClass(wMainPanel of wPanel):
     let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
     if self.blockPanel != nil:
       if msgAvail:
-          self.blockPanel.editor.text = $idx.int64 & ": " & msg 
+        self.blockPanel.editor.text = $idx.int64 & ": " & msg
     
     let (_, _) = gAnnealComms[idx].idChan.tryRecv()
     if self.blockPanel != nil:
       withLock(gLock):
         self.blockPanel.renderer.clearTextureCache()
-        #self.blockPanel.forceRedraw(0)
         self.blockPanel.refresh(false)
-        gAnnealComms[idx].ackChan.send(ackCnt)
+        if msgAvail: # only return ack if there was something
+          gAnnealComms[idx].ackChan.send(ackCnt)
       inc ackCnt
 
   proc init*(self: wMainPanel, parent: wWindow) =

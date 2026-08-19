@@ -152,10 +152,6 @@ proc fillRatio*(rtable: RectTable): float =
 
 # TODO: Move compset stuff to another module
 
-# proc trueItems*(comps: CompSet): seq[CompID] =
-#   comps[].toSeq
-
-
 proc falseItems*(comps: CompSet, table: RectTable): seq[CompID] =
   for id in table.keys:
     if id notin comps[]:

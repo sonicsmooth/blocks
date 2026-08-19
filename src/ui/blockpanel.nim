@@ -3,11 +3,12 @@ import std/[segfaults,
             #strutils, 
             tables]
 
-#import std/[monotimes, times]
+when defined(monotime_profile):
+  import std/[monotimes, times]
+
 import wNim
 import winim except PRECT
 
-#import appopts
 import editor
 import rects
 import recttable
@@ -17,8 +18,6 @@ import renderer
 import sdlframes
 #import userMessages
 import viewport
-
-# TODO: blockpanel should have refs to editor, renderer, doc, viewport
 
 type
   wBlockPanel* = ref object of wSDLPanel
@@ -89,7 +88,6 @@ wClass(wBlockPanel of wSDLPanel):
     if not self.editor.isReady(): return reportNotReady("blockPanel.editor")
     if not self.renderer.isReady(): return reportNotReady("blockPanel.renderer")
     true
-  
   proc mouseClientPosition*(self: wBlockPanel): PxPoint =
     self.screenToClient(wGetMousePosition())
   proc mouseWorldPosition*(self: wBlockPanel): WPoint =

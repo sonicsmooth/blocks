@@ -1,8 +1,10 @@
-#import std/[sets, sequtils]
-import wNim/[wApp, wWindow]
+import std/[random]
+import wNim/[wApp, wWindow, wUtils]
 import wNim/[wSlider, wStatusBar]
 
 import appopts
+import anneal
+import concurrent
 import document
 import editor
 import mainframe
@@ -35,8 +37,17 @@ proc isReady*(self: Application): bool =
   true
 
 proc init*(self: Application, w, h: int) =
-  # # Load up json file
-  # jsonInitGlobals()
+  # Start things up.  Assume command line args have already been
+  # parsed and are in gAppOpts
+
+  # Generic system stuff
+  randomize()
+  wSetSystemDpiAware()
+  when defined(debug):
+    echo "DPI: ", wAppGetDpi()
+  concurrent.init()
+  anneal.init()
+
   # Create stuff
   self.wapp = wApp.App()
   self.mainFrame = MainFrame((w, h))
@@ -88,6 +99,11 @@ proc init*(self: Application, w, h: int) =
       self.editor.dirtifyFatComponents()
     self.renderer.syncTextureCache()
     #self.mainFrame.mainPanel.blockPanel.refresh(false)
+
+proc deinit*(app: Application) = 
+  # Shut down
+  concurrent.deinit()
+  anneal.deinit()
 
 
 proc go*(app: Application) =
