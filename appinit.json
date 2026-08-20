@@ -3,11 +3,18 @@
     "AppOpts": {
       "_comment": "not implemented",
       "appHelp": false,
+      "compQty": 3,
       "enableBbox": false,
-      "enableDstRect": false,
+      "enableDstRect": true,
       "enableText": true,
       "enableHover": true,
-      "compQty": 1
+      "oneOffset": true,
+      "renderMethod": "SDLTexture",
+      "blockFill": "Solid",
+      "reTextureAllOnZoom": true,
+      "reTextureFatOnMove": true,
+      "showScale": true,
+      "singleColor": "Pink"
     },
     "Viewport": {
       "pan": "(400, 400)",

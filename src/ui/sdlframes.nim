@@ -1,0 +1,166 @@
+import std/tables
+import wnim
+import sdl2
+
+import colors
+import sdlcolors
+import sdlcommon
+
+
+
+type
+  XDirection = enum Right, Left
+  YDirection = enum Up, Down
+  Direction = tuple[x: XDirection, y: YDirection]
+  TestRect = tuple
+    x, y: cint
+    w, h: cint
+    color: ColorRGBA
+    dir: Direction
+  wSDLPanel* = ref object of wPanel
+    sdlWindow*: WindowPtr
+    sdlRenderer*: RendererPtr
+    pixelFormat: uint32
+    pixelFormatName: string
+  wTestPanel = ref object of wSDLPanel
+    rects: seq[TestRect]
+    rectTextures: seq[TexturePtr]
+  wSDLFrame = ref object of wFrame
+    mPanel: wTestPanel
+
+proc rect(x,y,w,h: cint, color: ColorRGBA, dir: Direction): TestRect =
+  result.x = x
+  result.y = y
+  result.w = w
+  result.h = h
+  result.color = color
+  result.dir = dir
+
+
+wClass(wSDLPanel of wPanel):
+  proc init*(self: wSDLPanel, parent: wWindow, style: wStyle=0) =
+    initSDL()
+    when defined(debug):
+      echo "wSDLPanel.init()"
+      var ver: SDL_VERSION
+      getVersion(ver)
+      echo "SDL Version: ", ver.major, ".", ver.minor
+      echo "SDL Patch: ", ver.patch
+    wPanel(self).init(parent, style=style)
+
+    self.sdlWindow = createWindowFrom(cast[pointer] (self.mHwnd))
+    sdlFailIf(self.sdlWindow.isNil):
+      "Window could not be created"
+    
+    # Choose Direct3D 11; default of 9 deletes its
+    # textures when screen is resized
+    echo "Available renderers"
+    var renderIndex: Table[string, int32]
+    for i in 0 ..< getNumRenderDrivers():
+      var info: RendererInfo
+      discard getRenderDriverInfo(i, info)
+      echo "  ", i, ": ", info.name
+      renderIndex[$info.name] = i
+
+    self.sdlRenderer =
+      self.sdlWindow.createRenderer(
+        renderIndex["direct3d11"],
+        flags = Renderer_Accelerated or Renderer_PresentVsync or Renderer_TargetTexture)
+    sdlFailIf(self.sdlRenderer.isNil): "Renderer could not be created"
+    self.sdlRenderer.setDrawBlendMode(BlendMode_Blend)
+
+    when defined(debug):
+      var info: RendererInfo
+      discard getRendererInfo(self.sdlRenderer, info)
+      echo "Using renderer: ", info.name
+
+    when defined(debug):
+      echo "Window DisplayMode():"
+      var dm: DisplayMode
+      discard getDisplayMode(self.sdlWindow, dm)
+      self.pixelFormat = dm.format
+      self.pixelFormatName = $getPixelFormatName(dm.format)
+      for key, value in fieldPairs(dm):
+        echo "  " & key & ": " & $cast[cint](value)
+        if key == "format":
+          echo "  formatName: ", self.pixelFormatName
+
+wClass(wTestPanel of wSDLPanel):
+  proc drawRect(self: wTestPanel, rect: TestRect) =
+    self.sdlRenderer.setDrawColor(rect.color)
+    self.sdlRenderer.fillRect(cast[ptr sdl2.Rect](addr rect))
+  proc drawRect(self: wTestPanel, rect: TestRect, texture: TexturePtr) =
+    let dstrect = cast[ptr sdl2.Rect](addr rect)
+    self.sdlRenderer.copy(texture, nil, dstrect)
+  proc toTexture(self: wTestPanel, rect: TestRect): TexturePtr =
+    let surface = createRGBSurface(0, rect.w, rect.h, 32, 0xff000000'u32, 0x00ff0000'u32, 0x0000ff00'u32, 0x000000ff'u32)
+    #  rmask, gmask, bmask, amask)
+    surface.fillRect(nil, rect.color.toU32_RGBA())
+    result = self.sdlRenderer.createTextureFromSurface(surface)
+  proc updateRect(self: wTestPanel, rect: ptr TestRect) =
+    let step = 2
+    if rect.dir.x == Right and rect.x >= self.size.width - rect.w:
+      rect.dir.x = Left
+    if rect.dir.x == Left and rect.x <= 0:
+      rect.dir.x = Right
+    if rect.dir.y == Down and rect.y >= self.size.height - rect.h:
+      rect.dir.y = Up
+    if rect.dir.y == Up and rect.y <= 0:
+      rect.dir.y = Down
+    if rect.dir.x == Right: rect.x += step
+    else: rect.x -= step
+    if rect.dir.y == Down: rect.y += step
+    else: rect.y -= step
+
+  proc onPaint(self: wTestPanel, event: wEvent) =
+    self.sdlRenderer.setDrawColor(r=110, g=132, b=174)
+    self.sdlRenderer.clear()
+
+    for r in self.rects:
+      self.updateRect(addr r)
+
+    for r in self.rects[0..5]:
+      self.drawRect(r)
+
+    for i in 6..11:
+      self.drawRect(self.rects[i], self.rectTextures[i])
+
+    self.sdlRenderer.present()
+    self.refresh()
+
+  proc init*(self: wTestPanel, parent: wWindow) =
+    echo "wTestPanel.init()"
+    wSDLPanel(self).init(parent) #, style=wBorderSimple)
+    self.rects.add(rect( 10,  20, 100, 100, toColorRGBA(Red.toU32_RGB(),     127), (Right, Down)))
+    self.rects.add(rect( 30,  40, 100, 100, toColorRGBA(Green.toU32_RGB(),   127), (Right, Down)))
+    self.rects.add(rect( 50,  60, 100, 100, toColorRGBA(Blue.toU32_RGB(),    127), (Right, Down)))
+    self.rects.add(rect( 70,  80, 100, 100, toColorRGBA(Cyan.toU32_RGB(),    127), (Right, Down)))
+    self.rects.add(rect( 90, 100, 100, 100, toColorRGBA(Magenta.toU32_RGB(), 127), (Right, Down)))
+    self.rects.add(rect(110, 120, 100, 100, toColorRGBA(Yellow.toU32_RGB(),  127), (Right, Down)))
+
+    self.rects.add(rect(110, 120, 100, 100, toColorRGBA(Tomato.toU32_RGB(),          200), (Left, Down)))
+    self.rects.add(rect(130, 140, 100, 100, toColorRGBA(LawnGreen.toU32_RGB(),       200), (Left, Down)))
+    self.rects.add(rect(150, 160, 100, 100, toColorRGBA(LightCoral.toU32_RGB(),      200), (Left, Down)))
+    self.rects.add(rect(170, 180, 100, 100, toColorRGBA(RoyalBlue.toU32_RGB(),       200), (Left, Down)))
+    self.rects.add(rect(190, 200, 100, 100, toColorRGBA(Maroon.toU32_RGB(),          200), (Left, Down)))
+    self.rects.add(rect(210, 220, 100, 100, toColorRGBA(MediumTurquoise.toU32_RGB(), 200), (Left, Down)))
+
+    for r in self.rects:
+      self.rectTextures.add(self.toTexture(r))
+
+    self.wEvent_Paint do (event: wEvent): self.onPaint(event)
+
+wClass(wSDLFrame of wFrame):
+  proc init*(self: wSDLFrame, size: wSize) =
+    echo "wSDLFrame.init()"
+    wFrame(self).init(title="SDL Frame", size=size)
+    self.mPanel = TestPanel(self)
+
+
+if isMainModule:
+  initSDL()
+  var frame = SDLFrame((800,600))
+  frame.show()
+
+  let app = App()
+  app.mainLoop()

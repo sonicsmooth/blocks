@@ -1,0 +1,78 @@
+import std/[os, parseopt, strutils, strformat]
+import jsoninit
+
+type
+  RenderMethod* = enum
+    SDLDirect, SDLTexture, PixieTexture, PixieLock
+  FillMethod* = enum Solid, Gradient
+  AppOpts* = ref object
+    appHelp*: bool = false
+    compQty*: int = 1
+    enableBbox*: bool = false # calc and show
+    enableDstRect*: bool = false # show (calc always anyway)
+    enableText*: bool = true
+    enableHover*: bool = true
+    oneOffset*: bool = false
+    renderMethod*: RenderMethod
+    blockFill*: FillMethod
+    reTextureAllOnZoom*: bool = false
+    reTextureFatOnMove*: bool = false
+    showScale*: bool = true
+    singleColor*: string
+
+## GLOBAL VAR FOR USE EVERYWHERE
+var
+  gAppOpts*: AppOpts
+
+proc showAppHelp*(opts: AppOpts) =
+  let afn = getAppFilename().splitPath.tail
+  echo &"Usage: {afn} [options]"
+  echo "  -h, --help:   show this help"
+  echo "  --bbox:       calculate and show bounding box"
+  echo "  --dstrect:    show compact destination rectangle"
+  echo "  --notext:     don't show component ID"
+  echo "  --nohover:    disable hovering behavior"
+  echo "  -q=N, --qty=N: create N random components."
+  echo "\n  Current values:"
+  for k,v in opts[].fieldPairs:
+    echo "    ", k, " = ", v
+
+proc parseAppOptions*(): AppOpts = 
+  # Start with values in json file, then override 
+  # with command line values
+  jsonInitGlobals()
+  try:
+    result = gAppOptsJ.to(AppOpts)
+  except CatchableError as e:
+    echo "Caught a bug with ", e.name
+    echo e.msg
+    quit(-1)
+  for kind, key, val in getopt():
+    case kind
+    of cmdArgument:
+      discard
+    of cmdLongOption, cmdShortOption:
+      case key:
+      of "help", "h": result.appHelp = true
+      of "bbox": result.enableBbox = true
+      of "dstrect": result.enableDstRect = true
+      of "notext": result.enableText = false
+      of "nohover": result.enableHover = false
+      of "qty", "q": result.compQty = val.parseInt
+      of "renderMethod": result.renderMethod = parseEnum[RenderMethod](val)
+      of "singleColor": result.singleColor = "Purple"
+    of cmdEnd:
+      echo "done parsing"
+
+when isMainModule:
+  try:
+    gAppOpts = parseAppOptions()
+    if gAppOpts.appHelp:
+      showAppHelp(gAppOpts)
+      system.quit()
+    echo gAppOpts[]
+  except Exception as e:
+      echo "Exception!"
+      echo e.msg
+      echo getStackTrace(e)
+    
