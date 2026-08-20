@@ -118,6 +118,9 @@ wClass(wMainPanel of wPanel):
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
     ##! Move updateratio to algorithm
+    when defined(compactProfile):
+      echo ""
+
     if self.blockPanel != nil:
       var db = self.blockPanel.editor.doc.db
       withLock(gLock):
@@ -128,6 +131,8 @@ wClass(wMainPanel of wPanel):
 
   proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
     # Leave if we have any threads already running
+    when defined(compactProfile):
+      echo ""
     if self.blockPanel.isNil: return
     if gCompactThread.running: return
     for i in gAnnealComms.low .. gAnnealComms.high:

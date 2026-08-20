@@ -5,13 +5,10 @@ import wnim/wTypes
 import winim/inc/winuser
 import concurrent
 
-#import recttable, userMessages
+import common
 from recttable import `[]`, dbComps
 import document
-#import rotation
 import userMessages
-
-export algorithm
 
 type 
   Axis* = enum X=true, Y=false
@@ -205,8 +202,10 @@ proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq
   # rectTable is table of rects
   # axis is X or Y
   # sortOrder == left/up or down/right
-  let lines = scanLines(rectTable, axis, sortOrder, ids)
-  result = composeGraph(lines, rectTable, axis, sortOrder)
+  timeItMs(compactProfile, "scanLines"):
+    let lines = scanLines(rectTable, axis, sortOrder, ids)
+  timeItMs(compactProfile, "composeGraph"):
+    result = composeGraph(lines, rectTable, axis, sortOrder)
 
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
   for node in nodes:
@@ -229,7 +228,8 @@ proc compact*(rectTable: RectTable,
   let graph = makeGraph(rectTable, axis, sortOrder, ids)
   let nodes = if ids.len == 0: rectTable.keys.toSeq
               else: ids
-  let lp = longestPathBellmanFord(graph, nodes, 0)
+  timeitMs(compactProfile, "bellmanford"):
+    let lp = longestPathBellmanFord(graph, nodes, 0)
 
   if axis == X and sortOrder == Ascending:
     for id in nodes:
@@ -250,6 +250,7 @@ proc compact*(rectTable: RectTable,
 var compactCtr: int
 proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
   # Run compact function until rectTable doesn't change
+  # Todo: send signal through progress
   compactCtr = 0
   var pos, lastPos: PosTable
   pos = rectTable.positions
