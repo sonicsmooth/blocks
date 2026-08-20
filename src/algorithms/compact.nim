@@ -200,7 +200,6 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     lastpos = edge.pos
   result.add(line)
 
-
 proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): Graph =
   # Returns DAG = table((frm, to): weight)
   # rectTable is table of rects
@@ -208,21 +207,6 @@ proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq
   # sortOrder == left/up or down/right
   let lines = scanLines(rectTable, axis, sortOrder, ids)
   result = composeGraph(lines, rectTable, axis, sortOrder)
-
-# proc positionDiffs(t1, t2: PosTable): PosTable =
-#   for k in t1.keys:
-#     let
-#       p1 = t1[k]
-#       p2 = t2[k]
-#     result[k] = (x: p2.x - p1.x, y: p2.y - p1.y, rot: p2.rot - p1.rot)
-
-# proc zeroDiffs(t1: PosTable): PosTable =
-#   for k, pos in t1:
-#     if pos.x == 0.0 and pos.y == 0.0 and pos.rot == R0:
-#       echo "continuing"
-#       continue
-#     result[k] = pos
-
 
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
   for node in nodes:

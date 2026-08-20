@@ -3,7 +3,7 @@ import std/[segfaults,
             #strutils, 
             tables]
 
-when defined(monotime_profile):
+when defined(monotimeProfile):
   import std/[monotimes, times]
 
 import wNim
@@ -16,7 +16,7 @@ import reporting
 import renderer
 #import routing
 import sdlframes
-#import userMessages
+import usermessages
 import viewport
 
 type
@@ -126,8 +126,8 @@ wClass(wBlockPanel of wSDLPanel):
     # Repackage specific event types and send to editor
     # Send mouse message for x,y position displayed in Frame
     # Maybe get rid of this and resend from editor somehow
-    #let hWnd = GetAncestor(self.handle, GA_ROOT)
-    #SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
+    let hWnd = GetAncestor(self.handle, GA_ROOT)
+    SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
     self.editor.processMouseMoveEvent(self.fillMouse(event))
 
   proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
@@ -195,25 +195,19 @@ wClass(wBlockPanel of wSDLPanel):
     var lastPaintTime: MonoTime
 
   proc onPaint(self: wBlockPanel, event: wEvent) =
-
-    # if self.editor != nil:
-    #   if gAppOpts.enableBbox:
-    #     #! Move this to somewhere else
-    #     self.editor.updateBoundingBox()
-
-    when defined(monotime_profile):
+    when defined(monotimeProfile):
       let now = getMonoTime()
       let lpt_ms = (now - lastPaintTime).inMilliseconds
       lastPaintTime = now
 
-    when defined(monotime_profile):
+    when defined(monotimeProfile):
       let t0_render = getMonoTime()
     self.renderer.renderEverything()
-    when defined(monotime_profile):
+    when defined(monotimeProfile):
       let renderTime_us = (getMonoTime() - t0_render).inMicroseconds 
 
 
-    when defined(monotime_profile):
+    when defined(monotimeProfile):
       var s: string
       s = s & "last: " & $lpt_ms & " ms; "
       s = s & "render: " & $renderTime_us & " us; "

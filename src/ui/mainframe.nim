@@ -18,6 +18,7 @@ import jsoninit
 import mainpanel
 import reporting
 import routing
+import usermessages
 import utils
 import viewport
 export mainpanel

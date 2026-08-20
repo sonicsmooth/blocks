@@ -2,7 +2,7 @@ import std/[strformat,
             math,
             options,
             tables]
-when defined(monotime_profile):
+when defined(monotimeProfile):
   import std/[monotimes, times]
 export tables
 
