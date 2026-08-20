@@ -141,9 +141,7 @@ wClass(wMainPanel of wPanel):
                              window:      self,
                              dstRect:     dstRect)
       gCompactThread.createThread(compactWorker, arg)
-      echo "2d here 5"
       gCompactThread.joinThread()
-      echo "2d here 6"
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
    
@@ -174,6 +172,7 @@ wClass(wMainPanel of wPanel):
       self.blockPanel.renderer.clearTextureCache()
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
+
 
   proc onResize(self: wMainPanel, event: wEvent) =
     self.layout()

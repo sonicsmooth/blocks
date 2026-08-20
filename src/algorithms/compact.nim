@@ -8,8 +8,10 @@ import concurrent
 #import recttable, userMessages
 from recttable import `[]`, dbComps
 import document
-import rotation
+#import rotation
 import userMessages
+
+export algorithm
 
 type 
   Axis* = enum X=true, Y=false
@@ -184,7 +186,7 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
       line.top = @[]
 
     if edge.etype == Bot and edge.id in line.mid:
-      line.mid.delete(line.mid.find(edge.id))
+      line.mid.delete(line.mid.find(edge.id)) # todo: excl(...)
     line.appendField(edge.etype, edge.id)
 
     # TODO: fix the issue with [] and iterators to minimize copies
@@ -192,33 +194,34 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     if line.sorted.len > 1:
       line.sorted = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
     if line.top.len > 1:
-      line.top = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
+      line.top = sortedRectsIds(rectTable.dbComps(line.top), axis, sortOrder)
     if line.bot.len > 1:
-      line.bot = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
+      line.bot = sortedRectsIds(rectTable.dbComps(line.bot), axis, sortOrder)
     lastpos = edge.pos
   result.add(line)
 
+
 proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): Graph =
-  # Returns DAG = table((frm,to): weight)
+  # Returns DAG = table((frm, to): weight)
   # rectTable is table of rects
   # axis is X or Y
   # sortOrder == left/up or down/right
   let lines = scanLines(rectTable, axis, sortOrder, ids)
   result = composeGraph(lines, rectTable, axis, sortOrder)
 
-proc positionDiffs(t1, t2: PosTable): PosTable =
-  for k in t1.keys:
-    let
-      p1 = t1[k]
-      p2 = t2[k]
-    result[k] = (x: p2.x - p1.x, y: p2.y - p1.y, rot: p2.rot - p1.rot)
+# proc positionDiffs(t1, t2: PosTable): PosTable =
+#   for k in t1.keys:
+#     let
+#       p1 = t1[k]
+#       p2 = t2[k]
+#     result[k] = (x: p2.x - p1.x, y: p2.y - p1.y, rot: p2.rot - p1.rot)
 
-proc zeroDiffs(t1: PosTable): PosTable =
-  for k, pos in t1:
-    if pos.x == 0.0 and pos.y == 0.0 and pos.rot == R0:
-      echo "continuing"
-      continue
-    result[k] = pos
+# proc zeroDiffs(t1: PosTable): PosTable =
+#   for k, pos in t1:
+#     if pos.x == 0.0 and pos.y == 0.0 and pos.rot == R0:
+#       echo "continuing"
+#       continue
+#     result[k] = pos
 
 
 proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
@@ -271,8 +274,6 @@ proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
     compact(rectTable, direction.secax, direction.secAsc, dstRect)
     lastPos = pos
     pos = rectTable.positions
-    #echo "iter diff ", compactCtr, " -> ", positionDiffs(lastPos, pos)
-    # echo "iter diff ", compactCtr, " -> ", zeroDiffs(pos)
     inc compactCtr
 
 proc compactWorker*(arg: CompactArg) {.thread.} =

@@ -16,6 +16,8 @@ import rotation
 import viewport
 import zoomctrl
 
+import compact, algorithm
+
 export document, rects, viewport, world
 
 type
@@ -333,6 +335,10 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
       let newPos = (self.doc.db[hitid].pos + delta).snap(self.doc.grid, scale=scale)
       self.moveRectTo(hitid, newPos)
     self.mouseData.state = StateSelectDraggingComp
+
+    # TEMP
+    discard makeGraph(self.doc.db, X, Ascending, @[])
+
     self.invalidate()
   of StateSelectDownInSpace, StateSelectDraggingSpace:
     # Collect items to be selected in tmpselect.
