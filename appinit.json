@@ -10,7 +10,7 @@
       "enableHover": true,
       "oneOffset": true,
       "renderMethod": "SDLTexture",
-      "blockFill": "Solid",
+      "blockFill": "Gradient",
       "reTextureAllOnZoom": true,
       "reTextureFatOnMove": true,
       "showScale": true,

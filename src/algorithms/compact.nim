@@ -1,4 +1,4 @@
-import std/[algorithm, locks, sugar, tables]
+import std/[algorithm, sets, locks, sugar, tables]
 import sequtils
 import wnim
 import wnim/wTypes
@@ -198,7 +198,6 @@ proc scanLinesOld(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: s
   result.add(line)
 
 proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
-  # From Claude
   let
     minor = if axis==X: Minor else: Major
     secPos  = posChooser(minor)
@@ -215,14 +214,21 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     edges: seq[ScanEdge] = concat(topEdges, botEdges).sortedByIt(it.pos)
 
   proc finalizeSorts(line: var ScanLine) =
-    line.sorted = concat(line.top, line.mid, line.bot)
-    if line.sorted.len > 1:
-      line.sorted = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
-    if line.top.len > 1:
-      line.top = sortedRectsIds(rectTable.dbComps(line.top), axis, sortOrder)
-    if line.bot.len > 1:
-      line.bot = sortedRectsIds(rectTable.dbComps(line.bot), axis, sortOrder)
+    let combined = concat(line.top, line.mid, line.bot)
+    if combined.len > 1:
+      line.sorted = sortedRectsIds(rectTable.dbComps(combined), axis, sortOrder)
+    else:
+      line.sorted = combined
 
+    if line.top.len > 1:
+      let topSet = line.top.toHashSet
+      line.top = line.sorted.filterIt(it in topSet)
+
+    if line.bot.len > 1:
+      let botSet = line.bot.toHashSet
+      line.bot = line.sorted.filterIt(it in botSet)
+
+  # Prime everything with first edge
   var edge: ScanEdge  = edges[0]
   var line: ScanLine  = (pos: edge.pos, 
                          top: @[], mid: @[], bot: @[], 
@@ -230,35 +236,36 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
   line.setField(edge.etype, @[edge.id])
   var lastpos = edge.pos
 
+  # Go through each edge
+  # Push accumulated line when next line detected
   for i, edge in edges[1..high(edges)]:
     if edge.pos > lastpos: # down one edge -- previous line is now complete
       finalizeSorts(line)
       result.add(line)
       line.pos = edge.pos
-      line.bot = @[]
+      line.bot = @[] # TODO: profile vs. setLen(0)
       line.mid.add(line.top)
       line.top = @[]
 
     if edge.etype == Bot and edge.id in line.mid:
-      line.mid.delete(line.mid.find(edge.id))
+      line.mid.delete(line.mid.find(edge.id)) # todo: excl(...)
     line.appendField(edge.etype, edge.id)
     lastpos = edge.pos
 
-  finalizeSorts(line)   # the final, still-open line never hit the "pos > lastpos" branch
+  finalizeSorts(line)   # final, still-open line never hit the "pos > lastpos" branch
   result.add(line)
-
 proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): Graph =
   # Returns DAG = table((frm, to): weight)
   # rectTable is table of rects
   # axis is X or Y
   # sortOrder == left/up or down/right
   var lines: seq[ScanLine]
-  timeItMs(compactProfile, "scanLinesOld"):
-    lines = scanLinesOld(rectTable, axis, sortOrder, ids)
+  # timeItMs(compactProfile, "scanLinesOld"):
+  #   lines = scanLinesOld(rectTable, axis, sortOrder, ids)
   timeItMs(compactProfile, "scanLines"):
     lines = scanLines(rectTable, axis, sortOrder, ids)
-  # timeItMs(compactProfile, "composeGraph"):
-  result = composeGraph(lines, rectTable, axis, sortOrder)
+  timeItMs(compactProfile, "composeGraph"):
+    result = composeGraph(lines, rectTable, axis, sortOrder)
 
 # proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
 #   for node in nodes:
