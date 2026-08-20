@@ -40,7 +40,7 @@ type
 
 
 const
-  RootNode = when CompID is string: "0" else: 0
+  RootNode = when CompID is string: "0" else: CompID(0)
 
 var
   gCompactThread*: Thread[CompactArg]
@@ -148,7 +148,7 @@ proc sizeChooser(ax: MajMin): proc(rect: DBComp): WType =
   else:
     proc(rect: DBComp): WType = rect.wbbox.h
 
-proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
+proc scanLinesOld(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
   let
     minor = if axis==X: Minor else: Major
     secPos  = posChooser(minor)
@@ -197,26 +197,118 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     lastpos = edge.pos
   result.add(line)
 
+proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
+  # From Claude
+  let
+    minor = if axis==X: Minor else: Major
+    secPos  = posChooser(minor)
+    secSz   = sizeChooser(minor)
+    colids  = if ids.len == 0: rectTable.keys.toSeq
+              else:            ids
+    topEdges: seq[ScanEdge] = 
+        collect(for id in colids:
+          (id: id, pos: rectTable[id].secPos(), etype: Top))
+    botEdges: seq[ScanEdge] = 
+        collect (for id in colids:
+          let rect = rectTable[id]
+          (id: id, pos: rect.secPos + rect.secSz(), etype: Bot))
+    edges: seq[ScanEdge] = concat(topEdges, botEdges).sortedByIt(it.pos)
+
+  proc finalizeSorts(line: var ScanLine) =
+    line.sorted = concat(line.top, line.mid, line.bot)
+    if line.sorted.len > 1:
+      line.sorted = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
+    if line.top.len > 1:
+      line.top = sortedRectsIds(rectTable.dbComps(line.top), axis, sortOrder)
+    if line.bot.len > 1:
+      line.bot = sortedRectsIds(rectTable.dbComps(line.bot), axis, sortOrder)
+
+  var edge: ScanEdge  = edges[0]
+  var line: ScanLine  = (pos: edge.pos, 
+                         top: @[], mid: @[], bot: @[], 
+                         sorted: @[edge.id])
+  line.setField(edge.etype, @[edge.id])
+  var lastpos = edge.pos
+
+  for i, edge in edges[1..high(edges)]:
+    if edge.pos > lastpos: # down one edge -- previous line is now complete
+      finalizeSorts(line)
+      result.add(line)
+      line.pos = edge.pos
+      line.bot = @[]
+      line.mid.add(line.top)
+      line.top = @[]
+
+    if edge.etype == Bot and edge.id in line.mid:
+      line.mid.delete(line.mid.find(edge.id))
+    line.appendField(edge.etype, edge.id)
+    lastpos = edge.pos
+
+  finalizeSorts(line)   # the final, still-open line never hit the "pos > lastpos" branch
+  result.add(line)
+
 proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): Graph =
   # Returns DAG = table((frm, to): weight)
   # rectTable is table of rects
   # axis is X or Y
   # sortOrder == left/up or down/right
+  var lines: seq[ScanLine]
+  timeItMs(compactProfile, "scanLinesOld"):
+    lines = scanLinesOld(rectTable, axis, sortOrder, ids)
   timeItMs(compactProfile, "scanLines"):
-    let lines = scanLines(rectTable, axis, sortOrder, ids)
-  timeItMs(compactProfile, "composeGraph"):
-    result = composeGraph(lines, rectTable, axis, sortOrder)
+    lines = scanLines(rectTable, axis, sortOrder, ids)
+  # timeItMs(compactProfile, "composeGraph"):
+  result = composeGraph(lines, rectTable, axis, sortOrder)
 
-proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
+# proc longestPathBellmanFord(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
+#   for node in nodes:
+#     result[node] = Weight.low
+#   result[RootNode] = minpos
+
+#   for iter in 0..nodes.len:
+#     for ge, weight in graph:
+#       if result[ge.frm] == Weight.low:              
+#         continue
+#       result[ge.to] = max(result[ge.to], result[ge.frm] + weight)
+#   result.del(RootNode)
+
+proc longestPathDAG(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
+  # Build adjacency + in-degree for topological sort
+  # From Claude -- I totally don't understand this
+  # but it's very fast
+  var adj: Table[Node, seq[tuple[to: Node, w: Weight]]]
+  var indeg: Table[Node, int]
   for node in nodes:
-    result[node] = Weight.low
-  result[RootNode] = minpos
+    indeg[node] = 0
+    adj[node] = @[]
+  indeg[RootNode] = 0
+  adj[RootNode] = @[]
 
-  for iter in 0..nodes.len:
-    for ge, weight in graph:
-      if result[ge.frm] == Weight.low:              
-        continue
-      result[ge.to] = max(result[ge.to], result[ge.frm] + weight)
+  for ge, weight in graph:
+    adj[ge.frm].add((ge.to, weight))
+    indeg[ge.to] = indeg.getOrDefault(ge.to, 0) + 1
+
+  # Kahn's algorithm: topological order
+  var queue: seq[Node] = @[RootNode]
+  var topoOrder: seq[Node]
+  var deg = indeg
+  while queue.len > 0:
+    let n = queue.pop()
+    topoOrder.add(n)
+    for (to, _) in adj[n]:
+      deg[to] -= 1
+      if deg[to] == 0:
+        queue.add(to)
+
+  # Single relaxation pass, in topological order -- O(V+E), always correct
+  result[RootNode] = minpos
+  for node in nodes:
+    if node != RootNode:
+      result[node] = Weight.low
+  for n in topoOrder:
+    for (to, w) in adj[n]:
+      if result[n] != Weight.low:
+        result[to] = max(result[to], result[n] + w)
   result.del(RootNode)
 
 proc compact*(rectTable: RectTable, 
@@ -228,8 +320,12 @@ proc compact*(rectTable: RectTable,
   let graph = makeGraph(rectTable, axis, sortOrder, ids)
   let nodes = if ids.len == 0: rectTable.keys.toSeq
               else: ids
-  timeitMs(compactProfile, "bellmanford"):
-    let lp = longestPathBellmanFord(graph, nodes, 0)
+  
+  var lp: Table[CompID, Weight]
+  # timeitMs(compactProfile, "bellmanford"):
+  #   lp = longestPathBellmanFord(graph, nodes, 0)
+  timeitMs(compactProfile, "dag"):
+    lp = longestPathDag(graph, nodes, 0)
 
   if axis == X and sortOrder == Ascending:
     for id in nodes:
