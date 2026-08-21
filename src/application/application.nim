@@ -50,7 +50,7 @@ proc init*(self: Application, w, h: int) =
 
   # Create stuff
   self.wapp = wApp.App()
-  self.mainFrame = MainFrame((w, h))
+  self.mainFrame = MainFrame((w, h), barebones=false)
   self.doc = newDocument()
   self.editor = newEditor(self.doc.grid.mZctrl)
   self.renderer = newRenderer()

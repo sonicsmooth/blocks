@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+  <defs>
+    <linearGradient id="g_grid_settings" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6E9CC4"/>
+      <stop offset="100%" stop-color="#3B6693"/>
+    </linearGradient>
+    <filter id="shadow_grid_settings" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="1.1" stdDeviation="0.8" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow_grid_settings)">
+    <rect x="2" y="2" width="60" height="60" rx="7" fill="url(#g_grid_settings)"/>
+  </g>
+  <path d="M9 3.3 H55" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M9 60.7 H55" stroke="#000000" stroke-opacity="0.18" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="2" y="2" width="60" height="60" rx="7" fill="none" stroke="#000000" stroke-opacity="0.12" stroke-width="1.2"/>
+  
+    <rect x="11.0" y="11.0" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="23.5" y="11.0" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="36.0" y="11.0" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="11.0" y="23.5" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="23.5" y="23.5" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="36.0" y="23.5" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="11.0" y="36.0" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="23.5" y="36.0" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <rect x="36.0" y="36.0" width="10" height="10" rx="1.2" fill="#ffffff" opacity="1"/>
+    <circle cx="48" cy="48" r="9" fill="#3B6693"/>
+    <circle cx="48" cy="48" r="5.58" fill="#ffffff"/>
+    <polygon points="46.47,37.17 49.53,37.17 49.53,44.37 46.47,44.37" fill="#ffffff"/>
+    <polygon points="54.57,39.26 56.74,41.43 51.65,46.52 49.48,44.35" fill="#ffffff"/>
+    <polygon points="58.83,46.47 58.83,49.53 51.63,49.53 51.63,46.47" fill="#ffffff"/>
+    <polygon points="56.74,54.57 54.57,56.74 49.48,51.65 51.65,49.48" fill="#ffffff"/>
+    <polygon points="49.53,58.83 46.47,58.83 46.47,51.63 49.53,51.63" fill="#ffffff"/>
+    <polygon points="41.43,56.74 39.26,54.57 44.35,49.48 46.52,51.65" fill="#ffffff"/>
+    <polygon points="37.17,49.53 37.17,46.47 44.37,46.47 44.37,49.53" fill="#ffffff"/>
+    <polygon points="39.26,41.43 41.43,39.26 46.52,44.35 44.35,46.52" fill="#ffffff"/>
+    <circle cx="48" cy="48" r="2.34" fill="#3B6693"/>
+    
+</svg>

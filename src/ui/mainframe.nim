@@ -1,7 +1,8 @@
 import std/[os,
             strformat,
             strutils,
-            sugar
+            sugar,
+            tables
             ]
 import wNim
 from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
@@ -23,8 +24,6 @@ import utils
 import viewport
 export mainpanel
 
-# TODO: mainframe should have ref to editor, doc
-
 type
   wMainFrame* = ref object of wFrame
     editor*: Editor
@@ -36,59 +35,37 @@ type
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
-              idCmdOptions, idCmdDropDown,
-              idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout
+              idCmdPrefs, idCmdDropDown,
+              idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout,
+              idCmdPlace
 
 const
   singleFrames = false
-  pth = r"../../icons/24x24_free_application_icons_icons_pack_120732/bmp/24x24/"
-  res = [staticRead(pth & r"New document.bmp"),
-         staticRead(pth & r"Folder.bmp"),
-         staticRead(pth & r"Save.bmp"),
-         staticRead(pth & r"Close.bmp"),
-         staticRead(pth & r"Application.bmp"),
-         staticRead(pth & r"Exit.bmp"),
-         staticRead(pth & r"Info.bmp"),
-         staticRead(pth & r"Help book.bmp"),
-         staticRead(pth & r"Add.bmp"),
-         staticRead(r"../../icons/grid.bmp"),
-         staticRead(r"../../icons/gridgears.bmp")]
-let
-  small = MulDiv(16, wAppGetDpi(), 96)
-  big = MulDiv(32, wAppGetDpi(), 96)
-  imgLstSm = ImageList(small, small)
-  imgLstBg = ImageList(big, big)
+  pth = r"../../icons/claude/icons/ico/"
+  res = [(name: "new",          data: staticRead(pth & r"new_document.ico" )),
+         (name: "open",         data: staticRead(pth & r"folder_open.ico"  )),
+         (name: "save",         data: staticRead(pth & r"save.ico"         )),
+         (name: "close",        data: staticRead(pth & r"close.ico"        )),
+         (name: "place",        data: staticRead(pth & r"placement.ico"    )),
+         (name: "exit",         data: staticRead(pth & r"exit.ico"         )),
+         (name: "info",         data: staticRead(pth & r"info.ico"         )),
+         (name: "help",         data: staticRead(pth & r"help.ico"         )),
+         (name: "prefs",        data: staticRead(pth & r"preferences.ico"  )),
+         (name: "gridonoff",    data: staticRead(pth & r"grid_on_off.ico"  )),
+         (name: "gridsettings", data: staticRead(pth & r"grid_settings.ico"))]
+  small = 24
+  big = 48
 
-for r in res:
-  imgLstSm.add(Image(r).scale(small, small))
-  imgLstBg.add(Image(r).scale(big, big))
+var
+  smIcons: Table[string, wTypes.wBitmap]
+  bigIcons: Table[string, wTypes.wBitmap]
 
-let
-  bmpNewSm     = imgLstSm.getBitmap(0)
-  bmpOpenSm    = imgLstSm.getBitmap(1)
-  bmpSaveSm    = imgLstSm.getBitmap(2)
-  bmpCloseSm   = imgLstSm.getBitmap(3)
-  bmpOptionsSm = imgLstSm.getBitmap(4)
-  bmpExitSm    = imgLstSm.getBitmap(5)
-  bmpInfoSm    = imgLstSm.getBitmap(6)
-  bmpHelpSm    = imgLstSm.getBitmap(7)
-  bmpAddSm     = imgLstSm.getBitmap(8)
-  bmpGridSm    = imgLstSm.getBitmap(9)
-  bmpGearsSm   = imgLstSm.getBitmap(10)
+for (name, data) in res:
+  smIcons[name] = Icon(data, (small, small)).Bitmap
+  bigIcons[name] = Icon(data, (big, big)).Bitmap
 
-  bmpNewBg     = imgLstBg.getBitmap(0)
-  bmpOpenBg    = imgLstBg.getBitmap(1)
-  bmpSaveBg    = imgLstBg.getBitmap(2)
-  bmpCloseBg   = imgLstBg.getBitmap(3)
-  bmpOptionsBg = imgLstBg.getBitmap(4)
-  bmpExitBg    = imgLstBg.getBitmap(5)
-  bmpInfoBg    = imgLstBg.getBitmap(6)
-  bmpHelpBg    = imgLstBg.getBitmap(7)
-  bmpAddBg     = imgLstBg.getBitmap(8)
-  bmpGridBg    = imgLstBg.getBitmap(9)
-  bmpGearsBg   = imgLstBg.getBitmap(10)
-
-
+proc iconSize(icon: wIcon): wSize = 
+  discard
 
 wClass(wMainFrame of wFrame):
   proc isReady*(self: wMainFrame): bool =
@@ -98,10 +75,17 @@ wClass(wMainFrame of wFrame):
     if not self.editor.isReady(): return reportNotReady("wMainFrame.editor")
     if not self.mainPanel.isReady(): return reportNotReady("wMainFrame.mainPanel")
     true
+
+  proc isReadyQuiet*(self: wMainFrame): bool =
+    if self.editor.isNil: return false
+    if self.mainPanel.isNil: return false
+    if self.statusBar.isNil: return false
+    if not self.editor.isReady(): return false
+    if not self.mainPanel.isReady(): return false
+    true
   
   proc onResize(self: wMainFrame, event: wEvent) =
-    if self.statusBar != nil:
-      #self.statusBar.setStatusText($self.clientSize, index=1)
+    if self.isReady:
       self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
     event.skip()
   
@@ -110,26 +94,33 @@ wClass(wMainFrame of wFrame):
       echo "mainframe refresh"
     if self.mainPanel != nil:
       self.mainPanel.layout()
-    if self.mainPanel.blockPanel != nil:
+    if self.isReady:
       self.mainPanel.blockPanel.refresh(false)
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     # Main menu at top of frame
     var menu1 = Menu()
     var menu2 = Menu()
+    var menu3 = Menu()
     result = MenuBar(self)
-    menu1.append(idCmdNew, "New", bitmap=bmpNewSm)
-    menu1.append(idCmdOpen, "Open", bitmap=bmpOpenSm)
-    menu1.append(idCmdSave, "Save", bitmap=bmpSaveSm)
-    menu1.append(idCmdClose, "Close", bitmap=bmpCloseSm)
-    menu1.appendSeparator()
-    menu1.append(idCmdOptions, "Options", bitmap=bmpOptionsSm)
-    menu1.appendSeparator()
-    menu1.append(idCmdExit, "Exit", bitmap=bmpExitSm)
-    menu2.append(idCmdAbout, "About", bitmap=bmpInfoSm)
-    menu2.append(idCmdHelp, "Help", bitmap=bmpHelpSm)
     result.append(menu1, "File")
-    result.append(menu2, "Help")
+    result.append(menu2, "Tools")
+    result.append(menu3, "Help")
+
+    menu1.append(idCmdNew, "New", bitmap=smIcons["new"])
+    menu1.append(idCmdOpen, "Open", bitmap=smIcons["open"])
+    menu1.append(idCmdSave, "Save", bitmap=smIcons["save"])
+    menu1.append(idCmdClose, "Close", bitmap=smIcons["close"])
+    menu1.appendSeparator()
+    menu1.append(idCmdPrefs, "Preferences", bitmap=smIcons["prefs"])
+    menu1.appendSeparator()
+    menu1.append(idCmdExit, "Exit", bitmap=smIcons["exit"])
+
+    menu2.append(idCmdPlace, "Place", bitmap=smIcons["place"])
+
+    menu3.append(idCmdAbout, "About", bitmap=smIcons["info"])
+    menu3.append(idCmdHelp, "Help", bitmap=smIcons["help"])
+
 
   proc setupReBar(self: wMainFrame): wReBar =
     # Set up three things in the rebar
@@ -137,17 +128,18 @@ wClass(wMainFrame of wFrame):
 
     # 1. Basic file new/open toolbar
     let tb1 = ToolBar(result)
-    tb1.addTool(idCmdNew, "New", bmpNewBg)
-    tb1.addTool(idCmdOpen, "Open", bmpOpenBg)
-    tb1.addTool(idCmdSave, "Save", bmpSaveBg)
+    tb1.addTool(idCmdNew, "New", bigIcons["new"])
+    tb1.addTool(idCmdOpen, "Open", bigIcons["open"])
+    tb1.addTool(idCmdSave, "Save", bigIcons["save"])
     self.bandToolBars.add(tb1) # self.bandToolBars[0]
     
     # 2. Grid controls    
     let tb2 = ToolBar(result)
-    tb2.addChecktool(idCmdGridShow, "Grid Show", bmpGridBg)
+    tb2.addChecktool(idCmdGridShow, "Grid Show", bigIcons["gridonoff"])
     # Read from init file
     tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
-    tb2.addtool(idCmdGridSetting, "Grid settings", bmpGearsBg)
+    tb2.addtool(idCmdGridSetting, "Grid settings", bigIcons["gridsettings"])
+    tb2.addTool(idCmdPlace, "Place", bigIcons["place"])
 
     let ddcb = ComboBox(tb2, idCmdDropDown, "Render Method")
     ddcb.size = (self.dpiScale(150), ddcb.size.height)
@@ -155,13 +147,13 @@ wClass(wMainFrame of wFrame):
     ddcb.append("SDL Texture")
     ddcb.append("Pixie Texture")
     ddcb.select(gAppOpts.renderMethod.int)
-    ddcb.position = (self.dpiScale(150), self.dpiScale(10))
+    ddcb.position = (self.dpiScale(250), self.dpiScale(10))
     self.bandToolBars.add(tb2) # self.bandToolBars[1]
-    
+
     # 3. Close
     let tb3 = ToolBar(result)
-    tb3.addTool(idCmdInfo, "Info", bmpInfoBg)
-    tb3.addTool(idCmdClose, "Close", bmpCloseBg)
+    tb3.addTool(idCmdInfo, "Info", bigIcons["info"])
+    tb3.addTool(idCmdClose, "Close", bigIcons["close"])
     self.bandToolBars.add(tb3) # self.bandToolBars[2]
 
     # Put toolbars things in rebar
@@ -179,7 +171,6 @@ wClass(wMainFrame of wFrame):
     result.setStatusWidths([-1, -1, -1])
 
   proc onToolEvent(self: wMainFrame, event: wEvent) =
-    #echo event.id.MenuCmdID
     case event.id
     of idCmdNew: discard
     of idCmdOpen:
@@ -195,9 +186,6 @@ wClass(wMainFrame of wFrame):
     of idCmdHelp: discard
     of idCmdInfo:
       if self.isReady():
-        # echo self.mainPanel.blockPanel.editor.doc.grid[]
-        # echo self.mainPanel.blockPanel.editor.viewport[]
-        # echo self.mainPanel.blockPanel.editor.doc.grid.mZctrl[]
         echo self.mainPanel.blockPanel.editor
     of idCmdAbout:
       let f = AboutFrame(self)
@@ -213,6 +201,8 @@ wClass(wMainFrame of wFrame):
           GridControlFrame(self, gr).show()
           if singleFrames:
             self.gridCtrlFrameShowing = true
+    of idCmdPlace:
+      echo "place"
     else:
       discard
 
@@ -351,13 +341,14 @@ wClass(wMainFrame of wFrame):
   proc onTimer(self: wMainFrame, event: wEvent) = 
     if event.timerId == 1:
       self.stopTimer(event.timerId)
-      if self.statusBar != nil:
+      #if self.statusBar != nil:
+      if self.isReady:
         # Same as onresize
         self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
       event.skip()
 
 
-  proc init*(self: wMainFrame, size: wSize) = 
+  proc init*(self: wMainFrame, size: wSize, barebones: bool) = 
     when defined(debug):
       echo "mainframe init"
       echo "Main frame hwnd is ", $self.mHwnd
@@ -400,7 +391,8 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idMsgGridLines,   (w:wWindow, e:wEvent)=>onMsgGridLines(w.wMainFrame, e))
     #--
     self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
-    self.mainPanel = MainPanel(self)
+    if not barebones:
+      self.mainPanel = MainPanel(self)
     when defined(debug):
       echo "Main frame done initting"
 
@@ -415,15 +407,15 @@ when isMainModule:
       showAppHelp(gAppOpts)
       system.quit()
     wSetSystemDpiAware()
-    let
-      app = wNim.App()
-      init_size = (800, 800)
-      frame = MainFrame(init_size)
+    let app = wNim.App()
+    let init_size = (800, 800)
+    let frame = MainFrame(init_size, barebones=true)
     
     # Go App!
     frame.center()
     frame.show()
     app.mainLoop()
+  
   except Exception as e:
       echo "Exception!"
       echo e.msg
