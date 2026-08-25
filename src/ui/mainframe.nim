@@ -17,6 +17,7 @@ import grid
 import gridctrlframe
 import jsoninit
 import mainpanel
+import placementframe
 import reporting
 import routing
 import usermessages
@@ -29,6 +30,7 @@ type
     editor*: Editor
     doc*: Document
     gridCtrlFrameShowing: bool
+    placementFrameShowing: bool
     mainPanel*: wMainPanel
     bandToolBars: seq[wToolBar]
     invalidate*: proc()
@@ -40,7 +42,6 @@ type
               idCmdPlace
 
 const
-  singleFrames = false
   pth = r"../../icons/claude/icons/ico/"
   res = [(name: "new",          data: staticRead(pth & r"new_document.ico" )),
          (name: "open",         data: staticRead(pth & r"folder_open.ico"  )),
@@ -59,30 +60,39 @@ const
 var
   smIcons: Table[string, wTypes.wBitmap]
   bigIcons: Table[string, wTypes.wBitmap]
+  gQuietReady: bool
 
 for (name, data) in res:
   smIcons[name] = Icon(data, (small, small)).Bitmap
   bigIcons[name] = Icon(data, (big, big)).Bitmap
 
-proc iconSize(icon: wIcon): wSize = 
+proc iconSizes(icon: wIcon): seq[wSize] = 
   discard
 
 wClass(wMainFrame of wFrame):
   proc isReady*(self: wMainFrame): bool =
-    if self.editor.isNil: return reportNil("wMainFrame.editor")
-    if self.mainPanel.isNil: return reportNil("wMainFrame.mainPanel")
-    if self.statusBar.isNil: return reportNil("wMainFrame.statusBar")
-    if not self.editor.isReady(): return reportNotReady("wMainFrame.editor")
-    if not self.mainPanel.isReady(): return reportNotReady("wMainFrame.mainPanel")
-    true
+    if gQuietReady:
+      if self.editor.isNil: return false
+      if self.mainPanel.isNil: return false
+      if self.statusBar.isNil: return false
+      if not self.editor.isReady(): return false
+      if not self.mainPanel.isReady(): return false
+      true
+    else:
+      if self.editor.isNil: return reportNil("wMainFrame.editor")
+      if self.mainPanel.isNil: return reportNil("wMainFrame.mainPanel")
+      if self.statusBar.isNil: return reportNil("wMainFrame.statusBar")
+      if not self.editor.isReady(): return reportNotReady("wMainFrame.editor")
+      if not self.mainPanel.isReady(): return reportNotReady("wMainFrame.mainPanel")
+      true
 
-  proc isReadyQuiet*(self: wMainFrame): bool =
-    if self.editor.isNil: return false
-    if self.mainPanel.isNil: return false
-    if self.statusBar.isNil: return false
-    if not self.editor.isReady(): return false
-    if not self.mainPanel.isReady(): return false
-    true
+  # proc isReadyQuiet*(self: wMainFrame): bool =
+  #   if self.editor.isNil: return false
+  #   if self.mainPanel.isNil: return false
+  #   if self.statusBar.isNil: return false
+  #   if not self.editor.isReady(): return false
+  #   if not self.mainPanel.isReady(): return false
+  #   true
   
   proc onResize(self: wMainFrame, event: wEvent) =
     if self.isReady:
@@ -195,14 +205,17 @@ wClass(wMainFrame of wFrame):
       let state = self.bandToolbars[1].toolState(idCmdGridShow)
       sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
-      if not singleFrames or not self.gridCtrlFrameShowing:
-        if self.mainPanel != nil:
-          let gr = self.mainPanel.blockPanel.editor.doc.grid
-          GridControlFrame(self, gr).show()
-          if singleFrames:
-            self.gridCtrlFrameShowing = true
+      if self.gridCtrlFrameShowing: return
+      if self.mainPanel.isNil: return
+      let gr = self.mainPanel.blockPanel.editor.doc.grid
+      GridControlFrame(self, gr).show()
+      self.gridCtrlFrameShowing = true
     of idCmdPlace:
-      echo "place"
+      if self.placementFrameShowing: return
+      if self.mainPanel.isNil: return
+      PlacementFrame(self).show()
+      self.placementFrameShowing = true
+
     else:
       discard
 
@@ -306,11 +319,12 @@ wClass(wMainFrame of wFrame):
   #--
 
   proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
-    if self.isReady():
-      let state = event.mLparam.bool
-      self.editor.doc.grid.mVisible = state
-      self.bandToolbars[1].toggleTool(idCmdGridShow, state)
-      self.refreshCanvas()
+    discard
+    # if self.isReady():
+    #   let state = event.mLparam.bool
+    #   self.editor.doc.grid.mVisible = state
+    #   self.bandToolbars[1].toggleTool(idCmdGridShow, state)
+    #   self.refreshCanvas()
 
   proc onMsgGridDots(self: wMainFrame, event: wEvent) =
     if self.isReady():
@@ -329,6 +343,8 @@ wClass(wMainFrame of wFrame):
 
   proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
     self.gridCtrlFrameShowing = false
+  proc onMsgPlacementFrameClosing(self: wMainFrame, event: wEvent) =
+    self.placementFrameShowing = false
 
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
@@ -346,7 +362,6 @@ wClass(wMainFrame of wFrame):
         # Same as onresize
         self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
       event.skip()
-
 
   proc init*(self: wMainFrame, size: wSize, barebones: bool) = 
     when defined(debug):
@@ -391,6 +406,8 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idMsgGridLines,   (w:wWindow, e:wEvent)=>onMsgGridLines(w.wMainFrame, e))
     #--
     self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
+    self.registerListener(idMsgPlacementFrameClosing, (w:wWindow, e:wEvent)=>onMsgPlacementFrameClosing(w.wMainFrame, e))
+    
     if not barebones:
       self.mainPanel = MainPanel(self)
     when defined(debug):
@@ -398,17 +415,14 @@ wClass(wMainFrame of wFrame):
 
   
 when isMainModule:
-  import appopts
+  gQuietReady = true
 
   # Main data and window
   try:
     gAppOpts = parseAppOptions()
-    if gAppOpts.appHelp:
-      showAppHelp(gAppOpts)
-      system.quit()
     wSetSystemDpiAware()
     let app = wNim.App()
-    let init_size = (800, 800)
+    let init_size = (1200, 800)
     let frame = MainFrame(init_size, barebones=true)
     
     # Go App!

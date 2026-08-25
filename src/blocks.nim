@@ -1,6 +1,4 @@
-import std/[random]
-import wNim/[wApp,wUtils]
-import appopts, document
+import appopts
 import application
 
 

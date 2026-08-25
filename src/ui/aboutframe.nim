@@ -1,3 +1,4 @@
+import std/os
 import wnim, winim
 import pixie
 import pixieshapes
@@ -30,7 +31,8 @@ proc heart*(w,h: int): Image =
   result.fillPath(path, "#7B42FC")
 
 proc junkTxt*(w,h: int): Image = 
-  let typeface = readTypeface("fonts/Ubuntu-Regular_1.ttf")
+  let fontPath = getAppDir() / ".." / "fonts/Ubuntu-Regular_1.ttf"
+  let typeface = readTypeface(fontPath)
   let spans = @[
     newSpan("verb [with object] ",
       newFont(typeface, 12, color(0.78125, 0.78125, 0.78125, 1))),
@@ -75,8 +77,7 @@ wClass(wAboutFrame of wFrame):
       BitBlt(pdc.mHdc, 0, 0, w, h, bmpDc,0, 0, SRCCOPY)
       DeleteObject(hbmp)
       DeleteObject(bmpDc)
-    
-    cnt.inc
+    inc cnt
 
   proc init*(self: wAboutFrame, owner: wWindow) =
     wFrame(self).init(owner,
@@ -84,7 +85,8 @@ wClass(wAboutFrame of wFrame):
                       pos=(400, 400),
                       size=(640, 480),
                       style=wDefaultFrameStyle)
-    self.wEvent_Paint do(event: wEvent): self.onPaint(event)
+    self.wEvent_Paint   do(event: wEvent): self.onPaint(event)
+    self.wEvent_LeftUp  do (event: wEvent): self.refresh()
 
 
 when isMainModule:

@@ -310,6 +310,137 @@ icons["preferences"] = dict(
     """
 )
 
+# ── Alignment icons ────────────────────────────────────────────────────────
+# Rect fill: white@0.72 pre-blended over badge mid (#5885af) → #d0dde9
+# This keeps rects visually distinct from the bright-white alignment line/bracket
+# without relying on SVG opacity (which IM renders unreliably).
+_c0, _c1 = "#6E9CC4", "#3B6693"
+# Pre-blended fills over badge mid ≈ #5884AF:
+#   R_LT = white@0.72 → #d0dde9  (lighter, "front" block)
+#   R_DK = white@0.42 → #9eb8d1  (darker,  "back"  block)
+#   R_SK = #3b6693@0.35 over #9eb8d1 → #7b9bbb (rect outline stroke)
+R_LT = "#d0dde9"
+R_DK = "#9eb8d1"
+R_SK = "#7b9bbb"
+SW   = "0.8"       # rect stroke-width
+LW   = "2.5"       # alignment guide line stroke-width
+
+# Horizontal alignment (line = vertical guide, rects aligned to it)
+# Rect outlines make each block read as a distinct shape.
+icons["align_left"] = dict(grad=(_c0, _c1), glyph=f"""
+    <line x1="12" y1="9" x2="12" y2="53" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round"/>
+    <rect x="12" y="12" width="30" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="12" y="25" width="20" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="12" y="38" width="26" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+icons["align_center"] = dict(grad=(_c0, _c1), glyph=f"""
+    <line x1="32" y1="9" x2="32" y2="53" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round"/>
+    <rect x="17" y="12" width="30" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="22" y="25" width="20" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="19" y="38" width="26" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+icons["align_right"] = dict(grad=(_c0, _c1), glyph=f"""
+    <line x1="52" y1="9" x2="52" y2="53" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round"/>
+    <rect x="22" y="12" width="30" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="32" y="25" width="20" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="26" y="38" width="26" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+# Vertical alignment (line = horizontal guide, rects aligned to it)
+icons["align_top"] = dict(grad=(_c0, _c1), glyph=f"""
+    <line x1="9" y1="12" x2="53" y2="12" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round"/>
+    <rect x="11" y="12" width="11" height="28" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="26" y="12" width="11" height="18" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="41" y="12" width="11" height="24" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+icons["align_mid"] = dict(grad=(_c0, _c1), glyph=f"""
+    <line x1="9" y1="32" x2="53" y2="32" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round"/>
+    <rect x="11" y="18" width="11" height="28" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="26" y="23" width="11" height="18" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="41" y="20" width="11" height="24" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+icons["align_bottom"] = dict(grad=(_c0, _c1), glyph=f"""
+    <line x1="9" y1="52" x2="53" y2="52" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round"/>
+    <rect x="11" y="24" width="11" height="28" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="26" y="34" width="11" height="18" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="41" y="28" width="11" height="24" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+# Corner alignment icons: L-bracket marks the snap corner.
+# Two NON-overlapping rects: a wide-short block along the bracket's long arm
+# and a narrow-tall block along its short arm, separated by a small gap.
+# R_DK (wide block) + R_LT (narrow block) keep them visually distinct.
+icons["align_upper_left"] = dict(grad=(_c0, _c1), glyph=f"""
+    <path d="M11 27 L11 11 L27 11" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="14" y="14" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="29" width="13" height="23" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+icons["align_upper_right"] = dict(grad=(_c0, _c1), glyph=f"""
+    <path d="M37 11 L53 11 L53 27" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="20" y="14" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="37" y="29" width="13" height="23" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+icons["align_lower_left"] = dict(grad=(_c0, _c1), glyph=f"""
+    <path d="M11 37 L11 53 L27 53" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="14" y="35" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="12" width="13" height="21" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+icons["align_lower_right"] = dict(grad=(_c0, _c1), glyph=f"""
+    <path d="M37 53 L53 53 L53 37" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="20" y="35" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="37" y="12" width="13" height="21" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+# ── Directional arrow icons ─────────────────────────────────────────────────
+# Arrow polygon defined pointing UP, then rotated CW for each of 8 directions.
+# CW rotation in SVG (y-down) around center (32,32):
+#   nx = 32 + dx*cos(θ) - dy*sin(θ)
+#   ny = 32 + dx*sin(θ) + dy*cos(θ)
+def _arrow_pts(deg):
+    pts_up = [
+        (32, 10),  # tip
+        (46, 30),  # right flare
+        (38, 30),  # right inner notch
+        (38, 54),  # shaft BR
+        (26, 54),  # shaft BL
+        (26, 30),  # left inner notch
+        (18, 30),  # left flare
+    ]
+    rad = math.radians(deg)
+    c, s = math.cos(rad), math.sin(rad)
+    cx, cy = 32.0, 32.0
+    out = []
+    for px, py in pts_up:
+        dx, dy = px - cx, py - cy
+        nx = cx + dx * c - dy * s
+        ny = cy + dx * s + dy * c
+        out.append(f"{nx:.1f},{ny:.1f}")
+    return " ".join(out)
+
+_ac0, _ac1 = "#6E9CC4", "#3B6693"
+_dirs = [
+    ("arrow_up",         0),
+    ("arrow_up_right",  45),
+    ("arrow_right",     90),
+    ("arrow_down_right",135),
+    ("arrow_down",      180),
+    ("arrow_down_left", 225),
+    ("arrow_left",      270),
+    ("arrow_up_left",   315),
+]
+for _name, _deg in _dirs:
+    icons[_name] = dict(
+        grad=(_ac0, _ac1),
+        glyph=f'<polygon points="{_arrow_pts(_deg)}" fill="{GLYPH_WHITE}"/>'
+    )
+
 for name, spec in icons.items():
     c0, c1 = spec["grad"]
     full_svg(name, c0, c1, spec["glyph"])
