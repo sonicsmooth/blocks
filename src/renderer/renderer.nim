@@ -155,7 +155,7 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
     let image = renderDBCompPixie(comp, texSz, vp.zoom, hov, sel)
-    let surface = createRGBSurfaceFrom(image.data[0].addr, texSz.w, texSz.h, 
+    let surface = createRGBSurfaceFrom(addr image.data[0], texSz.w, texSz.h, 
                                 32, texSz.w * 4, amask, bmask, gmask, rmask)
     sdlFailIf(surface.isNil): "Create surface failed"
     result = self.sdlRenderer.createTextureFromSurface(surface)

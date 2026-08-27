@@ -42,18 +42,18 @@ type
               idCmdPlace
 
 const
-  pth = r"../../icons/claude/icons/ico/"
-  res = [(name: "new",          data: staticRead(pth & r"new_document.ico" )),
-         (name: "open",         data: staticRead(pth & r"folder_open.ico"  )),
-         (name: "save",         data: staticRead(pth & r"save.ico"         )),
-         (name: "close",        data: staticRead(pth & r"close.ico"        )),
-         (name: "place",        data: staticRead(pth & r"placement.ico"    )),
-         (name: "exit",         data: staticRead(pth & r"exit.ico"         )),
-         (name: "info",         data: staticRead(pth & r"info.ico"         )),
-         (name: "help",         data: staticRead(pth & r"help.ico"         )),
-         (name: "prefs",        data: staticRead(pth & r"preferences.ico"  )),
-         (name: "gridonoff",    data: staticRead(pth & r"grid_on_off.ico"  )),
-         (name: "gridsettings", data: staticRead(pth & r"grid_settings.ico"))]
+  pth = "../../icons/claude/icons/ico/"
+  res = [(name: "new",          data: staticRead(pth / "new_document.ico" )),
+         (name: "open",         data: staticRead(pth / "folder_open.ico"  )),
+         (name: "save",         data: staticRead(pth / "save.ico"         )),
+         (name: "close",        data: staticRead(pth / "close.ico"        )),
+         (name: "place",        data: staticRead(pth / "placement.ico"    )),
+         (name: "exit",         data: staticRead(pth / "exit.ico"         )),
+         (name: "info",         data: staticRead(pth / "info.ico"         )),
+         (name: "help",         data: staticRead(pth / "help.ico"         )),
+         (name: "prefs",        data: staticRead(pth / "preferences.ico"  )),
+         (name: "gridonoff",    data: staticRead(pth / "grid_on_off.ico"  )),
+         (name: "gridsettings", data: staticRead(pth / "grid_settings.ico"))]
   small = 24
   big = 48
 

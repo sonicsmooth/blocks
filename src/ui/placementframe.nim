@@ -1,14 +1,12 @@
-import std/[sugar, 
-            strutils,
-            strformat,
+import std/[strutils,
             tables,
             parseutils]
+from os import `/`
 import wNim
 import winim
+import pixie/fileformats/[png, svg]
 
-import grid
 import routing
-import utils
 import viewport
 
 # Create a panel to hold some controls,
@@ -23,13 +21,14 @@ type
       sbMinSpacing, sbOrder: wStaticBox
 
     # Static Texts
-    stQty, stSelected, stCompTitle, 
-      stX, stY, stW, stH, stMinX, stMinY,
-      stStrat, stReplFn, stStartTemp,
-      stStartTempNum, stCurrTemp, stCurrTempNum: wStaticText
+    stQty, stSelected, stSelectedNum,
+      stCompTitle, stX, stY, stW, stH,
+      stMinX, stMinY, stStrat, stReplFn,
+      stStartTemp, stStartTempNum,
+      stCurrTemp, stCurrTempNum: wStaticText
     
     # Text Controls
-    tcQty, tcSelected, tcX, tcY, tcW, tcH,
+    tcQty, tcX, tcY, tcW, tcH,
       tcMinX, tcMinY: wTextCtrl
 
     # Buttons
@@ -53,27 +52,49 @@ type
 const
   frameBackgroundColor = 0xd0d0d0
   panelBackgroundColor = 0xf0f0f0
-  buttonAreaColor = 0xe4e4e4 #0xf0f0f0
-  # barHeightRaw = 28
-  buttHeightRaw = 24
+  doneAreaColor = 0xe4e4e4 #0xf0f0f0
+  buttHeightRaw = 30
   buttWidthRaw = 110
-  hmargRaw = 10
-  vmargRaw = 10
-  pth = r"../../icons/claude/icons/ico/"
-  res = [(name: "up",      data: staticRead(pth & r"arrow_up.ico"        )),
-         (name: "down",    data: staticRead(pth & r"arrow_down.ico"      )),
-         (name: "left",    data: staticRead(pth & r"arrow_left.ico"      )),
-         (name: "right",   data: staticRead(pth & r"arrow_right.ico"     )),
-         (name: "upleft",  data: staticRead(pth & r"arrow_up_left.ico"   )),
-         (name: "upright", data: staticRead(pth & r"arrow_up_right.ico"  )),
-         (name: "dnleft",  data: staticRead(pth & r"arrow_down_left.ico" )),
-         (name: "dnright", data: staticRead(pth & r"arrow_down_right.ico"))]
-  iconSize = 64
+  iconSizeRaw = 40
+  hmargRaw = 12
+  vmargRaw = 12
+  hpadRaw = 12
+  vpadRaw = 12
+  hspcRaw = 18
+  vspcRaw = 14
+  vgapRaw = 4
+  suffix = ".svg"
+  pth = "../../icons/claude/icons/svg"
+  res = [(name: "up",      data: staticRead(pth / "arrow_up"         & suffix )),
+         (name: "down",    data: staticRead(pth / "arrow_down"       & suffix )),
+         (name: "left",    data: staticRead(pth / "arrow_left"       & suffix )),
+         (name: "right",   data: staticRead(pth / "arrow_right"      & suffix )),
+         (name: "upleft",  data: staticRead(pth / "arrow_up_left"    & suffix )),
+         (name: "upright", data: staticRead(pth / "arrow_up_right"   & suffix )),
+         (name: "dnleft",  data: staticRead(pth / "arrow_down_left"  & suffix )),
+         (name: "dnright", data: staticRead(pth / "arrow_down_right" & suffix ))]
+  #iconSize = 64
 var
-  icons: Table[string, wTypes.wIcon]
+  #icons: Table[string, wTypes.wIcon]
+  icons: Table[string, string]
 
 for (name, data) in res:
-  icons[name] = Icon(data, (iconSize, iconSize))
+  #icons[name] = Icon(data, (iconSize, iconSize))
+  icons[name] = data
+
+proc svgToBitmap(svgData: string, sz: wSize): wBitmap =
+  let svgobj = svgData.parseSvg(sz.width, sz.height)
+  let im = newImage(svgobj)
+  let pngBytes = im.encodePng()
+  let wimg = Image(pngBytes[0].addr, pngBytes.len)
+  result = Bitmap(wimg)
+
+proc appDpiScale(value: wSize): wSize =
+  let d = wAppGetDpi()
+  (value.width * d div 96, value.height * d div 96)
+
+proc appDpiScale(value: int): int =
+  value * wAppGetDpi() div 96
 
 proc parseNumber[T:SomeNumber](s: string, number: var T): bool =
   # Returns true if s can be parsed to int or float
@@ -94,16 +115,16 @@ wClass(wPlacementPanel of wPanel):
     let
       hmarg = self.dpiScale(hmargRaw) # from panel edge
       vmarg = self.dpiScale(vmargRaw) # from panel edge
-      hpad = self.dpiScale(10) # small spaces
-      vpad = self.dpiScale(10) # small spaces
-      hspc = self.dpiScale(16) # larger spaces
-      vspc = self.dpiScale(12) # larger spaces
+      hpad = self.dpiScale(hpadRaw) # small spaces
+      vpad = self.dpiScale(vpadRaw) # small spaces
+      hspc = self.dpiScale(hspcRaw) # larger spaces
+      vspc = self.dpiScale(vspcRaw) # larger spaces
       boxvspc = self.dpiScale(20) # down from top of static box to avoid text
-      vgap = self.dpiScale(4) # tiny space
+      vgap = self.dpiScale(vgapRaw) # tiny space
       bbTxtAdjust = self.dpiScale(8) # get top compass buttons to align with box line not text
       buttWidth = self.dpiScale(buttWidthRaw)
       buttHeight = self.dpiScale(buttHeightRaw)
-      arrowBtnSize = self.dpiScale(40)
+      arrowBtnSize = self.dpiScale(iconSizeRaw)
       txtCtrlWidth = self.dpiScale(40)
 
     self.stCompTitle.fit()
@@ -124,11 +145,11 @@ wClass(wPlacementPanel of wPanel):
         centerY = self.bRandomizeAll.centerY
         width = self.stSelected.defaultWidth
         height = self.stSelected.defaultHeight
-      self.tcSelected:
-        left = self.stSelected.right
-        centerY = self.bRandomizeAll.centerY
+      self.stSelectedNum:
+        left = self.stSelected.right + hpad
+        bottom = self.stSelected.bottom
         width = txtCtrlWidth
-        height = self.tcSelected.defaultHeight
+        height = self.stSelectedNum.defaultHeight
       self.bRandomizeAll:
         right = self.bRandomizePos.left - hspc
         top = self.top + vmarg
@@ -409,12 +430,11 @@ wClass(wPlacementPanel of wPanel):
     var dc = PaintDC(self)
     let
       sz = self.size
-      buttHeight = self.dpiScale(buttHeightRaw)
       barheight = self.barHeight()
 
     # Rectangle behind button
-    dc.setBrush(Brush(buttonAreaColor.wColor))
-    dc.setPen(Pen(buttonAreaColor.wColor))
+    dc.setBrush(Brush(doneAreaColor.wColor))
+    dc.setPen(Pen(doneAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
   proc requiredSize(self: wPlacementPanel): wSize =
@@ -440,6 +460,7 @@ wClass(wPlacementPanel of wPanel):
     # Static Texts
     self.stQty          = StaticText(self, label="Qty")
     self.stSelected     = StaticText(self, label="Selected")
+    self.stSelectedNum  = StaticText(self, label="0")
     self.stCompTitle    = StaticText(self, label="Compact In Region")
     self.stX            = StaticText(self, label="X")
     self.stY            = StaticText(self, label="Y")
@@ -456,7 +477,6 @@ wClass(wPlacementPanel of wPanel):
     
     # Text Controls
     self.tcQty      = TextCtrl(self, style=wBorderSimple)
-    self.tcSelected = TextCtrl(self, style=wBorderSimple)
     self.tcX        = TextCtrl(self, style=wBorderSimple)
     self.tcY        = TextCtrl(self, style=wBorderSimple)
     self.tcW        = TextCtrl(self, style=wBorderSimple)
@@ -499,27 +519,23 @@ wClass(wPlacementPanel of wPanel):
 
     # Configure
     let titleFace = "Segoe UI"
+    self.stSelectedNum.font = Font(faceName=titleFace, pointSize=12)
     self.stCompTitle.font = Font(faceName=titleFace, pointSize=14, weight=wFontWeightBold)
     self.stStartTempNum.font = Font(faceName=titleFace, pointSize=12)
     self.stCurrTempNum.font = Font(faceName=titleFace, pointSize=12)
-    self.bUpLeft.setIcon(icons["upleft"])
-    self.bUp.setIcon(icons["up"])
-    self.bUpRight.setIcon(icons["upright"])
-    self.bLeft.setIcon(icons["left"])
-    self.bRight.setIcon(icons["right"])
-    self.bDown.setIcon(icons["down"])
-    self.bDnLeft.setIcon(icons["dnleft"])
-    self.bDnRight.setIcon(icons["dnright"])
+    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    self.bUpLeft.setBitmap (svgToBitmap(icons["upleft" ], iconSz))
+    self.bUp.setBitmap     (svgToBitmap(icons["up"     ], iconSz))
+    self.bUpRight.setBitmap(svgToBitmap(icons["upright"], iconSz))
+    self.bLeft.setBitmap   (svgToBitmap(icons["left"   ], iconSz))
+    self.bRight.setBitmap  (svgToBitmap(icons["right"  ], iconSz))
+    self.bDown.setBitmap   (svgToBitmap(icons["down"   ], iconSz))
+    self.bDnLeft.setBitmap (svgToBitmap(icons["dnleft" ], iconSz))
+    self.bDnRight.setBitmap(svgToBitmap(icons["dnright"], iconSz))
 
     self.wEvent_Size do (event: wEvent): self.onResize()
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
-proc appDpiScale(value: wSize): wSize =
-  let d = wAppGetDpi()
-  (value.width * d div 96, value.height * d div 96)
-
-proc appDpiScale(value: int): int =
-  value * wAppGetDpi() div 96
 
 wClass(wPlacementFrame of wFrame):
   proc onDestroy(self: wPlacementFrame) =

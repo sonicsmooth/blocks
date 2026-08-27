@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  
+    <!-- Back panel: white@0.42 pre-blended over badge mid #5885af → #9eb8d1 -->
+    <path d="M14 47 V19 Q14 17 16 17 H28 L33 24 H50 Q52 24 52 26 V47 Z" fill="#9eb8d1"/>
+    <!-- Stroke the tab outline -->
+    <path d="M14 19 Q14 17 16 17 H28 L33 24 H50 Q52 24 52 26" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Crease line: #3b6693@0.35 pre-blended over #9eb8d1 → #7b9bbb -->
+    <line x1="14" y1="28" x2="52" y2="28" stroke="#7b9bbb" stroke-width="1.1"/>
+    <!-- Front panel (open folder face) -->
+    <path d="M11 29 H53 L49.5 48.5 Q49 50 47 50 H17 Q15 50 14.5 48.5 Z" fill="#ffffff"/>
+    
+</svg>

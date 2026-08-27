@@ -3,9 +3,10 @@
 variants used to composite clean, non-banded PNGs with PIL)."""
 import os
 
-OUT = os.path.join("..", "icons")
+OUT      = os.path.join("..", "icons")
+SVG_DIR  = os.path.join(OUT, "svg")
 GLYPH_DIR = os.path.join(OUT, "_glyph_only")
-os.makedirs(OUT, exist_ok=True)
+os.makedirs(SVG_DIR, exist_ok=True)
 os.makedirs(GLYPH_DIR, exist_ok=True)
 
 R = 7  # badge corner radius (squared-off, not fully sharp)
@@ -13,6 +14,72 @@ GLYPH_WHITE = "#ffffff"
 
 
 import math
+
+
+def involute_gear_path(cx, cy, n=8, r_pitch=11.0, pressure_deg=20.0,
+                       addendum=2.5, dedendum=2.5, n_pts=8):
+    """SVG path string for an involute spur gear centered at (cx, cy).
+    Produces proper involute flanks + tip/root arcs — looks like a real gear, not a star."""
+    alpha  = math.radians(pressure_deg)
+    r_base = r_pitch * math.cos(alpha)
+    r_tip  = r_pitch + addendum
+    r_root = r_pitch - dedendum
+    pitch_ang  = 2 * math.pi / n
+    half_tooth = math.pi / (2 * n)
+
+    def inv_xy(t):
+        return (r_base * (math.cos(t) + t * math.sin(t)),
+                r_base * (math.sin(t) - t * math.cos(t)))
+
+    def t_at_r(r):
+        return math.sqrt(max(0.0, (r / r_base) ** 2 - 1))
+
+    t_pitch = t_at_r(r_pitch)
+    t_tip   = t_at_r(r_tip)
+    xp, yp  = inv_xy(t_pitch)
+    inv_angle_at_pitch = math.atan2(yp, xp)
+    flank_rot = -half_tooth - inv_angle_at_pitch
+
+    def place(x, y, rot, tooth_i):
+        total = tooth_i * pitch_ang + rot
+        c, s = math.cos(total), math.sin(total)
+        return cx + x * c - y * s, cy + x * s + y * c
+
+    def reflect(px, py, tooth_i):
+        base = tooth_i * pitch_ang
+        dx, dy = px - cx, py - cy
+        theta_ref = 2 * base - math.atan2(dy, dx)
+        r_dist = math.hypot(dx, dy)
+        return cx + r_dist * math.cos(theta_ref), cy + r_dist * math.sin(theta_ref)
+
+    def f(px, py): return f"{px:.3f},{py:.3f}"
+
+    t_start = t_at_r(r_root) if r_root >= r_base else 0.0
+    parts = []
+
+    for i in range(n):
+        rf = []
+        if r_root < r_base:
+            rf.append(place(r_root, 0, flank_rot, i))
+        for k in range(n_pts + 1):
+            t = t_start + (t_tip - t_start) * k / n_pts
+            rf.append(place(*inv_xy(t), flank_rot, i))
+
+        lf = [reflect(px, py, i) for px, py in reversed(rf)]
+
+        if i == 0:
+            parts.append(f"M {f(*rf[0])}")
+        else:
+            parts.append(f"A {r_root:.3f},{r_root:.3f} 0 0 1 {f(*rf[0])}")
+
+        for pt in rf[1:]:
+            parts.append(f"L {f(*pt)}")
+        parts.append(f"A {r_tip:.3f},{r_tip:.3f} 0 0 1 {f(*lf[0])}")
+        for pt in lf[1:]:
+            parts.append(f"L {f(*pt)}")
+
+    parts.append("Z")
+    return " ".join(parts)
 
 
 def gear(cx, cy, body_r=11, tooth_w=6, tooth_len=14, hole_r=4.5,
@@ -61,11 +128,12 @@ def grid_squares(x0, y0, n=3, cell=10, gap=2.5, color=GLYPH_WHITE, opacity=1):
 
 
 def power_badge(cx, cy, r, badge_color, glyph_color=GLYPH_WHITE):
-    """Small corner emblem: filled circle + power on/off glyph."""
+    """Corner emblem: filled circle + power on/off glyph. Stroke scales with r."""
     gr = r * 0.5
+    sw = r * 0.19   # ≈1.7 at r=9, ≈2.5 at r=13
     return f"""<circle cx="{cx}" cy="{cy}" r="{r}" fill="{badge_color}"/>
-    <line x1="{cx}" y1="{cy - gr - 0.5}" x2="{cx}" y2="{cy - gr * 0.15}" stroke="{glyph_color}" stroke-width="1.7" stroke-linecap="round"/>
-    <path d="M{cx - gr * 0.72:.1f} {cy - gr * 0.35:.1f} A{gr:.1f} {gr:.1f} 0 1 0 {cx + gr * 0.72:.1f} {cy - gr * 0.35:.1f}" fill="none" stroke="{glyph_color}" stroke-width="1.7" stroke-linecap="round"/>"""
+    <line x1="{cx}" y1="{cy - gr - 0.5}" x2="{cx}" y2="{cy - gr * 0.15}" stroke="{glyph_color}" stroke-width="{sw:.2f}" stroke-linecap="round"/>
+    <path d="M{cx - gr * 0.72:.1f} {cy - gr * 0.35:.1f} A{gr:.1f} {gr:.1f} 0 1 0 {cx + gr * 0.72:.1f} {cy - gr * 0.35:.1f}" fill="none" stroke="{glyph_color}" stroke-width="{sw:.2f}" stroke-linecap="round"/>"""
 
 
 def gear_badge(cx, cy, r, badge_color, glyph_color=GLYPH_WHITE):
@@ -76,33 +144,21 @@ def gear_badge(cx, cy, r, badge_color, glyph_color=GLYPH_WHITE):
     )
 
 
-def badge_defs(grad_id, shadow_id):
-    return f"""<linearGradient id="{grad_id}" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="{{c0}}"/>
-      <stop offset="100%" stop-color="{{c1}}"/>
-    </linearGradient>
-    <filter id="{shadow_id}" x="-30%" y="-30%" width="160%" height="170%">
-      <feDropShadow dx="0" dy="1.1" stdDeviation="0.8" flood-color="#000000" flood-opacity="0.38"/>
-    </filter>"""
-
-
 def full_svg(name, c0, c1, glyph):
-    grad_id, shadow_id = f"g_{name}", f"shadow_{name}"
-    defs = badge_defs(grad_id, shadow_id).format(c0=c0, c1=c1)
+    grad_id = f"g_{name}"
     x0, x1 = 2 + R, 62 - R
     body = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
-  <defs>
-    {defs}
-  </defs>
-  <g filter="url(#{shadow_id})">
-    <rect x="2" y="2" width="60" height="60" rx="{R}" fill="url(#{grad_id})"/>
-  </g>
+  <linearGradient id="{grad_id}" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="62" y2="62">
+    <stop offset="0" stop-color="{c0}"/>
+    <stop offset="1" stop-color="{c1}"/>
+  </linearGradient>
+  <rect x="2" y="2" width="60" height="60" rx="{R}" fill="url(#{grad_id})"/>
   <path d="M{x0} 3.3 H{x1}" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1.4" stroke-linecap="round"/>
   <path d="M{x0} 60.7 H{x1}" stroke="#000000" stroke-opacity="0.18" stroke-width="1.4" stroke-linecap="round"/>
   <rect x="2" y="2" width="60" height="60" rx="{R}" fill="none" stroke="#000000" stroke-opacity="0.12" stroke-width="1.2"/>
   {glyph}
 </svg>"""
-    with open(os.path.join(OUT, f"{name}.svg"), "w") as f:
+    with open(os.path.join(SVG_DIR, f"{name}.svg"), "w") as f:
         f.write(body)
 
 
@@ -271,23 +327,30 @@ _c0, _c1 = "#6E9CC4", "#3B6693"
 icons["settings"] = dict(
     grad=(_c0, _c1),
     glyph=f"""
-    {gear(32, 32, body_r=11, tooth_w=6, tooth_len=14, hole_r=4.5, hole_color=_c1)}
+    <path d="{involute_gear_path(32, 32, n=8, r_pitch=15.5, pressure_deg=20,
+                                  addendum=3.2, dedendum=3.2, n_pts=12)}"
+          fill="{GLYPH_WHITE}"/>
+    <circle cx="32" cy="32" r="6.0" fill="{_c1}"/>
     """
 )
 
+_gs_gear = involute_gear_path(43, 43, n=8, r_pitch=11, pressure_deg=20,
+                               addendum=2.5, dedendum=2.5, n_pts=10)
 icons["grid_settings"] = dict(
     grad=(_c0, _c1),
     glyph=f"""
-    {grid_squares(11, 11)}
-    {gear_badge(48, 48, 9, badge_color=_c1)}
+    {grid_squares(10, 10, n=3, cell=13, gap=3, color="#d0dde9")}
+    <path d="{_gs_gear}" fill="none" stroke="{_c1}" stroke-width="5" stroke-linejoin="round"/>
+    <path d="{_gs_gear}" fill="{GLYPH_WHITE}"/>
+    <circle cx="43" cy="43" r="4.5" fill="{_c1}"/>
     """
 )
 
 icons["grid_on_off"] = dict(
     grad=(_c0, _c1),
     glyph=f"""
-    {grid_squares(11, 11)}
-    {power_badge(48, 48, 9, badge_color=_c1)}
+    {grid_squares(10, 10, n=3, cell=13, gap=3, color="#d0dde9")}
+    {power_badge(43, 43, 12, badge_color=_c1)}
     """
 )
 
@@ -370,32 +433,157 @@ icons["align_bottom"] = dict(grad=(_c0, _c1), glyph=f"""
     <rect x="41" y="28" width="11" height="24" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
 """)
 
-# Corner alignment icons: L-bracket marks the snap corner.
-# Two NON-overlapping rects: a wide-short block along the bracket's long arm
-# and a narrow-tall block along its short arm, separated by a small gap.
-# R_DK (wide block) + R_LT (narrow block) keep them visually distinct.
-icons["align_upper_left"] = dict(grad=(_c0, _c1), glyph=f"""
-    <path d="M11 27 L11 11 L27 11" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="14" y="14" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
-    <rect x="14" y="29" width="13" height="23" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+# Corner alignment icons — 8 total: 4 positions × 2 ordering modes.
+# _hv: horizontal (wide/short) block is "first" — flush against bracket corner,
+#      R_LT (lighter). Vertical block is secondary, R_DK, in the remaining slot.
+# _vh: vertical (narrow/tall) block is "first" — flush against bracket corner,
+#      R_LT (lighter). Horizontal block is secondary, R_DK, in the remaining slot.
+# Block POSITIONS differ between _hv and _vh, not just fill colors.
+
+_BR = "{LW}"  # bracket stroke-width alias already defined
+
+# upper-left
+_ul_bracket = f'<path d="M11 27 L11 11 L27 11" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_ul_wide   = 'x="14" y="14" width="30" height="13"'
+_ul_narrow = 'x="14" y="29" width="13" height="23"'
+icons["align_upper_left_hv"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ul_bracket}
+    <rect {_ul_wide}   rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect {_ul_narrow} rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_upper_left_vh"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ul_bracket}
+    <rect x="29" y="14" width="15" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="14" width="13" height="38" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
 """)
 
-icons["align_upper_right"] = dict(grad=(_c0, _c1), glyph=f"""
-    <path d="M37 11 L53 11 L53 27" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="20" y="14" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
-    <rect x="37" y="29" width="13" height="23" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+# upper-right
+_ur_bracket = f'<path d="M37 11 L53 11 L53 27" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_ur_wide   = 'x="20" y="14" width="30" height="13"'
+_ur_narrow = 'x="37" y="29" width="13" height="23"'
+icons["align_upper_right_hv"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ur_bracket}
+    <rect {_ur_wide}   rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect {_ur_narrow} rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_upper_right_vh"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ur_bracket}
+    <rect x="20" y="14" width="15" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="37" y="14" width="13" height="38" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
 """)
 
-icons["align_lower_left"] = dict(grad=(_c0, _c1), glyph=f"""
-    <path d="M11 37 L11 53 L27 53" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="14" y="35" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
-    <rect x="14" y="12" width="13" height="21" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+# lower-left
+_ll_bracket = f'<path d="M11 37 L11 53 L27 53" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_ll_wide   = 'x="14" y="35" width="30" height="13"'
+_ll_narrow = 'x="14" y="12" width="13" height="21"'
+icons["align_lower_left_hv"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ll_bracket}
+    <rect {_ll_wide}   rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect {_ll_narrow} rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_lower_left_vh"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ll_bracket}
+    <rect x="29" y="35" width="15" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="12" width="13" height="38" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
 """)
 
-icons["align_lower_right"] = dict(grad=(_c0, _c1), glyph=f"""
-    <path d="M37 53 L53 53 L53 37" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="20" y="35" width="30" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
-    <rect x="37" y="12" width="13" height="21" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+# lower-right
+_lr_bracket = f'<path d="M37 53 L53 53 L53 37" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_lr_wide   = 'x="20" y="35" width="30" height="13"'
+_lr_narrow = 'x="37" y="12" width="13" height="21"'
+icons["align_lower_right_hv"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_lr_bracket}
+    <rect {_lr_wide}   rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect {_lr_narrow} rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_lower_right_vh"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_lr_bracket}
+    <rect x="20" y="35" width="15" height="13" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="37" y="12" width="13" height="38" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+# ── Corner alignment icons WITH diagonal arrival arrows ────────────────────
+# Blocks are ~20% smaller than the plain corner icons to make room for the arrow.
+# Arrow (half-scale) sits in the quadrant opposite the corner, pointing toward it.
+
+def _small_arrow_pts(cx, cy, deg, scale=0.5):
+    """Arrow polygon scaled to `scale` of standard size, centered at (cx,cy),
+    pointing in direction `deg` degrees CW from straight-up."""
+    pts_up = [
+        (32, 10), (46, 30), (38, 30), (38, 54), (26, 54), (26, 30), (18, 30),
+    ]
+    rad = math.radians(deg)
+    c, s = math.cos(rad), math.sin(rad)
+    out = []
+    for px, py in pts_up:
+        dx, dy = (px - 32) * scale, (py - 32) * scale
+        nx = cx + dx * c - dy * s
+        ny = cy + dx * s + dy * c
+        out.append(f"{nx:.1f},{ny:.1f}")
+    return " ".join(out)
+
+# upper-left with arrow (arrow in lower-right, pointing NW = 315°)
+_ul_a_brkt  = f'<path d="M11 25 L11 11 L25 11" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_ul_a_arrow = f'<polygon points="{_small_arrow_pts(44, 44, 315, 0.5)}" fill="{GLYPH_WHITE}"/>'
+icons["align_upper_left_hv_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ul_a_brkt}
+    {_ul_a_arrow}
+    <rect x="14" y="14" width="22" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="26" width="10" height="17" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_upper_left_vh_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ul_a_brkt}
+    {_ul_a_arrow}
+    <rect x="26" y="14" width="12" height="10" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="14" width="10" height="28" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+# upper-right with arrow (arrow in lower-left, pointing NE = 45°)
+_ur_a_brkt  = f'<path d="M39 11 L53 11 L53 25" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_ur_a_arrow = f'<polygon points="{_small_arrow_pts(21, 44, 45, 0.5)}" fill="{GLYPH_WHITE}"/>'
+icons["align_upper_right_hv_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ur_a_brkt}
+    {_ur_a_arrow}
+    <rect x="28" y="14" width="22" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="40" y="26" width="10" height="17" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_upper_right_vh_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ur_a_brkt}
+    {_ur_a_arrow}
+    <rect x="28" y="14" width="12" height="10" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="40" y="14" width="10" height="28" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+# lower-left with arrow (arrow in upper-right, pointing SW = 225°)
+_ll_a_brkt  = f'<path d="M11 39 L11 53 L25 53" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_ll_a_arrow = f'<polygon points="{_small_arrow_pts(44, 20, 225, 0.5)}" fill="{GLYPH_WHITE}"/>'
+icons["align_lower_left_hv_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ll_a_brkt}
+    {_ll_a_arrow}
+    <rect x="14" y="38" width="22" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="16" width="10" height="20" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_lower_left_vh_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_ll_a_brkt}
+    {_ll_a_arrow}
+    <rect x="26" y="38" width="12" height="10" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="14" y="16" width="10" height="32" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+
+# lower-right with arrow (arrow in upper-left, pointing SE = 135°)
+_lr_a_brkt  = f'<path d="M39 53 L53 53 L53 39" fill="none" stroke="{GLYPH_WHITE}" stroke-width="{LW}" stroke-linecap="round" stroke-linejoin="round"/>'
+_lr_a_arrow = f'<polygon points="{_small_arrow_pts(20, 20, 135, 0.5)}" fill="{GLYPH_WHITE}"/>'
+icons["align_lower_right_hv_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_lr_a_brkt}
+    {_lr_a_arrow}
+    <rect x="28" y="38" width="22" height="10" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="40" y="16" width="10" height="20" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+""")
+icons["align_lower_right_vh_arrow"] = dict(grad=(_c0,_c1), glyph=f"""
+    {_lr_a_brkt}
+    {_lr_a_arrow}
+    <rect x="26" y="38" width="12" height="10" rx="1.5" fill="{R_DK}" stroke="{R_SK}" stroke-width="{SW}"/>
+    <rect x="40" y="16" width="10" height="32" rx="1.5" fill="{R_LT}" stroke="{R_SK}" stroke-width="{SW}"/>
 """)
 
 # ── Directional arrow icons ─────────────────────────────────────────────────
@@ -440,6 +628,44 @@ for _name, _deg in _dirs:
         grad=(_ac0, _ac1),
         glyph=f'<polygon points="{_arrow_pts(_deg)}" fill="{GLYPH_WHITE}"/>'
     )
+
+# ── Undo ────────────────────────────────────────────────────────────────────
+# Stroke-based path: upper arm goes right, CW semicircle wraps the right side,
+# shorter lower arm returns left and ends with a rounded cap (the tail).
+# Arrowhead polygon covers the stroke end at the upper-left.
+# Upper arm: y=22, from x=22 to x=44.  Arc r=9, center (44,31).
+# Lower arm: returns to x=34 — shorter than upper, giving the tapered look.
+icons["undo"] = dict(
+    grad=(_ac0, _ac1),
+    glyph=f"""
+    <path d="M 22 22 H 44 A 9 9 0 0 1 44 40 H 34"
+          fill="none" stroke="{GLYPH_WHITE}" stroke-width="6.5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <polygon points="12,22 22,14 22,30" fill="{GLYPH_WHITE}"/>
+    """
+)
+
+# ── Done (checkmark only) ────────────────────────────────────────────────────
+# Bold white checkmark spanning the badge — no box.
+icons["done"] = dict(
+    grad=(_ac0, _ac1),
+    glyph=f"""
+    <path d="M 12 34 L 26 48 L 52 18"
+          fill="none" stroke="{GLYPH_WHITE}" stroke-width="7"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    """
+)
+
+# ── Search (magnifying glass) ────────────────────────────────────────────────
+# Lens circle + diagonal handle going lower-right.
+icons["search"] = dict(
+    grad=(_ac0, _ac1),
+    glyph=f"""
+    <circle cx="27" cy="26" r="13" fill="none" stroke="{GLYPH_WHITE}" stroke-width="6.5"/>
+    <line x1="36" y1="35" x2="52" y2="51"
+          stroke="{GLYPH_WHITE}" stroke-width="6.5" stroke-linecap="round"/>
+    """
+)
 
 for name, spec in icons.items():
     c0, c1 = spec["grad"]
