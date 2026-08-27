@@ -35,7 +35,8 @@ type
     # Buttons
     bRandomizeAll, bRandomizePos, bTest, bBoundReg,
       bLeft, bRight, bUp, bDown,
-      bUpLeft, bUpRight, bDnLeft, bDnRight: wButton
+      bUpLeft, bUpRight, bDnLeft, bDnRight,
+      bUndo, bDone: wButton
 
     # Radio buttons
     rbNone, rbStack, rbAnneal, rbStrat1, rbStrat2, 
@@ -53,6 +54,11 @@ const
   frameBackgroundColor = 0xd0d0d0
   panelBackgroundColor = 0xf0f0f0
   buttonAreaColor = 0xe4e4e4 #0xf0f0f0
+  # barHeightRaw = 28
+  buttHeightRaw = 24
+  buttWidthRaw = 110
+  hmargRaw = 10
+  vmargRaw = 10
   pth = r"../../icons/claude/icons/ico/"
   res = [(name: "up",      data: staticRead(pth & r"arrow_up.ico"        )),
          (name: "down",    data: staticRead(pth & r"arrow_down.ico"      )),
@@ -69,17 +75,11 @@ var
 for (name, data) in res:
   icons[name] = Icon(data, (iconSize, iconSize))
 
-proc moveby(w: wWindow, dx, dy: int) =
-  w.position = (w.position.x + dx, w.position.y + dy)
-
-proc parseNumber[T](s: string, number: var T): bool =
+proc parseNumber[T:SomeNumber](s: string, number: var T): bool =
   # Returns true if s can be parsed to int or float
   # Parsed value is returned in val
   when T is SomeFloat: parseFloat(s, number) > 0
   elif T is SomeInteger: parseInt(s, number) > 0
-  else:
-    static: echo "Unsupported WType in parseNumber"
-    false
 
 proc errcol(event: wEvent) =
   SetBkColor(event.wParam, RGB(255, 199, 206))
@@ -92,17 +92,17 @@ proc errcol(event: wEvent) =
 wClass(wPlacementPanel of wPanel):
   proc layout(self: wPlacementPanel) =
     let
-      hmarg = self.dpiScale(10) # from panel edge
-      vmarg = self.dpiScale(10) # from panel edge
+      hmarg = self.dpiScale(hmargRaw) # from panel edge
+      vmarg = self.dpiScale(vmargRaw) # from panel edge
       hpad = self.dpiScale(10) # small spaces
       vpad = self.dpiScale(10) # small spaces
-      hspc = self.dpiScale(14) # larger spaces
-      vspc = self.dpiScale(10) # larger spaces
+      hspc = self.dpiScale(16) # larger spaces
+      vspc = self.dpiScale(12) # larger spaces
       boxvspc = self.dpiScale(20) # down from top of static box to avoid text
       vgap = self.dpiScale(4) # tiny space
       bbTxtAdjust = self.dpiScale(8) # get top compass buttons to align with box line not text
-      buttWidth = self.dpiScale(120)
-      buttHeight = self.dpiScale(30)
+      buttWidth = self.dpiScale(buttWidthRaw)
+      buttHeight = self.dpiScale(buttHeightRaw)
       arrowBtnSize = self.dpiScale(40)
       txtCtrlWidth = self.dpiScale(40)
 
@@ -134,7 +134,6 @@ wClass(wPlacementPanel of wPanel):
         top = self.top + vmarg
         width = buttWidth
         height = buttHeight
-        left >= self.tcQty.right + hspc
       self.bRandomizePos:
         right = self.bTest.left - hspc
         top = self.bRandomizeAll.top
@@ -199,21 +198,17 @@ wClass(wPlacementPanel of wPanel):
       self.sbBoundReg:
         top = self.stCompTitle.bottom
         left = self.bUpRight.right + hspc
-        bottom >= self.tcX.bottom + vpad
-        bottom >= self.bDown.bottom
-        right >= self.tcH.right + hpad # temporary
+        bottom = self.bDown.bottom
+        right >= self.tcH.right + hpad
       self.sbMinSpacing:
         left = self.bLeft.left
         top = self.bDown.bottom + vspc
         bottom = self.sbAnneal.bottom
-        bottom >= self.tcMinY.bottom + vpad
-        right >= self.tcMinY.right + hpad
         width = self.sbOrder.width
       self.sbOrder:
         left = self.sbMinSpacing.right + hspc
         top = self.sbMinSpacing.top
         bottom = self.sbAnneal.bottom
-        bottom >= self.rbVH.bottom + vpad
         right = self.sbBoundReg.right
 
       # Static Boxes, Right
@@ -347,9 +342,7 @@ wClass(wPlacementPanel of wPanel):
 
       self.stReplFn:
         top = self.sbAnneal.top + boxvspc
-        left >= self.stStrat.right + hspc
-        left >= self.rbStrat1.right + hspc
-        left >= self.rbStrat2.right + hspc
+        left = self.rbStrat1.right + hspc * 2
         width = self.stReplFn.defaultWidth
         height = self.stReplFn.defaultHeight
       self.rbWiggle:
@@ -372,10 +365,10 @@ wClass(wPlacementPanel of wPanel):
         top = self.stStartTemp.bottom
         left = self.sbAnneal.left + hpad
         height = self.slTemp.defaultHeight
-        right = self.stReplFn.right
+        right = self.stStartTempNum.left
       self.stStartTempNum:
         bottom = self.slTemp.bottom
-        left = self.slTemp.right
+        right = self.stReplFn.right
         width = self.stStartTempNum.defaultWidth
         height = self.stStartTempNum.defaultHeight
       self.stCurrTemp:
@@ -394,29 +387,44 @@ wClass(wPlacementPanel of wPanel):
         width = self.cbMonitor.defaultWidth
         height = self.cbMonitor.defaultHeight
 
-
-
-        
-
-      
-   
-
+      # Done and Undo buttons
+      self.bDone:
+        bottom = self.height - vmarg
+        right = self.right - hmarg
+        width = buttWidth
+        height = buttHeight
+      self.bUndo:
+        bottom = self.height - vmarg
+        right = self.bDone.left - hspc
+        width = buttWidth
+        height = buttHeight
+  
   proc onResize(self: wPlacementPanel) =
     self.layout()
+
+  proc barHeight(self: wPlacementPanel): int =
+    self.dpiScale(buttHeightRaw + 2 * vmargRaw)
 
   proc onPaint(self: wPlacementPanel, event: wEvent) =
     var dc = PaintDC(self)
     let
       sz = self.size
-      buttHeight = self.dpiScale(24)
-      barheight = buttHeight + self.dpiScale(28)
+      buttHeight = self.dpiScale(buttHeightRaw)
+      barheight = self.barHeight()
 
     # Rectangle behind button
     dc.setBrush(Brush(buttonAreaColor.wColor))
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-
+  proc requiredSize(self: wPlacementPanel): wSize =
+    # After layout() has positioned everything, find the true extent
+    var maxRight, maxBottom: int
+    for ctrl in [self.sbAnneal]:  # whichever controls define the outer boundary
+      maxRight = max(maxRight, ctrl.position.x + ctrl.size.width)
+      maxBottom = max(maxBottom, ctrl.position.y + ctrl.size.height)
+    result = (maxRight + self.dpiScale(hmargRaw),
+              maxBottom + self.barHeight() + self.dpiScale(vmargRaw))
 
   proc init*(self: wPlacementPanel, parent: wWindow) =
     wPanel(self).init(parent)
@@ -469,6 +477,8 @@ wClass(wPlacementPanel of wPanel):
     self.bUpRight      = Button(self)
     self.bDnLeft       = Button(self)
     self.bDnRight      = Button(self)
+    self.bUndo         = Button(self, label="Undo")
+    self.bDone         = Button(self, label="Done")
 
     # Radio Buttons
     self.rbNone   = RadioButton(self, label="None")
@@ -486,7 +496,6 @@ wClass(wPlacementPanel of wPanel):
 
     # Checkbox
     self.cbMonitor = CheckBox(self, label="Monitor Progress")
-
 
     # Configure
     let titleFace = "Segoe UI"
@@ -524,10 +533,8 @@ wClass(wPlacementFrame of wFrame):
     wFrame(self).init(owner, title = "Placement", size=size)#, style = style)
     self.backgroundColor = frameBackgroundColor
     self.mPanel = PlacementPanel(self)
-    self.marginLeft  = appDpiScale(4)
-    self.marginRight = appDpiScale(4)
-    self.marginUp    = appDpiScale(4)
-    self.marginDown  = appDpiScale(0)
+    self.mPanel.layout()
+    self.clientSize = self.mPanel.requiredSize
     # Respond generic events
     self.wEvent_Close do(): self.onDestroy()
     self.wEvent_Timer do(): self.onTimer(1)
