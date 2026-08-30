@@ -1,11 +1,9 @@
-import std/[strutils,
-            tables,
-            parseutils]
-from os import `/`
+
 import wNim
 import winim
-import pixie/fileformats/[png, svg]
 
+import common
+import icons
 import routing
 import viewport
 
@@ -28,8 +26,8 @@ type
       stCurrTemp, stCurrTempNum: wStaticText
     
     # Text Controls
-    tcQty, tcX, tcY, tcW, tcH,
-      tcMinX, tcMinY: wTextCtrl
+    txtQty, txtX, txtY, txtW, txtH,
+      txtMinX, txtMinY: wTextCtrl
 
     # Buttons
     bRandomizeAll, bRandomizePos, bTest, bBoundReg,
@@ -63,31 +61,6 @@ const
   hspcRaw = 18
   vspcRaw = 14
   vgapRaw = 4
-  suffix = ".svg"
-  pth = "../../icons/claude/icons/svg"
-  res = [(name: "up",      data: staticRead(pth / "arrow_up"         & suffix )),
-         (name: "down",    data: staticRead(pth / "arrow_down"       & suffix )),
-         (name: "left",    data: staticRead(pth / "arrow_left"       & suffix )),
-         (name: "right",   data: staticRead(pth / "arrow_right"      & suffix )),
-         (name: "upleft",  data: staticRead(pth / "arrow_up_left"    & suffix )),
-         (name: "upright", data: staticRead(pth / "arrow_up_right"   & suffix )),
-         (name: "dnleft",  data: staticRead(pth / "arrow_down_left"  & suffix )),
-         (name: "dnright", data: staticRead(pth / "arrow_down_right" & suffix ))]
-  #iconSize = 64
-var
-  #icons: Table[string, wTypes.wIcon]
-  icons: Table[string, string]
-
-for (name, data) in res:
-  #icons[name] = Icon(data, (iconSize, iconSize))
-  icons[name] = data
-
-proc svgToBitmap(svgData: string, sz: wSize): wBitmap =
-  let svgobj = svgData.parseSvg(sz.width, sz.height)
-  let im = newImage(svgobj)
-  let pngBytes = im.encodePng()
-  let wimg = Image(pngBytes[0].addr, pngBytes.len)
-  result = Bitmap(wimg)
 
 proc appDpiScale(value: wSize): wSize =
   let d = wAppGetDpi()
@@ -96,11 +69,6 @@ proc appDpiScale(value: wSize): wSize =
 proc appDpiScale(value: int): int =
   value * wAppGetDpi() div 96
 
-proc parseNumber[T:SomeNumber](s: string, number: var T): bool =
-  # Returns true if s can be parsed to int or float
-  # Parsed value is returned in val
-  when T is SomeFloat: parseFloat(s, number) > 0
-  elif T is SomeInteger: parseInt(s, number) > 0
 
 proc errcol(event: wEvent) =
   SetBkColor(event.wParam, RGB(255, 199, 206))
@@ -135,13 +103,13 @@ wClass(wPlacementPanel of wPanel):
         centerY = self.bRandomizeAll.centerY
         width = self.stQty.defaultWidth
         height = self.stQty.defaultHeight
-      self.tcQty:
+      self.txtQty:
         left = self.stQty.right
         centerY = self.bRandomizeAll.centerY
         width = txtCtrlWidth
-        height = self.tcQty.defaultHeight
+        height = self.txtQty.defaultHeight
       self.stSelected:
-        left = self.tcQty.right + hspc
+        left = self.txtQty.right + hspc
         centerY = self.bRandomizeAll.centerY
         width = self.stSelected.defaultWidth
         height = self.stSelected.defaultHeight
@@ -220,7 +188,7 @@ wClass(wPlacementPanel of wPanel):
         top = self.stCompTitle.bottom
         left = self.bUpRight.right + hspc
         bottom = self.bDown.bottom
-        right >= self.tcH.right + hpad
+        right >= self.txtH.right + hpad
       self.sbMinSpacing:
         left = self.bLeft.left
         top = self.bDown.bottom + vspc
@@ -258,59 +226,59 @@ wClass(wPlacementPanel of wPanel):
         height = self.stX.defaultHeight
       self.stY:
         top = self.bBoundReg.bottom + vpad
-        left = self.tcX.right + hpad
+        left = self.txtX.right + hpad
         width = self.stY.defaultWidth
         height = self.stY.defaultHeight
       self.stW:
         top = self.bBoundReg.bottom + vpad
-        left = self.tcY.right + hpad
+        left = self.txtY.right + hpad
         width = self.stW.defaultWidth
         height = self.stW.defaultHeight
       self.stH:
         top = self.bBoundReg.bottom + vpad
-        left = self.tcW.right + hpad
+        left = self.txtW.right + hpad
         width = self.stH.defaultWidth
         height = self.stH.defaultHeight
 
-      self.tcY:
+      self.txtY:
         top = self.stY.bottom
         left = self.stY.left
         width = txtCtrlWidth
-        height = self.tcY.defaultHeight
-      self.tcX:
+        height = self.txtY.defaultHeight
+      self.txtX:
         top = self.stX.bottom
         left = self.stX.left
         width = txtCtrlWidth
-        height = self.tcX.defaultHeight
-      self.tcW:
+        height = self.txtX.defaultHeight
+      self.txtW:
         top = self.stW.bottom
         left = self.stW.left
         width = txtCtrlWidth
-        height = self.tcW.defaultHeight
-      self.tcH:
+        height = self.txtW.defaultHeight
+      self.txtH:
         top = self.stH.bottom
         left = self.stH.left
         width = txtCtrlWidth
-        height = self.tcW.defaultHeight
+        height = self.txtW.defaultHeight
 
       # Minimum Spacing contents
-      self.tcMinX:
+      self.txtMinX:
         top = self.sbMinSpacing.top + boxvspc
         left = self.stMinX.right
         width = txtCtrlWidth
-        height = self.tcMinX.defaultHeight
-      self.tcMinY:
-        top = self.tcMinX.bottom + vgap
-        left = self.tcMinX.left
+        height = self.txtMinX.defaultHeight
+      self.txtMinY:
+        top = self.txtMinX.bottom + vgap
+        left = self.txtMinX.left
         width = txtCtrlWidth
-        height = self.tcMinY.defaultHeight
+        height = self.txtMinY.defaultHeight
       self.stMinX:
-        bottom = self.tcMinX.bottom
+        bottom = self.txtMinX.bottom
         left = self.sbMinSpacing.left + hpad
         width = self.stMinX.defaultWidth
         height = self.stMinX.defaultHeight
       self.stMiny:
-        bottom = self.tcMinY.bottom + vgap
+        bottom = self.txtMinY.bottom + vgap
         left = self.sbMinSpacing.left + hpad
         width = self.stMinY.defaultWidth
         height = self.stMinY.defaultHeight
@@ -419,7 +387,7 @@ wClass(wPlacementPanel of wPanel):
         right = self.bDone.left - hspc
         width = buttWidth
         height = buttHeight
-  
+
   proc onResize(self: wPlacementPanel) =
     self.layout()
 
@@ -436,6 +404,57 @@ wClass(wPlacementPanel of wPanel):
     dc.setBrush(Brush(doneAreaColor.wColor))
     dc.setPen(Pen(doneAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
+
+  proc onTxtQtyEnter(self: wPlacementPanel, event: wEvent) =
+    echo "text qty enter"
+  proc onTxtXEnter(self: wPlacementPanel, event: wEvent) =
+    echo "text X enter"
+  proc onTxtYEnter(self: wPlacementPanel, event: wEvent) =
+    echo "text Y enter"
+  proc onTxtWEnter(self: wPlacementPanel, event: wEvent) =
+    echo "text W enter"
+  proc onTxtHEnter(self: wPlacementPanel, event: wEvent) =
+    echo "text H enter"
+  proc onTxtMinXEnter(self: wPlacementPanel, event: wEvent) =
+    echo "text X enter"
+  proc onTxtMinYEnter(self: wPlacementPanel, event: wEvent) =
+    echo "text Y enter"
+  proc onButtonRandomizeAll(self: wPlacementPanel) =
+    echo "button rand all"
+  proc onButtonRandomizePos(self: wPlacementPanel) =
+    echo "button rand pos"
+  proc onButtonTest(self: wPlacementPanel) =
+    echo "button test"
+  proc onButtonBoundRegion(self: wPlacementPanel) =
+    echo "button bound region"
+  proc onButtonLeft(self: wPlacementPanel) =
+    echo "button left"
+  proc onButtonRight(self: wPlacementPanel) =
+    echo "button right"
+  proc onButtonUp(self: wPlacementPanel) =
+    echo "button up"
+  proc onButtonDown(self: wPlacementPanel) =
+    echo "button down"
+  proc onButtonUpLeft(self: wPlacementPanel) =
+    echo "button upleft"
+  proc onButtonUpRight(self: wPlacementPanel) =
+    echo "button upright"
+  proc onButtonDnLeft(self: wPlacementPanel) =
+    echo "button dnleft"
+  proc onButtonDnRight(self: wPlacementPanel) =
+    echo "button dnright"
+  proc onButtonUndo(self: wPlacementPanel) =
+    echo "button undo"
+  proc onMethodRadioButton(self: wPlacementPanel, event: wEvent) =
+    echo "radio button method"
+  proc onOptionsRadioButton(self: wPlacementPanel, event: wEvent) =
+    echo "radio button options"
+  proc onOrderRadioButton(self: wPlacementPanel, event: wEvent) =
+    echo "radio button method"
+  proc onTempSlider(self: wPlacementPanel, event: wEvent) =
+    echo "temp slider"
+  proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
+    echo "monitor checkbox"
 
   proc requiredSize(self: wPlacementPanel): wSize =
     # After layout() has positioned everything, find the true extent
@@ -476,13 +495,13 @@ wClass(wPlacementPanel of wPanel):
     self.stCurrTempNum  = StaticText(self, label="25")
     
     # Text Controls
-    self.tcQty      = TextCtrl(self, style=wBorderSimple)
-    self.tcX        = TextCtrl(self, style=wBorderSimple)
-    self.tcY        = TextCtrl(self, style=wBorderSimple)
-    self.tcW        = TextCtrl(self, style=wBorderSimple)
-    self.tcH        = TextCtrl(self, style=wBorderSimple)
-    self.tcMinX     = TextCtrl(self, style=wBorderSimple)
-    self.tcMinY     = TextCtrl(self, style=wBorderSimple)
+    self.txtQty      = TextCtrl(self, style=wBorderSimple)
+    self.txtX        = TextCtrl(self, style=wBorderSimple)
+    self.txtY        = TextCtrl(self, style=wBorderSimple)
+    self.txtW        = TextCtrl(self, style=wBorderSimple)
+    self.txtH        = TextCtrl(self, style=wBorderSimple)
+    self.txtMinX     = TextCtrl(self, style=wBorderSimple)
+    self.txtMinY     = TextCtrl(self, style=wBorderSimple)
       
     # Buttons
     self.bRandomizeAll = Button(self, label="Randomize All")
@@ -501,14 +520,14 @@ wClass(wPlacementPanel of wPanel):
     self.bDone         = Button(self, label="Done")
 
     # Radio Buttons
-    self.rbNone   = RadioButton(self, label="None")
+    self.rbNone   = RadioButton(self, label="None", style=wRbGroup)
     self.rbStack  = RadioButton(self, label="Stack")
     self.rbAnneal = RadioButton(self, label="Anneal")
-    self.rbStrat1 = RadioButton(self, label="Strat1")
+    self.rbStrat1 = RadioButton(self, label="Strat1", style=wRbGroup)
     self.rbStrat2 = RadioButton(self, label="Strat2")
-    self.rbWiggle = RadioButton(self, label="Wiggle")
+    self.rbWiggle = RadioButton(self, label="Wiggle", style=wRbGroup)
     self.rbSwap   = RadioButton(self, label="Swap")
-    self.rbHV     = RadioButton(self, label="Horiz then Vert")
+    self.rbHV     = RadioButton(self, label="Horiz then Vert", style=wRbGroup)
     self.rbVH     = RadioButton(self, label="Vert then Horiz")
 
     # Slider
@@ -519,43 +538,85 @@ wClass(wPlacementPanel of wPanel):
 
     # Configure
     let titleFace = "Segoe UI"
-    self.stSelectedNum.font = Font(faceName=titleFace, pointSize=12)
-    self.stCompTitle.font = Font(faceName=titleFace, pointSize=14, weight=wFontWeightBold)
+    self.stSelectedNum.font  = Font(faceName=titleFace, pointSize=12)
+    self.stCompTitle.font    = Font(faceName=titleFace, pointSize=14, weight=wFontWeightBold)
     self.stStartTempNum.font = Font(faceName=titleFace, pointSize=12)
-    self.stCurrTempNum.font = Font(faceName=titleFace, pointSize=12)
+    self.stCurrTempNum.font  = Font(faceName=titleFace, pointSize=12)
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
-    self.bUpLeft.setBitmap (svgToBitmap(icons["upleft" ], iconSz))
-    self.bUp.setBitmap     (svgToBitmap(icons["up"     ], iconSz))
-    self.bUpRight.setBitmap(svgToBitmap(icons["upright"], iconSz))
-    self.bLeft.setBitmap   (svgToBitmap(icons["left"   ], iconSz))
-    self.bRight.setBitmap  (svgToBitmap(icons["right"  ], iconSz))
-    self.bDown.setBitmap   (svgToBitmap(icons["down"   ], iconSz))
-    self.bDnLeft.setBitmap (svgToBitmap(icons["dnleft" ], iconSz))
-    self.bDnRight.setBitmap(svgToBitmap(icons["dnright"], iconSz))
+    self.bUpLeft.setBitmap (iconBitmap("arrow_upleft" , iconSz))
+    self.bUp.setBitmap     (iconBitmap("arrow_up"     , iconSz))
+    self.bUpRight.setBitmap(iconBitmap("arrow_upright", iconSz))
+    self.bLeft.setBitmap   (iconBitmap("arrow_left"   , iconSz))
+    self.bRight.setBitmap  (iconBitmap("arrow_right"  , iconSz))
+    self.bDown.setBitmap   (iconBitmap("arrow_dn"     , iconSz))
+    self.bDnLeft.setBitmap (iconBitmap("arrow_dnleft" , iconSz))
+    self.bDnRight.setBitmap(iconBitmap("arrow_dnright", iconSz))
 
+    # Respond to generic events
     self.wEvent_Size do (event: wEvent): self.onResize()
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
+
+    # Respond to controls
+    # self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
+    # Text Controls
+    self.txtQty.wEvent_TextEnter  do (event: wEvent): self.onTxtQtyEnter(event)
+    self.txtX.wEvent_TextEnter    do (event: wEvent): self.onTxtXEnter(event)
+    self.txtY.wEvent_TextEnter    do (event: wEvent): self.onTxtYEnter(event)
+    self.txtW.wEvent_TextEnter    do (event: wEvent): self.onTxtWEnter(event)
+    self.txtH.wEvent_TextEnter    do (event: wEvent): self.onTxtHEnter(event)
+    self.txtMinX.wEvent_TextEnter do (event: wEvent): self.onTxtMinXEnter(event)
+    self.txtMinY.wEvent_TextEnter do (event: wEvent): self.onTxtMinYEnter(event)
+      
+    # Buttons
+    self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
+    self.bRandomizePos.wEvent_Button do (): self.onButtonRandomizePos()
+    self.bTest.wEvent_Button         do (): self.onButtonTest()
+    self.bBoundReg.wEvent_Button     do (): self.onButtonBoundRegion()
+    self.bLeft.wEvent_Button         do (): self.onButtonLeft()
+    self.bRight.wEvent_Button        do (): self.onButtonRight()
+    self.bUp.wEvent_Button           do (): self.onButtonUp()
+    self.bDown.wEvent_Button         do (): self.onButtonDown()
+    self.bUpLeft.wEvent_Button       do (): self.onButtonUpLeft()
+    self.bUpRight.wEvent_Button      do (): self.onButtonUpRight()
+    self.bDnLeft.wEvent_Button       do (): self.onButtonDnLeft()
+    self.bDnRight.wEvent_Button      do (): self.onButtonDnRight()
+    self.bUndo.wEvent_Button         do (): self.onButtonUndo()
+    self.bDone.wEvent_Button         do (): self.parent.destroy()
+
+    # Radio Buttons
+    self.rbNone.wEvent_RadioButton   do (event: wEvent): self.onMethodRadioButton(event)
+    self.rbStack.wEvent_RadioButton  do (event: wEvent): self.onMethodRadioButton(event)
+    self.rbAnneal.wEvent_RadioButton do (event: wEvent): self.onMethodRadioButton(event)
+    self.rbStrat1.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
+    self.rbStrat2.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
+    self.rbWiggle.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
+    self.rbSwap.wEvent_RadioButton   do (event: wEvent): self.onOptionsRadioButton(event)
+    self.rbHV.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
+    self.rbVH.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
+
+    # Slider
+    self.slTemp.wEvent_Slider do (event: wEvent): self.onTempSlider(event)
+
+    # Checkbox
+    self.cbMonitor.wEvent_Checkbox do (event: wEvent): self.onMonitorCheckBox(event)
+
+
 
 
 wClass(wPlacementFrame of wFrame):
   proc onDestroy(self: wPlacementFrame) =
     sendToListeners(idMsgPlacementFrameClosing, self.mHwnd.WPARAM, 0)
 
-  proc onTimer(self: wPlacementFrame, timerId: int) =
-    self.stopTimer(timerId)
-
-  proc init*(self: wPlacementFrame, owner: wWindow, size: wSize) =
-    #let style = wModalFrame
-    wFrame(self).init(owner, title = "Placement", size=size)#, style = style)
+  proc init*(self: wPlacementFrame, owner: wWindow) =
+    echo "init start"
+    wFrame(self).init(owner, title = "Placement")
     self.backgroundColor = frameBackgroundColor
     self.mPanel = PlacementPanel(self)
     self.mPanel.layout()
     self.clientSize = self.mPanel.requiredSize
-    # Respond generic events
+    # Respond to generic events
     self.wEvent_Close do(): self.onDestroy()
-    self.wEvent_Timer do(): self.onTimer(1)
-    self.startTimer(0.0, id=1) # one-shot to start
-
+    echo "done"
 
 
 when isMainModule:
@@ -565,7 +626,7 @@ when isMainModule:
     wSetSystemDPIAware()
     let
       app = App()
-      f1 = PlacementFrame(nil, appDpiScale((1200, 600)))
+      f1 = PlacementFrame(nil)
     f1.show()
     app.mainLoop()
   except Exception as e:

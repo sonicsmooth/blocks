@@ -24,7 +24,7 @@ proc jsonInitGlobals*() =
   try:
     # Assume we have to go down one dir from exe location
     # Assume exe location has been fixed in nim.cfg 
-    let initPath = getAppDir() / ".." / "appinit.json"
+    let initPath = getAppDir() / "../appinit.json"
     if fileExists(initPath):
       echo "Opening ", initPath
       let initsJ   = parseFile(initPath)["appInits"]
@@ -41,4 +41,4 @@ proc jsonInitGlobals*() =
 
 when isMainModule:
   jsonInitGlobals()
-  #echo gAppOptsJ
+  echo gAppOptsJ.pretty()

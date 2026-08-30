@@ -8,6 +8,9 @@ import userMessages
 import randrect, arange, rotation, recttable, world
 import concurrent
 
+
+# TODO remove dependency on wnim
+
 # At each temperature generate 100 randomized next states
 # The higher the temperature, the more each block moves around
 # After gathering 100 next states, choose the best (or nearly

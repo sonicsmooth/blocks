@@ -26,6 +26,9 @@ const
   idMsgGridDots*            = WM_USER + 17
   idMsgGridLines*           = WM_USER + 18
   
+  # Compact frame
+  # idMsgCmp
+
   # Frames
   idMsgGridCtrlFrameClosing*  = WM_USER + 19
   idMsgPlacementFrameClosing* = WM_USER + 20

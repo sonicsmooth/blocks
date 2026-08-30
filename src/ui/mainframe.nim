@@ -5,7 +5,7 @@ import std/[os,
             tables
             ]
 import wNim
-from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
+#from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
 import winim/inc/windef
 
@@ -15,13 +15,14 @@ import document
 import editor
 import grid
 import gridctrlframe
+import icons
 import jsoninit
 import mainpanel
 import placementframe
 import reporting
 import routing
 import usermessages
-import utils
+import wnimutils
 import viewport
 export mainpanel
 
@@ -42,32 +43,11 @@ type
               idCmdPlace
 
 const
-  pth = "../../icons/claude/icons/ico/"
-  res = [(name: "new",          data: staticRead(pth / "new_document.ico" )),
-         (name: "open",         data: staticRead(pth / "folder_open.ico"  )),
-         (name: "save",         data: staticRead(pth / "save.ico"         )),
-         (name: "close",        data: staticRead(pth / "close.ico"        )),
-         (name: "place",        data: staticRead(pth / "placement.ico"    )),
-         (name: "exit",         data: staticRead(pth / "exit.ico"         )),
-         (name: "info",         data: staticRead(pth / "info.ico"         )),
-         (name: "help",         data: staticRead(pth / "help.ico"         )),
-         (name: "prefs",        data: staticRead(pth / "preferences.ico"  )),
-         (name: "gridonoff",    data: staticRead(pth / "grid_on_off.ico"  )),
-         (name: "gridsettings", data: staticRead(pth / "grid_settings.ico"))]
-  small = 24
-  big = 48
+  small: wSize = (24, 24)
+  big: wSize = (48, 48)
 
 var
-  smIcons: Table[string, wTypes.wBitmap]
-  bigIcons: Table[string, wTypes.wBitmap]
   gQuietReady: bool
-
-for (name, data) in res:
-  smIcons[name] = Icon(data, (small, small)).Bitmap
-  bigIcons[name] = Icon(data, (big, big)).Bitmap
-
-proc iconSizes(icon: wIcon): seq[wSize] = 
-  discard
 
 wClass(wMainFrame of wFrame):
   proc isReady*(self: wMainFrame): bool =
@@ -86,14 +66,6 @@ wClass(wMainFrame of wFrame):
       if not self.mainPanel.isReady(): return reportNotReady("wMainFrame.mainPanel")
       true
 
-  # proc isReadyQuiet*(self: wMainFrame): bool =
-  #   if self.editor.isNil: return false
-  #   if self.mainPanel.isNil: return false
-  #   if self.statusBar.isNil: return false
-  #   if not self.editor.isReady(): return false
-  #   if not self.mainPanel.isReady(): return false
-  #   true
-  
   proc onResize(self: wMainFrame, event: wEvent) =
     if self.isReady:
       self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
@@ -117,19 +89,17 @@ wClass(wMainFrame of wFrame):
     result.append(menu2, "Tools")
     result.append(menu3, "Help")
 
-    menu1.append(idCmdNew, "New", bitmap=smIcons["new"])
-    menu1.append(idCmdOpen, "Open", bitmap=smIcons["open"])
-    menu1.append(idCmdSave, "Save", bitmap=smIcons["save"])
-    menu1.append(idCmdClose, "Close", bitmap=smIcons["close"])
+    menu1.append(idCmdNew, "New", bitmap=iconBitmap("new_document", small))
+    menu1.append(idCmdOpen, "Open",  bitmap=iconBitmap("file_open", small))
+    menu1.append(idCmdSave, "Save",  bitmap=iconBitmap("save", small))
+    menu1.append(idCmdClose, "Close", bitmap=iconBitmap("close", small))
     menu1.appendSeparator()
-    menu1.append(idCmdPrefs, "Preferences", bitmap=smIcons["prefs"])
+    menu1.append(idCmdPrefs, "Preferences", bitmap=iconBitmap("preferences", small))
     menu1.appendSeparator()
-    menu1.append(idCmdExit, "Exit", bitmap=smIcons["exit"])
-
-    menu2.append(idCmdPlace, "Place", bitmap=smIcons["place"])
-
-    menu3.append(idCmdAbout, "About", bitmap=smIcons["info"])
-    menu3.append(idCmdHelp, "Help", bitmap=smIcons["help"])
+    menu1.append(idCmdExit, "Exit", bitmap=iconBitmap("exit", small))
+    menu2.append(idCmdPlace, "Place", bitmap=iconBitmap("place", small))
+    menu3.append(idCmdAbout, "About", bitmap=iconBitmap("info", small))
+    menu3.append(idCmdHelp, "Help", bitmap=iconBitmap("help", small))
 
 
   proc setupReBar(self: wMainFrame): wReBar =
@@ -138,18 +108,18 @@ wClass(wMainFrame of wFrame):
 
     # 1. Basic file new/open toolbar
     let tb1 = ToolBar(result)
-    tb1.addTool(idCmdNew, "New", bigIcons["new"])
-    tb1.addTool(idCmdOpen, "Open", bigIcons["open"])
-    tb1.addTool(idCmdSave, "Save", bigIcons["save"])
+    tb1.addTool(idCmdNew, "New", iconBitmap("new_document", big))
+    tb1.addTool(idCmdOpen, "Open", iconBitmap("file_open", big))
+    tb1.addTool(idCmdSave, "Save", iconBitmap("save", big))
     self.bandToolBars.add(tb1) # self.bandToolBars[0]
     
     # 2. Grid controls    
     let tb2 = ToolBar(result)
-    tb2.addChecktool(idCmdGridShow, "Grid Show", bigIcons["gridonoff"])
+    tb2.addChecktool(idCmdGridShow, "Grid Show", iconBitmap("gridonoff", big))
     # Read from init file
     tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
-    tb2.addtool(idCmdGridSetting, "Grid settings", bigIcons["gridsettings"])
-    tb2.addTool(idCmdPlace, "Place", bigIcons["place"])
+    tb2.addtool(idCmdGridSetting, "Grid settings", iconBitmap("gridsettings", big))
+    tb2.addTool(idCmdPlace, "Place", iconBitmap("place", big))
 
     let ddcb = ComboBox(tb2, idCmdDropDown, "Render Method")
     ddcb.size = (self.dpiScale(150), ddcb.size.height)
@@ -162,8 +132,8 @@ wClass(wMainFrame of wFrame):
 
     # 3. Close
     let tb3 = ToolBar(result)
-    tb3.addTool(idCmdInfo, "Info", bigIcons["info"])
-    tb3.addTool(idCmdClose, "Close", bigIcons["close"])
+    tb3.addTool(idCmdInfo, "Info", iconBitmap("info", big))
+    tb3.addTool(idCmdClose, "Close", iconBitmap("close", big))
     self.bandToolBars.add(tb3) # self.bandToolBars[2]
 
     # Put toolbars things in rebar

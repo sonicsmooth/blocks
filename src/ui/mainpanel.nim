@@ -3,9 +3,20 @@ from std/sequtils import toSeq, foldl
 import editor, renderer
 import wNim
 import winim
-import anneal, appopts, compact, concurrent, document
-import stack, userMessages, utils, blockpanel, world
+
+import anneal
+import appopts
+import blockpanel
+import compact
+import concurrent
+import document
 import reporting
+import stack
+import userMessages
+import utils
+import winimutils
+import world
+
 export blockpanel
 
 # TODO: mainpanel should have refs to editor, renderer, doc

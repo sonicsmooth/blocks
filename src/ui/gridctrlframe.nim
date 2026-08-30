@@ -1,7 +1,11 @@
 import std/[sugar, strutils, strformat, parseutils]
 import wNim, winim
-import grid, viewport, utils
+
+import grid 
 import routing
+import utils
+import wnimutils
+import viewport
 
 # Create a panel to hold some controls,
 # then place it in a frame
@@ -9,6 +13,7 @@ import routing
 type
   #SpDensity* = distinct int
   CtrlID = enum
+    # TODO: are these ids needed?
     idSpaceX = wIdUser, idSpaceY, idDivisions, idDensity,
     idSnap, idDynamic, idBaseSync,
     idVisible, idDots, idLines, idDone
@@ -53,15 +58,6 @@ proc moveby(w: wWindow, dx, dy: int) =
   w.position = (w.position.x + dx, w.position.y + dy)
 
 # TODO: "123abc" is not colored red and it should be like "abc"
-
-proc parseNumber[T](s: string, number: var T): bool =
-  # Returns true if s can be parsed to int or float
-  # Parsed value is returned in val
-  when T is SomeFloat: parseFloat(s, number) > 0
-  elif T is SomeInteger: parseInt(s, number) > 0
-  else:
-    static: echo "Unsupported WType in parseNumber"
-    false
 
 proc errcol(event: wEvent) =
   SetBkColor(event.wParam, RGB(255, 199, 206))
@@ -386,13 +382,12 @@ wClass(wGridControlPanel of wPanel):
 
     self.layout()
 
-    # Respond generic events
+    # Respond to generic events
     self.wEvent_Size do (event: wEvent): self.onResize()
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
     # Respond to controls
     self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
-
     self.txtSizeX.wEvent_TextEnter do (event: wEvent): self.onCmdTxtSizeEnter(event)
     self.txtSizeY.wEvent_TextEnter do (event: wEvent): self.onCmdTxtSizeEnter(event)
     self.mCbDivisions.wEvent_ComboBox do (
@@ -471,7 +466,8 @@ when isMainModule:
       app = App()
       zc = newZoomCtrl(base = 5, clickDiv = 2400, maxPwr = 5,
                        density = 1.0, dynamic = true, baseSync = true)
-      # TODO: for anything that requires appinit, just make it load appinit as needed
+      # TODO: for any module that requires appinit internaly,
+      # TODO: just make it load appinit as needed
       gr = newGrid(zc) # requires appinit.json
       f1 = GridControlFrame(nil, gr)
     echo gr[]

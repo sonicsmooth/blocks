@@ -5,9 +5,7 @@ import os
 
 OUT      = os.path.join("..", "icons")
 SVG_DIR  = os.path.join(OUT, "svg")
-GLYPH_DIR = os.path.join(OUT, "_glyph_only")
 os.makedirs(SVG_DIR, exist_ok=True)
-os.makedirs(GLYPH_DIR, exist_ok=True)
 
 R = 7  # badge corner radius (squared-off, not fully sharp)
 GLYPH_WHITE = "#ffffff"
@@ -162,12 +160,7 @@ def full_svg(name, c0, c1, glyph):
         f.write(body)
 
 
-def glyph_only_svg(name, glyph):
-    body = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  {glyph}
-</svg>"""
-    with open(os.path.join(GLYPH_DIR, f"{name}.svg"), "w") as f:
-        f.write(body)
+
 
 
 icons = {}
@@ -667,14 +660,26 @@ icons["search"] = dict(
     """
 )
 
+# ── Stop (octagon) ───────────────────────────────────────────────────────────
+# Standard stop-sign octagon, white stroke on gradient.
+def _octagon_pts(cx, cy, r, start_deg=22.5):
+    pts = []
+    for k in range(8):
+        ang = math.radians(start_deg + k * 45)
+        pts.append(f"{cx + r * math.cos(ang):.1f},{cy + r * math.sin(ang):.1f}")
+    return " ".join(pts)
+
+icons["stop"] = dict(
+    grad=("#D94F4F", "#A82020"),
+    glyph=f"""
+    <polygon points="{_octagon_pts(32, 32, 24)}"
+             fill="none" stroke="{GLYPH_WHITE}" stroke-width="4"
+             stroke-linejoin="round"/>
+    """
+)
+
 for name, spec in icons.items():
     c0, c1 = spec["grad"]
     full_svg(name, c0, c1, spec["glyph"])
-    glyph_only_svg(name, spec["glyph"])
-
-# write a small json manifest PIL step can reuse for background gradient colors
-import json
-with open(os.path.join(OUT, "_manifest.json"), "w") as f:
-    json.dump({k: {"grad": v["grad"]} for k, v in icons.items()}, f)
 
 print("Generated:", ", ".join(sorted(icons.keys())))
