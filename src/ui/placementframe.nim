@@ -40,7 +40,7 @@ type
       rbWiggle, rbSwap, rbHV, rbVH: wRadioButton
 
     # Other
-    slTemp: wSlider
+    slStartTemp: wSlider
     cbMonitor: wCheckBox
 
 
@@ -54,13 +54,17 @@ const
   buttHeightRaw = 30
   buttWidthRaw = 110
   iconSizeRaw = 40
-  hmargRaw = 12
+  hmargRaw = 12 # distance from edge
   vmargRaw = 12
-  hpadRaw = 12
+  hpadRaw = 12 
   vpadRaw = 12
-  hspcRaw = 18
+  hspcRaw = 18 # Distance between group boxes
   vspcRaw = 14
   vgapRaw = 4
+  bigDescentRaw = 4 # fudged until it looks ok
+  fontSizeSmall = 9
+  fontSizeMed = 12
+  fontSizeLarge = 16
 
 proc appDpiScale(value: wSize): wSize =
   let d = wAppGetDpi()
@@ -96,6 +100,9 @@ wClass(wPlacementPanel of wPanel):
       txtCtrlWidth = self.dpiScale(40)
 
     self.stCompTitle.fit()
+    self.stSelected.fit()
+    self.stStartTempNum.fit()
+    self.stCurrTempNum.fit()
     self.layout:
       # Top Row
       self.stQty:
@@ -350,23 +357,23 @@ wClass(wPlacementPanel of wPanel):
         left = self.sbAnneal.left + hpad
         width = self.stStartTemp.defaultWidth
         height = self.stStartTemp.defaultHeight
-      self.slTemp:
+      self.slStartTemp:
         top = self.stStartTemp.bottom
         left = self.sbAnneal.left + hpad
-        height = self.slTemp.defaultHeight
+        height = self.slStartTemp.defaultHeight
         right = self.stStartTempNum.left
       self.stStartTempNum:
-        bottom = self.slTemp.bottom
+        bottom = self.slStartTemp.bottom
         right = self.stReplFn.right
         width = self.stStartTempNum.defaultWidth
         height = self.stStartTempNum.defaultHeight
       self.stCurrTemp:
-        top = self.slTemp.bottom
+        bottom = self.stCurrTempNum.bottom - self.dpiScale(bigDescentRaw)
         left = self.sbAnneal.left + hpad
         width = self.stCurrTemp.defaultWidth
         height = self.stCurrTemp.defaultHeight
       self.stCurrTempNum:
-        bottom = self.stCurrTemp.bottom
+        top = self.slStartTemp.bottom
         left = self.stCurrTemp.right + hpad
         width = self.stCurrTempNum.defaultWidth
         height = self.stCurrTempNum.defaultHeight
@@ -459,7 +466,7 @@ wClass(wPlacementPanel of wPanel):
       self.rbStrat2.disable()
       self.rbWiggle.disable()
       self.rbSwap.disable()
-      self.slTemp.disable()
+      self.slStartTemp.disable()
       self.cbMonitor.disable()
     elif self.rbAnneal.value: # Anneal
       self.sbAnneal.enable()
@@ -473,7 +480,7 @@ wClass(wPlacementPanel of wPanel):
       self.rbStrat2.enable()
       self.rbWiggle.enable()
       self.rbSwap.enable()
-      self.slTemp.enable()
+      self.slStartTemp.enable()
       self.cbMonitor.enable()
 
   proc onOptionsRadioButton(self: wPlacementPanel, event: wEvent) =
@@ -518,6 +525,7 @@ wClass(wPlacementPanel of wPanel):
     self.stMinY         = StaticText(self, label="Y")
     self.stStrat        = StaticText(self, label="Strategy")
     self.stReplFn       = StaticText(self, label="Replacement Function")
+    
     self.stStartTemp    = StaticText(self, label="Start Temp")
     self.stStartTempNum = StaticText(self, label="25")
     self.stCurrTemp     = StaticText(self, label="Current Temp")
@@ -560,17 +568,19 @@ wClass(wPlacementPanel of wPanel):
     self.rbVH     = RadioButton(self, label="Vert then Horiz")
 
     # Slider
-    self.slTemp = Slider(self)
+    self.slStartTemp = Slider(self)
 
     # Checkbox
     self.cbMonitor = CheckBox(self, label="Monitor Progress")
 
     # Configure
     let titleFace = "Segoe UI"
-    self.stSelectedNum.font  = Font(faceName=titleFace, pointSize=12)
-    self.stCompTitle.font    = Font(faceName=titleFace, pointSize=14, weight=wFontWeightBold)
-    self.stStartTempNum.font = Font(faceName=titleFace, pointSize=12)
-    self.stCurrTempNum.font  = Font(faceName=titleFace, pointSize=12)
+    # Let "medium" be the default size, so change some elements to large or smal
+    self.stCompTitle.font    = Font(faceName=titleFace, pointSize=fontSizeLarge, weight=wFontWeightBold)
+    self.stStrat.font        = Font(faceName=titleFace, pointSize=fontSizeSmall)
+    self.stReplFn.font       = Font(faceName=titleFace, pointSize=fontSizeSmall)
+    self.stStartTempNum.font = Font(faceName=titleFace, pointSize=fontSizeLarge)
+    self.stCurrTempNum.font  = Font(faceName=titleFace, pointSize=fontSizeLarge)
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
     self.bUpLeft.setBitmap (iconBitmap("arrow_upleft" , iconSz))
     self.bUp.setBitmap     (iconBitmap("arrow_up"     , iconSz))
@@ -625,7 +635,7 @@ wClass(wPlacementPanel of wPanel):
     self.rbVH.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
 
     # Slider
-    self.slTemp.wEvent_Slider do (event: wEvent): self.onTempSlider(event)
+    self.slStartTemp.wEvent_Slider do (event: wEvent): self.onTempSlider(event)
 
     # Checkbox
     self.cbMonitor.wEvent_Checkbox do (event: wEvent): self.onMonitorCheckBox(event)
@@ -641,8 +651,8 @@ wClass(wPlacementPanel of wPanel):
     self.rbNone.click()
     self.rbStrat1.click()
     self.rbWiggle.click()
-    self.slTemp.setRange(1, 10000)
-    self.slTemp.value = 5000
+    self.slStartTemp.setRange(1, 10000)
+    self.slStartTemp.value = 5000
 
 
 
