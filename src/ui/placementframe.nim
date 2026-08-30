@@ -447,6 +447,35 @@ wClass(wPlacementPanel of wPanel):
     echo "button undo"
   proc onMethodRadioButton(self: wPlacementPanel, event: wEvent) =
     echo "radio button method"
+    if self.rbNone.value or self.rbStack.value: # No strategy
+      self.sbAnneal.disable()
+      self.stStrat.disable()
+      self.stReplFn.disable()
+      self.stStartTemp.disable()
+      self.stStartTempNum.disable()
+      self.stCurrTemp.disable()
+      self.stCurrTempNum.disable()
+      self.rbStrat1.disable()
+      self.rbStrat2.disable()
+      self.rbWiggle.disable()
+      self.rbSwap.disable()
+      self.slTemp.disable()
+      self.cbMonitor.disable()
+    elif self.rbAnneal.value: # Anneal
+      self.sbAnneal.enable()
+      self.stStrat.enable()
+      self.stReplFn.enable()
+      self.stStartTemp.enable()
+      self.stStartTempNum.enable()
+      self.stCurrTemp.enable()
+      self.stCurrTempNum.enable()
+      self.rbStrat1.enable()
+      self.rbStrat2.enable()
+      self.rbWiggle.enable()
+      self.rbSwap.enable()
+      self.slTemp.enable()
+      self.cbMonitor.enable()
+
   proc onOptionsRadioButton(self: wPlacementPanel, event: wEvent) =
     echo "radio button options"
   proc onOrderRadioButton(self: wPlacementPanel, event: wEvent) =
@@ -552,6 +581,7 @@ wClass(wPlacementPanel of wPanel):
     self.bDnLeft.setBitmap (iconBitmap("arrow_dnleft" , iconSz))
     self.bDnRight.setBitmap(iconBitmap("arrow_dnright", iconSz))
 
+   
     # Respond to generic events
     self.wEvent_Size do (event: wEvent): self.onResize()
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
@@ -599,6 +629,20 @@ wClass(wPlacementPanel of wPanel):
 
     # Checkbox
     self.cbMonitor.wEvent_Checkbox do (event: wEvent): self.onMonitorCheckBox(event)
+
+    # Click on the radio buttons to set initial state, set qty and slider
+    self.txtQty.value = "10"
+    self.txtX.value = "30"
+    self.txtY.value = "30"
+    self.txtW.value = "500"
+    self.txtH.value = "500"
+    self.txtMinX.value = "2"
+    self.txtMinY.value = "2"
+    self.rbNone.click()
+    self.rbStrat1.click()
+    self.rbWiggle.click()
+    self.slTemp.setRange(1, 10000)
+    self.slTemp.value = 5000
 
 
 
