@@ -61,10 +61,19 @@ const
   hspcRaw = 18 # Distance between group boxes
   vspcRaw = 14
   vgapRaw = 4
-  bigDescentRaw = 4 # fudged until it looks ok
+  # bigDescentRaw = 4 # fudged until it looks ok
   fontSizeSmall = 9
   fontSizeMed = 12
   fontSizeLarge = 16
+
+proc fontDescent(font: wFont): int =
+  let hdc = GetDC(0)
+  let old = SelectObject(hdc, font.getHandle())
+  var tm: TEXTMETRICW
+  discard GetTextMetricsW(hdc, addr tm)
+  discard SelectObject(hdc, old)
+  discard ReleaseDC(0, hdc)
+  result = tm.tmDescent
 
 proc appDpiScale(value: wSize): wSize =
   let d = wAppGetDpi()
@@ -77,10 +86,6 @@ proc appDpiScale(value: int): int =
 proc errcol(event: wEvent) =
   SetBkColor(event.wParam, RGB(255, 199, 206))
   SetTextColor(event.wParam, RGB(156, 0, 6))
-
-# template layoutAndDump(parent: wResizable, x: untyped) =
-#   echo parent.layoutDebug(x)
-#   parent.layout(x)
 
 wClass(wPlacementPanel of wPanel):
   proc layout(self: wPlacementPanel) =
@@ -98,10 +103,14 @@ wClass(wPlacementPanel of wPanel):
       buttHeight = self.dpiScale(buttHeightRaw)
       arrowBtnSize = self.dpiScale(iconSizeRaw)
       txtCtrlWidth = self.dpiScale(40)
+      offset = fontDescent(self.stCurrTempNum.font) - fontDescent(self.stCurrTemp.font)
+      startTempNumExtraOne = self.dpiScale(10)
 
     self.stCompTitle.fit()
     self.stSelected.fit()
-    self.stStartTempNum.fit()
+    # self.stStartTempNum.label = "100"
+    # self.stStartTempNum.fit()
+    # self.stStartTempNum.label = oldLabel
     self.stCurrTempNum.fit()
     self.layout:
       # Top Row
@@ -363,12 +372,12 @@ wClass(wPlacementPanel of wPanel):
         height = self.slStartTemp.defaultHeight
         right = self.stStartTempNum.left
       self.stStartTempNum:
-        bottom = self.slStartTemp.bottom
+        bottom = self.slStartTemp.bottom - offset
         right = self.stReplFn.right
-        width = self.stStartTempNum.defaultWidth
+        width = self.stStartTempNum.defaultWidth + startTempNumExtraOne
         height = self.stStartTempNum.defaultHeight
       self.stCurrTemp:
-        bottom = self.stCurrTempNum.bottom - self.dpiScale(bigDescentRaw)
+        bottom = self.stCurrTempNum.bottom - offset
         left = self.sbAnneal.left + hpad
         width = self.stCurrTemp.defaultWidth
         height = self.stCurrTemp.defaultHeight
@@ -453,7 +462,6 @@ wClass(wPlacementPanel of wPanel):
   proc onButtonUndo(self: wPlacementPanel) =
     echo "button undo"
   proc onMethodRadioButton(self: wPlacementPanel, event: wEvent) =
-    echo "radio button method"
     if self.rbNone.value or self.rbStack.value: # No strategy
       self.sbAnneal.disable()
       self.stStrat.disable()
@@ -482,13 +490,12 @@ wClass(wPlacementPanel of wPanel):
       self.rbSwap.enable()
       self.slStartTemp.enable()
       self.cbMonitor.enable()
-
   proc onOptionsRadioButton(self: wPlacementPanel, event: wEvent) =
     echo "radio button options"
   proc onOrderRadioButton(self: wPlacementPanel, event: wEvent) =
     echo "radio button method"
   proc onTempSlider(self: wPlacementPanel, event: wEvent) =
-    echo "temp slider"
+    self.stStartTempNum.label = $self.slStartTemp.value
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
     echo "monitor checkbox"
 
@@ -527,7 +534,7 @@ wClass(wPlacementPanel of wPanel):
     self.stReplFn       = StaticText(self, label="Replacement Function")
     
     self.stStartTemp    = StaticText(self, label="Start Temp")
-    self.stStartTempNum = StaticText(self, label="25")
+    self.stStartTempNum = StaticText(self, label="25", style=wAlignRight)
     self.stCurrTemp     = StaticText(self, label="Current Temp")
     self.stCurrTempNum  = StaticText(self, label="25")
     
@@ -651,8 +658,8 @@ wClass(wPlacementPanel of wPanel):
     self.rbNone.click()
     self.rbStrat1.click()
     self.rbWiggle.click()
-    self.slStartTemp.setRange(1, 10000)
-    self.slStartTemp.value = 5000
+    self.slStartTemp.setRange(1, 100)
+    self.slStartTemp.value = 50
 
 
 
