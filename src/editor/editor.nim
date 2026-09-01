@@ -431,7 +431,7 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
-  #sendToListeners(idMsgGridZoom, 0, 0)
+  #sendToListeners(idGCFZoom, 0, 0)
   self.doFitCheck()
   self.onZoomChanged() # checks appopts whether to retexture
   # TODO set up delayed zoom rendering

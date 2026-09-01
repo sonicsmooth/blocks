@@ -167,13 +167,14 @@ wClass(wMainFrame of wFrame):
     of idCmdInfo:
       if self.isReady():
         echo self.mainPanel.blockPanel.editor
+        # TODO: show channels, listeners, font cache, etc.
     of idCmdAbout:
       let f = AboutFrame(self)
       f.show()
     of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar hence [1]
       let state = self.bandToolbars[1].toolState(idCmdGridShow)
-      sendToListeners(idMsgGridVisible, self.mHwnd.WPARAM, state.LPARAM)
+      sendToListeners(idGCFVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
       if self.gridCtrlFrameShowing: return
       if self.mainPanel.isNil: return
@@ -210,28 +211,28 @@ wClass(wMainFrame of wFrame):
       let tmpStr = &"temperature: {event.mLparam}"
       self.statusBar.setStatusText(tmpStr, index=0)
 
-  proc onMsgGridSize(self: wMainFrame, event: wEvent) =
+  proc onGCFSize(self: wMainFrame, event: wEvent) =
     # Received value is what the user wants at this zoom level
     # Need to calc value to set grid.majorSpace so minDelta(Major) == val
     if self.isReady():
       let gr = self.editor.doc.grid
       let newSz = gr.calcReferenceSpace(derefAs[WType](event))
-      if event.mMsg == idMsgGridRequestX:
+      if event.mMsg == idGCFRequestX:
         gr.refYSpace = newsz
         gr.refXSpace = newsz
         echo "refXSpace:   ", gr.refXSpace
         echo "minDelta:    ", gr.minDelta(Major)
         # Send message to update display to both X and Y
-        sendToListeners(idMsgGridSizeX, event.wParam, event.lParam)
-        sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
-      elif event.mMsg == idMsgGridRequestY:
+        sendToListeners(idGCFSizeX, event.wParam, event.lParam)
+        sendToListeners(idGCFSizeY, event.wParam, event.lParam)
+      elif event.mMsg == idGCFRequestY:
         gr.refYSpace = newsz
         # Send message to update display to only Y
-        sendToListeners(idMsgGridSizeY, event.wParam, event.lParam)
+        sendToListeners(idGCFSizeY, event.wParam, event.lParam)
       self.refreshCanvas()
-      sendToListeners(idMsgGridDivisionsReset, 0, 0)
+      sendToListeners(idGCFDivisionsReset, 0, 0)
 
-  proc onMsgGridDivisionsSelect(self: wMainFrame, event: wEvent) =
+  proc onGCFDivisionsSelect(self: wMainFrame, event: wEvent) =
     # Change divisions based on given index and force zoom
     if self.isReady():
       var gr = self.editor.doc.grid
@@ -241,10 +242,10 @@ wClass(wMainFrame of wFrame):
       vp.rawZoom = oldz
       self.refreshCanvas()
 
-  proc onMsgGridDivisionsValue(self: wMainFrame, event: wEvent) =
+  proc onGCFDivisionsValue(self: wMainFrame, event: wEvent) =
     # Change divisions based on given value and force zoom
     # Presumably the value is not in allowed divisions because
-    # if it were we would be in onMsgGridDivisionsSelect
+    # if it were we would be in onidGCFDivisionsSelect
     # We're here because user typed in a value, which may or
     # may not be in allowed divisions, ie able to divide grid 
     # size exactly.  We do however assume it's been validated
@@ -257,7 +258,7 @@ wClass(wMainFrame of wFrame):
       vp.rawZoom = oldz
       self.refreshCanvas()
 
-  proc onMsgGridDensity(self: wMainFrame, event: wEvent) =
+  proc onGCFDensity(self: wMainFrame, event: wEvent) =
     if self.isReady():
       let mag = event.lParam.float / 100.0
       self.editor.doc.grid.mZctrl.density = mag
@@ -265,17 +266,17 @@ wClass(wMainFrame of wFrame):
       self.refreshCanvas()
   #--
 
-  proc onMsgGridSnap(self: wMainFrame, event: wEvent) =
+  proc onGCFSnap(self: wMainFrame, event: wEvent) =
     if self.isReady():
       self.editor.doc.grid.mSnap = event.lParam.bool
 
-  proc onMsgGridDynamic(self: wMainFrame, event: wEvent) =
+  proc onGCFDynamic(self: wMainFrame, event: wEvent) =
     if self.isReady():
       self.editor.doc.grid.mZctrl.dynamic = event.lParam.bool
       self.editor.viewport.resetZoom()
       self.refreshCanvas()
 
-  proc onMsgGridBaseSync(self: wMainFrame, event: wEvent) =
+  proc onGCFBaseSync(self: wMainFrame, event: wEvent) =
     if self.isReady():
       var gr = self.editor.doc.grid
       var zc = self.editor.doc.grid.mZctrl
@@ -288,7 +289,7 @@ wClass(wMainFrame of wFrame):
       self.refreshCanvas()
   #--
 
-  proc onMsgGridVisible(self: wMainFrame, event: wEvent) =
+  proc onGCFVisible(self: wMainFrame, event: wEvent) =
     discard
     # if self.isReady():
     #   let state = event.mLparam.bool
@@ -296,14 +297,14 @@ wClass(wMainFrame of wFrame):
     #   self.bandToolbars[1].toggleTool(idCmdGridShow, state)
     #   self.refreshCanvas()
 
-  proc onMsgGridDots(self: wMainFrame, event: wEvent) =
+  proc onGCFDots(self: wMainFrame, event: wEvent) =
     if self.isReady():
       let val = event.lParam.bool
       if val: self.editor.doc.grid.mDotsOrLines = Dots
       else:   self.editor.doc.grid.mDotsOrLines = Lines
       self.refreshCanvas()
 
-  proc onMsgGridLines(self: wMainFrame, event: wEvent) =
+  proc onGCFLines(self: wMainFrame, event: wEvent) =
     if self.isReady():
       let val = event.lParam.bool
       if val: self.editor.doc.grid.mDotsOrLines = Lines
@@ -311,7 +312,7 @@ wClass(wMainFrame of wFrame):
       self.refreshCanvas()
   #--
 
-  proc onMsgGridCtrlFrameClosing(self: wMainFrame, event: wEvent) =
+  proc onGCFCtrlFrameClosing(self: wMainFrame, event: wEvent) =
     self.gridCtrlFrameShowing = false
   proc onMsgPlacementFrameClosing(self: wMainFrame, event: wEvent) =
     self.placementFrameShowing = false
@@ -361,22 +362,22 @@ wClass(wMainFrame of wFrame):
     self.startTimer(0.0,   id=1) # one-shot to start
     
     # # Respond to incoming messages
-    self.registerListener(idMsgGridRequestX,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
-    self.registerListener(idMsgGridRequestY,        (w:wWindow, e:wEvent)=>onMsgGridSize(w.wMainFrame, e))
-    self.registerListener(idMsgGridDivisionsSelect, (w:wWindow, e:wEvent)=>onMsgGridDivisionsSelect(w.wMainFrame, e))
-    self.registerListener(idMsgGridDivisionsValue,  (w:wWindow, e:wEvent)=>onMsgGridDivisionsValue(w.wMainFrame, e))
-    self.registerListener(idMsgGridDensity,         (w:wWindow, e:wEvent)=>onMsgGridDensity(w.wMainFrame, e))
+    self.registerListener(idGCFRequestX,        (w:wWindow, e:wEvent)=>onidGCFSize(w.wMainFrame, e))
+    self.registerListener(idGCFRequestY,        (w:wWindow, e:wEvent)=>onidGCFSize(w.wMainFrame, e))
+    self.registerListener(idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onidGCFDivisionsSelect(w.wMainFrame, e))
+    self.registerListener(idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onidGCFDivisionsValue(w.wMainFrame, e))
+    self.registerListener(idGCFDensity,         (w:wWindow, e:wEvent)=>onidGCFDensity(w.wMainFrame, e))
     #---
-    self.registerListener(idMsgGridSnap,     (w:wWindow, e:wEvent)=>onMsgGridSnap(w.wMainFrame, e))
-    self.registerListener(idMsgGridDynamic,  (w:wWindow, e:wEvent)=>onMsgGridDynamic(w.wMainFrame, e))
-    self.registerListener(idMsgGridBaseSync, (w:wWindow, e:wEvent)=>onMsgGridBaseSync(w.wMainFrame, e))
+    self.registerListener(idGCFSnap,     (w:wWindow, e:wEvent)=>onidGCFSnap(w.wMainFrame, e))
+    self.registerListener(idGCFDynamic,  (w:wWindow, e:wEvent)=>onidGCFDynamic(w.wMainFrame, e))
+    self.registerListener(idGCFBaseSync, (w:wWindow, e:wEvent)=>onidGCFBaseSync(w.wMainFrame, e))
     #--
-    self.registerListener(idMsgGridVisible, (w:wWindow, e:wEvent)=>onMsgGridVisible(w.wMainFrame, e))
-    self.registerListener(idMsgGridDots,    (w:wWindow, e:wEvent)=>onMsgGridDots(w.wMainFrame, e))
-    self.registerListener(idMsgGridLines,   (w:wWindow, e:wEvent)=>onMsgGridLines(w.wMainFrame, e))
+    self.registerListener(idGCFVisible, (w:wWindow, e:wEvent)=>onidGCFVisible(w.wMainFrame, e))
+    self.registerListener(idGCFDots,    (w:wWindow, e:wEvent)=>onidGCFDots(w.wMainFrame, e))
+    self.registerListener(idGCFLines,   (w:wWindow, e:wEvent)=>onidGCFLines(w.wMainFrame, e))
     #--
-    self.registerListener(idMsgGridCtrlFrameClosing, (w:wWindow, e:wEvent)=>onMsgGridCtrlFrameClosing(w.wMainFrame, e))
-    self.registerListener(idMsgPlacementFrameClosing, (w:wWindow, e:wEvent)=>onMsgPlacementFrameClosing(w.wMainFrame, e))
+    self.registerListener(idGCFCtrlFrameClosing, (w:wWindow, e:wEvent)=>onidGCFCtrlFrameClosing(w.wMainFrame, e))
+    self.registerListener(idPlcFrameClosing, (w:wWindow, e:wEvent)=>onMsgPlacementFrameClosing(w.wMainFrame, e))
     
     if not barebones:
       self.mainPanel = MainPanel(self)

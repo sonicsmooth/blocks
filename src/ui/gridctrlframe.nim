@@ -226,13 +226,13 @@ wClass(wGridControlPanel of wPanel):
       hi32 = (valptr shr 32).uint32
       lo32 = (valptr and 0xffff_ffff'u64).uint32
     if event.mOrigin == self.txtSizeX.mHwnd:
-      sendToListeners(idMsgGridRequestX, hi32.WPARAM, lo32.LPARAM)
+      sendToListeners(idGCFRequestX, hi32.WPARAM, lo32.LPARAM)
     elif event.mOrigin == self.txtSizeY.mHwnd:
-      sendToListeners(idMsgGridRequestY, hi32.WPARAM, lo32.LPARAM)
+      sendToListeners(idGCFRequestY, hi32.WPARAM, lo32.LPARAM)
 
   proc onCmdCbDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     let index = self.mCbDivisions.selection
-    sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+    sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
 
   proc onCmdCbDivisionsTextEnter(self: wGridControlPanel, event: wEvent) =
     # Check if user-inputted text matches allowed divisions and send index if so
@@ -240,63 +240,63 @@ wClass(wGridControlPanel of wPanel):
     let strval = self.mCbDivisions.value
     var index = self.mCbDivisions.findText(strval)
     if index >= 0:
-      sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+      sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
     else:
       var val: int
       if parseNumber(strval, val):
         index = self.mCbDivisions.findText($val)
         if index >= 0:
           # value found
-          sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+          sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
         else:
           # value not found, clamp to within range
           let cval = clamp(val, DivRange.low, DivRange.high)
-          sendToListeners(idMsgGridDivisionsValue, self.mHwnd.WPARAM, cval.LPARAM)
+          sendToListeners(idGCFDivisionsValue, self.mHwnd.WPARAM, cval.LPARAM)
     # inputted value cannot be made into integer; don't send anything
 
 
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
     let finalval = self.mSliderDensity.getValue()
-    sendToListeners(idMsgGridDensity, self.mHWnd.WPARAM, finalval.LPARAM)
+    sendToListeners(idGCFDensity, self.mHWnd.WPARAM, finalval.LPARAM)
   #---
   proc onCmdSnap(self: wGridControlPanel, event: wEvent) =
     let state = self.mCbSnap.value
-    sendToListeners(idMsgGridSnap, self.mHwnd, state.LPARAM)
+    sendToListeners(idGCFSnap, self.mHwnd, state.LPARAM)
   proc onCmdDynamic(self: wGridControlPanel, event: wEvent) =
     let state = self.mCbDynamic.value
-    sendToListeners(idMsgGridDynamic, self.mHwnd, state.LPARAM)
+    sendToListeners(idGCFDynamic, self.mHwnd, state.LPARAM)
   proc onCmdGridBaseSync(self: wGridControlPanel, event: wEvent) =
     let state = self.mCbBaseSync.value
-    sendToListeners(idMsgGridBaseSync, self.mHwnd, state.LPARAM)
+    sendToListeners(idGCFBaseSync, self.mHwnd, state.LPARAM)
   #--
   proc onCmdGridVisible(self: wGridControlPanel, event: wEvent) =
     let state = self.mCbVisible.value
-    sendToListeners(idMsgGridVisible, self.mHwnd, state.LPARAM)
+    sendToListeners(idGCFVisible, self.mHwnd, state.LPARAM)
   proc onCmdDots(self: wGridControlPanel, event: wEvent) =
     let state = self.mRbDots.value
-    sendToListeners(idMsgGridDots, self.mHwnd, state.LPARAM)
+    sendToListeners(idGCFDots, self.mHwnd, state.LPARAM)
   proc onCmdLines(self: wGridControlPanel, event: wEvent) =
     let state = self.mRbLines.value
-    sendToListeners(idMsgGridLines, self.mHwnd, state.LPARAM)
+    sendToListeners(idGCFLines, self.mHwnd, state.LPARAM)
 
   # Respond to incoming messages, including from self
   # Update local UI only.  Don't do anything else.
-  proc onMsgGridSize(self: wGridControlPanel, event: wEvent) =
+  proc onGCFSize(self: wGridControlPanel, event: wEvent) =
     # We receive a pointer-to-float and display it
     let val = derefAs[WType](event)
     when WType is SomeFloat:
       let rxstr = &"{val:g}"
     elif WType is SomeInteger:
       let rxstr = $val
-    if event.mMsg == idMsgGridSizeX:
+    if event.mMsg == idGCFSizeX:
       self.txtSizeX.setValue(rxstr)
-    elif event.mMsg == idMsgGridSizeY:
+    elif event.mMsg == idGCFSizeY:
       self.txtSizeY.setValue(rxstr)
-  proc onMsgGridDivisionsSelect(self: wGridControlPanel, event: wEvent) =
+  proc onGCFDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.select(event.lParam)
-  proc onMsgGridDivisionsValue(self: wGridControlPanel, event: wEvent) =
+  proc onGCFDivisionsValue(self: wGridControlPanel, event: wEvent) =
     self.mCbDivisions.setValue($event.lParam)
-  proc onMsgGridDivisionsReset(self: wGridControlPanel, event: wEvent) =
+  proc onGCFDivisionsReset(self: wGridControlPanel, event: wEvent) =
     # Change divisions drop down options, sent after a
     # change in sizeX or sizeY. Current divisions setting is
     # not changed.  If current divisions setting is in allowed
@@ -309,32 +309,32 @@ wClass(wGridControlPanel of wPanel):
     let oldval = self.grid.divisions
     let newidx = self.mCbDivisions.findText($oldval)
     if newidx >= 0:
-      sendToListeners(idMsgGridDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
+      sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
     else:
-      sendToListeners(idMsgGridDivisionsValue, self.mHwnd.WPARAM, oldval.LPARAM)
+      sendToListeners(idGCFDivisionsValue, self.mHwnd.WPARAM, oldval.LPARAM)
 
-  proc onMsgGridDensity(self: wGridControlPanel, event: wEvent) =
+  proc onGCFDensity(self: wGridControlPanel, event: wEvent) =
     self.mSliderDensity.setValue(event.lParam)
   #--
-  proc onMsgGridSnap(self: wGridControlPanel, event: wEvent) =
+  proc onGCFSnap(self: wGridControlPanel, event: wEvent) =
     self.mCbSnap.value = event.lParam.bool
-  proc onMsgGridDynamic(self: wGridControlPanel, event: wEvent) =
+  proc onGCFDynamic(self: wGridControlPanel, event: wEvent) =
     self.mCbDynamic.value = event.lParam.bool
-  proc onMsgGridBaseSync(self: wGridControlPanel, event: wEvent) =
+  proc onGCFBaseSync(self: wGridControlPanel, event: wEvent) =
     self.mCbBaseSync.value = event.lParam.bool
   #--
-  proc onMsgGridVisible(self: wGridControlPanel, event: wEvent) =
+  proc onGCFVisible(self: wGridControlPanel, event: wEvent) =
     let state = event.lParam.bool
     self.mCbVisible.value = state
     self.mRbDots.enable(state)
     self.mRbLines.enable(state)
-  proc onMsgGridDots(self: wGridControlPanel, event: wEvent) =
+  proc onGCFDots(self: wGridControlPanel, event: wEvent) =
     self.mRbDots.value = event.lParam.bool
     self.mRbLines.value = not event.lParam.bool
-  proc onMsgGridLines(self: wGridControlPanel, event: wEvent) =
+  proc onGCFLines(self: wGridControlPanel, event: wEvent) =
     self.mRbLines.value = event.lParam.bool
     self.mRbDots.value = not event.lParam.bool
-  proc onMsgGridZoom(self: wGridControlPanel, event: wEvent) =
+  proc onGCFZoom(self: wGridControlPanel, event: wEvent) =
     let md = self.grid.minDelta(Major)
     self.txtSizeX.setValue($md.x)
     self.txtSizeY.setValue($md.y)
@@ -406,42 +406,42 @@ wClass(wGridControlPanel of wPanel):
     self.mRblines.wEvent_RadioButton do (event: wEvent): self.onCmdLines(event)
 
     # Update controls from outside messages
-    self.registerListener(idMsgGridSizeX, (w: wWindow, e: wEvent)=>(
-        onMsgGridSize(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridSizeY, (w: wWindow, e: wEvent)=>(
-        onMsgGridSize(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDivisionsSelect, (w: wWindow, e: wEvent)=>(
-        onMsgGridDivisionsSelect(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDivisionsValue, (w: wWindow, e: wEvent)=>(
-        onMsgGridDivisionsValue(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDivisionsReset, (w: wWindow, e: wEvent)=>(
-        onMsgGridDivisionsReset(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDensity, (w: wWindow, e: wEvent)=>(
-        onMsgGridDensity(w.wGridControlPanel, e)))
+    self.registerListener(idGCFSizeX, (w: wWindow, e: wEvent)=>(
+        onidGCFSize(w.wGridControlPanel, e)))
+    self.registerListener(idGCFSizeY, (w: wWindow, e: wEvent)=>(
+        onidGCFSize(w.wGridControlPanel, e)))
+    self.registerListener(idGCFDivisionsSelect, (w: wWindow, e: wEvent)=>(
+        onidGCFDivisionsSelect(w.wGridControlPanel, e)))
+    self.registerListener(idGCFDivisionsValue, (w: wWindow, e: wEvent)=>(
+        onidGCFDivisionsValue(w.wGridControlPanel, e)))
+    self.registerListener(idGCFDivisionsReset, (w: wWindow, e: wEvent)=>(
+        onidGCFDivisionsReset(w.wGridControlPanel, e)))
+    self.registerListener(idGCFDensity, (w: wWindow, e: wEvent)=>(
+        onidGCFDensity(w.wGridControlPanel, e)))
     #--
-    self.registerListener(idMsgGridSnap, (w: wWindow, e: wEvent)=>(
-        onMsgGridSnap(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDynamic, (w: wWindow, e: wEvent)=>(
-        onMsgGridDynamic(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridBaseSync, (w: wWindow, e: wEvent)=>(
-        onMsgGridBaseSync(w.wGridControlPanel, e)))
+    self.registerListener(idGCFSnap, (w: wWindow, e: wEvent)=>(
+        onidGCFSnap(w.wGridControlPanel, e)))
+    self.registerListener(idGCFDynamic, (w: wWindow, e: wEvent)=>(
+        onidGCFDynamic(w.wGridControlPanel, e)))
+    self.registerListener(idGCFBaseSync, (w: wWindow, e: wEvent)=>(
+        onidGCFBaseSync(w.wGridControlPanel, e)))
     #--
-    self.registerListener(idMsgGridVisible, (w: wWindow, e: wEvent)=>(
-        onMsgGridVisible(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridDots, (w: wWindow, e: wEvent)=>(
-        onMsgGridDots(w.wGridControlPanel, e)))
-    self.registerListener(idMsgGridLines, (w: wWindow, e: wEvent)=>(
-        onMsgGridLines(w.wGridControlPanel, e)))
+    self.registerListener(idGCFVisible, (w: wWindow, e: wEvent)=>(
+        onidGCFVisible(w.wGridControlPanel, e)))
+    self.registerListener(idGCFDots, (w: wWindow, e: wEvent)=>(
+        onidGCFDots(w.wGridControlPanel, e)))
+    self.registerListener(idGCFLines, (w: wWindow, e: wEvent)=>(
+        onidGCFLines(w.wGridControlPanel, e)))
     #--
-    self.registerListener(idMsgGridZoom, (w: wWindow, e: wEvent)=>(
-        onMsgGridZoom(w.wGridControlPanel, e)))
+    self.registerListener(idGCFZoom, (w: wWindow, e: wEvent)=>(
+        onidGCFZoom(w.wGridControlPanel, e)))
     self.mBDone.wEvent_Button do(): self.parent.destroy()
     #self.wEvent_Destroy do(): self.deregisterListener()
     self.wEvent_Close do(): self.deregisterListener()
 
 wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) =
-    sendToListeners(idMsgGridCtrlFrameClosing, self.mHwnd.WPARAM, 0)
+    sendToListeners(idGCFCtrlFrameClosing, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid) =
     let

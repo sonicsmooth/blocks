@@ -1,9 +1,8 @@
-
 import wNim
 import winim
 
-import common
 import icons
+import utils
 import routing
 import viewport
 
@@ -54,6 +53,7 @@ const
   buttHeightRaw = 30
   buttWidthRaw = 110
   iconSizeRaw = 40
+  txtCtrlWidthRaw = 60
   hmargRaw = 12 # distance from edge
   vmargRaw = 12
   hpadRaw = 12 
@@ -102,7 +102,7 @@ wClass(wPlacementPanel of wPanel):
       buttWidth = self.dpiScale(buttWidthRaw)
       buttHeight = self.dpiScale(buttHeightRaw)
       arrowBtnSize = self.dpiScale(iconSizeRaw)
-      txtCtrlWidth = self.dpiScale(40)
+      txtCtrlWidth = self.dpiScale(txtCtrlWidthRaw)
       offset = fontDescent(self.stCurrTempNum.font) - fontDescent(self.stCurrTemp.font)
       startTempNumExtraOne = self.dpiScale(10)
 
@@ -421,20 +421,56 @@ wClass(wPlacementPanel of wPanel):
     dc.setPen(Pen(doneAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  proc onTxtQtyEnter(self: wPlacementPanel, event: wEvent) =
-    echo "text qty enter"
-  proc onTxtXEnter(self: wPlacementPanel, event: wEvent) =
-    echo "text X enter"
-  proc onTxtYEnter(self: wPlacementPanel, event: wEvent) =
-    echo "text Y enter"
-  proc onTxtWEnter(self: wPlacementPanel, event: wEvent) =
-    echo "text W enter"
-  proc onTxtHEnter(self: wPlacementPanel, event: wEvent) =
-    echo "text H enter"
-  proc onTxtMinXEnter(self: wPlacementPanel, event: wEvent) =
-    echo "text X enter"
-  proc onTxtMinYEnter(self: wPlacementPanel, event: wEvent) =
-    echo "text Y enter"
+  var ii: int
+  proc colorEdit(self: wPlacementPanel, event: wEvent) =
+    echo "coloredit: ", ii
+    inc ii
+
+  proc onTextFocus(self: wPlacementPanel, event: wEvent) = 
+    cast[wTextCtrl](event.window).setInsertionPointEnd()
+    event.skip()
+
+  proc onTextEdit(self: wPlacementPanel, event: wEvent) =
+    var valInt: int
+    var valFloat: float
+    let txtCtrl = cast[wTextCtrl](event.window)
+    let successInt = parseNumber(txtCtrl.value, valInt)
+    let successFloat = parseNumber(txtCtrl.value, valFloat)
+    if successInt:   echo "success int: ", valInt
+    if successFloat: echo "success float:", valFloat
+
+  proc onTextCommit(self: wPlacementPanel, event: wEvent) =
+    var valInt: int
+    var valFloat: WType
+    let txtCtrl = cast[wTextCtrl](event.window)
+    let successInt = parseNumber(txtCtrl.value, valInt)
+    let successFloat = parseNumber(txtCtrl.value, valFloat)
+
+    if txtCtrl == self.txtQty and successint:
+      if successInt:
+        sendToListeners(idPlcTxtQtySend, self.mHwnd.WPARAM, valInt.LPARAM)
+    elif txtCtrl == self.txtX:
+      if successInt:
+        sendToListeners(idPlcTxtXSend, self.mHwnd.WPARAM, valInt.LPARAM)
+    elif txtCtrl == self.txtY:
+      if successFloat:
+        let floatBits: uint64 = cast[uint64](valFloat)
+        sendToListeners(idPlcTxtYSend, self.mHwnd.WPARAM, floatBits.LPARAM)
+    elif txtCtrl == self.txtW:
+      if successFloat:
+        let floatBits: uint64 = cast[uint64](valFloat)
+        sendToListeners(idPlcTxtWSend, self.mHwnd.WPARAM, floatBits.LPARAM)
+    elif txtCtrl == self.txtH:
+      if successFloat:
+        let floatBits: uint64 = cast[uint64](valFloat)
+        sendToListeners(idPlcTxtHSend, self.mHwnd.WPARAM, floatBits.LPARAM)
+
+    if not successInt and not successFloat:
+      echo "Did not send ", txtCtrl.value
+
+    # TODO: validate and color
+    event.skip()
+
   proc onButtonRandomizeAll(self: wPlacementPanel) =
     echo "button rand all"
   proc onButtonRandomizePos(self: wPlacementPanel) =
@@ -604,15 +640,15 @@ wClass(wPlacementPanel of wPanel):
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
 
     # Respond to controls
-    # self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
     # Text Controls
-    self.txtQty.wEvent_TextEnter  do (event: wEvent): self.onTxtQtyEnter(event)
-    self.txtX.wEvent_TextEnter    do (event: wEvent): self.onTxtXEnter(event)
-    self.txtY.wEvent_TextEnter    do (event: wEvent): self.onTxtYEnter(event)
-    self.txtW.wEvent_TextEnter    do (event: wEvent): self.onTxtWEnter(event)
-    self.txtH.wEvent_TextEnter    do (event: wEvent): self.onTxtHEnter(event)
-    self.txtMinX.wEvent_TextEnter do (event: wEvent): self.onTxtMinXEnter(event)
-    self.txtMinY.wEvent_TextEnter do (event: wEvent): self.onTxtMinYEnter(event)
+    let ctls = @[self.txtQty, self.txtX, self.txtY, self.txtW, self.txtH,
+                 self.txtMinX, self.txtMinY]
+    for ctl in ctls:
+      ctl.wEvent_Text      do (event: wEvent): self.onTextEdit(event)
+      ctl.wEvent_TextEnter do (event: wEvent): self.onTextCommit(event)
+      ctl.wEvent_SetFocus  do (event: wEvent): self.onTextFocus(event)
+      ctl.wEvent_KillFocus do (event: wEvent): self.onTextCommit(event)
+      self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
       
     # Buttons
     self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
@@ -666,7 +702,7 @@ wClass(wPlacementPanel of wPanel):
 
 wClass(wPlacementFrame of wFrame):
   proc onDestroy(self: wPlacementFrame) =
-    sendToListeners(idMsgPlacementFrameClosing, self.mHwnd.WPARAM, 0)
+    sendToListeners(idPlcFrameClosing, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
     echo "init start"

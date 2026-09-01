@@ -1,37 +1,82 @@
-import winim/inc/winuser
+from winim/inc/winuser import WM_USER
 
 # These are constant values that go across 
-# threads or from one frame to another
+# threads or from one frame to another.
+# a blaSend is sent from the dialog in question
+# a blaRecv is received by the dialog in question
 
+type WinMsgOrder = enum
+  woMouseMove, woSize, woSlider, woAlgUpdate,
+  woGridZoom, woGridSizeX, woGridRequestX, woGridSizeY,
+  woGridRequestY, woGridDivisionsSelect, woGridDivisionsValue,
+  woGridDivisionsReset, woGridDensity, woGridSnap, woGridDynamic,
+  woGridBaseSync, woGridVisible, woGridDots, woGridLines,
+  woGridCtrlFrameClosing, 
+
+  woPlcDownLeft, woPlcDown, woPlcDownRight, woPlcLeft,
+  woPlcRight, woPlcUpLeft, woPlcUndo, woPlcUp,
+  woPlcUpRight, woPlcDrawRegionEnd, woPlcDrawRegionStart,
+  woPlcFrameClosing, woPlcRandomAll, woPlcRandomPos,
+  woPlcSelectedRecv, woPlcTest, woPlcTxtHRecv, woPlcTxtHSend,
+  woPLcTxtQtyRecv, woPlcTxtQtySend, woPlcTxtTempRecv,
+  woPlcTxtWRecv, woPlcTxtWSend, woPlcTxtXRecv, woPlcTxtXSend,
+  woPlcTxtyRecv, woPlcTxtYSend
+    
 const
-  idMsgMouseMove*     = WM_USER +  0
-  idMsgSize*          = WM_USER +  1
-  idMsgSlider*        = WM_USER +  2
-  idMsgAlgUpdate*     = WM_USER +  3
+  # Get rid of these
+  idMsgMouseMove*       = WM_USER + ord(woMouseMove)
+  idMsgSize*            = WM_USER + ord(woSize)
+  idMsgSlider*          = WM_USER + ord(woSlider)
+  idMsgAlgUpdate*       = WM_USER + ord(woAlgUpdate)
   
-  # Grid Control
-  idMsgGridZoom*            = WM_USER + 4 
-  idMsgGridSizeX*           = WM_USER + 5 
-  idMsgGridRequestX*        = WM_USER + 6  # user-input value
-  idMsgGridSizeY*           = WM_USER + 7  # what gets sent for display
-  idMsgGridRequestY*        = WM_USER + 8 
-  idMsgGridDivisionsSelect* = WM_USER + 9   # change official selection
-  idMsgGridDivisionsValue*  = WM_USER + 10  # change text if selection not available
-  idMsgGridDivisionsReset*  = WM_USER + 11  # Reset to legitimate values after grid size change
-  idMsgGridDensity*         = WM_USER + 12
-  idMsgGridSnap*            = WM_USER + 13
-  idMsgGridDynamic*         = WM_USER + 14
-  idMsgGridBaseSync*        = WM_USER + 15
-  idMsgGridVisible*         = WM_USER + 16
-  idMsgGridDots*            = WM_USER + 17
-  idMsgGridLines*           = WM_USER + 18
+  # Grid Control Frame
+  idGCFZoom*            = WM_USER + ord(woGridZoom)
+  idGCFSizeX*           = WM_USER + ord(woGridSizeX)
+  idGCFRequestX*        = WM_USER + ord(woGridRequestX)
+  idGCFSizeY*           = WM_USER + ord(woGridSizeY)
+  idGCFRequestY*        = WM_USER + ord(woGridRequestY)
+  idGCFDivisionsSelect* = WM_USER + ord(woGridDivisionsSelect)
+  idGCFDivisionsValue*  = WM_USER + ord(woGridDivisionsValue)
+  idGCFDivisionsReset*  = WM_USER + ord(woGridDivisionsReset)
+  idGCFDensity*         = WM_USER + ord(woGridDensity)
+  idGCFSnap*            = WM_USER + ord(woGridSnap)
+  idGCFDynamic*         = WM_USER + ord(woGridDynamic)
+  idGCFBaseSync*        = WM_USER + ord(woGridBaseSync)
+  idGCFVisible*         = WM_USER + ord(woGridVisible)
+  idGCFDots*            = WM_USER + ord(woGridDots)
+  idGCFLines*           = WM_USER + ord(woGridLines)
+  idGCFClosing*         = WM_USER + ord(woGridCtrlFrameClosing)
   
-  # Compact frame
-  # idMsgCmp
+  # Placement Frame
+  idPlcDownLeft*        = WM_USER + ord(woPlcDownLeft)
+  idPlcDown*      = WM_USER + ord(woPlcDown)
+  idPlcDownRight*        = WM_USER + ord(woPlcDownRight)
+  idPlcLeft*      = WM_USER + ord(woPlcLeft)
+  idPlcRight*     = WM_USER + ord(woPlcRight)
+  idPlcUpLeft*        = WM_USER + ord(woPlcUpLeft)
+  idPlcUndo*      = WM_USER + ord(woPlcUndo)
+  idPlcUp*        = WM_USER + ord(woPlcUp)
+  idPlcUpRight*        = WM_USER + ord(woPlcUpRight)
+  idPlcDrawRegionEnd*   = WM_USER + ord(woPlcDrawRegionEnd)
+  idPlcDrawRegionStart* = WM_USER + ord(woPlcDrawRegionStart)
+  idPlcFrameClosing*    = WM_USER + ord(woPlcFrameClosing)
+  idPlcRandomAll*       = WM_USER + ord(woPlcRandomAll)
+  idPlcRandomPos*       = WM_USER + ord(woPlcRandomPos)
+  idPlcSelectedRecv*    = WM_USER + ord(woPlcSelectedRecv)
+  idPlcTest*            = WM_USER + ord(woPlcTest)
+  idPLcTxtQtyRecv*      = WM_USER + ord(woPLCTxtQtyRecv)
+  idPlcTxtQtySend*      = WM_USER + ord(woPlcTxtQtySend)
+  idPlcTxtXRecv*        = WM_USER + ord(woPlcTxtXRecv)
+  idPlcTxtXSend*        = WM_USER + ord(woPlcTxtXSend)
+  idPlcTxtyRecv*        = WM_USER + ord(woPlcTxtyRecv)
+  idPlcTxtYSend*        = WM_USER + ord(woPlcTxtYSend)
+  idPlcTxtWRecv*        = WM_USER + ord(woPlcTxtWRecv)
+  idPlcTxtWSend*        = WM_USER + ord(woPlcTxtWSend)
+  idPlcTxtHRecv*        = WM_USER + ord(woPlcTxtHRecv)
+  idPlcTxtHSend*        = WM_USER + ord(woPlcTxtHSend)
+  idPlcTxtTempRecv*     = WM_USER + ord(woPlcTxtTempRecv)
 
-  # Frames
-  idMsgGridCtrlFrameClosing*  = WM_USER + 19
-  idMsgPlacementFrameClosing* = WM_USER + 20
+
 
   
   # Random thread stuff

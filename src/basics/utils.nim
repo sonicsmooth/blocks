@@ -1,3 +1,4 @@
+import std/parseutils
 
 proc excl*[T](s: var seq[T], item: T) =
   # Remove all instances of an item from a sequence
@@ -10,6 +11,6 @@ proc excl*[T](s: var seq[T], item: T) =
 proc parseNumber*[T:SomeNumber](s: string, number: var T): bool =
   # Returns true if s can be parsed to int or float
   # Parsed value is returned in val
-  when T is SomeFloat: parseFloat(s, number) > 0
-  elif T is SomeInteger: parseInt(s, number) > 0
+  when T is SomeFloat: parseFloat(s, number) == s.len
+  elif T is SomeInteger: parseInt(s, number) == s.len
 
