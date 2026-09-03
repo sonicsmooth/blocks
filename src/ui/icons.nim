@@ -12,7 +12,7 @@ proc svgData(paths: IconPaths): IconSVGData =
     result[name] = path.readFile()
 
 const
-  iconsPath = currentSourcePath.parentDir / "../../icons/claude/icons/svg"
+  iconsPath = currentSourcePath.parentDir / "icons/svg"
   ext = ".svg"
   iconPaths: IconPaths = 
     [ (name: "align_bottom",     path: iconsPath / "align_bottom"               & ext),

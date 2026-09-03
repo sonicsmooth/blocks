@@ -1,10 +1,13 @@
 import std/[algorithm, sets, locks, sugar, tables]
 import sequtils
-import wnim
-import wnim/wTypes
-import winim/inc/winuser
+
+# Only for posting a message
+# TODO: Replace with channels
+from winim/inc/winuser import PostMessage
+from winim/inc/windef import HWND
 import concurrent
 
+import monoprofile
 import directions
 from recttable import `[]`, dbComps
 import document
@@ -28,13 +31,13 @@ type
     mid:    seq[CompID]
     bot:    seq[CompID]
     sorted: seq[CompID]
-  CompactDir* = tuple
+  CompactSpec* = tuple
     primax,  secax:  Axis
     primAsc, secAsc: SortOrder
   CompactArg* = tuple
     pRectTable: ptr RectTable
-    direction:  CompactDir
-    window:     wWindow
+    spec:       CompactSpec
+    handle:     HWND
     dstRect:    WRect
 
 
@@ -44,7 +47,7 @@ const
 var
   gCompactThread*: Thread[CompactArg]
 
-proc compoundDir*(cd: CompactDir): CompoundDir =
+proc compoundDir*(cd: CompactSpec): CompactDir =
   # Left  arrow = stack from left to right, which is x ascending
   # Right arrow = stack from right to left, which is x descending
   # Up    arrow = stack from top to bottom, which is y descending
@@ -59,13 +62,13 @@ proc compoundDir*(cd: CompactDir): CompoundDir =
   elif compound == (true,  Descending, Ascending ): RightDown
   else: RightUp
   
-proc isXAscending*(direction: CompactDir): bool =
-  (direction.primax == X and direction.primAsc == Ascending) or
-  (direction.secax  == X and direction.secAsc  == Ascending)
+proc isXAscending*(spec: CompactSpec): bool =
+  (spec.primax == X and spec.primAsc == Ascending) or
+  (spec.secax  == X and spec.secAsc  == Ascending)
 
-proc isYAscending*(direction: CompactDir): bool = 
-  (direction.primax == Y and direction.primAsc == Ascending) or
-  (direction.secax  == Y and direction.secAsc  == Ascending)
+proc isYAscending*(spec: CompactSpec): bool = 
+  (spec.primax == Y and spec.primAsc == Ascending) or
+  (spec.secax  == Y and spec.secAsc  == Ascending)
 
 proc rectCmpX(r1, r2: DBComp): int = 
   # Sort first by x position, then by id
@@ -350,15 +353,15 @@ proc compact*(rectTable: RectTable,
       rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originToBottomEdge
 
 var compactCtr: int
-proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
+proc iterCompact*(rectTable: RectTable, spec: CompactSpec, dstRect: WRect) =
   # Run compact function until rectTable doesn't change
   # Todo: send signal through progress
   compactCtr = 0
   var pos, lastPos: PosTable
   pos = rectTable.positions
   while pos != lastPos:
-    compact(rectTable, direction.primax, direction.primAsc, dstRect)
-    compact(rectTable, direction.secax, direction.secAsc, dstRect)
+    compact(rectTable, spec.primax, spec.primAsc, dstRect)
+    compact(rectTable, spec.secax, spec.secAsc, dstRect)
     lastPos = pos
     pos = rectTable.positions
     inc compactCtr
@@ -366,6 +369,6 @@ proc iterCompact*(rectTable: RectTable, direction: CompactDir, dstRect: WRect) =
 proc compactWorker*(arg: CompactArg) {.thread.} =
   {.gcsafe.}:
     withLock(gLock):
-      iterCompact(arg.pRectTable[], arg.direction, arg.dstRect)
-  PostMessage(arg.window.mHwnd, idMsgAlgUpdate, 0, 0)
+      iterCompact(arg.pRectTable[], arg.spec, arg.dstRect)
+  PostMessage(arg.handle, idMsgAlgUpdate, 0, 0)
   
