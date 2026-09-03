@@ -1,9 +1,8 @@
 
-import std/[monotimes,
-            os,
-            sequtils,
-            times]
+import std/[os,
+            sequtils]
 
+# Okay to import the whole thing because we're in renderer directory
 import rects
 
 const 
@@ -12,23 +11,6 @@ const
                  "../fonts/Ubuntu-Regular_1.ttf"]
   fontRange*: Slice[int] = 1..50000
   defFontSize* = 25
-
-
-template timeItms*(flag: untyped, msg: string, body: untyped) =
-  when defined(flag):
-    let t0 = now()
-  body
-  when defined(flag):
-    let elapsed = (now() - t0).inMilliseconds
-    echo msg, ": ", elapsed, " ms"
-
-template timeItus*(flag: untyped, msg: string, body: untyped) =
-  when defined(flag):
-    let t0 = now()
-  body
-  when defined(flag):
-    let elapsed = (now() - t0).inMicroSeconds
-    echo msg, ": ", elapsed, " us"
 
 proc fontCandidates*(): seq[string] =
   result = gCandidates.toSeq

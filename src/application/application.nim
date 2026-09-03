@@ -36,6 +36,12 @@ proc isReady*(self: Application): bool =
   if not self.mainFrame.isReady(): return reportNotReady("app.mainFrame")
   true
 
+proc junk(data: CompactButton) = 
+  case data:
+  of BtnTest:    echo "application: testing"
+  of BtnRandAll: echo "application: rand all"
+  of BtnRandPos: echo "application: rand pos"
+
 proc init*(self: Application, w, h: int) =
   # Start things up.  Assume command line args have already been
   # parsed and are in gAppOpts
@@ -98,7 +104,10 @@ proc init*(self: Application, w, h: int) =
       # too big to fit on the screen
       self.editor.dirtifyFatComponents()
     self.renderer.syncTextureCache()
-    #self.mainFrame.mainPanel.blockPanel.refresh(false)
+
+
+
+
 
 proc deinit*(app: Application) = 
   # Shut down

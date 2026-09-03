@@ -5,7 +5,7 @@ import wnim/wTypes
 import winim/inc/winuser
 import concurrent
 
-import common
+import directions
 from recttable import `[]`, dbComps
 import document
 import userMessages
@@ -31,7 +31,6 @@ type
   CompactDir* = tuple
     primax,  secax:  Axis
     primAsc, secAsc: SortOrder
-  CompoundDir* = enum UpLeft,UpRight,DownLeft,DownRight,LeftUp,LeftDown,RightUp,RightDown
   CompactArg* = tuple
     pRectTable: ptr RectTable
     direction:  CompactDir

@@ -2,6 +2,7 @@ import wNim
 import winim
 
 import icons
+import pubsub
 import utils
 import routing
 import viewport
@@ -29,7 +30,7 @@ type
       txtMinX, txtMinY: wTextCtrl
 
     # Buttons
-    bRandomizeAll, bRandomizePos, bTest, bBoundReg,
+    bRandomizeAll, bRandomizePos, bTest, #bBoundReg,
       bLeft, bRight, bUp, bDown,
       bUpLeft, bUpRight, bDnLeft, bDnRight,
       bUndo, bDone: wButton
@@ -41,6 +42,7 @@ type
     # Other
     slStartTemp: wSlider
     cbMonitor: wCheckBox
+    cbBoundReg: wCheckBox
 
 
   wPlacementFrame* = ref object of wFrame
@@ -108,9 +110,6 @@ wClass(wPlacementPanel of wPanel):
 
     self.stCompTitle.fit()
     self.stSelected.fit()
-    # self.stStartTempNum.label = "100"
-    # self.stStartTempNum.fit()
-    # self.stStartTempNum.label = oldLabel
     self.stCurrTempNum.fit()
     self.layout:
       # Top Row
@@ -229,29 +228,29 @@ wClass(wPlacementPanel of wPanel):
         right = self.stStartTempNum.right + vmarg
 
       # Bounding Region contents
-      self.bBoundReg:
+      self.cbBoundReg:
         top = self.sbBoundReg.top + boxvspc
         left = self.sbBoundReg.left + hpad
         width = buttWidth
         height = buttHeight
 
       self.stX:
-        top = self.bBoundReg.bottom + vpad
+        top = self.cbBoundReg.bottom + vpad
         left = self.sbBoundReg.left + hpad
         width = self.stX.defaultWidth
         height = self.stX.defaultHeight
       self.stY:
-        top = self.bBoundReg.bottom + vpad
+        top = self.cbBoundReg.bottom + vpad
         left = self.txtX.right + hpad
         width = self.stY.defaultWidth
         height = self.stY.defaultHeight
       self.stW:
-        top = self.bBoundReg.bottom + vpad
+        top = self.cbBoundReg.bottom + vpad
         left = self.txtY.right + hpad
         width = self.stW.defaultWidth
         height = self.stW.defaultHeight
       self.stH:
-        top = self.bBoundReg.bottom + vpad
+        top = self.cbBoundReg.bottom + vpad
         left = self.txtW.right + hpad
         width = self.stH.defaultWidth
         height = self.stH.defaultHeight
@@ -446,37 +445,46 @@ wClass(wPlacementPanel of wPanel):
     let successInt = parseNumber(txtCtrl.value, valInt)
     let successFloat = parseNumber(txtCtrl.value, valFloat)
 
+    # Only qty, x, y, w, h need to get sent when text is entered
+    # min spacing is sent with the arrow buttons
+
     if txtCtrl == self.txtQty and successint:
       if successInt:
-        sendToListeners(idPlcTxtQtySend, self.mHwnd.WPARAM, valInt.LPARAM)
+        sendToListeners(idPlcTxtQtySend, self.handle.WPARAM, valInt.LPARAM)
     elif txtCtrl == self.txtX:
       if successInt:
-        sendToListeners(idPlcTxtXSend, self.mHwnd.WPARAM, valInt.LPARAM)
+        sendToListeners(idPlcTxtXSend, self.handle.WPARAM, valInt.LPARAM)
     elif txtCtrl == self.txtY:
       if successFloat:
         let floatBits: uint64 = cast[uint64](valFloat)
-        sendToListeners(idPlcTxtYSend, self.mHwnd.WPARAM, floatBits.LPARAM)
+        sendToListeners(idPlcTxtYSend, self.handle.WPARAM, floatBits.LPARAM)
     elif txtCtrl == self.txtW:
       if successFloat:
         let floatBits: uint64 = cast[uint64](valFloat)
-        sendToListeners(idPlcTxtWSend, self.mHwnd.WPARAM, floatBits.LPARAM)
+        sendToListeners(idPlcTxtWSend, self.handle.WPARAM, floatBits.LPARAM)
     elif txtCtrl == self.txtH:
       if successFloat:
         let floatBits: uint64 = cast[uint64](valFloat)
-        sendToListeners(idPlcTxtHSend, self.mHwnd.WPARAM, floatBits.LPARAM)
+        sendToListeners(idPlcTxtHSend, self.handle.WPARAM, floatBits.LPARAM)
 
     if not successInt and not successFloat:
       echo "Did not send ", txtCtrl.value
 
     # TODO: validate and color
-    event.skip()
 
   proc onButtonRandomizeAll(self: wPlacementPanel) =
     echo "button rand all"
+    gPubSubCompactButtons.publish(woPlcTest, BtnRandAll)
+    # sendToListeners(idPlcRandomAll, self.handle.WPARAM, 0)
+
   proc onButtonRandomizePos(self: wPlacementPanel) =
     echo "button rand pos"
+    gPubSubCompactButtons.publish(woPlcTest, BtnRandPos)
+    # sendToListeners(idPlcRandomPos, self.handle.WPARAM, 0)
   proc onButtonTest(self: wPlacementPanel) =
     echo "button test"
+    gPubSubCompactButtons.publish(woPlcTest, BtnTest)
+    # sendToListeners(idPlcTest, self.handle.WPARAM, 0)
   proc onButtonBoundRegion(self: wPlacementPanel) =
     echo "button bound region"
   proc onButtonLeft(self: wPlacementPanel) =
@@ -529,7 +537,7 @@ wClass(wPlacementPanel of wPanel):
   proc onOptionsRadioButton(self: wPlacementPanel, event: wEvent) =
     echo "radio button options"
   proc onOrderRadioButton(self: wPlacementPanel, event: wEvent) =
-    echo "radio button method"
+    echo "radio button order"
   proc onTempSlider(self: wPlacementPanel, event: wEvent) =
     self.stStartTempNum.label = $self.slStartTemp.value
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
@@ -587,7 +595,8 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizeAll = Button(self, label="Randomize All")
     self.bRandomizePos = Button(self, label="Randomize Pos")
     self.bTest         = Button(self, label="Test")
-    self.bBoundReg     = Button(self, label="Draw Region")
+    #self.bBoundReg     = Button(self, label="Draw Region")
+    self.cbBoundReg    = Checkbox(self, label="Draw Region", style=BS_PUSHLIKE.wStyle)
     self.bLeft         = Button(self)
     self.bRight        = Button(self)
     self.bUp           = Button(self)
@@ -654,7 +663,7 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
     self.bRandomizePos.wEvent_Button do (): self.onButtonRandomizePos()
     self.bTest.wEvent_Button         do (): self.onButtonTest()
-    self.bBoundReg.wEvent_Button     do (): self.onButtonBoundRegion()
+    #self.bBoundReg.wEvent_Button     do (): self.onButtonBoundRegion()
     self.bLeft.wEvent_Button         do (): self.onButtonLeft()
     self.bRight.wEvent_Button        do (): self.onButtonRight()
     self.bUp.wEvent_Button           do (): self.onButtonUp()
@@ -694,6 +703,7 @@ wClass(wPlacementPanel of wPanel):
     self.rbNone.click()
     self.rbStrat1.click()
     self.rbWiggle.click()
+    self.rbHV.click()
     self.slStartTemp.setRange(1, 100)
     self.slStartTemp.value = 50
 
@@ -702,7 +712,7 @@ wClass(wPlacementPanel of wPanel):
 
 wClass(wPlacementFrame of wFrame):
   proc onDestroy(self: wPlacementFrame) =
-    sendToListeners(idPlcFrameClosing, self.mHwnd.WPARAM, 0)
+    sendToListeners(idPlcFrameClosing, self.handle.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
     echo "init start"
@@ -716,11 +726,23 @@ wClass(wPlacementFrame of wFrame):
     echo "done"
 
 
+proc junk(data: CompactButton) = 
+  case data:
+  of BtnTest:    echo "placement bin: testing"
+  of BtnRandAll: echo "placement bin: rand all"
+  of BtnRandPos: echo "placement bin: rand pos"
+
+
+
 when isMainModule:
   import jsoninit
   try:
     jsonInitGlobals()
     wSetSystemDPIAware()
+    registerListener(gPubSubCompactButtons, woPlcTest,      junk )
+    registerListener(gPubSubCompactButtons, woPlcRandomAll, junk )
+    registerListener(gPubSubCompactButtons, woPlcRandomPos, junk )
+
     let
       app = App()
       f1 = PlacementFrame(nil)

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="128" height="128">
+  <linearGradient id="g_arrow_right_hover" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="62" y2="62">
+    <stop offset="0" stop-color="#76a8d3"/>
+    <stop offset="1" stop-color="#3f6e9e"/>
+  </linearGradient>
+  <g transform="translate(32,32) scale(1.04) translate(-32,-32)">
+  <rect x="2" y="2" width="60" height="60" rx="7" fill="url(#g_arrow_right_hover)"/>
+  <path d="M9 3.3 H55" stroke="#ffffff" stroke-opacity="0.40" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M9 60.7 H55" stroke="#000000" stroke-opacity="0.12" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="2" y="2" width="60" height="60" rx="7" fill="none" stroke="#000000" stroke-opacity="0.10" stroke-width="1.2"/>
+  <polygon points="54.0,32.0 34.0,46.0 34.0,38.0 10.0,38.0 10.0,26.0 34.0,26.0 34.0,18.0" fill="#ffffff"/>
+  </g>
+</svg>

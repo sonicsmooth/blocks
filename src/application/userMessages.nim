@@ -5,7 +5,7 @@ from winim/inc/winuser import WM_USER
 # a blaSend is sent from the dialog in question
 # a blaRecv is received by the dialog in question
 
-type WinMsgOrder = enum
+type MsgId* = enum
   woMouseMove, woSize, woSlider, woAlgUpdate,
   woGridZoom, woGridSizeX, woGridRequestX, woGridSizeY,
   woGridRequestY, woGridDivisionsSelect, woGridDivisionsValue,
@@ -49,14 +49,14 @@ const
   
   # Placement Frame
   idPlcDownLeft*        = WM_USER + ord(woPlcDownLeft)
-  idPlcDown*      = WM_USER + ord(woPlcDown)
-  idPlcDownRight*        = WM_USER + ord(woPlcDownRight)
-  idPlcLeft*      = WM_USER + ord(woPlcLeft)
-  idPlcRight*     = WM_USER + ord(woPlcRight)
-  idPlcUpLeft*        = WM_USER + ord(woPlcUpLeft)
-  idPlcUndo*      = WM_USER + ord(woPlcUndo)
-  idPlcUp*        = WM_USER + ord(woPlcUp)
-  idPlcUpRight*        = WM_USER + ord(woPlcUpRight)
+  idPlcDown*            = WM_USER + ord(woPlcDown)
+  idPlcDownRight*       = WM_USER + ord(woPlcDownRight)
+  idPlcLeft*            = WM_USER + ord(woPlcLeft)
+  idPlcRight*           = WM_USER + ord(woPlcRight)
+  idPlcUpLeft*          = WM_USER + ord(woPlcUpLeft)
+  idPlcUndo*            = WM_USER + ord(woPlcUndo)
+  idPlcUp*              = WM_USER + ord(woPlcUp)
+  idPlcUpRight*         = WM_USER + ord(woPlcUpRight)
   idPlcDrawRegionEnd*   = WM_USER + ord(woPlcDrawRegionEnd)
   idPlcDrawRegionStart* = WM_USER + ord(woPlcDrawRegionStart)
   idPlcFrameClosing*    = WM_USER + ord(woPlcFrameClosing)
