@@ -5,6 +5,11 @@ from winim/inc/winuser import WM_USER
 # a blaSend is sent from the dialog in question
 # a blaRecv is received by the dialog in question
 
+# There are a few message and ID types
+# IDs for widgets
+# IDs for messages used in SendMessage (received by a Window)
+# Keys for the pubsub mechanism
+
 type MsgId* = enum
   woMouseMove, woSize, woSlider, woAlgUpdate,
   woGridZoom, woGridSizeX, woGridRequestX, woGridSizeY,

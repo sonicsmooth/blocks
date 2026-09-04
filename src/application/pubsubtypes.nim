@@ -6,7 +6,16 @@ export directions
 # the pubsub mechanism
 
 type
-  # Dialog -> orchestrator
+  # Just use raw values for simple things like int, float
+  # Placement Dialog -> Editor
+  # NewQty = uint
+  # Editor -> Placement Dialog
+  # Selected = uint
+
+  # No content, just the event
+  Signal* = object
+
+  # Placement Dialog -> Orchestrator
   CompactButton* = enum BtnTest, BtnRandAll, BtnRandPos
   CompactRequest* = object
     direction*: CompactDir
@@ -18,13 +27,16 @@ type
     startTemp*: float
     doMonitor*: bool
 
-  # Orchestrator -> Dialog
-  UpdateTemp* = object
-    temp: float
+  # # Orchestrator -> Placement Dialog
+  # UpdateTemp* = object
+  #   temp: float
   
-  # Dialog <-> Editor
+  # Placement Dialog <-> Editor
   RegionDefine* = object
     X*, Y*, W*, H*: WType
+
+
+
 
 
 

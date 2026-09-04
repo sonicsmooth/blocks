@@ -1,5 +1,6 @@
 
 from std/strutils import strip
+import std/tables
 
 import wNim
 import winim
@@ -37,7 +38,7 @@ type
     # Buttons
     bRandomizeAll, bRandomizePos, bTest, #bBoundReg,
       bLeft, bRight, bUp, bDown,
-      bUpLeft, bUpRight, bDownLeft, bDownRight,
+      bLeftUp, bRightUp, bLeftDown, bRightDown,
       bUndo, bDone: wButton
 
     # Radio buttons
@@ -48,6 +49,8 @@ type
     slStartTemp: wSlider
     cbMonitor: wCheckBox
     cbDrawRegion: wCheckBox
+
+    # iconTable: Table[wTypes.wButton, string]
 
 
   wPlacementFrame* = ref object of wFrame
@@ -164,42 +167,42 @@ wClass(wPlacementPanel of wPanel):
         height = self.stCompTitle.defaultHeight
 
       # 8 Compass buttons
-      self.bUpLeft:
+      self.bLeftUp:
         top = self.stCompTitle.bottom + bbTxtAdjust
         left = self.left + hmarg
         width = arrowBtnSize
         height = arrowBtnSize
       self.bUp:
         top = self.stCompTitle.bottom + bbTxtAdjust
-        left = self.bUpLeft.right
+        left = self.bLeftUp.right
         width = arrowBtnSize
         height = arrowBtnSize
-      self.bUpRight:
+      self.bRightUp:
         top = self.stCompTitle.bottom + bbTxtAdjust
         left = self.bUp.right
         width = arrowBtnSize
         height = arrowBtnSize
       self.bLeft:
-        top = self.bUpLeft.bottom
-        left = self.bUpLeft.left
+        top = self.bLeftUp.bottom
+        left = self.bLeftUp.left
         width = arrowBtnSize
         height = arrowBtnSize
       self.bRight:
-        top = self.bUpRight.bottom
-        left = self.bUpRight.left
+        top = self.bRightUp.bottom
+        left = self.bRightUp.left
         width = arrowBtnSize
         height = arrowBtnSize
-      self.bDownLeft:
+      self.bLeftDown:
         top = self.bLeft.bottom
         left = self.bLeft.left
         width = arrowBtnSize
         height = arrowBtnSize
       self.bDown:
         top = self.bLeft.bottom
-        left = self.bDownLeft.right
+        left = self.bLeftDown.right
         width = arrowBtnSize
         height = arrowBtnSize
-      self.bDownRight:
+      self.bRightDown:
         top = self.bRight.bottom
         left = self.bDown.right
         width = arrowBtnSize
@@ -208,7 +211,7 @@ wClass(wPlacementPanel of wPanel):
       # Static Boxes, Left
       self.sbBoundReg:
         top = self.stCompTitle.bottom
-        left = self.bUpRight.right + hspc
+        left = self.bRightUp.right + hspc
         bottom = self.bDown.bottom
         right >= self.txtH.right + hpad
       self.sbMinSpacing:
@@ -462,41 +465,26 @@ wClass(wPlacementPanel of wPanel):
       txtCtrl.foregroundColor = errFg
 
   proc onTextCommit(self: wPlacementPanel, event: wEvent) =
-    # var valInt: int
-    # var valFloat: WType
+    # Only qty, x, y, w, h need to get sent when text is entered
+    # min spacing is sent with the arrow buttons
     let txtCtrl = cast[wTextCtrl](event.window)
     let valInt = parseNumber[int](txtCtrl.value.strip())
     let valFloat = parseNumber[float](txtCtrl.value.strip())
-    let floatBits = if valFloat.isSome(): cast[uint64](valFloat.get()) else: 0
 
-    # Only qty, x, y, w, h need to get sent when text is entered
-    # min spacing is sent with the arrow buttons
-    echo "commiting?"
-
-    if txtCtrl == self.txtQty:
-      if valInt.isSome():
-        sendToListeners(idPlcTxtQtySend, self.handle.WPARAM, valInt.get().LPARAM)
-        echo "Commited: ", valInt
-    elif txtCtrl == self.txtX:
-      if valFloat.isSome():
-        sendToListeners(idPlcTxtXSend, self.handle.WPARAM, floatBits.LPARAM)
-        echo "Commited: ", valFloat
-    elif txtCtrl == self.txtY:
-      if valFloat.isSome():
-        sendToListeners(idPlcTxtYSend, self.handle.WPARAM, floatBits.LPARAM)
-        echo "Commited: ", valFloat
-    elif txtCtrl == self.txtW:
-      if valFloat.isSome():
-        sendToListeners(idPlcTxtWSend, self.handle.WPARAM, floatBits.LPARAM)
-        echo "Commited: ", valFloat
-    elif txtCtrl == self.txtH:
-      if valFloat.isSome():
-        sendToListeners(idPlcTxtHSend, self.handle.WPARAM, floatBits.LPARAM)
-        echo "Commited: ", valFloat
-
-    if not valInt.isSome() and not valFloat.isSome():
-      echo "Did not commit: ", txtCtrl.value
-    # TODO: validate and color
+    if valInt.isSome() and txtCtrl == self.txtQty:
+      sendToListeners(idPlcTxtQtySend, self.handle.WPARAM, valInt.get().LPARAM)
+      echo "Comitted: ", valInt.get()
+    elif valFloat.isSome() and txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH]:
+      let floatBits = cast[uint64](valFloat.get())
+      var msgId: uint32
+      if   txtCtrl == self.txtX:  msgId = idPlcTxtXSend
+      elif txtCtrl == self.txtY:  msgId = idPlcTxtYSend
+      elif txtCtrl == self.txtW:  msgId = idPlcTxtWSend
+      elif txtCtrl == self.txtH:  msgId = idPlcTxtHSend
+      sendToListeners(msgId, self.handle.WPARAM, floatBits.LPARAM)
+      echo "Commited: ", valFloat.get()
+    else:
+      echo "not commiting: ", txtCtrl.value
 
   proc onKillFocus(self: wPlacementPanel, event: wEvent) =
     self.onTextCommit(event)
@@ -517,13 +505,13 @@ wClass(wPlacementPanel of wPanel):
     # sendToListeners(idPlcTest, self.handle.WPARAM, 0)
   
   proc onCheckBoxDrawRegion(self: wPlacementPanel, event: wEvent) =
-    let drawSz = appDpiScale((buttHeightRaw, buttHeightRaw))
+    let drawSz = appDpiScale((iconSizeRaw, iconSizeRaw))
     if self.cbDrawRegion.value:
       echo "clicked"
-      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, isPressed))
+      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Pressed))
     else:
       echo "unclicked"
-      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, isNormal))
+      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Hover))
 
   proc onButtonCompactGo(self: wPlacementPanel, event: wEvent) =
     let btn = cast[wButton](event.window)
@@ -534,22 +522,21 @@ wClass(wPlacementPanel of wPanel):
       elif btn == self.bRight: Right
       elif btn == self.bUp:    Up
       elif btn == self.bDown:  Down
-      elif btn == self.bUpLeft:
+      elif btn == self.bLeftUp:
         if self.rbHV.value: LeftUp
         else:               UpLeft
-      elif btn == self.bUpRight:
+      elif btn == self.bRightUp:
         if self.rbHV.value: RightUp
         else:               UpRight
-      elif btn == self.bDownLeft:
+      elif btn == self.bLeftDown:
         if self.rbHV.value: LeftDown
         else:               DownLeft
-      elif btn == self.bDownRight:
+      elif btn == self.bRightDown:
         if self.rbHV.value: RightDown
         else:               DownRight
       else:
         raise newException(ValueError, "Invalid window ref")
 
-    echo "button ", $dir
     req.direction = dir
     var minX, minY: WType
     if not parseNumber(self.txtMinX.value, minX):
@@ -570,6 +557,39 @@ wClass(wPlacementPanel of wPanel):
     req.startTemp = self.slStartTemp.value.float
     req.doMonitor = self.cbMonitor.value
     gPubSubCompactRequest.publish(kCmpCompactReq, req)
+
+  proc updateCompactButton(self: wPlacementPanel, btn: wButton, state: IconState) =
+    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    if   btn == self.bLeft:  btn.setBitmap(iconBitmap("arrow_left" , iconSz, state), wCenter)
+    elif btn == self.bRight: btn.setBitmap(iconBitmap("arrow_right", iconSz, state), wCenter)
+    elif btn == self.bUp:    btn.setBitmap(iconBitmap("arrow_up",    iconSz, state), wCenter)
+    elif btn == self.bDown:  btn.setBitmap(iconBitmap("arrow_down",  iconSz, state), wCenter)
+    elif btn == self.bLeftUp:
+      if self.rbHV.value: btn.setBitmap(iconBitmap("upper_left_hv_arrow", iconSz, state), wCenter)
+      else:               btn.setBitmap(iconBitmap("upper_left_vh_arrow", iconSz, state), wCenter)
+    elif btn == self.bRightUp:
+      if self.rbHV.value: btn.setBitmap(iconBitmap("upper_right_hv_arrow", iconSz, state), wCenter)
+      else:               btn.setBitmap(iconBitmap("upper_right_vh_arrow", iconSz, state), wCenter)
+    elif btn == self.bLeftDown:
+      if self.rbHV.value: btn.setBitmap(iconBitmap("lower_left_hv_arrow", iconSz, state), wCenter)
+      else:               btn.setBitmap(iconBitmap("lower_left_vh_arrow", iconSz, state), wCenter)
+    elif btn == self.bRightDown:
+      if self.rbHV.value: btn.setBitmap(iconBitmap("lower_right_hv_arrow", iconSz, state), wCenter)
+      else:               btn.setBitmap(iconBitmap("lower_right_vh_arrow", iconSz, state), wCenter)
+
+  proc onButtonMouseEnterLeave(self: wPlacementPanel, event: wEvent) =
+    let btn = cast[wButton](event.window)
+    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    let state = if event.eventType == wEvent_MouseEnter: Hover else: Normal
+    self.updateCompactButton(btn, state)
+    event.skip()
+
+  proc onButtonMouseClick(self: wPlacementPanel, event: wEvent) =
+    let btn = cast[wButton](event.window)
+    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    let state = if event.eventType == wEvent_LeftDown: Pressed else: Hover
+    self.updateCompactButton(btn, state)
+    event.skip()
 
   proc onButtonUndo(self: wPlacementPanel) =
     echo "button undo"
@@ -607,7 +627,11 @@ wClass(wPlacementPanel of wPanel):
   proc onOptionsRadioButton(self: wPlacementPanel, event: wEvent) =
     echo "radio button options"
   proc onOrderRadioButton(self: wPlacementPanel, event: wEvent) =
-    echo "radio button order"
+    self.updateCompactButton(self.bLeftUp,    Normal)
+    self.updateCompactButton(self.bRightUp,   Normal)
+    self.updateCompactButton(self.bLeftDown,  Normal)
+    self.updateCompactButton(self.bRightDown, Normal)
+
   proc onTempSlider(self: wPlacementPanel) =
     self.stStartTempNum.label = $self.slStartTemp.value
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
@@ -666,16 +690,15 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizeAll = Button(self, label="Randomize All")
     self.bRandomizePos = Button(self, label="Randomize Pos")
     self.bTest         = Button(self, label="Test")
-    #self.bBoundReg     = Button(self, label="Draw Region")
     self.cbDrawRegion    = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
-    self.bLeft         = Button(self)
-    self.bRight        = Button(self)
-    self.bUp           = Button(self)
-    self.bDown         = Button(self)
-    self.bUpLeft       = Button(self)
-    self.bUpRight      = Button(self)
-    self.bDownLeft     = Button(self)
-    self.bDownRight    = Button(self)
+    self.bLeft         = Button(self, style=BS_BITMAP)
+    self.bRight        = Button(self, style=BS_BITMAP)
+    self.bUp           = Button(self, style=BS_BITMAP)
+    self.bDown         = Button(self, style=BS_BITMAP)
+    self.bLeftUp       = Button(self, style=BS_BITMAP)
+    self.bRightUp      = Button(self, style=BS_BITMAP)
+    self.bLeftDown     = Button(self, style=BS_BITMAP)
+    self.bRightDown    = Button(self, style=BS_BITMAP)
     self.bUndo         = Button(self, label="Undo")
     self.bDone         = Button(self, label="Done")
 
@@ -704,17 +727,9 @@ wClass(wPlacementPanel of wPanel):
     self.stReplFn.font       = Font(pointSize=fontSizeSmall)
     self.stStartTempNum.font = Font(pointSize=fontSizeLarge)
     self.stCurrTempNum.font  = Font(pointSize=fontSizeLarge)
+    # Update arrow buttons down below after the radio buttons are clicked, so they have the right icon
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
-    self.cbDrawRegion.setBitmap(iconBitmap("drag",            iconSz))
-    self.bUpLeft.setBitmap     (iconBitmap("arrow_upleft",    iconSz))
-    self.bUp.setBitmap         (iconBitmap("arrow_up",        iconSz))
-    self.bUpRight.setBitmap    (iconBitmap("arrow_upright",   iconSz))
-    self.bLeft.setBitmap       (iconBitmap("arrow_left",      iconSz))
-    self.bRight.setBitmap      (iconBitmap("arrow_right",     iconSz))
-    self.bDown.setBitmap       (iconBitmap("arrow_down",      iconSz))
-    self.bDownLeft.setBitmap   (iconBitmap("arrow_downleft",  iconSz))
-    self.bDownRight.setBitmap  (iconBitmap("arrow_downright", iconSz))
-
+    self.cbDrawRegion.setBitmap(iconBitmap("drag", iconSz))
    
     # Respond to generic events
     self.wEvent_Size do (event: wEvent): self.onResize()
@@ -735,16 +750,15 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
     self.bRandomizePos.wEvent_Button do (): self.onButtonRandomizePos()
     self.bTest.wEvent_Button         do (): self.onButtonTest()
-    self.bLeft.wEvent_Button         do (event: wEvent): self.onButtonCompactGo(event)
-    self.bRight.wEvent_Button        do (event: wEvent): self.onButtonCompactGo(event)
-    self.bUp.wEvent_Button           do (event: wEvent): self.onButtonCompactGo(event)
-    self.bDown.wEvent_Button         do (event: wEvent): self.onButtonCompactGo(event)
-    self.bUpLeft.wEvent_Button       do (event: wEvent): self.onButtonCompactGo(event)
-    self.bUpRight.wEvent_Button      do (event: wEvent): self.onButtonCompactGo(event)
-    self.bDownLeft.wEvent_Button       do (event: wEvent): self.onButtonCompactGo(event)
-    self.bDownRight.wEvent_Button      do (event: wEvent): self.onButtonCompactGo(event)
-    self.bUndo.wEvent_Button         do (): self.onButtonUndo()
-    self.bDone.wEvent_Button         do (): self.onButtonDone()
+    for btn in @[self.bLeft, self.bRight, self.bUp, self.bDown,
+                 self.bLeftUp, self.bRightUp, self.bLeftDown, self.bRightDown]:
+      btn.wEvent_Button     do (event: wEvent): self.onButtonCompactGo(event)
+      btn.wEvent_MouseEnter do (event: wEvent): self.onButtonMouseEnterLeave(event)
+      btn.wEvent_MouseLeave do (event: wEvent): self.onButtonMouseEnterLeave(event)
+      btn.wEvent_LeftDown   do (event: wEvent): self.onButtonMouseClick(event)
+      btn.wEvent_LeftUp     do (event: wEvent): self.onButtonMouseClick(event)
+    self.bUndo.wEvent_Button do (): self.onButtonUndo()
+    self.bDone.wEvent_Button do (): self.onButtonDone()
 
     # Radio Buttons
     self.rbNone.wEvent_RadioButton   do (event: wEvent): self.onMethodRadioButton(event)
@@ -779,6 +793,17 @@ wClass(wPlacementPanel of wPanel):
     self.slStartTemp.setRange(1, 100)
     self.slStartTemp.value = 50
     self.stStartTempNum.label = $self.slStartTemp.value
+
+    # Finally update buttons to have the right icon for the current radio button state
+    self.updateCompactButton(self.bLeft,      Normal)
+    self.updateCompactButton(self.bRight,     Normal)
+    self.updateCompactButton(self.bUp,        Normal)
+    self.updateCompactButton(self.bDown,      Normal)
+    self.updateCompactButton(self.bLeftUp,    Normal)
+    self.updateCompactButton(self.bRightUp,   Normal)
+    self.updateCompactButton(self.bLeftDown,  Normal)
+    self.updateCompactButton(self.bRightDown, Normal)
+
 
 
 
