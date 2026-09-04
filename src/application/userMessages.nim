@@ -21,6 +21,10 @@ type MsgId* = enum
   woPLcTxtQtyRecv, woPlcTxtQtySend, woPlcTxtTempRecv,
   woPlcTxtWRecv, woPlcTxtWSend, woPlcTxtXRecv, woPlcTxtXSend,
   woPlcTxtyRecv, woPlcTxtYSend
+
+  kCmpBtnTest, kCmpBtnRandAll, kCmpBtnRandPos,
+  kCmpCompactReq
+
     
 const
   # Get rid of these

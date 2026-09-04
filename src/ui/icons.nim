@@ -1,84 +1,117 @@
-import std/[os,
-            tables]
+import std/[os, tables]
 import wNim
 import pixie/fileformats/[png, svg]
 
 type
-  IconPaths = Table[string, string]
-  IconSVGData = Table[string, string]
-
-proc svgData(paths: IconPaths): IconSVGData =
-  for name, path in paths:
-    result[name] = path.readFile()
+  IconState* = enum isNormal, isHover, isPressed
+  IconVariants = array[IconState, string]   # SVG content per state
+  IconTable = Table[string, IconVariants]
 
 const
   iconsPath = currentSourcePath.parentDir / "icons/svg"
   ext = ".svg"
-  iconPaths: IconPaths = 
-    [ (name: "align_bottom",     path: iconsPath / "align_bottom"               & ext),
-      (name: "align_center",     path: iconsPath / "align_center"               & ext),
-      (name: "align_left",       path: iconsPath / "align_left"                 & ext),
-      (name: "align_ll_hv",      path: iconsPath / "align_lower_left_hv"        & ext),
-      (name: "align_ll_hvarr",   path: iconsPath / "align_lower_left_hv_arrow"  & ext),
-      (name: "align_ll_vh",      path: iconsPath / "align_lower_left_vh"        & ext),
-      (name: "align_ll_vharr",   path: iconsPath / "align_lower_left_vh_arrow"  & ext),
-      (name: "align_lr_hv",      path: iconsPath / "align_lower_right_hv"       & ext),
-      (name: "align_lr_hvarr",   path: iconsPath / "align_lower_right_hv_arrow" & ext),
-      (name: "align_lr_vh",      path: iconsPath / "align_lower_right_vh"       & ext),
-      (name: "align_lr_vharr",   path: iconsPath / "align_lower_right_vh_arrow" & ext),
-      (name: "align_mid",        path: iconsPath / "align_mid"                  & ext),
-      (name: "align_right",      path: iconsPath / "align_right"                & ext),
-      (name: "align_top",        path: iconsPath / "align_top"                  & ext),
-      (name: "align_ul_hv",      path: iconsPath / "align_upper_left_hv"        & ext),
-      (name: "align_ul_hvarr",   path: iconsPath / "align_upper_left_hv_arrow"  & ext),
-      (name: "align_ul_vh",      path: iconsPath / "align_upper_left_vh"        & ext),
-      (name: "align_ul_vharr",   path: iconsPath / "align_upper_left_vh_arrow"  & ext),
-      (name: "align_ur_hv",      path: iconsPath / "align_upper_right_hv"       & ext),
-      (name: "align_ur_hvarr",   path: iconsPath / "align_upper_right_hv_arrow" & ext),
-      (name: "align_ur_vh",      path: iconsPath / "align_upper_right_vh"       & ext),
-      (name: "align_ur_vharr",   path: iconsPath / "align_upper_right_vh_arrow" & ext),
-      (name: "arrow_dn",         path: iconsPath / "arrow_down"                 & ext),
-      (name: "arrow_dnleft",     path: iconsPath / "arrow_down_left"            & ext),
-      (name: "arrow_dnright",    path: iconsPath / "arrow_down_right"           & ext),
-      (name: "arrow_left",       path: iconsPath / "arrow_left"                 & ext),
-      (name: "arrow_right",      path: iconsPath / "arrow_right"                & ext),
-      (name: "arrow_up",         path: iconsPath / "arrow_up"                   & ext),
-      (name: "arrow_upleft",     path: iconsPath / "arrow_up_left"              & ext),
-      (name: "arrow_upright",    path: iconsPath / "arrow_up_right"             & ext),
-      (name: "close",            path: iconsPath / "close"                      & ext),
-      (name: "delete",           path: iconsPath / "delete"                     & ext),
-      (name: "done",             path: iconsPath / "done"                       & ext),
-      (name: "exit",             path: iconsPath / "exit"                       & ext),
-      (name: "file_open",        path: iconsPath / "file_open"                  & ext),
-      (name: "folder_open",      path: iconsPath / "folder_open"                & ext),
-      (name: "gridonoff",        path: iconsPath / "grid_on_off"                & ext),
-      (name: "gridsettings",     path: iconsPath / "grid_settings"              & ext),
-      (name: "help",             path: iconsPath / "help"                       & ext),
-      (name: "info",             path: iconsPath / "info"                       & ext),
-      (name: "move",             path: iconsPath / "move"                       & ext),
-      (name: "new_document",     path: iconsPath / "new_document"               & ext),
-      (name: "place",            path: iconsPath / "placement"                  & ext),
-      (name: "preferences",      path: iconsPath / "preferences"                & ext),
-      (name: "resize",           path: iconsPath / "resize"                     & ext),
-      (name: "route",            path: iconsPath / "route"                      & ext),
-      (name: "save",             path: iconsPath / "save"                       & ext),
-      (name: "search",           path: iconsPath / "search"                     & ext),
-      (name: "settings",         path: iconsPath / "settings"                   & ext),
-      (name: "undo",             path: iconsPath / "undo"                       & ext)].toTable()
+  suffixFor: array[IconState, string] = ["", "_hover", "_pressed"]
+
+  baseNames = [
+    ("align_bottom",    "align_bottom"),
+    ("align_center",    "align_center"),
+    ("align_left",      "align_left"),
+    ("align_ll_hv",     "align_lower_left_hv"),
+    ("align_ll_hvarr",  "align_lower_left_hv_arrow"),
+    ("align_ll_vh",     "align_lower_left_vh"),
+    ("align_ll_vharr",  "align_lower_left_vh_arrow"),
+    ("align_lr_hv",     "align_lower_right_hv"),
+    ("align_lr_hvarr",  "align_lower_right_hv_arrow"),
+    ("align_lr_vh",     "align_lower_right_vh"),
+    ("align_lr_vharr",  "align_lower_right_vh_arrow"),
+    ("align_mid",       "align_mid"),
+    ("align_right",     "align_right"),
+    ("align_top",       "align_top"),
+    ("align_ul_hv",     "align_upper_left_hv"),
+    ("align_ul_hvarr",  "align_upper_left_hv_arrow"),
+    ("align_ul_vh",     "align_upper_left_vh"),
+    ("align_ul_vharr",  "align_upper_left_vh_arrow"),
+    ("align_ur_hv",     "align_upper_right_hv"),
+    ("align_ur_hvarr",  "align_upper_right_hv_arrow"),
+    ("align_ur_vh",     "align_upper_right_vh"),
+    ("align_ur_vharr",  "align_upper_right_vh_arrow"),
+    ("arrow_down",      "arrow_down"),
+    ("arrow_downleft",  "arrow_down_left"),
+    ("arrow_downright", "arrow_down_right"),
+    ("arrow_left",      "arrow_left"),
+    ("arrow_right",     "arrow_right"),
+    ("arrow_up",        "arrow_up"),
+    ("arrow_upleft",    "arrow_up_left"),
+    ("arrow_upright",   "arrow_up_right"),
+    ("close",           "close"),
+    ("delete",          "delete"),
+    ("done",            "done"),
+    ("drag",            "drag"),
+    ("draw_region",     "draw_region"),
+    ("exit",            "exit"),
+    ("file_open",       "file_open"),
+    ("folder_open",     "folder_open"),
+    ("gridonoff",       "grid_on_off"),
+    ("gridsettings",    "grid_settings"),
+    ("help",            "help"),
+    ("info",            "info"),
+    ("move",            "move"),
+    ("new_document",    "new_document"),
+    ("place",           "placement"),
+    ("preferences",     "preferences"),
+    ("route",           "route"),
+    ("save",            "save"),
+    ("search",          "search"),
+    ("settings",        "settings"),
+    ("stop",            "stop"),
+    ("undo",            "undo"),
+  ]
+
+proc loadVariants(baseFile: string): tuple[variants: IconVariants, missing: seq[IconState]] =
+  # Load whichever state files actually exist; record which ones don't.
+  for state in IconState:
+    let p = iconsPath / (baseFile & suffixFor[state] & ext)
+    if fileExists(p):
+      result.variants[state] = p.readFile()
+    else:
+      result.missing.add(state)
+  # Fall back any missing variant to the normal state so callers always
+  # get a usable bitmap, even if it's visually identical across states.
+  for state in IconState:
+    if result.variants[state].len == 0:
+      result.variants[state] = result.variants[isNormal]
+
+proc buildIconTable(): IconTable =
+  for (key, baseFile) in baseNames:
+    let (variants, _) = loadVariants(baseFile)
+    result[key] = variants
 
 when defined(staticIcons):
-  const gIconSVGData =  svgData(iconPaths)
+  const gIcons = buildIconTable()
 else:
-  let gIconSVGData = svgData(iconPaths)
+  let gIcons = buildIconTable()
 
-proc iconBitmap*(name: string, sz: wSize): wBitmap =
-  let sData = gIconSVGData[name]
+proc iconNames*(): seq[string] =
+  for name in gIcons.keys:
+    result.add(name)
+
+proc iconBitmap*(name: string, sz: wSize, state: IconState = isNormal): wBitmap =
+  if name notin gIcons:
+    raise newException(KeyError, "Unknown icon name: '" & name & "'. Known: " & $iconNames())
+  let sData = gIcons[name][state]
   let svgObj = parseSvg(sData, sz.width, sz.height)
   let im = newImage(svgObj)
   let pngBytes = im.encodePng()
   let wimg = Image(pngBytes[0].addr, pngBytes.len)
   result = Bitmap(wimg)
 
-
 when isMainModule:
-  echo gIconSVGData
+  echo "Loaded ", iconNames().len, " icons:"
+  var anyMissing = false
+  for (key, baseFile) in baseNames:
+    let (_, missing) = loadVariants(baseFile)
+    if missing.len > 0:
+      anyMissing = true
+      echo "  ", key, " -- missing: ", missing
+  if not anyMissing:
+    echo "  (no missing states)"

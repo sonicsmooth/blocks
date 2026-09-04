@@ -1,5 +1,9 @@
+
+from std/strutils import strip
+
 import wNim
 import winim
+import winim/inc/winuser
 
 import icons
 import pubsub
@@ -20,7 +24,8 @@ type
 
     # Static Texts
     stQty, stSelected, stSelectedNum,
-      stCompTitle, stX, stY, stW, stH,
+      stCompTitle, stDrawRegion,
+      stX, stY, stW, stH,
       stMinX, stMinY, stStrat, stReplFn,
       stStartTemp, stStartTempNum,
       stCurrTemp, stCurrTempNum: wStaticText
@@ -32,7 +37,7 @@ type
     # Buttons
     bRandomizeAll, bRandomizePos, bTest, #bBoundReg,
       bLeft, bRight, bUp, bDown,
-      bUpLeft, bUpRight, bDnLeft, bDnRight,
+      bUpLeft, bUpRight, bDownLeft, bDownRight,
       bUndo, bDone: wButton
 
     # Radio buttons
@@ -42,7 +47,7 @@ type
     # Other
     slStartTemp: wSlider
     cbMonitor: wCheckBox
-    cbBoundReg: wCheckBox
+    cbDrawRegion: wCheckBox
 
 
   wPlacementFrame* = ref object of wFrame
@@ -84,10 +89,12 @@ proc appDpiScale(value: wSize): wSize =
 proc appDpiScale(value: int): int =
   value * wAppGetDpi() div 96
 
-
 proc errcol(event: wEvent) =
   SetBkColor(event.wParam, RGB(255, 199, 206))
   SetTextColor(event.wParam, RGB(156, 0, 6))
+
+proc setBitmap(ctrl: wCheckBox, bmp: wBitmap) =
+  discard SendMessage(ctrl.handle, BM_SETIMAGE, IMAGE_BITMAP.WPARAM, bmp.handle.LPARAM)
 
 wClass(wPlacementPanel of wPanel):
   proc layout(self: wPlacementPanel) =
@@ -182,17 +189,17 @@ wClass(wPlacementPanel of wPanel):
         left = self.bUpRight.left
         width = arrowBtnSize
         height = arrowBtnSize
-      self.bDnLeft:
+      self.bDownLeft:
         top = self.bLeft.bottom
         left = self.bLeft.left
         width = arrowBtnSize
         height = arrowBtnSize
       self.bDown:
         top = self.bLeft.bottom
-        left = self.bDnLeft.right
+        left = self.bDownLeft.right
         width = arrowBtnSize
         height = arrowBtnSize
-      self.bDnRight:
+      self.bDownRight:
         top = self.bRight.bottom
         left = self.bDown.right
         width = arrowBtnSize
@@ -228,29 +235,35 @@ wClass(wPlacementPanel of wPanel):
         right = self.stStartTempNum.right + vmarg
 
       # Bounding Region contents
-      self.cbBoundReg:
+      self.cbDrawRegion:
         top = self.sbBoundReg.top + boxvspc
+        #left = self.sbBoundReg.left + hpad
+        left = self.stDrawRegion.right + hpad
+        width = arrowBtnSize
+        height = arrowBtnSize
+      self.stDrawRegion:
+        centerY = self.cbDrawRegion.centerY
         left = self.sbBoundReg.left + hpad
-        width = buttWidth
-        height = buttHeight
+        width = self.stDrawRegion.defaultWidth
+        height = self.stDrawRegion.defaultHeight
 
       self.stX:
-        top = self.cbBoundReg.bottom + vpad
+        top = self.cbDrawRegion.bottom + vpad
         left = self.sbBoundReg.left + hpad
         width = self.stX.defaultWidth
         height = self.stX.defaultHeight
       self.stY:
-        top = self.cbBoundReg.bottom + vpad
+        top = self.cbDrawRegion.bottom + vpad
         left = self.txtX.right + hpad
         width = self.stY.defaultWidth
         height = self.stY.defaultHeight
       self.stW:
-        top = self.cbBoundReg.bottom + vpad
+        top = self.cbDrawRegion.bottom + vpad
         left = self.txtY.right + hpad
         width = self.stW.defaultWidth
         height = self.stW.defaultHeight
       self.stH:
-        top = self.cbBoundReg.bottom + vpad
+        top = self.cbDrawRegion.bottom + vpad
         left = self.txtW.right + hpad
         width = self.stH.defaultWidth
         height = self.stH.defaultHeight
@@ -420,57 +433,74 @@ wClass(wPlacementPanel of wPanel):
     dc.setPen(Pen(doneAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
-  var ii: int
-  proc colorEdit(self: wPlacementPanel, event: wEvent) =
-    echo "coloredit: ", ii
-    inc ii
-
   proc onTextFocus(self: wPlacementPanel, event: wEvent) = 
     cast[wTextCtrl](event.window).setInsertionPointEnd()
     event.skip()
 
   proc onTextEdit(self: wPlacementPanel, event: wEvent) =
-    var valInt: int
-    var valFloat: float
-    let txtCtrl = cast[wTextCtrl](event.window)
-    let successInt = parseNumber(txtCtrl.value, valInt)
-    let successFloat = parseNumber(txtCtrl.value, valFloat)
-    if successInt:   echo "success int: ", valInt
-    if successFloat: echo "success float:", valFloat
+    # var valInt: int
+    # var valFloat: WType
+    const
+      errBg = 0xcec7ff
+      errFg = 0x06009c
+    let
+      txtCtrl = cast[wTextCtrl](event.window)
+      valInt = parseNumber[int](txtCtrl.value.strip())
+      valFloat = parseNumber[float](txtCtrl.value.strip())
+
+    if txtCtrl == self.txtQty and valInt.isSome():
+      txtCtrl.backgroundColor = 0xffffff
+      txtCtrl.foregroundColor = 0x000000
+    elif txtCtrl == self.txtQty and not valInt.isSome():
+      txtCtrl.backgroundColor = errBg
+      txtCtrl.foregroundColor = errFg
+    elif txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH, self.txtMinX, self.txtMinY] and valFloat.isSome():
+      txtCtrl.backgroundColor = 0xffffff
+      txtCtrl.foregroundColor = 0x000000
+    else:
+      txtCtrl.backgroundColor = errBg
+      txtCtrl.foregroundColor = errFg
 
   proc onTextCommit(self: wPlacementPanel, event: wEvent) =
-    var valInt: int
-    var valFloat: WType
+    # var valInt: int
+    # var valFloat: WType
     let txtCtrl = cast[wTextCtrl](event.window)
-    let successInt = parseNumber(txtCtrl.value, valInt)
-    let successFloat = parseNumber(txtCtrl.value, valFloat)
+    let valInt = parseNumber[int](txtCtrl.value.strip())
+    let valFloat = parseNumber[float](txtCtrl.value.strip())
+    let floatBits = if valFloat.isSome(): cast[uint64](valFloat.get()) else: 0
 
     # Only qty, x, y, w, h need to get sent when text is entered
     # min spacing is sent with the arrow buttons
+    echo "commiting?"
 
-    if txtCtrl == self.txtQty and successint:
-      if successInt:
-        sendToListeners(idPlcTxtQtySend, self.handle.WPARAM, valInt.LPARAM)
+    if txtCtrl == self.txtQty:
+      if valInt.isSome():
+        sendToListeners(idPlcTxtQtySend, self.handle.WPARAM, valInt.get().LPARAM)
+        echo "Commited: ", valInt
     elif txtCtrl == self.txtX:
-      if successInt:
-        sendToListeners(idPlcTxtXSend, self.handle.WPARAM, valInt.LPARAM)
+      if valFloat.isSome():
+        sendToListeners(idPlcTxtXSend, self.handle.WPARAM, floatBits.LPARAM)
+        echo "Commited: ", valFloat
     elif txtCtrl == self.txtY:
-      if successFloat:
-        let floatBits: uint64 = cast[uint64](valFloat)
+      if valFloat.isSome():
         sendToListeners(idPlcTxtYSend, self.handle.WPARAM, floatBits.LPARAM)
+        echo "Commited: ", valFloat
     elif txtCtrl == self.txtW:
-      if successFloat:
-        let floatBits: uint64 = cast[uint64](valFloat)
+      if valFloat.isSome():
         sendToListeners(idPlcTxtWSend, self.handle.WPARAM, floatBits.LPARAM)
+        echo "Commited: ", valFloat
     elif txtCtrl == self.txtH:
-      if successFloat:
-        let floatBits: uint64 = cast[uint64](valFloat)
+      if valFloat.isSome():
         sendToListeners(idPlcTxtHSend, self.handle.WPARAM, floatBits.LPARAM)
+        echo "Commited: ", valFloat
 
-    if not successInt and not successFloat:
-      echo "Did not send ", txtCtrl.value
-
+    if not valInt.isSome() and not valFloat.isSome():
+      echo "Did not commit: ", txtCtrl.value
     # TODO: validate and color
+
+  proc onKillFocus(self: wPlacementPanel, event: wEvent) =
+    self.onTextCommit(event)
+    event.skip()
 
   proc onButtonRandomizeAll(self: wPlacementPanel) =
     echo "button rand all"
@@ -485,26 +515,66 @@ wClass(wPlacementPanel of wPanel):
     echo "button test"
     gPubSubCompactButtons.publish(woPlcTest, BtnTest)
     # sendToListeners(idPlcTest, self.handle.WPARAM, 0)
-  proc onButtonBoundRegion(self: wPlacementPanel) =
-    echo "button bound region"
-  proc onButtonLeft(self: wPlacementPanel) =
-    echo "button left"
-  proc onButtonRight(self: wPlacementPanel) =
-    echo "button right"
-  proc onButtonUp(self: wPlacementPanel) =
-    echo "button up"
-  proc onButtonDown(self: wPlacementPanel) =
-    echo "button down"
-  proc onButtonUpLeft(self: wPlacementPanel) =
-    echo "button upleft"
-  proc onButtonUpRight(self: wPlacementPanel) =
-    echo "button upright"
-  proc onButtonDnLeft(self: wPlacementPanel) =
-    echo "button dnleft"
-  proc onButtonDnRight(self: wPlacementPanel) =
-    echo "button dnright"
+  
+  proc onCheckBoxDrawRegion(self: wPlacementPanel, event: wEvent) =
+    let drawSz = appDpiScale((buttHeightRaw, buttHeightRaw))
+    if self.cbDrawRegion.value:
+      echo "clicked"
+      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, isPressed))
+    else:
+      echo "unclicked"
+      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, isNormal))
+
+  proc onButtonCompactGo(self: wPlacementPanel, event: wEvent) =
+    let btn = cast[wButton](event.window)
+    var req: CompactRequest
+
+    let dir = 
+      if   btn == self.bLeft:  Left
+      elif btn == self.bRight: Right
+      elif btn == self.bUp:    Up
+      elif btn == self.bDown:  Down
+      elif btn == self.bUpLeft:
+        if self.rbHV.value: LeftUp
+        else:               UpLeft
+      elif btn == self.bUpRight:
+        if self.rbHV.value: RightUp
+        else:               UpRight
+      elif btn == self.bDownLeft:
+        if self.rbHV.value: LeftDown
+        else:               DownLeft
+      elif btn == self.bDownRight:
+        if self.rbHV.value: RightDown
+        else:               DownRight
+      else:
+        raise newException(ValueError, "Invalid window ref")
+
+    echo "button ", $dir
+    req.direction = dir
+    var minX, minY: WType
+    if not parseNumber(self.txtMinX.value, minX):
+      echo "Could not parse ", self.txtMinX.value
+      return
+    if not parseNumber(self.txtMinY.value, minY):
+      echo "Could not parse ", self.txtMinY.value
+      return
+    req.minSpaceX = minX
+    req.minSpaceY = minY
+    req.compactMethod = if   self.rbNone.value:  None
+                        elif self.rbStack.value: Stack
+                        else:                    Anneal
+    req.annealStrategy = if self.rbStrat1.value: Strat1
+                         else:                   Strat2
+    req.replacementFunction = if self.rbWiggle.value: Wiggle
+                              else:                   Swap
+    req.startTemp = self.slStartTemp.value.float
+    req.doMonitor = self.cbMonitor.value
+    gPubSubCompactRequest.publish(kCmpCompactReq, req)
+
   proc onButtonUndo(self: wPlacementPanel) =
     echo "button undo"
+  proc onButtonDone(self: wPlacementPanel) =
+    echo "button done"
   proc onMethodRadioButton(self: wPlacementPanel, event: wEvent) =
     if self.rbNone.value or self.rbStack.value: # No strategy
       self.sbAnneal.disable()
@@ -538,7 +608,7 @@ wClass(wPlacementPanel of wPanel):
     echo "radio button options"
   proc onOrderRadioButton(self: wPlacementPanel, event: wEvent) =
     echo "radio button order"
-  proc onTempSlider(self: wPlacementPanel, event: wEvent) =
+  proc onTempSlider(self: wPlacementPanel) =
     self.stStartTempNum.label = $self.slStartTemp.value
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
     echo "monitor checkbox"
@@ -568,6 +638,7 @@ wClass(wPlacementPanel of wPanel):
     self.stSelected     = StaticText(self, label="Selected")
     self.stSelectedNum  = StaticText(self, label="0")
     self.stCompTitle    = StaticText(self, label="Compact In Region")
+    self.stDrawRegion   = StaticText(self, label="Draw Region")
     self.stX            = StaticText(self, label="X")
     self.stY            = StaticText(self, label="Y")
     self.stW            = StaticText(self, label="W")
@@ -578,9 +649,9 @@ wClass(wPlacementPanel of wPanel):
     self.stReplFn       = StaticText(self, label="Replacement Function")
     
     self.stStartTemp    = StaticText(self, label="Start Temp")
-    self.stStartTempNum = StaticText(self, label="25", style=wAlignRight)
+    self.stStartTempNum = StaticText(self, label="xx", style=wAlignRight)
     self.stCurrTemp     = StaticText(self, label="Current Temp")
-    self.stCurrTempNum  = StaticText(self, label="25")
+    self.stCurrTempNum  = StaticText(self, label="")
     
     # Text Controls
     self.txtQty      = TextCtrl(self, style=wBorderSimple)
@@ -596,15 +667,15 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizePos = Button(self, label="Randomize Pos")
     self.bTest         = Button(self, label="Test")
     #self.bBoundReg     = Button(self, label="Draw Region")
-    self.cbBoundReg    = Checkbox(self, label="Draw Region", style=BS_PUSHLIKE.wStyle)
+    self.cbDrawRegion    = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
     self.bLeft         = Button(self)
     self.bRight        = Button(self)
     self.bUp           = Button(self)
     self.bDown         = Button(self)
     self.bUpLeft       = Button(self)
     self.bUpRight      = Button(self)
-    self.bDnLeft       = Button(self)
-    self.bDnRight      = Button(self)
+    self.bDownLeft     = Button(self)
+    self.bDownRight    = Button(self)
     self.bUndo         = Button(self, label="Undo")
     self.bDone         = Button(self, label="Done")
 
@@ -628,20 +699,21 @@ wClass(wPlacementPanel of wPanel):
     # Configure
     let titleFace = "Segoe UI"
     # Let "medium" be the default size, so change some elements to large or smal
-    self.stCompTitle.font    = Font(faceName=titleFace, pointSize=fontSizeLarge, weight=wFontWeightBold)
-    self.stStrat.font        = Font(faceName=titleFace, pointSize=fontSizeSmall)
-    self.stReplFn.font       = Font(faceName=titleFace, pointSize=fontSizeSmall)
-    self.stStartTempNum.font = Font(faceName=titleFace, pointSize=fontSizeLarge)
-    self.stCurrTempNum.font  = Font(faceName=titleFace, pointSize=fontSizeLarge)
+    self.stCompTitle.font    = Font(pointSize=fontSizeLarge, weight=wFontWeightBold)
+    self.stStrat.font        = Font(pointSize=fontSizeSmall)
+    self.stReplFn.font       = Font(pointSize=fontSizeSmall)
+    self.stStartTempNum.font = Font(pointSize=fontSizeLarge)
+    self.stCurrTempNum.font  = Font(pointSize=fontSizeLarge)
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
-    self.bUpLeft.setBitmap (iconBitmap("arrow_upleft" , iconSz))
-    self.bUp.setBitmap     (iconBitmap("arrow_up"     , iconSz))
-    self.bUpRight.setBitmap(iconBitmap("arrow_upright", iconSz))
-    self.bLeft.setBitmap   (iconBitmap("arrow_left"   , iconSz))
-    self.bRight.setBitmap  (iconBitmap("arrow_right"  , iconSz))
-    self.bDown.setBitmap   (iconBitmap("arrow_dn"     , iconSz))
-    self.bDnLeft.setBitmap (iconBitmap("arrow_dnleft" , iconSz))
-    self.bDnRight.setBitmap(iconBitmap("arrow_dnright", iconSz))
+    self.cbDrawRegion.setBitmap(iconBitmap("drag",            iconSz))
+    self.bUpLeft.setBitmap     (iconBitmap("arrow_upleft",    iconSz))
+    self.bUp.setBitmap         (iconBitmap("arrow_up",        iconSz))
+    self.bUpRight.setBitmap    (iconBitmap("arrow_upright",   iconSz))
+    self.bLeft.setBitmap       (iconBitmap("arrow_left",      iconSz))
+    self.bRight.setBitmap      (iconBitmap("arrow_right",     iconSz))
+    self.bDown.setBitmap       (iconBitmap("arrow_down",      iconSz))
+    self.bDownLeft.setBitmap   (iconBitmap("arrow_downleft",  iconSz))
+    self.bDownRight.setBitmap  (iconBitmap("arrow_downright", iconSz))
 
    
     # Respond to generic events
@@ -653,27 +725,26 @@ wClass(wPlacementPanel of wPanel):
     let ctls = @[self.txtQty, self.txtX, self.txtY, self.txtW, self.txtH,
                  self.txtMinX, self.txtMinY]
     for ctl in ctls:
+      ctl.wEvent_SetFocus  do (event: wEvent): self.onTextFocus(event)
       ctl.wEvent_Text      do (event: wEvent): self.onTextEdit(event)
       ctl.wEvent_TextEnter do (event: wEvent): self.onTextCommit(event)
-      ctl.wEvent_SetFocus  do (event: wEvent): self.onTextFocus(event)
-      ctl.wEvent_KillFocus do (event: wEvent): self.onTextCommit(event)
-      self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
+      ctl.wEvent_KillFocus do (event: wEvent): self.onKillFocus(event)
+      # self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
       
     # Buttons
     self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
     self.bRandomizePos.wEvent_Button do (): self.onButtonRandomizePos()
     self.bTest.wEvent_Button         do (): self.onButtonTest()
-    #self.bBoundReg.wEvent_Button     do (): self.onButtonBoundRegion()
-    self.bLeft.wEvent_Button         do (): self.onButtonLeft()
-    self.bRight.wEvent_Button        do (): self.onButtonRight()
-    self.bUp.wEvent_Button           do (): self.onButtonUp()
-    self.bDown.wEvent_Button         do (): self.onButtonDown()
-    self.bUpLeft.wEvent_Button       do (): self.onButtonUpLeft()
-    self.bUpRight.wEvent_Button      do (): self.onButtonUpRight()
-    self.bDnLeft.wEvent_Button       do (): self.onButtonDnLeft()
-    self.bDnRight.wEvent_Button      do (): self.onButtonDnRight()
+    self.bLeft.wEvent_Button         do (event: wEvent): self.onButtonCompactGo(event)
+    self.bRight.wEvent_Button        do (event: wEvent): self.onButtonCompactGo(event)
+    self.bUp.wEvent_Button           do (event: wEvent): self.onButtonCompactGo(event)
+    self.bDown.wEvent_Button         do (event: wEvent): self.onButtonCompactGo(event)
+    self.bUpLeft.wEvent_Button       do (event: wEvent): self.onButtonCompactGo(event)
+    self.bUpRight.wEvent_Button      do (event: wEvent): self.onButtonCompactGo(event)
+    self.bDownLeft.wEvent_Button       do (event: wEvent): self.onButtonCompactGo(event)
+    self.bDownRight.wEvent_Button      do (event: wEvent): self.onButtonCompactGo(event)
     self.bUndo.wEvent_Button         do (): self.onButtonUndo()
-    self.bDone.wEvent_Button         do (): self.parent.destroy()
+    self.bDone.wEvent_Button         do (): self.onButtonDone()
 
     # Radio Buttons
     self.rbNone.wEvent_RadioButton   do (event: wEvent): self.onMethodRadioButton(event)
@@ -687,9 +758,10 @@ wClass(wPlacementPanel of wPanel):
     self.rbVH.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
 
     # Slider
-    self.slStartTemp.wEvent_Slider do (event: wEvent): self.onTempSlider(event)
+    self.slStartTemp.wEvent_Slider do (): self.onTempSlider()
 
     # Checkbox
+    self.cbDrawRegion.wEvent_CheckBox do (event: wEvent): self.onCheckBoxDrawRegion(event)
     self.cbMonitor.wEvent_Checkbox do (event: wEvent): self.onMonitorCheckBox(event)
 
     # Click on the radio buttons to set initial state, set qty and slider
@@ -706,6 +778,8 @@ wClass(wPlacementPanel of wPanel):
     self.rbHV.click()
     self.slStartTemp.setRange(1, 100)
     self.slStartTemp.value = 50
+    self.stStartTempNum.label = $self.slStartTemp.value
+
 
 
 
@@ -726,22 +800,28 @@ wClass(wPlacementFrame of wFrame):
     echo "done"
 
 
-proc junk(data: CompactButton) = 
-  case data:
-  of BtnTest:    echo "placement bin: testing"
-  of BtnRandAll: echo "placement bin: rand all"
-  of BtnRandPos: echo "placement bin: rand pos"
 
 
 
 when isMainModule:
-  import jsoninit
+  # import jsoninit
+
+  proc junkButton(data: CompactButton) = 
+    case data:
+    of BtnTest:    echo "placement main: testing"
+    of BtnRandAll: echo "placement main: rand all"
+    of BtnRandPos: echo "placement main: rand pos"
+
+  proc junkRequest(data: CompactRequest) = 
+    echo data
+
   try:
-    jsonInitGlobals()
+    #jsonInitGlobals()
     wSetSystemDPIAware()
-    registerListener(gPubSubCompactButtons, woPlcTest,      junk )
-    registerListener(gPubSubCompactButtons, woPlcRandomAll, junk )
-    registerListener(gPubSubCompactButtons, woPlcRandomPos, junk )
+    registerListener(gPubSubCompactButtons, kCmpBtnTest,    junkButton )
+    registerListener(gPubSubCompactButtons, kCmpBtnRandAll, junkButton )
+    registerListener(gPubSubCompactButtons, kCmpBtnRandPos, junkButton )
+    registerListener(gPubSubCompactRequest, kCmpCompactReq, junkRequest)
 
     let
       app = App()

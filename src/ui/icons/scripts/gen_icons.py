@@ -2,6 +2,73 @@
 """Generate a set of modern, filled, gradient UI icons as SVG (+ glyph-only
 variants used to composite clean, non-banded PNGs with PIL)."""
 import os
+import subprocess
+
+
+def text_to_svg_path(text, x_off, y_off, font_size=11,
+                     font_match="Liberation Sans:style=Regular"):
+    """Convert text to SVG path outlines via freetype-py (no <text> element —
+    works with pixie and other SVG renderers that lack text support)."""
+    try:
+        import freetype
+    except ImportError:
+        return f'<text x="{x_off}" y="{y_off}" font-size="{font_size}" fill="#ffffff">{text}</text>'
+
+    result = subprocess.run(
+        ['fc-match', '--format=%{file}', font_match],
+        capture_output=True, text=True)
+    font_path = result.stdout.strip()
+    if not font_path:
+        return f'<text x="{x_off}" y="{y_off}" font-size="{font_size}" fill="#ffffff">{text}</text>'
+
+    face = freetype.Face(font_path)
+    face.set_char_size(font_size * 64)
+
+    def contour_to_d(pts, tgs, xo, yo):
+        def px(p): return f"{xo + p[0]/64:.2f}"
+        def py(p): return f"{yo - p[1]/64:.2f}"
+        n = len(pts)
+        d = []
+        i = 0
+        while i < n:
+            t = tgs[i] & 0x03
+            if t == 1:
+                cmd = "M" if not d else "L"
+                d.append(f"{cmd}{px(pts[i])} {py(pts[i])}")
+                i += 1
+            elif t == 2:  # cubic
+                c1, c2, ep = pts[i], pts[i+1], pts[i+2]
+                d.append(f"C{px(c1)} {py(c1)} {px(c2)} {py(c2)} {px(ep)} {py(ep)}")
+                i += 3
+            else:  # conic / quadratic
+                c = pts[i]
+                if i + 1 < n and (tgs[i+1] & 0x03) == 0:
+                    mid = ((c[0]+pts[i+1][0])//2, (c[1]+pts[i+1][1])//2)
+                    if not d: d.append(f"M{px(mid)} {py(mid)}")
+                    d.append(f"Q{px(c)} {py(c)} {px(mid)} {py(mid)}")
+                else:
+                    ep = pts[(i+1) % n]
+                    if not d: d.append(f"M{px(ep)} {py(ep)}")
+                    d.append(f"Q{px(c)} {py(c)} {px(ep)} {py(ep)}")
+                i += 1
+        d.append("Z")
+        return "".join(d)
+
+    all_d = []
+    x = x_off
+    for ch in text:
+        face.load_char(ch, freetype.FT_LOAD_NO_BITMAP)
+        adv = face.glyph.advance.x / 64
+        if ch != ' ':
+            ol = face.glyph.outline
+            start = 0
+            for end in ol.contours:
+                all_d.append(contour_to_d(list(ol.points[start:end+1]),
+                                          list(ol.tags[start:end+1]), x, y_off))
+                start = end + 1
+        x += adv
+
+    return f'<path d="{"".join(all_d)}" fill="#ffffff" fill-rule="evenodd"/>'
 
 OUT      = os.path.join("..", "icons")
 SVG_DIR  = os.path.join(OUT, "svg")
@@ -764,9 +831,7 @@ icons["stop"] = dict(
 # leaving a gap. Crosshair floats at (40,40) in that gap. Cursor tip at (40,40).
 # Fill is very light (much lighter than in-app rgba) so it reads against the gradient.
 _drag_cursor = "40,40 40,56 44,52 47,59 49,57 46,50 51,50"
-icons["drag"] = dict(
-    grad=(_c0, _c1),
-    glyph=f"""
+_drag_glyph_raw = f"""
     <rect x="8" y="8" width="32" height="32"
           fill="rgba(220,240,255,0.45)"/>
     <path d="M8,8 H40 V32 M8,8 V40 H32"
@@ -779,6 +844,27 @@ icons["drag"] = dict(
     <polygon points="{_drag_cursor}" fill="{GLYPH_WHITE}"
              stroke="{GLYPH_WHITE}" stroke-width="0.5" stroke-linejoin="round"/>
     """
+icons["drag"] = dict(
+    grad=(_c0, _c1),
+    glyph=_drag_glyph_raw,
+)
+
+# ── Drag Region (wide button: 110×30, text + drag glyph) ─────────────────────
+_BTN_W, _BTN_H = 110, 30
+# Scale drag glyph (64-space) into the right ~28px of the button
+_draw_region_text = text_to_svg_path("Draw Region", x_off=7, y_off=19, font_size=11)
+_drag_region_glyph = f"""
+    {_draw_region_text}
+    <line x1="77" y1="4" x2="77" y2="26"
+          stroke="{GLYPH_WHITE}" stroke-opacity="0.30" stroke-width="0.8"/>
+    <g transform="translate(81,0) scale(0.4375)">
+    {_drag_glyph_raw}
+    </g>
+    """
+icons["draw_region"] = dict(
+    grad=(_c0, _c1),
+    glyph=_drag_region_glyph,
+    wide=True, w=_BTN_W, h=_BTN_H,
 )
 
 
@@ -791,6 +877,75 @@ def lighten_hex(h, factor=1.08):
     h = h.lstrip('#')
     r, g, b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
     return f"#{min(255,int(r*factor)):02x}{min(255,int(g*factor)):02x}{min(255,int(b*factor)):02x}"
+
+
+def wide_svg(name, c0, c1, glyph, w=110, h=30, rx=5):
+    """Normal state for a wide (non-square) button badge."""
+    grad_id = f"g_{name}"
+    cx, cy = w / 2, h / 2
+    S = SCALE_NORMAL
+    x0, x1 = rx, w - rx
+    body = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w*2}" height="{h*2}">
+  <linearGradient id="{grad_id}" gradientUnits="userSpaceOnUse" x1="{cx}" y1="1" x2="{cx}" y2="{h-1}">
+    <stop offset="0" stop-color="{c0}"/>
+    <stop offset="1" stop-color="{c1}"/>
+  </linearGradient>
+  <g transform="translate({cx},{cy}) scale({S}) translate(-{cx},-{cy})">
+  <rect x="1" y="1" width="{w-2}" height="{h-2}" rx="{rx}" fill="url(#{grad_id})"/>
+  <path d="M{x0} 2.0 H{x1}" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1.0" stroke-linecap="round"/>
+  <path d="M{x0} {h-2.0:.1f} H{x1}" stroke="#000000" stroke-opacity="0.18" stroke-width="1.0" stroke-linecap="round"/>
+  <rect x="1" y="1" width="{w-2}" height="{h-2}" rx="{rx}" fill="none" stroke="#000000" stroke-opacity="0.12" stroke-width="0.8"/>
+  {glyph}
+  </g>
+</svg>"""
+    with open(os.path.join(SVG_DIR, f"{name}.svg"), "w") as f:
+        f.write(body)
+
+
+def wide_svg_hover(name, c0, c1, glyph, w=110, h=30, rx=5):
+    """Hover state for a wide button badge."""
+    grad_id = f"g_{name}"
+    cx, cy = w / 2, h / 2
+    S = SCALE_HOVER
+    x0, x1 = rx, w - rx
+    body = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w*2}" height="{h*2}">
+  <linearGradient id="{grad_id}" gradientUnits="userSpaceOnUse" x1="{cx}" y1="1" x2="{cx}" y2="{h-1}">
+    <stop offset="0" stop-color="{c0}"/>
+    <stop offset="1" stop-color="{c1}"/>
+  </linearGradient>
+  <g transform="translate({cx},{cy}) scale({S}) translate(-{cx},-{cy})">
+  <rect x="1" y="1" width="{w-2}" height="{h-2}" rx="{rx}" fill="url(#{grad_id})"/>
+  <path d="M{x0} 2.0 H{x1}" stroke="#ffffff" stroke-opacity="0.40" stroke-width="1.0" stroke-linecap="round"/>
+  <path d="M{x0} {h-2.0:.1f} H{x1}" stroke="#000000" stroke-opacity="0.12" stroke-width="1.0" stroke-linecap="round"/>
+  <rect x="1" y="1" width="{w-2}" height="{h-2}" rx="{rx}" fill="none" stroke="#000000" stroke-opacity="0.10" stroke-width="0.8"/>
+  {glyph}
+  </g>
+</svg>"""
+    with open(os.path.join(SVG_DIR, f"{name}.svg"), "w") as f:
+        f.write(body)
+
+
+def wide_svg_pressed(name, c0, c1, glyph, w=110, h=30, rx=5):
+    """Pressed state for a wide button badge."""
+    grad_id = f"g_{name}"
+    cx, cy = w / 2, h / 2
+    S = SCALE_PRESSED
+    x0, x1 = rx, w - rx
+    body = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w*2}" height="{h*2}">
+  <linearGradient id="{grad_id}" gradientUnits="userSpaceOnUse" x1="{cx}" y1="{h-1}" x2="{cx}" y2="1">
+    <stop offset="0" stop-color="{c0}"/>
+    <stop offset="1" stop-color="{c1}"/>
+  </linearGradient>
+  <g transform="translate({cx},{cy}) scale({S}) translate(-{cx},-{cy})">
+  <rect x="1" y="1" width="{w-2}" height="{h-2}" rx="{rx}" fill="url(#{grad_id})"/>
+  <path d="M{x0} 2.0 H{x1}" stroke="#000000" stroke-opacity="0.22" stroke-width="1.0" stroke-linecap="round"/>
+  <path d="M{x0} {h-2.0:.1f} H{x1}" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.0" stroke-linecap="round"/>
+  <rect x="1" y="1" width="{w-2}" height="{h-2}" rx="{rx}" fill="none" stroke="#000000" stroke-opacity="0.18" stroke-width="0.8"/>
+  {glyph}
+  </g>
+</svg>"""
+    with open(os.path.join(SVG_DIR, f"{name}.svg"), "w") as f:
+        f.write(body)
 
 
 # ── Labels for HTML preview ───────────────────────────────────────────────────
@@ -820,15 +975,22 @@ LABELS = {
     "arrow_left": "Arrow left",     "arrow_up_left": "Arrow up left",
     "undo": "Undo",                 "done": "Done",
     "search": "Search",             "stop": "Stop",
-    "drag": "Drag",
+    "drag": "Drag",                 "draw_region": "Draw region",
 }
 
 # ── Generate SVGs ─────────────────────────────────────────────────────────────
 for name, spec in icons.items():
     c0, c1 = spec["grad"]
-    full_svg(name, c0, c1, spec["glyph"])
-    full_svg_hover(f"{name}_hover", lighten_hex(c0), lighten_hex(c1), spec["glyph"])
-    full_svg_pressed(f"{name}_pressed", darken_hex(c0, 0.95), darken_hex(c1, 0.95), spec["glyph"])
+    glyph = spec["glyph"]
+    if spec.get("wide"):
+        w, h = spec.get("w", 110), spec.get("h", 30)
+        wide_svg(name, c0, c1, glyph, w, h)
+        wide_svg_hover(f"{name}_hover", lighten_hex(c0), lighten_hex(c1), glyph, w, h)
+        wide_svg_pressed(f"{name}_pressed", darken_hex(c0, 0.95), darken_hex(c1, 0.95), glyph, w, h)
+    else:
+        full_svg(name, c0, c1, glyph)
+        full_svg_hover(f"{name}_hover", lighten_hex(c0), lighten_hex(c1), glyph)
+        full_svg_pressed(f"{name}_pressed", darken_hex(c0, 0.95), darken_hex(c1, 0.95), glyph)
 
 # ── Generate icon_preview.html ────────────────────────────────────────────────
 PREVIEW_DIR = os.path.join(OUT, "preview")
@@ -837,11 +999,18 @@ PREVIEW_OUT = os.path.join(PREVIEW_DIR, "icon_preview.html")
 DETAIL_OUT  = os.path.join(PREVIEW_DIR, "icon_detail.html")
 
 cards = []
-for name in icons:
+for name, spec in icons.items():
     label = LABELS.get(name, name.replace("_", " ").title())
+    if spec.get("wide"):
+        w, h = spec.get("w", 110), spec.get("h", 30)
+        img_style = f' style="width:{w}px;height:{h}px"'
+        card_class = "card widecard"
+    else:
+        img_style = ""
+        card_class = "card"
     cards.append(
-        f'    <div class="card" data-icon="{name}" data-label="{label}">\n'
-        f'      <img src="../svg/{name}.svg" alt="{label}" draggable="false">\n'
+        f'    <div class="{card_class}" data-icon="{name}" data-label="{label}">\n'
+        f'      <img src="../svg/{name}.svg" alt="{label}" draggable="false"{img_style}>\n'
         f'      <span>{label}</span>\n'
         f'    </div>'
     )
