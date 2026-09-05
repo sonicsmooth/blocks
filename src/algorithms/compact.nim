@@ -11,7 +11,7 @@ import monoprofile
 import directions
 from recttable import `[]`, dbComps
 import document
-import userMessages
+import usermessages
 
 type 
   Axis* = enum X=true, Y=false

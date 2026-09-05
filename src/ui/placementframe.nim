@@ -1,6 +1,5 @@
 
 from std/strutils import strip
-import std/tables
 
 import wNim
 import winim
@@ -472,16 +471,13 @@ wClass(wPlacementPanel of wPanel):
     let valFloat = parseNumber[float](txtCtrl.value.strip())
 
     if valInt.isSome() and txtCtrl == self.txtQty:
-      sendToListeners(idPlcTxtQtySend, self.handle.WPARAM, valInt.get().LPARAM)
+      publish(Qty, valInt.get())
       echo "Comitted: ", valInt.get()
     elif valFloat.isSome() and txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH]:
-      let floatBits = cast[uint64](valFloat.get())
-      var msgId: uint32
-      if   txtCtrl == self.txtX:  msgId = idPlcTxtXSend
-      elif txtCtrl == self.txtY:  msgId = idPlcTxtYSend
-      elif txtCtrl == self.txtW:  msgId = idPlcTxtWSend
-      elif txtCtrl == self.txtH:  msgId = idPlcTxtHSend
-      sendToListeners(msgId, self.handle.WPARAM, floatBits.LPARAM)
+      if   txtCtrl == self.txtX:  publish(RegionX, valFloat.get())
+      elif txtCtrl == self.txtY:  publish(RegionY, valFloat.get())
+      elif txtCtrl == self.txtW:  publish(RegionW, valFloat.get())
+      elif txtCtrl == self.txtH:  publish(RegionH, valFloat.get())
       echo "Commited: ", valFloat.get()
     else:
       echo "not commiting: ", txtCtrl.value
@@ -491,19 +487,13 @@ wClass(wPlacementPanel of wPanel):
     event.skip()
 
   proc onButtonRandomizeAll(self: wPlacementPanel) =
-    echo "button rand all"
-    gPubSubCompactButtons.publish(woPlcTest, BtnRandAll)
-    # sendToListeners(idPlcRandomAll, self.handle.WPARAM, 0)
+    publish(RandAll)
 
   proc onButtonRandomizePos(self: wPlacementPanel) =
-    echo "button rand pos"
-    gPubSubCompactButtons.publish(woPlcTest, BtnRandPos)
-    # sendToListeners(idPlcRandomPos, self.handle.WPARAM, 0)
+    publish(RandPos)
   
   proc onButtonTest(self: wPlacementPanel) =
-    echo "button test"
-    gPubSubCompactButtons.publish(woPlcTest, BtnTest)
-    # sendToListeners(idPlcTest, self.handle.WPARAM, 0)
+    publish(Test)
   
   proc onCheckBoxDrawRegion(self: wPlacementPanel, event: wEvent) =
     let drawSz = appDpiScale((iconSizeRaw, iconSizeRaw))
@@ -516,7 +506,6 @@ wClass(wPlacementPanel of wPanel):
 
   proc onButtonCompactGo(self: wPlacementPanel, event: wEvent) =
     let btn = cast[wButton](event.window)
-    var req: CompactRequest
 
     let dir = 
       if   btn == self.bLeft:  Left
@@ -538,7 +527,6 @@ wClass(wPlacementPanel of wPanel):
       else:
         raise newException(ValueError, "Invalid window ref")
 
-    req.direction = dir
     var minX, minY: WType
     if not parseNumber(self.txtMinX.value, minX):
       echo "Could not parse ", self.txtMinX.value
@@ -546,18 +534,19 @@ wClass(wPlacementPanel of wPanel):
     if not parseNumber(self.txtMinY.value, minY):
       echo "Could not parse ", self.txtMinY.value
       return
-    req.minSpaceX = minX
-    req.minSpaceY = minY
-    req.compactMethod = if   self.rbNone.value:  None
-                        elif self.rbStack.value: Stack
-                        else:                    Anneal
-    req.annealStrategy = if self.rbStrat1.value: Strat1
-                         else:                   Strat2
-    req.replacementFunction = if self.rbWiggle.value: Wiggle
-                              else:                   Swap
-    req.startTemp = self.slStartTemp.value.float
-    req.doMonitor = self.cbMonitor.value
-    gPubSubCompactRequest.publish(kCmpCompactReq, req)
+    publish(CompactRequest(
+      direction: dir,
+      minSpaceX: minX,
+      minSpaceY: minY,
+      compactMethod: if   self.rbNone.value:  None
+                     elif self.rbStack.value: Stack
+                     else:                    Anneal,
+      annealStrategy: if self.rbStrat1.value: Strat1
+                      else:                   Strat2,
+      replacementFunction: if self.rbWiggle.value: Wiggle
+                           else:                   Swap,
+      startTemp: self.slStartTemp.value.float,
+      doMonitor: self.cbMonitor.value ))
 
   proc updateCompactButton(self: wPlacementPanel, btn: wButton, state: IconState) =
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
@@ -603,10 +592,12 @@ wClass(wPlacementPanel of wPanel):
     event.skip()
 
   proc onButtonUndo(self: wPlacementPanel) =
-    echo "button undo"
+    publish(Undo)
   
   proc onButtonDone(self: wPlacementPanel) =
-    echo "button done"
+    echo "placement panel done"
+    publish(Done)
+    self.parent.close() # Close the panel
   
   proc onMethodRadioButton(self: wPlacementPanel, event: wEvent) =
     if self.rbNone.value or self.rbStack.value: # No strategy
@@ -637,8 +628,10 @@ wClass(wPlacementPanel of wPanel):
       self.rbSwap.enable()
       self.slStartTemp.enable()
       self.cbMonitor.enable()
+  
   proc onOptionsRadioButton(self: wPlacementPanel, event: wEvent) =
-    echo "radio button options"
+    discard
+  
   proc onOrderRadioButton(self: wPlacementPanel, event: wEvent) =
     self.updateCompactButton(self.bLeftUp,    Normal)
     self.updateCompactButton(self.bRightUp,   Normal)
@@ -647,8 +640,13 @@ wClass(wPlacementPanel of wPanel):
 
   proc onTempSlider(self: wPlacementPanel) =
     self.stStartTempNum.label = $self.slStartTemp.value
+ 
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
-    echo "monitor checkbox"
+    discard
+
+  proc onDestroy(self: wPlacementPanel, event: wEvent) =
+    # Too late to clean up up any resources
+    echo "Placement panel onDestroy"
 
   proc requiredSize(self: wPlacementPanel): wSize =
     # After layout() has positioned everything, find the true extent
@@ -703,7 +701,6 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizeAll = Button(self, label="Randomize All")
     self.bRandomizePos = Button(self, label="Randomize Pos")
     self.bTest         = Button(self, label="Test")
-    self.cbDrawRegion    = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
     self.bLeft         = Button(self, style=BS_BITMAP)
     self.bRight        = Button(self, style=BS_BITMAP)
     self.bUp           = Button(self, style=BS_BITMAP)
@@ -729,11 +726,11 @@ wClass(wPlacementPanel of wPanel):
     # Slider
     self.slStartTemp = Slider(self)
 
-    # Checkbox
-    self.cbMonitor = CheckBox(self, label="Monitor Progress")
+    # Checkboxes
+    self.cbDrawRegion = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
+    self.cbMonitor    = CheckBox(self, label="Monitor Progress")
 
     # Configure
-    let titleFace = "Segoe UI"
     # Let "medium" be the default size, so change some elements to large or smal
     self.stCompTitle.font    = Font(pointSize=fontSizeLarge, weight=wFontWeightBold)
     self.stStrat.font        = Font(pointSize=fontSizeSmall)
@@ -747,6 +744,7 @@ wClass(wPlacementPanel of wPanel):
     # Respond to generic events
     self.wEvent_Size do (event: wEvent): self.onResize()
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
+    self.wEvent_Destroy do (event: wEvent): self.onDestroy(event)
 
     # Respond to controls
     # Text Controls
@@ -757,7 +755,6 @@ wClass(wPlacementPanel of wPanel):
       ctl.wEvent_Text      do (event: wEvent): self.onTextEdit(event)
       ctl.wEvent_TextEnter do (event: wEvent): self.onTextCommit(event)
       ctl.wEvent_KillFocus do (event: wEvent): self.onKillFocus(event)
-      # self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
       
     # Buttons
     self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
@@ -821,40 +818,38 @@ wClass(wPlacementPanel of wPanel):
 
 
 wClass(wPlacementFrame of wFrame):
-  proc onDestroy(self: wPlacementFrame) =
+  proc onClose(self: wPlacementFrame, event: wEvent) =
+    echo "PlacementFrame onClose"
     sendToListeners(idPlcFrameClosing, self.handle.WPARAM, 0)
+    event.skip()
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
-    echo "init start"
     wFrame(self).init(owner, title = "Placement")
     self.backgroundColor = frameBackgroundColor
     self.mPanel = PlacementPanel(self)
     self.mPanel.layout()
     self.clientSize = self.mPanel.requiredSize
     # Respond to generic events
-    self.wEvent_Close do(): self.onDestroy()
-    echo "done"
+    self.wEvent_Close do (event: wEvent): self.onClose(event)
 
 
 when isMainModule:
   # import jsoninit
 
-  proc junkButton(data: CompactButton) = 
-    case data:
-    of BtnTest:    echo "placement main: testing"
-    of BtnRandAll: echo "placement main: rand all"
-    of BtnRandPos: echo "placement main: rand pos"
-
-  proc junkRequest(data: CompactRequest) = 
-    echo data
-
   try:
     #jsonInitGlobals()
     wSetSystemDPIAware()
-    registerListener(gPubSubCompactButtons, kCmpBtnTest,    junkButton )
-    registerListener(gPubSubCompactButtons, kCmpBtnRandAll, junkButton )
-    registerListener(gPubSubCompactButtons, kCmpBtnRandPos, junkButton )
-    registerListener(gPubSubCompactRequest, kCmpCompactReq, junkRequest)
+    registerListener(Qty, proc(q: int) = echo "Listener says Qty: ", q)
+    registerListener(RegionX, proc(x: float) = echo "Listener says RegionX: ", x)
+    registerListener(RegionY, proc(y: float) = echo "Listener says RegionY: ", y)
+    registerListener(RegionW, proc(w: float) = echo "Listener says RegionW: ", w)
+    registerListener(RegionH, proc(h: float) = echo "Listener says RegionH: ", h)
+    registerListener(RandAll, proc() = echo "Listener says RandAll")
+    registerListener(RandPos, proc() = echo "Listener says RandPos")
+    registerListener(Test, proc() = echo "Listener says Test")
+    registerListener(Undo, proc() = echo "Listener says Undo")
+    registerListener(CompactReq, proc(req: CompactRequest) =
+      echo "Listener says CompactRequest: ", req)
 
     let
       app = App()

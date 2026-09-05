@@ -4,7 +4,7 @@ import sequtils
 import wnim
 import winim/inc/windef except PRECT
 import winim/inc/winuser
-import userMessages
+import usermessages
 import randrect, arange, rotation, recttable, world
 import concurrent
 

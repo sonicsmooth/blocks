@@ -12,7 +12,7 @@ import concurrent
 import document
 import reporting
 import stack
-import userMessages
+import usermessages
 import utils
 import winimutils
 import world
