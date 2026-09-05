@@ -68,12 +68,12 @@ const
   vmargRaw = 12
   hpadRaw = 12 
   vpadRaw = 12
-  hspcRaw = 18 # Distance between group boxes
-  vspcRaw = 14
+  hspcRaw = 12 # Distance between group boxes
+  vspcRaw = 12
   vgapRaw = 4
   # bigDescentRaw = 4 # fudged until it looks ok
   fontSizeSmall = 9
-  fontSizeMed = 12
+  # fontSizeMed = 12
   fontSizeLarge = 16
 
 proc fontDescent(font: wFont): int =
@@ -440,9 +440,9 @@ wClass(wPlacementPanel of wPanel):
     cast[wTextCtrl](event.window).setInsertionPointEnd()
     event.skip()
 
+
+  # TODO: redo all parseNumbers
   proc onTextEdit(self: wPlacementPanel, event: wEvent) =
-    # var valInt: int
-    # var valFloat: WType
     const
       errBg = 0xcec7ff
       errFg = 0x06009c
@@ -499,6 +499,7 @@ wClass(wPlacementPanel of wPanel):
     echo "button rand pos"
     gPubSubCompactButtons.publish(woPlcTest, BtnRandPos)
     # sendToListeners(idPlcRandomPos, self.handle.WPARAM, 0)
+  
   proc onButtonTest(self: wPlacementPanel) =
     echo "button test"
     gPubSubCompactButtons.publish(woPlcTest, BtnTest)
@@ -576,25 +577,37 @@ wClass(wPlacementPanel of wPanel):
     elif btn == self.bRightDown:
       if self.rbHV.value: btn.setBitmap(iconBitmap("lower_right_hv_arrow", iconSz, state), wCenter)
       else:               btn.setBitmap(iconBitmap("lower_right_vh_arrow", iconSz, state), wCenter)
+    btn.bitmap4margins = (0, 0, 0, 0)
 
   proc onButtonMouseEnterLeave(self: wPlacementPanel, event: wEvent) =
     let btn = cast[wButton](event.window)
-    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
     let state = if event.eventType == wEvent_MouseEnter: Hover else: Normal
     self.updateCompactButton(btn, state)
     event.skip()
 
   proc onButtonMouseClick(self: wPlacementPanel, event: wEvent) =
     let btn = cast[wButton](event.window)
-    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
     let state = if event.eventType == wEvent_LeftDown: Pressed else: Hover
     self.updateCompactButton(btn, state)
     event.skip()
 
+  proc onCheckboxMouseEnterLeave(self: wPlacementPanel, event: wEvent) =
+    let cb = cast[wCheckBox](event.window)
+    if cb == self.cbDrawRegion:
+      let state = if event.eventType == wEvent_MouseEnter: Hover else: Normal
+      let drawSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+      if cb.value:
+        cb.setBitmap(iconBitmap("drag", drawSz, Pressed))
+      else:
+        cb.setBitmap(iconBitmap("drag", drawSz, state))
+    event.skip()
+
   proc onButtonUndo(self: wPlacementPanel) =
     echo "button undo"
+  
   proc onButtonDone(self: wPlacementPanel) =
     echo "button done"
+  
   proc onMethodRadioButton(self: wPlacementPanel, event: wEvent) =
     if self.rbNone.value or self.rbStack.value: # No strategy
       self.sbAnneal.disable()
@@ -775,8 +788,10 @@ wClass(wPlacementPanel of wPanel):
     self.slStartTemp.wEvent_Slider do (): self.onTempSlider()
 
     # Checkbox
-    self.cbDrawRegion.wEvent_CheckBox do (event: wEvent): self.onCheckBoxDrawRegion(event)
-    self.cbMonitor.wEvent_Checkbox do (event: wEvent): self.onMonitorCheckBox(event)
+    self.cbDrawRegion.wEvent_CheckBox   do (event: wEvent): self.onCheckBoxDrawRegion(event)
+    self.cbDrawRegion.wEvent_MouseEnter do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
+    self.cbDrawRegion.wEvent_MouseLeave do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
+    self.cbMonitor.wEvent_Checkbox      do (event: wEvent): self.onMonitorCheckBox(event)
 
     # Click on the radio buttons to set initial state, set qty and slider
     self.txtQty.value = "10"
@@ -805,10 +820,6 @@ wClass(wPlacementPanel of wPanel):
     self.updateCompactButton(self.bRightDown, Normal)
 
 
-
-
-
-
 wClass(wPlacementFrame of wFrame):
   proc onDestroy(self: wPlacementFrame) =
     sendToListeners(idPlcFrameClosing, self.handle.WPARAM, 0)
@@ -823,9 +834,6 @@ wClass(wPlacementFrame of wFrame):
     # Respond to generic events
     self.wEvent_Close do(): self.onDestroy()
     echo "done"
-
-
-
 
 
 when isMainModule:
