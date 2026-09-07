@@ -35,10 +35,14 @@ type
       txtMinX, txtMinY: wTextCtrl
 
     # Buttons
-    bRandomizeAll, bRandomizePos, bTest, #bBoundReg,
-      bLeft, bRight, bUp, bDown,
-      bLeftUp, bRightUp, bLeftDown, bRightDown,
+    bRandomizeAll, bRandomizePos, bTest,
+      #bLeft, bRight, bUp, bDown,
+      #bLeftUp, bRightUp, bLeftDown, bRightDown,
       bUndo, bDone: wButton
+
+    # Static images
+    bLeft, bRight, bUp, bDown,
+      bLeftUp, bRightUp, bLeftDown, bRightDown: wStaticBitmap
 
     # Radio buttons
     rbNone, rbStack, rbAnneal, rbStrat1, rbStrat2, 
@@ -505,7 +509,8 @@ wClass(wPlacementPanel of wPanel):
       self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Hover))
 
   proc onButtonCompactGo(self: wPlacementPanel, event: wEvent) =
-    let btn = cast[wButton](event.window)
+    # let btn = cast[wButton](event.window)
+    let btn = cast[wStaticBitmap](event.window)
 
     let dir = 
       if   btn == self.bLeft:  Left
@@ -548,34 +553,35 @@ wClass(wPlacementPanel of wPanel):
       startTemp: self.slStartTemp.value.float,
       doMonitor: self.cbMonitor.value ))
 
-  proc updateCompactButton(self: wPlacementPanel, btn: wButton, state: IconState) =
+  proc updateCompactButton(self: wPlacementPanel, btn: wStaticBitmap, state: IconState) =
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
-    if   btn == self.bLeft:  btn.setBitmap(iconBitmap("arrow_left" , iconSz, state), wCenter)
-    elif btn == self.bRight: btn.setBitmap(iconBitmap("arrow_right", iconSz, state), wCenter)
-    elif btn == self.bUp:    btn.setBitmap(iconBitmap("arrow_up",    iconSz, state), wCenter)
-    elif btn == self.bDown:  btn.setBitmap(iconBitmap("arrow_down",  iconSz, state), wCenter)
+    if   btn == self.bLeft:  btn.setBitmap(iconBitmap("arrow_left" , iconSz, state))
+    elif btn == self.bRight: btn.setBitmap(iconBitmap("arrow_right", iconSz, state))
+    elif btn == self.bUp:    btn.setBitmap(iconBitmap("arrow_up",    iconSz, state))
+    elif btn == self.bDown:  btn.setBitmap(iconBitmap("arrow_down",  iconSz, state))
     elif btn == self.bLeftUp:
-      if self.rbHV.value: btn.setBitmap(iconBitmap("upper_left_hv_arrow", iconSz, state), wCenter)
-      else:               btn.setBitmap(iconBitmap("upper_left_vh_arrow", iconSz, state), wCenter)
+      if self.rbHV.value: btn.setBitmap(iconBitmap("upper_left_hv_arrow", iconSz, state))
+      else:               btn.setBitmap(iconBitmap("upper_left_vh_arrow", iconSz, state))
     elif btn == self.bRightUp:
-      if self.rbHV.value: btn.setBitmap(iconBitmap("upper_right_hv_arrow", iconSz, state), wCenter)
-      else:               btn.setBitmap(iconBitmap("upper_right_vh_arrow", iconSz, state), wCenter)
+      if self.rbHV.value: btn.setBitmap(iconBitmap("upper_right_hv_arrow", iconSz, state))
+      else:               btn.setBitmap(iconBitmap("upper_right_vh_arrow", iconSz, state))
     elif btn == self.bLeftDown:
-      if self.rbHV.value: btn.setBitmap(iconBitmap("lower_left_hv_arrow", iconSz, state), wCenter)
-      else:               btn.setBitmap(iconBitmap("lower_left_vh_arrow", iconSz, state), wCenter)
+      if self.rbHV.value: btn.setBitmap(iconBitmap("lower_left_hv_arrow", iconSz, state))
+      else:               btn.setBitmap(iconBitmap("lower_left_vh_arrow", iconSz, state))
     elif btn == self.bRightDown:
-      if self.rbHV.value: btn.setBitmap(iconBitmap("lower_right_hv_arrow", iconSz, state), wCenter)
-      else:               btn.setBitmap(iconBitmap("lower_right_vh_arrow", iconSz, state), wCenter)
-    btn.bitmap4margins = (0, 0, 0, 0)
+      if self.rbHV.value: btn.setBitmap(iconBitmap("lower_right_hv_arrow", iconSz, state))
+      else:               btn.setBitmap(iconBitmap("lower_right_vh_arrow", iconSz, state))
 
   proc onButtonMouseEnterLeave(self: wPlacementPanel, event: wEvent) =
-    let btn = cast[wButton](event.window)
+    #let btn = cast[wButton](event.window)
+    let btn = cast[wStaticBitmap](event.window)
     let state = if event.eventType == wEvent_MouseEnter: Hover else: Normal
     self.updateCompactButton(btn, state)
     event.skip()
 
   proc onButtonMouseClick(self: wPlacementPanel, event: wEvent) =
-    let btn = cast[wButton](event.window)
+    # let btn = cast[wButton](event.window)
+    let btn = cast[wStaticBitmap](event.window)
     let state = if event.eventType == wEvent_LeftDown: Pressed else: Hover
     self.updateCompactButton(btn, state)
     event.skip()
@@ -645,7 +651,7 @@ wClass(wPlacementPanel of wPanel):
     discard
 
   proc onDestroy(self: wPlacementPanel, event: wEvent) =
-    # Too late to clean up up any resources
+    # Too late to prevent closing
     echo "Placement panel onDestroy"
 
   proc requiredSize(self: wPlacementPanel): wSize =
@@ -661,6 +667,9 @@ wClass(wPlacementPanel of wPanel):
     wPanel(self).init(parent)
     self.backgroundColor = panelBackgroundColor
     # Create controls
+    echo "priming bitmap cache"
+    primeBitmapCache(appDpiScale((iconSizeRaw, iconSizeRaw)))
+    echo "done priming bitmap cache"
     # Static Boxes
     self.sbBoundReg      = StaticBox(self, label="Bounding Region")
     self.sbCompactMethod = StaticBox(self, label="Compact Method")
@@ -701,14 +710,14 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizeAll = Button(self, label="Randomize All")
     self.bRandomizePos = Button(self, label="Randomize Pos")
     self.bTest         = Button(self, label="Test")
-    self.bLeft         = Button(self, style=BS_BITMAP)
-    self.bRight        = Button(self, style=BS_BITMAP)
-    self.bUp           = Button(self, style=BS_BITMAP)
-    self.bDown         = Button(self, style=BS_BITMAP)
-    self.bLeftUp       = Button(self, style=BS_BITMAP)
-    self.bRightUp      = Button(self, style=BS_BITMAP)
-    self.bLeftDown     = Button(self, style=BS_BITMAP)
-    self.bRightDown    = Button(self, style=BS_BITMAP)
+    self.bLeft         = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bRight        = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bUp           = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bDown         = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bLeftUp       = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bRightUp      = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bLeftDown     = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bRightDown    = StaticBitmap(self) #, style=BS_BITMAP)
     self.bUndo         = Button(self, label="Undo")
     self.bDone         = Button(self, label="Done")
 

@@ -1,11 +1,14 @@
-import std/[os, tables]
+import std/[os, sequtils, tables]
 import wNim
 import pixie/fileformats/[png, svg]
+
 
 type
   IconState* = enum Normal, Hover, Pressed
   IconVariants = array[IconState, string]   # SVG content per state
   IconTable = Table[string, IconVariants]
+  BitmapVariants = Table[IconState, wTypes.wBitmap]  # Rendered bitmap per state
+  BitmapCache = Table[string, BitmapVariants]  # Cache of rendered bitmaps
 
 const
   iconsPath = currentSourcePath.parentDir / "icons/svg"
@@ -67,6 +70,7 @@ const
     ("undo",                 "undo"),
   ]
 
+
 proc loadVariants(baseFile: string): tuple[variants: IconVariants, missing: seq[IconState]] =
   # Load whichever state files actually exist; record which ones don't.
   for state in IconState:
@@ -90,20 +94,39 @@ when defined(staticIcons):
   const gIcons = buildIconTable()
 else:
   let gIcons = buildIconTable()
+var gBitmapCache: BitmapCache
+
+proc renderBitmap(svgData: string, sz: wSize): wBitmap =
+  let svgObj = parseSvg(svgData, sz.width, sz.height)
+  let im = newImage(svgObj)
+  let pngBytes = im.encodePng()
+  let wimg = Image(pngBytes[0].addr, pngBytes.len)
+  Bitmap(wimg)
+
+proc primeBitmapCache*(sz: wSize) =
+  for name, variants in gIcons:
+    for state in IconState:
+      gBitmapCache[name] = initTable[IconState, wTypes.wBitmap]()
+      gBitmapCache[name][state] = renderBitmap(variants[state], sz)
 
 proc iconNames*(): seq[string] =
   for name in gIcons.keys:
     result.add(name)
 
 proc iconBitmap*(name: string, sz: wSize, state: IconState = Normal): wBitmap =
-  if name notin gIcons:
-    raise newException(KeyError, "Unknown icon name: '" & name & "'. Known: " & $iconNames())
-  let sData = gIcons[name][state]
-  let svgObj = parseSvg(sData, sz.width, sz.height)
-  let im = newImage(svgObj)
-  let pngBytes = im.encodePng()
-  let wimg = Image(pngBytes[0].addr, pngBytes.len)
-  result = Bitmap(wimg)
+  if name notin gBitmapCache:
+    # echo "cache miss for icon '", name, "' state ", state
+    gBitmapCache[name] = initTable[IconState, wTypes.wBitmap]()
+  if state notin gBitmapCache[name]:
+    # echo "name exists; cache miss for icon '", name, "' state ", state
+    if name notin gIcons:
+      raise newException(KeyError, "Unknown icon name: '" & name & "'. Known: " & $iconNames())
+    let sData = gIcons[name][state]
+    # echo "Rendering icon '", name, "' state ", state, " size ", sz
+    # echo "cache variants now: ", gIcons[name]
+    # echo "cache keys now: ", gBitmapCache.keys.toSeq
+    gBitmapCache[name][state] = renderBitmap(sData, sz)
+  gBitmapCache[name][state]
 
 when isMainModule:
   echo "Loaded ", iconNames().len, " icons:"
