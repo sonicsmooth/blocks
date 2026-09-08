@@ -56,34 +56,7 @@ const
   idGCFClosing*         = WM_USER + ord(woGridCtrlFrameClosing)
   
   # # Placement Frame
-  # idPlcDownLeft*        = WM_USER + ord(woPlcDownLeft)
-  # idPlcDown*            = WM_USER + ord(woPlcDown)
-  # idPlcDownRight*       = WM_USER + ord(woPlcDownRight)
-  # idPlcLeft*            = WM_USER + ord(woPlcLeft)
-  # idPlcRight*           = WM_USER + ord(woPlcRight)
-  # idPlcUpLeft*          = WM_USER + ord(woPlcUpLeft)
-  # idPlcUndo*            = WM_USER + ord(woPlcUndo)
-  # idPlcUp*              = WM_USER + ord(woPlcUp)
-  # idPlcUpRight*         = WM_USER + ord(woPlcUpRight)
-  # idPlcDrawRegionEnd*   = WM_USER + ord(woPlcDrawRegionEnd)
-  # idPlcDrawRegionStart* = WM_USER + ord(woPlcDrawRegionStart)
   idPlcFrameClosing*    = WM_USER + ord(woPlcFrameClosing)
-  # idPlcRandomAll*       = WM_USER + ord(woPlcRandomAll)
-  # idPlcRandomPos*       = WM_USER + ord(woPlcRandomPos)
-  # idPlcSelectedRecv*    = WM_USER + ord(woPlcSelectedRecv)
-  # idPlcTest*            = WM_USER + ord(woPlcTest)
-  # idPLcTxtQtyRecv*      = WM_USER + ord(woPLCTxtQtyRecv)
-  # idPlcTxtQtySend*      = WM_USER + ord(woPlcTxtQtySend)
-  # idPlcTxtXRecv*        = WM_USER + ord(woPlcTxtXRecv)
-  # idPlcTxtXSend*        = WM_USER + ord(woPlcTxtXSend)
-  # idPlcTxtyRecv*        = WM_USER + ord(woPlcTxtyRecv)
-  # idPlcTxtYSend*        = WM_USER + ord(woPlcTxtYSend)
-  # idPlcTxtWRecv*        = WM_USER + ord(woPlcTxtWRecv)
-  # idPlcTxtWSend*        = WM_USER + ord(woPlcTxtWSend)
-  # idPlcTxtHRecv*        = WM_USER + ord(woPlcTxtHRecv)
-  # idPlcTxtHSend*        = WM_USER + ord(woPlcTxtHSend)
-  # idPlcTxtTempRecv*     = WM_USER + ord(woPlcTxtTempRecv)
-
 
 
   

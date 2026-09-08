@@ -582,8 +582,11 @@ wClass(wPlacementPanel of wPanel):
   proc onButtonMouseClick(self: wPlacementPanel, event: wEvent) =
     # let btn = cast[wButton](event.window)
     let btn = cast[wStaticBitmap](event.window)
-    let state = if event.eventType == wEvent_LeftDown: Pressed else: Hover
-    self.updateCompactButton(btn, state)
+    if event.eventType == wEvent_LeftDown:
+      self.updateCompactButton(btn, Pressed)
+    elif event.eventType == wEvent_LeftUp:
+      self.updateCompactButton(btn, Hover)
+      self.onButtonCompactGo(event)
     event.skip()
 
   proc onCheckboxMouseEnterLeave(self: wPlacementPanel, event: wEvent) =
@@ -668,7 +671,14 @@ wClass(wPlacementPanel of wPanel):
     self.backgroundColor = panelBackgroundColor
     # Create controls
     echo "priming bitmap cache"
-    primeBitmapCache(appDpiScale((iconSizeRaw, iconSizeRaw)))
+    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    for iconName in @["arrow_left", "arrow_right", "arrow_up", "arrow_down",
+                      "upper_left_hv_arrow", "upper_left_vh_arrow",
+                      "upper_right_hv_arrow", "upper_right_vh_arrow",
+                      "lower_left_hv_arrow", "lower_left_vh_arrow",
+                      "lower_right_hv_arrow", "lower_right_vh_arrow",
+                      "drag"]:
+      primeBitmapCache(iconName, iconSz)
     echo "done priming bitmap cache"
     # Static Boxes
     self.sbBoundReg      = StaticBox(self, label="Bounding Region")
@@ -710,14 +720,14 @@ wClass(wPlacementPanel of wPanel):
     self.bRandomizeAll = Button(self, label="Randomize All")
     self.bRandomizePos = Button(self, label="Randomize Pos")
     self.bTest         = Button(self, label="Test")
-    self.bLeft         = StaticBitmap(self) #, style=BS_BITMAP)
-    self.bRight        = StaticBitmap(self) #, style=BS_BITMAP)
-    self.bUp           = StaticBitmap(self) #, style=BS_BITMAP)
-    self.bDown         = StaticBitmap(self) #, style=BS_BITMAP)
-    self.bLeftUp       = StaticBitmap(self) #, style=BS_BITMAP)
-    self.bRightUp      = StaticBitmap(self) #, style=BS_BITMAP)
-    self.bLeftDown     = StaticBitmap(self) #, style=BS_BITMAP)
-    self.bRightDown    = StaticBitmap(self) #, style=BS_BITMAP)
+    self.bLeft         = StaticBitmap(self)
+    self.bRight        = StaticBitmap(self)
+    self.bUp           = StaticBitmap(self)
+    self.bDown         = StaticBitmap(self)
+    self.bLeftUp       = StaticBitmap(self)
+    self.bRightUp      = StaticBitmap(self)
+    self.bLeftDown     = StaticBitmap(self)
+    self.bRightDown    = StaticBitmap(self)
     self.bUndo         = Button(self, label="Undo")
     self.bDone         = Button(self, label="Done")
 
@@ -747,7 +757,6 @@ wClass(wPlacementPanel of wPanel):
     self.stStartTempNum.font = Font(pointSize=fontSizeLarge)
     self.stCurrTempNum.font  = Font(pointSize=fontSizeLarge)
     # Update arrow buttons down below after the radio buttons are clicked, so they have the right icon
-    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
     self.cbDrawRegion.setBitmap(iconBitmap("drag", iconSz))
    
     # Respond to generic events
@@ -771,11 +780,13 @@ wClass(wPlacementPanel of wPanel):
     self.bTest.wEvent_Button         do (): self.onButtonTest()
     for btn in @[self.bLeft, self.bRight, self.bUp, self.bDown,
                  self.bLeftUp, self.bRightUp, self.bLeftDown, self.bRightDown]:
-      btn.wEvent_Button     do (event: wEvent): self.onButtonCompactGo(event)
+      # btn.wEvent_CommandLeftClick do (event: wEvent): self.onButtonCompactGo(event)
+      # btn.WM_RIGHTCLICK do (event: wEvent): echo "right click"
+      # btn.wEvent_Button     do (event: wEvent): self.onButtonCompactGo(event)
       btn.wEvent_MouseEnter do (event: wEvent): self.onButtonMouseEnterLeave(event)
       btn.wEvent_MouseLeave do (event: wEvent): self.onButtonMouseEnterLeave(event)
-      btn.wEvent_LeftDown   do (event: wEvent): self.onButtonMouseClick(event)
-      btn.wEvent_LeftUp     do (event: wEvent): self.onButtonMouseClick(event)
+      btn.wEvent_LeftDown   do (event: wEvent): echo "down"; self.onButtonMouseClick(event)
+      btn.wEvent_LeftUp     do (event: wEvent): echo "up"; self.onButtonMouseClick(event)
     self.bUndo.wEvent_Button do (): self.onButtonUndo()
     self.bDone.wEvent_Button do (): self.onButtonDone()
 

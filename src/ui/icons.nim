@@ -1,4 +1,4 @@
-import std/[os, sequtils, tables]
+import std/[os, tables]
 import wNim
 import pixie/fileformats/[png, svg]
 
@@ -103,28 +103,33 @@ proc renderBitmap(svgData: string, sz: wSize): wBitmap =
   let wimg = Image(pngBytes[0].addr, pngBytes.len)
   Bitmap(wimg)
 
+proc primeBitmapCache*(name: string, sz: wSize) =
+  # Render and cache specific bitmap to given size, for all states
+  if name notin gIcons:
+    raise newException(KeyError, "Unknown icon name: '" & name & "'")
+  let variants = gIcons[name]
+  for state in IconState:
+    gBitmapCache[name] = initTable[IconState, wTypes.wBitmap]()
+    gBitmapCache[name][state] = renderBitmap(variants[state], sz)
+
 proc primeBitmapCache*(sz: wSize) =
+  # Prime all bitmaps to given size, for all states
   for name, variants in gIcons:
-    for state in IconState:
-      gBitmapCache[name] = initTable[IconState, wTypes.wBitmap]()
-      gBitmapCache[name][state] = renderBitmap(variants[state], sz)
+    primeBitmapCache(name, sz)
 
 proc iconNames*(): seq[string] =
   for name in gIcons.keys:
     result.add(name)
 
 proc iconBitmap*(name: string, sz: wSize, state: IconState = Normal): wBitmap =
+  # Load a bitmap from cache if available, else render fresh, cache, and return
   if name notin gBitmapCache:
-    # echo "cache miss for icon '", name, "' state ", state
+    echo "cache miss for icon '", name, "' state ", state
     gBitmapCache[name] = initTable[IconState, wTypes.wBitmap]()
   if state notin gBitmapCache[name]:
-    # echo "name exists; cache miss for icon '", name, "' state ", state
     if name notin gIcons:
       raise newException(KeyError, "Unknown icon name: '" & name & "'. Known: " & $iconNames())
     let sData = gIcons[name][state]
-    # echo "Rendering icon '", name, "' state ", state, " size ", sz
-    # echo "cache variants now: ", gIcons[name]
-    # echo "cache keys now: ", gBitmapCache.keys.toSeq
     gBitmapCache[name][state] = renderBitmap(sData, sz)
   gBitmapCache[name][state]
 
