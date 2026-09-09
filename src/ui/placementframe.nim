@@ -664,172 +664,171 @@ wClass(wPlacementPanel of wPanel):
   proc init*(self: wPlacementPanel, parent: wWindow) =
     wPanel(self).init(parent)
     self.backgroundColor = panelBackgroundColor
-    # Create controls
-    echo "priming bitmap cache"
+    echo "placementpanel init dpi: ", wAppGetDpi()
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
-    for iconName in @["arrow_left", "arrow_right", "arrow_up", "arrow_down",
-                      "upper_left_hv_arrow", "upper_left_vh_arrow",
-                      "upper_right_hv_arrow", "upper_right_vh_arrow",
-                      "lower_left_hv_arrow", "lower_left_vh_arrow",
-                      "lower_right_hv_arrow", "lower_right_vh_arrow",
-                      "drag"]:
-      primeBitmapCache(iconName, iconSz)
-    echo "done priming bitmap cache"
-    # Static Boxes
-    self.sbBoundReg      = StaticBox(self, label="Bounding Region")
-    self.sbCompactMethod = StaticBox(self, label="Compact Method")
-    self.sbAnneal        = StaticBox(self, label="Anneal Options")
-    self.sbMinSpacing    = StaticBox(self, label="Minimum Spacing")
-    self.sbOrder         = StaticBox(self, label="Compact Order")
+    # echo "priming bitmap cache"
+    # for iconName in @["arrow_left", "arrow_right", "arrow_up", "arrow_down",
+    #                   "upper_left_hv_arrow", "upper_left_vh_arrow",
+    #                   "upper_right_hv_arrow", "upper_right_vh_arrow",
+    #                   "lower_left_hv_arrow", "lower_left_vh_arrow",
+    #                   "lower_right_hv_arrow", "lower_right_vh_arrow",
+    #                   "drag"]:
+    #   initIconBitmaps(iconName, iconSz)
+    # echo "done priming bitmap cache"
+    
+    block: # Create controls
+      # Static Boxes
+      self.sbBoundReg      = StaticBox(self, label="Bounding Region")
+      self.sbCompactMethod = StaticBox(self, label="Compact Method")
+      self.sbAnneal        = StaticBox(self, label="Anneal Options")
+      self.sbMinSpacing    = StaticBox(self, label="Minimum Spacing")
+      self.sbOrder         = StaticBox(self, label="Compact Order")
 
-    # Static Texts
-    self.stQty          = StaticText(self, label="Qty")
-    self.stSelected     = StaticText(self, label="Selected")
-    self.stSelectedNum  = StaticText(self, label="0")
-    self.stCompTitle    = StaticText(self, label="Compact In Region")
-    self.stDrawRegion   = StaticText(self, label="Draw Region")
-    self.stX            = StaticText(self, label="X")
-    self.stY            = StaticText(self, label="Y")
-    self.stW            = StaticText(self, label="W")
-    self.stH            = StaticText(self, label="H")
-    self.stMinX         = StaticText(self, label="X")
-    self.stMinY         = StaticText(self, label="Y")
-    self.stStrat        = StaticText(self, label="Strategy")
-    self.stReplFn       = StaticText(self, label="Replacement Function")
-    
-    self.stStartTemp    = StaticText(self, label="Start Temp")
-    self.stStartTempNum = StaticText(self, label="xx", style=wAlignRight)
-    self.stCurrTemp     = StaticText(self, label="Current Temp")
-    self.stCurrTempNum  = StaticText(self, label="")
-    
-    # Text Controls
-    self.txtQty      = TextCtrl(self, style=wBorderSimple)
-    self.txtX        = TextCtrl(self, style=wBorderSimple)
-    self.txtY        = TextCtrl(self, style=wBorderSimple)
-    self.txtW        = TextCtrl(self, style=wBorderSimple)
-    self.txtH        = TextCtrl(self, style=wBorderSimple)
-    self.txtMinX     = TextCtrl(self, style=wBorderSimple)
-    self.txtMinY     = TextCtrl(self, style=wBorderSimple)
+      # Static Texts
+      self.stQty          = StaticText(self, label="Qty")
+      self.stSelected     = StaticText(self, label="Selected")
+      self.stSelectedNum  = StaticText(self, label="0")
+      self.stCompTitle    = StaticText(self, label="Compact In Region")
+      self.stDrawRegion   = StaticText(self, label="Draw Region")
+      self.stX            = StaticText(self, label="X")
+      self.stY            = StaticText(self, label="Y")
+      self.stW            = StaticText(self, label="W")
+      self.stH            = StaticText(self, label="H")
+      self.stMinX         = StaticText(self, label="X")
+      self.stMinY         = StaticText(self, label="Y")
+      self.stStrat        = StaticText(self, label="Strategy")
+      self.stReplFn       = StaticText(self, label="Replacement Function")
       
-    # Buttons
-    self.bRandomizeAll = Button(self, label="Randomize All")
-    self.bRandomizePos = Button(self, label="Randomize Pos")
-    self.bTest         = Button(self, label="Test")
-    self.bLeft         = StaticBitmap(self)
-    self.bRight        = StaticBitmap(self)
-    self.bUp           = StaticBitmap(self)
-    self.bDown         = StaticBitmap(self)
-    self.bLeftUp       = StaticBitmap(self)
-    self.bRightUp      = StaticBitmap(self)
-    self.bLeftDown     = StaticBitmap(self)
-    self.bRightDown    = StaticBitmap(self)
-    self.bUndo         = Button(self, label="Undo")
-    self.bDone         = Button(self, label="Done")
+      self.stStartTemp    = StaticText(self, label="Start Temp")
+      self.stStartTempNum = StaticText(self, label="xx", style=wAlignRight)
+      self.stCurrTemp     = StaticText(self, label="Current Temp")
+      self.stCurrTempNum  = StaticText(self, label="")
+      
+      # Text Controls
+      self.txtQty      = TextCtrl(self, style=wBorderSimple)
+      self.txtX        = TextCtrl(self, style=wBorderSimple)
+      self.txtY        = TextCtrl(self, style=wBorderSimple)
+      self.txtW        = TextCtrl(self, style=wBorderSimple)
+      self.txtH        = TextCtrl(self, style=wBorderSimple)
+      self.txtMinX     = TextCtrl(self, style=wBorderSimple)
+      self.txtMinY     = TextCtrl(self, style=wBorderSimple)
+        
+      # Buttons
+      self.bRandomizeAll = Button(self, label="Randomize All")
+      self.bRandomizePos = Button(self, label="Randomize Pos")
+      self.bTest         = Button(self, label="Test")
+      self.bLeft         = StaticBitmap(self)
+      self.bRight        = StaticBitmap(self)
+      self.bUp           = StaticBitmap(self)
+      self.bDown         = StaticBitmap(self)
+      self.bLeftUp       = StaticBitmap(self)
+      self.bRightUp      = StaticBitmap(self)
+      self.bLeftDown     = StaticBitmap(self)
+      self.bRightDown    = StaticBitmap(self)
+      self.bUndo         = Button(self, label="Undo")
+      self.bDone         = Button(self, label="Done")
 
-    # Radio Buttons
-    self.rbNone   = RadioButton(self, label="None", style=wRbGroup)
-    self.rbStack  = RadioButton(self, label="Stack")
-    self.rbAnneal = RadioButton(self, label="Anneal")
-    self.rbStrat1 = RadioButton(self, label="Strat1", style=wRbGroup)
-    self.rbStrat2 = RadioButton(self, label="Strat2")
-    self.rbWiggle = RadioButton(self, label="Wiggle", style=wRbGroup)
-    self.rbSwap   = RadioButton(self, label="Swap")
-    self.rbHV     = RadioButton(self, label="Horiz then Vert", style=wRbGroup)
-    self.rbVH     = RadioButton(self, label="Vert then Horiz")
+      # Radio Buttons
+      self.rbNone   = RadioButton(self, label="None", style=wRbGroup)
+      self.rbStack  = RadioButton(self, label="Stack")
+      self.rbAnneal = RadioButton(self, label="Anneal")
+      self.rbStrat1 = RadioButton(self, label="Strat1", style=wRbGroup)
+      self.rbStrat2 = RadioButton(self, label="Strat2")
+      self.rbWiggle = RadioButton(self, label="Wiggle", style=wRbGroup)
+      self.rbSwap   = RadioButton(self, label="Swap")
+      self.rbHV     = RadioButton(self, label="Horiz then Vert", style=wRbGroup)
+      self.rbVH     = RadioButton(self, label="Vert then Horiz")
 
-    # Slider
-    self.slStartTemp = Slider(self)
+      # Slider
+      self.slStartTemp = Slider(self)
 
-    # Checkboxes
-    self.cbDrawRegion = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
-    self.cbMonitor    = CheckBox(self, label="Monitor Progress")
+      # Checkboxes
+      self.cbDrawRegion = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
+      self.cbMonitor    = CheckBox(self, label="Monitor Progress")
 
-    # Configure
-    # Let "medium" be the default size, so change some elements to large or smal
-    self.stCompTitle.font    = Font(pointSize=fontSizeLarge, weight=wFontWeightBold)
-    self.stStrat.font        = Font(pointSize=fontSizeSmall)
-    self.stReplFn.font       = Font(pointSize=fontSizeSmall)
-    self.stStartTempNum.font = Font(pointSize=fontSizeLarge)
-    self.stCurrTempNum.font  = Font(pointSize=fontSizeLarge)
-    # Update arrow buttons down below after the radio buttons are clicked, so they have the right icon
-    self.cbDrawRegion.setBitmap(iconBitmap("drag", iconSz))
+    block:# Configure fonts
+      # Let "medium" be the default size, so change some elements to large or smal
+      self.stCompTitle.font    = Font(pointSize=fontSizeLarge, weight=wFontWeightBold)
+      self.stStrat.font        = Font(pointSize=fontSizeSmall)
+      self.stReplFn.font       = Font(pointSize=fontSizeSmall)
+      self.stStartTempNum.font = Font(pointSize=fontSizeLarge)
+      self.stCurrTempNum.font  = Font(pointSize=fontSizeLarge)
    
-    # Respond to generic events
-    self.wEvent_Size do (event: wEvent): self.onResize()
-    self.wEvent_Paint do (event: wEvent): self.onPaint(event)
-    self.wEvent_Destroy do (event: wEvent): self.onDestroy(event)
+    block: # Respond to generic events
+      self.wEvent_Size do (event: wEvent): self.onResize()
+      self.wEvent_Paint do (event: wEvent): self.onPaint(event)
+      self.wEvent_Destroy do (event: wEvent): self.onDestroy(event)
 
-    # Respond to controls
-    # Text Controls
-    let ctls = @[self.txtQty, self.txtX, self.txtY, self.txtW, self.txtH,
-                 self.txtMinX, self.txtMinY]
-    for ctl in ctls:
-      ctl.wEvent_SetFocus  do (event: wEvent): self.onTextFocus(event)
-      ctl.wEvent_Text      do (event: wEvent): self.onTextEdit(event)
-      ctl.wEvent_TextEnter do (event: wEvent): self.onTextCommit(event)
-      ctl.wEvent_KillFocus do (event: wEvent): self.onKillFocus(event)
-      
-    # Buttons
-    self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
-    self.bRandomizePos.wEvent_Button do (): self.onButtonRandomizePos()
-    self.bTest.wEvent_Button         do (): self.onButtonTest()
-    for btn in @[self.bLeft, self.bRight, self.bUp, self.bDown,
-                 self.bLeftUp, self.bRightUp, self.bLeftDown, self.bRightDown]:
-      # btn.wEvent_CommandLeftClick do (event: wEvent): self.onButtonCompactGo(event)
-      # btn.WM_RIGHTCLICK do (event: wEvent): echo "right click"
-      # btn.wEvent_Button     do (event: wEvent): self.onButtonCompactGo(event)
-      btn.wEvent_MouseEnter do (event: wEvent): self.onButtonMouseEnterLeave(event)
-      btn.wEvent_MouseLeave do (event: wEvent): self.onButtonMouseEnterLeave(event)
-      btn.wEvent_LeftDown   do (event: wEvent): echo "down"; self.onButtonMouseClick(event)
-      btn.wEvent_LeftUp     do (event: wEvent): echo "up"; self.onButtonMouseClick(event)
-    self.bUndo.wEvent_Button do (): self.onButtonUndo()
-    self.bDone.wEvent_Button do (): self.onButtonDone()
+    block: # Respond to controls events
+      # Text Controls
+      let ctls = @[self.txtQty, self.txtX, self.txtY, self.txtW, self.txtH,
+                  self.txtMinX, self.txtMinY]
+      for ctl in ctls:
+        ctl.wEvent_SetFocus  do (event: wEvent): self.onTextFocus(event)
+        ctl.wEvent_Text      do (event: wEvent): self.onTextEdit(event)
+        ctl.wEvent_TextEnter do (event: wEvent): self.onTextCommit(event)
+        ctl.wEvent_KillFocus do (event: wEvent): self.onKillFocus(event)
+        
+      # Buttons
+      self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
+      self.bRandomizePos.wEvent_Button do (): self.onButtonRandomizePos()
+      self.bTest.wEvent_Button         do (): self.onButtonTest()
+      for btn in @[self.bLeft, self.bRight, self.bUp, self.bDown,
+                  self.bLeftUp, self.bRightUp, self.bLeftDown, self.bRightDown]:
+        btn.wEvent_MouseEnter do (event: wEvent): self.onButtonMouseEnterLeave(event)
+        btn.wEvent_MouseLeave do (event: wEvent): self.onButtonMouseEnterLeave(event)
+        btn.wEvent_LeftDown   do (event: wEvent): self.onButtonMouseClick(event)
+        btn.wEvent_LeftUp     do (event: wEvent): self.onButtonMouseClick(event)
+      self.bUndo.wEvent_Button do (): self.onButtonUndo()
+      self.bDone.wEvent_Button do (): self.onButtonDone()
 
-    # Radio Buttons
-    self.rbNone.wEvent_RadioButton   do (event: wEvent): self.onMethodRadioButton(event)
-    self.rbStack.wEvent_RadioButton  do (event: wEvent): self.onMethodRadioButton(event)
-    self.rbAnneal.wEvent_RadioButton do (event: wEvent): self.onMethodRadioButton(event)
-    self.rbStrat1.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
-    self.rbStrat2.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
-    self.rbWiggle.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
-    self.rbSwap.wEvent_RadioButton   do (event: wEvent): self.onOptionsRadioButton(event)
-    self.rbHV.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
-    self.rbVH.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
+      # Radio Buttons
+      self.rbNone.wEvent_RadioButton   do (event: wEvent): self.onMethodRadioButton(event)
+      self.rbStack.wEvent_RadioButton  do (event: wEvent): self.onMethodRadioButton(event)
+      self.rbAnneal.wEvent_RadioButton do (event: wEvent): self.onMethodRadioButton(event)
+      self.rbStrat1.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
+      self.rbStrat2.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
+      self.rbWiggle.wEvent_RadioButton do (event: wEvent): self.onOptionsRadioButton(event)
+      self.rbSwap.wEvent_RadioButton   do (event: wEvent): self.onOptionsRadioButton(event)
+      self.rbHV.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
+      self.rbVH.wEvent_RadioButton     do (event: wEvent): self.onOrderRadioButton(event)
 
-    # Slider
-    self.slStartTemp.wEvent_Slider do (): self.onTempSlider()
+      # Slider
+      self.slStartTemp.wEvent_Slider do (): self.onTempSlider()
 
-    # Checkbox
-    self.cbDrawRegion.wEvent_CheckBox   do (event: wEvent): self.onCheckBoxDrawRegion(event)
-    self.cbDrawRegion.wEvent_MouseEnter do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
-    self.cbDrawRegion.wEvent_MouseLeave do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
-    self.cbMonitor.wEvent_Checkbox      do (event: wEvent): self.onMonitorCheckBox(event)
+      # Checkbox
+      self.cbDrawRegion.wEvent_CheckBox   do (event: wEvent): self.onCheckBoxDrawRegion(event)
+      self.cbDrawRegion.wEvent_MouseEnter do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
+      self.cbDrawRegion.wEvent_MouseLeave do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
+      self.cbMonitor.wEvent_Checkbox      do (event: wEvent): self.onMonitorCheckBox(event)
 
-    # Click on the radio buttons to set initial state, set qty and slider
-    self.txtQty.value = "10"
-    self.txtX.value = "30"
-    self.txtY.value = "30"
-    self.txtW.value = "500"
-    self.txtH.value = "500"
-    self.txtMinX.value = "2"
-    self.txtMinY.value = "2"
-    self.rbNone.click()
-    self.rbStrat1.click()
-    self.rbWiggle.click()
-    self.rbHV.click()
-    self.slStartTemp.setRange(1, 100)
-    self.slStartTemp.value = 50
-    self.stStartTempNum.label = $self.slStartTemp.value
+    block: # Initial values
+      # Click on the radio buttons to set initial state, set qty and slider
+      self.txtQty.value = "10"
+      self.txtX.value = "30"
+      self.txtY.value = "30"
+      self.txtW.value = "500"
+      self.txtH.value = "500"
+      self.txtMinX.value = "2"
+      self.txtMinY.value = "2"
+      self.rbNone.click()
+      self.rbStrat1.click()
+      self.rbWiggle.click()
+      self.rbHV.click()
+      self.slStartTemp.setRange(1, 100)
+      self.slStartTemp.value = 50
+      self.stStartTempNum.label = $self.slStartTemp.value
 
-    # Finally update buttons to have the right icon for the current radio button state
-    self.updateCompactButton(self.bLeft,      Normal)
-    self.updateCompactButton(self.bRight,     Normal)
-    self.updateCompactButton(self.bUp,        Normal)
-    self.updateCompactButton(self.bDown,      Normal)
-    self.updateCompactButton(self.bLeftUp,    Normal)
-    self.updateCompactButton(self.bRightUp,   Normal)
-    self.updateCompactButton(self.bLeftDown,  Normal)
-    self.updateCompactButton(self.bRightDown, Normal)
+    block: # Update arrow buttons down below after the radio buttons are clicked, so they have the right icon
+      self.cbDrawRegion.setBitmap(iconBitmap("drag", iconSz))
+      self.updateCompactButton(self.bLeft,      Normal)
+      self.updateCompactButton(self.bRight,     Normal)
+      self.updateCompactButton(self.bUp,        Normal)
+      self.updateCompactButton(self.bDown,      Normal)
+      self.updateCompactButton(self.bLeftUp,    Normal)
+      self.updateCompactButton(self.bRightUp,   Normal)
+      self.updateCompactButton(self.bLeftDown,  Normal)
+      self.updateCompactButton(self.bRightDown, Normal)
 
 
 wClass(wPlacementFrame of wFrame):
@@ -869,7 +868,9 @@ when isMainModule:
     let
       app = App()
       f1 = PlacementFrame(nil)
+      #f2 = PlacementFrame(nil)
     f1.show()
+    #f2.show()
     app.mainLoop()
   except Exception as e:
     echo e.msg

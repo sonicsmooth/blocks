@@ -7,9 +7,8 @@ type
   IconState* = enum Normal, Hover, Pressed
   IconVariants = array[IconState, string]   # SVG content per state
   IconTable = Table[string, IconVariants]
-  BitmapVariants = Table[IconState, wTypes.wBitmap]  # Rendered bitmap per state
-  BitmapKey = tuple[name: string, size: wSize]
-  BitmapCache = Table[BitmapKey, BitmapVariants]  # Cache of rendered bitmaps
+  BitmapKey = tuple[name: string, size: wSize, state: IconState]
+  BitmapCache = Table[BitmapKey, wTypes.wBitmap]  # Cache of rendered bitmaps
 
 const
   iconsPath = currentSourcePath.parentDir / "icons/svg"
@@ -92,9 +91,9 @@ proc buildIconTable(): IconTable =
     result[key] = variants
 
 when defined(staticIcons):
-  const gIcons = buildIconTable()
+  const gIcons: IconTable = buildIconTable()
 else:
-  let gIcons = buildIconTable()
+  let gIcons: IconTable = buildIconTable()
 var gBitmapCache: BitmapCache
 
 proc renderBitmap(svgData: string, sz: wSize): wBitmap =
@@ -104,19 +103,18 @@ proc renderBitmap(svgData: string, sz: wSize): wBitmap =
   let wimg = Image(pngBytes[0].addr, pngBytes.len)
   Bitmap(wimg)
 
-proc primeBitmapCache*(name: string, sz: wSize) =
+proc initIconBitmaps*(name: string, sz: wSize) =
   # Render and cache specific bitmap to given size, for all states
   if name notin gIcons:
-    raise newException(KeyError, "Unknown icon name: '" & name & "'")
-  let variants = gIcons[name]
-  for state in IconState:
-    gBitmapCache[(name, sz)] = initTable[IconState, wTypes.wBitmap]()
-    gBitmapCache[(name, sz)][state] = renderBitmap(variants[state], sz)
+    raise newException(KeyError, "Unknown icon name: '" & name & "'.")
+  for state, svg in gIcons[name]:
+    echo "caching ", name, " ", state, " ", sz
+    gBitmapCache[(name, sz, state)] = renderBitmap(svg, sz)
 
-proc primeBitmapCache*(sz: wSize) =
+proc initIconBitmaps*(sz: wSize) =
   # Prime all bitmaps to given size, for all states
-  for name, variants in gIcons:
-    primeBitmapCache(name, sz)
+  for name, _ in gIcons:
+    initIconBitmaps(name, sz)
 
 proc iconNames*(): seq[string] =
   for name in gIcons.keys:
@@ -124,15 +122,13 @@ proc iconNames*(): seq[string] =
 
 proc iconBitmap*(name: string, sz: wSize, state: IconState = Normal): wBitmap =
   # Load a bitmap from cache if available, else render fresh, cache, and return
-  if (name, sz) notin gBitmapCache:
+  if name notin gIcons:
+    raise newException(KeyError, "Unknown icon name: '" & name & "'.")
+  if (name, sz, state) notin gBitmapCache:
     echo "cache miss for icon '", name, "' state ", state, " with size ", sz
-    gBitmapCache[(name, sz)] = initTable[IconState, wTypes.wBitmap]()
-  if state notin gBitmapCache[(name, sz)]:
-    if name notin gIcons:
-      raise newException(KeyError, "Unknown icon name: '" & name & "'. Known: " & $iconNames())
-    let sData = gIcons[name][state]
-    gBitmapCache[(name, sz)][state] = renderBitmap(sData, sz)
-  gBitmapCache[(name, sz)][state]
+    let svg = gIcons[name][state]
+    gBitmapCache[(name, sz, state)] = renderBitmap(svg, sz)
+  gBitmapCache[(name, sz, state)]
 
 when isMainModule:
   echo "Loaded ", iconNames().len, " icons:"
