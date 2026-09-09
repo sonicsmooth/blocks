@@ -13,7 +13,6 @@ import document
 import reporting
 import stack
 import usermessages
-import utils
 import winimutils
 import world
 
@@ -140,7 +139,7 @@ wClass(wMainPanel of wPanel):
       self.refresh(false)
       GC_fullCollect()
 
-  proc delegate2DButtonCompact(self: wMainPanel, direction: CompactDir) =
+  proc delegate2DButtonCompact(self: wMainPanel, spec: CompactSpec) =
     # Leave if we have any threads already running
     when defined(compactProfile):
       echo ""
@@ -153,8 +152,8 @@ wClass(wMainPanel of wPanel):
     let dbaddr = addr self.blockPanel.editor.doc.db
     if self.ctrb1.value: # Not anneal, just normal 2d compact
       let arg: CompactArg = (pRectTable:  dbaddr,
-                             direction:   direction,
-                             window:      self,
+                             spec:        spec,
+                             handle:      self.mHwnd,
                              dstRect:     dstRect)
       gCompactThread.createThread(compactWorker, arg)
       gCompactThread.joinThread()
@@ -163,9 +162,9 @@ wClass(wMainPanel of wPanel):
    
     elif self.ctrb2.value: # Do anneal
       proc compactfn() {.closure.} = 
-        iterCompact(self.blockPanel.editor.doc.db, direction, dstRect)
-      let strat = if self.aStratRb1.value: Strat1
-                  else:                    Strat2
+        iterCompact(self.blockPanel.editor.doc.db, spec, dstRect)
+      let strat = if self.aStratRb1.value: Strategy.Strat1
+                  else:                    Strategy.Strat2
       let perturbFn = if self.aStratRb3.value: makeWiggler[PosTable, ptr RectTable](dstRect)
                       else:                    makeSwapper[PosTable, ptr RectTable]()
       for i in gAnnealComms.low .. gAnnealComms.high:
@@ -184,7 +183,7 @@ wClass(wMainPanel of wPanel):
     
     elif self.ctrb3.value: # Do stack
       withLock(gLock):
-        stackCompact(self.blockPanel.editor.doc.db, dstRect, direction)
+        stackCompact(self.blockPanel.editor.doc.db, dstRect, spec)
       self.blockPanel.renderer.clearTextureCache()
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
@@ -263,21 +262,22 @@ wClass(wMainPanel of wPanel):
   proc onButtonCompact↑(self: wMainPanel) =
     self.delegate1DButtonCompact(Y, Descending)
   proc onButtonCompact←↑(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, Ascending, Descending))
+    self.delegate2DButtonCompact(newCompactSpec(X, Ascending, Descending))
   proc onButtonCompact←↓(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, Ascending, Ascending))
+    self.delegate2DButtonCompact(newCompactSpec(X, Ascending, Ascending))
+
   proc onButtonCompact→↑(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, Descending, Descending))
+    self.delegate2DButtonCompact(newCompactSpec(X, Descending, Descending))
   proc onButtonCompact→↓(self: wMainPanel) =
-    self.delegate2DButtonCompact((X, Y, Descending, Ascending))
+    self.delegate2DButtonCompact(newCompactSpec(X, Descending, Ascending))
   proc onButtonCompact↑←(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, Descending, Ascending))
+    self.delegate2DButtonCompact(newCompactSpec(Y, Descending, Ascending))
   proc onButtonCompact↑→(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, Descending, Descending))
+    self.delegate2DButtonCompact(newCompactSpec(Y, Descending, Descending))
   proc onButtonCompact↓←(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, Ascending, Ascending))
+    self.delegate2DButtonCompact(newCompactSpec(Y, Ascending, Ascending))
   proc onButtonCompact↓→(self: wMainPanel) =
-    self.delegate2DButtonCompact((Y, X, Ascending, Descending))
+    self.delegate2DButtonCompact(newCompactSpec(Y, Ascending, Descending))
 
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =

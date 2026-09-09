@@ -14,7 +14,7 @@ type
   #SpDensity* = distinct int
   CtrlID = enum
     # TODO: are these ids needed?
-    idSpaceX = wIdUser, idSpaceY, idDivisions, idDensity,
+    # idSpaceX = wIdUser, idSpaceY, idDivisions, idDensity,
     idSnap, idDynamic, idBaseSync,
     idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
@@ -355,11 +355,16 @@ wClass(wGridControlPanel of wPanel):
     self.txtY = StaticText(self, label = "Y")
     self.txtDivs = StaticText(self, label = "Divisions")
     self.txtDens = StaticText(self, label = "Magnification")
-    self.txtSizeX = TextCtrl(self, idSpaceX, style = wBorderStatic)
-    self.txtSizeY = TextCtrl(self, idSpaceY, style = wBorderStatic)
-    self.mCbDivisions = ComboBox(self, idDivisions,
+    self.txtSizeX = TextCtrl(self, style = wBorderStatic)
+    self.txtSizeY = TextCtrl(self, style = wBorderStatic)
+    # self.txtSizeX = TextCtrl(self, idSpaceX, style = wBorderStatic)
+    # self.txtSizeY = TextCtrl(self, idSpaceY, style = wBorderStatic)
+    self.mCbDivisions = ComboBox(self,
         choices = gr.allowedDivisionsStr)
-    self.mSliderDensity = Slider(self, idDensity)
+    # self.mCbDivisions = ComboBox(self, idDivisions,
+    #     choices = gr.allowedDivisionsStr)
+    self.mSliderDensity = Slider(self)
+    # self.mSliderDensity = Slider(self, idDensity)
     self.mCbSnap = CheckBox(self, idSnap, "Snap")
     self.mCbVisible = CheckBox(self, idVisible, "Visible")
     self.mCbDynamic = CheckBox(self, idDynamic, "Dynamic")
@@ -407,41 +412,41 @@ wClass(wGridControlPanel of wPanel):
 
     # Update controls from outside messages
     self.registerListener(idGCFSizeX, (w: wWindow, e: wEvent)=>(
-        onidGCFSize(w.wGridControlPanel, e)))
+        onGCFSize(w.wGridControlPanel, e)))
     self.registerListener(idGCFSizeY, (w: wWindow, e: wEvent)=>(
-        onidGCFSize(w.wGridControlPanel, e)))
+        onGCFSize(w.wGridControlPanel, e)))
     self.registerListener(idGCFDivisionsSelect, (w: wWindow, e: wEvent)=>(
-        onidGCFDivisionsSelect(w.wGridControlPanel, e)))
+        onGCFDivisionsSelect(w.wGridControlPanel, e)))
     self.registerListener(idGCFDivisionsValue, (w: wWindow, e: wEvent)=>(
-        onidGCFDivisionsValue(w.wGridControlPanel, e)))
+        onGCFDivisionsValue(w.wGridControlPanel, e)))
     self.registerListener(idGCFDivisionsReset, (w: wWindow, e: wEvent)=>(
-        onidGCFDivisionsReset(w.wGridControlPanel, e)))
+        onGCFDivisionsReset(w.wGridControlPanel, e)))
     self.registerListener(idGCFDensity, (w: wWindow, e: wEvent)=>(
-        onidGCFDensity(w.wGridControlPanel, e)))
+        onGCFDensity(w.wGridControlPanel, e)))
     #--
     self.registerListener(idGCFSnap, (w: wWindow, e: wEvent)=>(
-        onidGCFSnap(w.wGridControlPanel, e)))
+        onGCFSnap(w.wGridControlPanel, e)))
     self.registerListener(idGCFDynamic, (w: wWindow, e: wEvent)=>(
-        onidGCFDynamic(w.wGridControlPanel, e)))
+        onGCFDynamic(w.wGridControlPanel, e)))
     self.registerListener(idGCFBaseSync, (w: wWindow, e: wEvent)=>(
-        onidGCFBaseSync(w.wGridControlPanel, e)))
+        onGCFBaseSync(w.wGridControlPanel, e)))
     #--
     self.registerListener(idGCFVisible, (w: wWindow, e: wEvent)=>(
-        onidGCFVisible(w.wGridControlPanel, e)))
+        onGCFVisible(w.wGridControlPanel, e)))
     self.registerListener(idGCFDots, (w: wWindow, e: wEvent)=>(
-        onidGCFDots(w.wGridControlPanel, e)))
+        onGCFDots(w.wGridControlPanel, e)))
     self.registerListener(idGCFLines, (w: wWindow, e: wEvent)=>(
-        onidGCFLines(w.wGridControlPanel, e)))
+        onGCFLines(w.wGridControlPanel, e)))
     #--
     self.registerListener(idGCFZoom, (w: wWindow, e: wEvent)=>(
-        onidGCFZoom(w.wGridControlPanel, e)))
+        onGCFZoom(w.wGridControlPanel, e)))
     self.mBDone.wEvent_Button do(): self.parent.destroy()
     #self.wEvent_Destroy do(): self.deregisterListener()
     self.wEvent_Close do(): self.deregisterListener()
 
 wClass(wGridControlFrame of wFrame):
   proc onDestroy(self: wGridControlFrame) =
-    sendToListeners(idGCFCtrlFrameClosing, self.mHwnd.WPARAM, 0)
+    sendToListeners(idGCFClosing, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid) =
     let

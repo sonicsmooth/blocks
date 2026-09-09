@@ -11,6 +11,35 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "Nim: Check File",
+            "type": "shell",
+            "command": "nim",
+            "args": [
+                "check",
+                "${file}"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": {
+                "owner": "nim",
+                "fileLocation": [
+                    "absolute"
+                ],
+                "pattern": {
+                    "regexp": "^(.*)\\((\\d+),\\s*(\\d+)\\)\\s+(Error|Warning|Hint):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            }
         }
     ]
 }
+

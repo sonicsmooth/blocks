@@ -8,6 +8,7 @@ import winim/inc/winuser
 import icons
 import pubsub
 import utils
+import uicommon
 import routing
 import viewport
 
@@ -88,12 +89,6 @@ proc fontDescent(font: wFont): int =
   discard ReleaseDC(0, hdc)
   result = tm.tmDescent
 
-proc appDpiScale(value: wSize): wSize =
-  let d = wAppGetDpi()
-  (value.width * d div 96, value.height * d div 96)
-
-proc appDpiScale(value: int): int =
-  value * wAppGetDpi() div 96
 
 proc errcol(event: wEvent) =
   SetBkColor(event.wParam, RGB(255, 199, 206))

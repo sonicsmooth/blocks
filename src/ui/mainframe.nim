@@ -21,6 +21,7 @@ import mainpanel
 import placementframe
 import reporting
 import routing
+import uicommon
 import usermessages
 import wnimutils
 import viewport
@@ -43,8 +44,8 @@ type
               idCmdPlace
 
 const
-  small: wSize = (24, 24)
-  big: wSize = (48, 48)
+  smallraw: wSize = (24, 24)
+  bigraw: wSize = (36, 36)
 
 var
   gQuietReady: bool
@@ -81,6 +82,8 @@ wClass(wMainFrame of wFrame):
 
   proc setupMenuBar(self: wMainFrame): wMenuBar =
     # Main menu at top of frame
+    let small = appDpiScale(smallraw)
+    let big   = appDpiScale(bigraw)
     var menu1 = Menu()
     var menu2 = Menu()
     var menu3 = Menu()
@@ -89,52 +92,53 @@ wClass(wMainFrame of wFrame):
     result.append(menu2, "Tools")
     result.append(menu3, "Help")
 
-    menu1.append(idCmdNew, "New", bitmap=iconBitmap("new_document", small))
-    menu1.append(idCmdOpen, "Open",  bitmap=iconBitmap("file_open", small))
-    menu1.append(idCmdSave, "Save",  bitmap=iconBitmap("save", small))
-    menu1.append(idCmdClose, "Close", bitmap=iconBitmap("close", small))
+    menu1.append(idCmdNew,   "New",   bitmap=iconBitmap("new_document", small))
+    menu1.append(idCmdOpen,  "Open",  bitmap=iconBitmap("file_open",    small))
+    menu1.append(idCmdSave,  "Save",  bitmap=iconBitmap("save",         small))
+    menu1.append(idCmdClose, "Close", bitmap=iconBitmap("close",        small))
     menu1.appendSeparator()
     menu1.append(idCmdPrefs, "Preferences", bitmap=iconBitmap("preferences", small))
     menu1.appendSeparator()
-    menu1.append(idCmdExit, "Exit", bitmap=iconBitmap("exit", small))
+    menu1.append(idCmdExit,  "Exit",  bitmap=iconBitmap("exit",  small))
     menu2.append(idCmdPlace, "Place", bitmap=iconBitmap("place", small))
-    menu3.append(idCmdAbout, "About", bitmap=iconBitmap("info", small))
-    menu3.append(idCmdHelp, "Help", bitmap=iconBitmap("help", small))
+    menu3.append(idCmdAbout, "About", bitmap=iconBitmap("info",  small))
+    menu3.append(idCmdHelp,  "Help",  bitmap=iconBitmap("help",  small))
 
 
   proc setupReBar(self: wMainFrame): wReBar =
     # Set up three things in the rebar
-    result = ReBar(self)
+    let small = appDpiScale(smallraw)
+    let big   = appDpiScale(bigraw)
+    result = self.ReBar()
+    let tb1 = result.ToolBar()
+    let tb2 = result.ToolBar()
+    let tb3 = result.ToolBar()
+    let ddcb = tb2.ComboBox(idCmdDropDown, "Render Method")
+    self.bandToolBars.add(tb1)
+    self.bandToolBars.add(tb2)
+    self.bandToolBars.add(tb3)
 
     # 1. Basic file new/open toolbar
-    let tb1 = ToolBar(result)
-    tb1.addTool(idCmdNew, "New", iconBitmap("new_document", big))
-    tb1.addTool(idCmdOpen, "Open", iconBitmap("file_open", big))
-    tb1.addTool(idCmdSave, "Save", iconBitmap("save", big))
-    self.bandToolBars.add(tb1) # self.bandToolBars[0]
+    tb1.addTool(idCmdNew,  "New",  iconBitmap("new_document", big))
+    tb1.addTool(idCmdOpen, "Open", iconBitmap("file_open",    big))
+    tb1.addTool(idCmdSave, "Save", iconBitmap("save",         big))
     
-    # 2. Grid controls    
-    let tb2 = ToolBar(result)
-    tb2.addChecktool(idCmdGridShow, "Grid Show", iconBitmap("gridonoff", big))
-    # Read from init file
+    # 2. Grid controls -- not sure why large icon mis-rendered, so using small
+    tb2.addChecktool(idCmdGridShow,    "Grid Show",     iconBitmap("gridonoff",    big))
+    tb2.addtool(     idCmdGridSetting, "Grid settings", iconBitmap("gridsettings", big))
+    tb2.addTool(     idCmdPlace,       "Place",         iconBitmap("place",        big))
     tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
-    tb2.addtool(idCmdGridSetting, "Grid settings", iconBitmap("gridsettings", big))
-    tb2.addTool(idCmdPlace, "Place", iconBitmap("place", big))
 
-    let ddcb = ComboBox(tb2, idCmdDropDown, "Render Method")
     ddcb.size = (self.dpiScale(150), ddcb.size.height)
     ddcb.append("SDL Direct")
     ddcb.append("SDL Texture")
     ddcb.append("Pixie Texture")
     ddcb.select(gAppOpts.renderMethod.int)
     ddcb.position = (self.dpiScale(250), self.dpiScale(10))
-    self.bandToolBars.add(tb2) # self.bandToolBars[1]
 
     # 3. Close
-    let tb3 = ToolBar(result)
-    tb3.addTool(idCmdInfo, "Info", iconBitmap("info", big))
+    tb3.addTool(idCmdInfo,  "Info",  iconBitmap("info",  big))
     tb3.addTool(idCmdClose, "Close", iconBitmap("close", big))
-    self.bandToolBars.add(tb3) # self.bandToolBars[2]
 
     # Put toolbars things in rebar
     let bid1 = result.addBand(tb1)
@@ -160,7 +164,8 @@ wClass(wMainFrame of wFrame):
     of idCmdDropDown:
       let v = event.window.wComboBox.value.replace(" ")
       gAppOpts.renderMethod = parseEnum[RenderMethod](v)
-      self.invalidate()
+      if not self.invalidate.isnil:
+        self.invalidate()
     of idCmdClose: self.destroy()
     of idCmdExit: self.destroy()
     of idCmdHelp: discard
@@ -362,21 +367,21 @@ wClass(wMainFrame of wFrame):
     self.startTimer(0.0,   id=1) # one-shot to start
     
     # # Respond to incoming messages
-    self.registerListener(idGCFRequestX,        (w:wWindow, e:wEvent)=>onidGCFSize(w.wMainFrame, e))
-    self.registerListener(idGCFRequestY,        (w:wWindow, e:wEvent)=>onidGCFSize(w.wMainFrame, e))
-    self.registerListener(idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onidGCFDivisionsSelect(w.wMainFrame, e))
-    self.registerListener(idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onidGCFDivisionsValue(w.wMainFrame, e))
-    self.registerListener(idGCFDensity,         (w:wWindow, e:wEvent)=>onidGCFDensity(w.wMainFrame, e))
+    self.registerListener(idGCFRequestX,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
+    self.registerListener(idGCFRequestY,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
+    self.registerListener(idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onGCFDivisionsSelect(w.wMainFrame, e))
+    self.registerListener(idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onGCFDivisionsValue(w.wMainFrame, e))
+    self.registerListener(idGCFDensity,         (w:wWindow, e:wEvent)=>onGCFDensity(w.wMainFrame, e))
     #---
-    self.registerListener(idGCFSnap,     (w:wWindow, e:wEvent)=>onidGCFSnap(w.wMainFrame, e))
-    self.registerListener(idGCFDynamic,  (w:wWindow, e:wEvent)=>onidGCFDynamic(w.wMainFrame, e))
-    self.registerListener(idGCFBaseSync, (w:wWindow, e:wEvent)=>onidGCFBaseSync(w.wMainFrame, e))
+    self.registerListener(idGCFSnap,     (w:wWindow, e:wEvent)=>onGCFSnap(w.wMainFrame, e))
+    self.registerListener(idGCFDynamic,  (w:wWindow, e:wEvent)=>onGCFDynamic(w.wMainFrame, e))
+    self.registerListener(idGCFBaseSync, (w:wWindow, e:wEvent)=>onGCFBaseSync(w.wMainFrame, e))
     #--
-    self.registerListener(idGCFVisible, (w:wWindow, e:wEvent)=>onidGCFVisible(w.wMainFrame, e))
-    self.registerListener(idGCFDots,    (w:wWindow, e:wEvent)=>onidGCFDots(w.wMainFrame, e))
-    self.registerListener(idGCFLines,   (w:wWindow, e:wEvent)=>onidGCFLines(w.wMainFrame, e))
+    self.registerListener(idGCFVisible, (w:wWindow, e:wEvent)=>onGCFVisible(w.wMainFrame, e))
+    self.registerListener(idGCFDots,    (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
+    self.registerListener(idGCFLines,   (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
     #--
-    self.registerListener(idGCFCtrlFrameClosing, (w:wWindow, e:wEvent)=>onidGCFCtrlFrameClosing(w.wMainFrame, e))
+    self.registerListener(idGCFClosing, (w:wWindow, e:wEvent)=>onGCFCtrlFrameClosing(w.wMainFrame, e))
     self.registerListener(idPlcFrameClosing, (w:wWindow, e:wEvent)=>onMsgPlacementFrameClosing(w.wMainFrame, e))
     
     if not barebones:

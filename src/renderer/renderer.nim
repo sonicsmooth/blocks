@@ -1,5 +1,4 @@
 import std/[strformat, 
-            math,
             options,
             tables]
 when defined(monotimeProfile):

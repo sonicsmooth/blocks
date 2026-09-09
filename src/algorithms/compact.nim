@@ -1,5 +1,12 @@
-import std/[algorithm, sets, locks, sugar, tables]
-import sequtils
+import std/[algorithm,
+            locks,
+            options,
+            sets,
+            sequtils,
+            sugar,
+            tables
+            ]
+export options
 
 # Only for posting a message
 # TODO: Replace with channels
@@ -7,38 +14,43 @@ from winim/inc/winuser import PostMessage
 from winim/inc/windef import HWND
 import concurrent
 
-import monoprofile
 import directions
-from recttable import `[]`, dbComps
 import document
+import monoprofile
+from recttable import `[]`, dbComps
 import usermessages
 
-type 
-  Axis* = enum X=true, Y=false
-  MajMin = enum Major=true, Minor=false
+export directions
+
+type
+  Axis* = enum X = true, Y = false
+  MajMin = enum Major = true, Minor = false
   Node = CompID
   Weight = WType
-  GraphEdge  = tuple[frm, to: Node]
+  GraphEdge = tuple[frm, to: Node]
   Graph* = Table[GraphEdge, Weight]
   ScanType = enum Top, Mid, Bot
   ScanEdge = tuple
-    id:    CompID
-    pos:   WType
+    id: CompID
+    pos: WType
     etype: ScanType
   ScanLine = tuple
-    pos:    WType
-    top:    seq[CompID]
-    mid:    seq[CompID]
-    bot:    seq[CompID]
+    pos: WType
+    top: seq[CompID]
+    mid: seq[CompID]
+    bot: seq[CompID]
     sorted: seq[CompID]
+  AxisSpec = tuple
+    axis: Axis
+    sortOrder: SortOrder
   CompactSpec* = tuple
-    primax,  secax:  Axis
-    primAsc, secAsc: SortOrder
+    primary: AxisSpec
+    secondary: Option[AxisSpec]
   CompactArg* = tuple
     pRectTable: ptr RectTable
-    spec:       CompactSpec
-    handle:     HWND
-    dstRect:    WRect
+    spec: CompactSpec
+    handle: HWND
+    dstRect: WRect
 
 
 const
@@ -47,37 +59,20 @@ const
 var
   gCompactThread*: Thread[CompactArg]
 
-proc compoundDir*(cd: CompactSpec): CompactDir =
-  # Left  arrow = stack from left to right, which is x ascending
-  # Right arrow = stack from right to left, which is x descending
-  # Up    arrow = stack from top to bottom, which is y descending
-  # Down  arrow = stack from bottom to top, which is y ascending
-  let compound = (cd.primax == X, cd.primAsc, cd.secAsc)
-  if   compound == (false, Ascending,  Ascending ): DownLeft
-  elif compound == (false, Ascending,  Descending): DownRight
-  elif compound == (false, Descending, Ascending ): UpLeft
-  elif compound == (false, Descending, Descending): UpRight
-  elif compound == (true,  Ascending,  Ascending ): LeftDown
-  elif compound == (true,  Ascending,  Descending): LeftUp
-  elif compound == (true,  Descending, Ascending ): RightDown
-  else: RightUp
-  
-proc isXAscending*(spec: CompactSpec): bool =
-  (spec.primax == X and spec.primAsc == Ascending) or
-  (spec.secax  == X and spec.secAsc  == Ascending)
+proc newCompactSpec*(primax: Axis, primsort: SortOrder): CompactSpec =
+  (primary: (primax, primsort), secondary: none(AxisSpec))
+proc newCompactSpec*(primax: Axis, primsort: SortOrder, secsort: SortOrder): CompactSpec =
+  let secax = if primax == X: Y else: X
+  (primary: (primax, primsort), secondary: some((secax, secsort)))
 
-proc isYAscending*(spec: CompactSpec): bool = 
-  (spec.primax == Y and spec.primAsc == Ascending) or
-  (spec.secax  == Y and spec.secAsc  == Ascending)
-
-proc rectCmpX(r1, r2: DBComp): int = 
+proc rectCmpX(r1, r2: DBComp): int =
   # Sort first by x position, then by id
   # Can't inline because it's passed as arg to sort
   result = cmp(r1.wbbox.x, r2.wbbox.x)
   if result == 0:
     result = cmp(r1.id, r2.id)
 
-proc rectCmpY(r1, r2: DBComp): int = 
+proc rectCmpY(r1, r2: DBComp): int =
   # Sort first by y position, then by id
   result = cmp(r1.wbbox.y, r2.wbbox.y)
   if result == 0:
@@ -85,7 +80,8 @@ proc rectCmpY(r1, r2: DBComp): int =
 
 # TODO: change to in-place sorting
 # TODO: change to iterator
-proc sortedRectsIds(rects: seq[rects.DBComp], axis: Axis, sortOrder: SortOrder): seq[CompID] =
+proc sortedRectsIds(rects: seq[rects.DBComp], axis: Axis,
+    sortOrder: SortOrder): seq[CompID] =
   # Returns rect ids with compare chosen by axis
   var tmpRects = rects
   if axis == X:
@@ -121,7 +117,7 @@ proc makeDimGetter(rectTable: RectTable, axis: Axis): DimGetter =
         result = rectTable[node].wbbox.h
 
 proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
-                  axis: Axis, sortOrder: SortOrder): Graph = 
+                  axis: Axis, sortOrder: SortOrder): Graph =
   let getDim = makeDimGetter(rectTable, axis)
   var src: Node
   for line in lines:
@@ -140,9 +136,9 @@ proc composeGraph(lines: seq[ScanLine], rectTable: RectTable,
 
 proc posChooser(ax: MajMin): proc(rect: DBComp): WType =
   if ax == Major:
-    proc(rect: DBComp): WType =  rect.wbbox.x
+    proc(rect: DBComp): WType = rect.wbbox.x
   else:
-    proc(rect: DBComp): WType =  rect.wbbox.y
+    proc(rect: DBComp): WType = rect.wbbox.y
 
 proc sizeChooser(ax: MajMin): proc(rect: DBComp): WType =
   if ax == Major:
@@ -150,69 +146,70 @@ proc sizeChooser(ax: MajMin): proc(rect: DBComp): WType =
   else:
     proc(rect: DBComp): WType = rect.wbbox.h
 
-proc scanLinesOld(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
+# proc scanLinesOld(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
+#   let
+#     minor = if axis==X: Minor else: Major
+#     secPos  = posChooser(minor)
+#     secSz   = sizeChooser(minor)
+#     colids  = if ids.len == 0: rectTable.keys.toSeq
+#               else:            ids
+#     topEdges: seq[ScanEdge] =
+#         collect(for id in colids:
+#           (id: id, pos: rectTable[id].secPos(), etype: Top))
+#     botEdges: seq[ScanEdge] =
+#         collect (for id in colids:
+#           let rect = rectTable[id]
+#           (id: id, pos: rect.secPos + rect.secSz(), etype: Bot))
+#     edges: seq[ScanEdge] = concat(topEdges, botEdges).sortedByIt(it.pos)
+
+#   # Prime everything with first edge
+#   var edge: ScanEdge  = edges[0]
+#   var line: ScanLine  = (pos: edge.pos,
+#                          top: @[], mid: @[], bot: @[],
+#                          sorted: @[edge.id])
+#   line.setField(edge.etype, @[edge.id])
+#   var lastpos = edge.pos
+
+#   # Go through each edge
+#   # Push accumulated line when next line detected
+#   for i, edge in edges[1..high(edges)]:
+#     if edge.pos > lastpos: # down one edge
+#       result.add(line)
+#       line.pos = edge.pos
+#       line.bot = @[] # TODO: profile vs. setLen(0)
+#       line.mid.add(line.top)
+#       line.top = @[]
+
+#     if edge.etype == Bot and edge.id in line.mid:
+#       line.mid.delete(line.mid.find(edge.id)) # todo: excl(...)
+#     line.appendField(edge.etype, edge.id)
+
+#     # TODO: fix the issue with [] and iterators to minimize copies
+#     line.sorted = concat(line.top, line.mid, line.bot)
+#     if line.sorted.len > 1:
+#       line.sorted = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
+#     if line.top.len > 1:
+#       line.top = sortedRectsIds(rectTable.dbComps(line.top), axis, sortOrder)
+#     if line.bot.len > 1:
+#       line.bot = sortedRectsIds(rectTable.dbComps(line.bot), axis, sortOrder)
+#     lastpos = edge.pos
+#   result.add(line)
+
+proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
+    CompID]): seq[ScanLine] =
   let
-    minor = if axis==X: Minor else: Major
-    secPos  = posChooser(minor)
-    secSz   = sizeChooser(minor)
-    colids  = if ids.len == 0: rectTable.keys.toSeq
-              else:            ids
-    topEdges: seq[ScanEdge] = 
-        collect(for id in colids:
+    minor = if axis == X: Minor else: Major
+    secPos = posChooser(minor)
+    secSz = sizeChooser(minor)
+    colids = if ids.len == 0: rectTable.keys.toSeq
+              else: ids
+    topEdges: seq[ScanEdge] =
+      collect(for id in colids:
           (id: id, pos: rectTable[id].secPos(), etype: Top))
-    botEdges: seq[ScanEdge] = 
-        collect (for id in colids:
-          let rect = rectTable[id]
-          (id: id, pos: rect.secPos + rect.secSz(), etype: Bot))
-    edges: seq[ScanEdge] = concat(topEdges, botEdges).sortedByIt(it.pos)
-
-  # Prime everything with first edge
-  var edge: ScanEdge  = edges[0]
-  var line: ScanLine  = (pos: edge.pos, 
-                         top: @[], mid: @[], bot: @[], 
-                         sorted: @[edge.id])
-  line.setField(edge.etype, @[edge.id])
-  var lastpos = edge.pos
-
-  # Go through each edge
-  # Push accumulated line when next line detected
-  for i, edge in edges[1..high(edges)]:
-    if edge.pos > lastpos: # down one edge
-      result.add(line)
-      line.pos = edge.pos
-      line.bot = @[] # TODO: profile vs. setLen(0)
-      line.mid.add(line.top)
-      line.top = @[]
-
-    if edge.etype == Bot and edge.id in line.mid:
-      line.mid.delete(line.mid.find(edge.id)) # todo: excl(...)
-    line.appendField(edge.etype, edge.id)
-
-    # TODO: fix the issue with [] and iterators to minimize copies
-    line.sorted = concat(line.top, line.mid, line.bot)
-    if line.sorted.len > 1:
-      line.sorted = sortedRectsIds(rectTable.dbComps(line.sorted), axis, sortOrder)
-    if line.top.len > 1:
-      line.top = sortedRectsIds(rectTable.dbComps(line.top), axis, sortOrder)
-    if line.bot.len > 1:
-      line.bot = sortedRectsIds(rectTable.dbComps(line.bot), axis, sortOrder)
-    lastpos = edge.pos
-  result.add(line)
-
-proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): seq[ScanLine] =
-  let
-    minor = if axis==X: Minor else: Major
-    secPos  = posChooser(minor)
-    secSz   = sizeChooser(minor)
-    colids  = if ids.len == 0: rectTable.keys.toSeq
-              else:            ids
-    topEdges: seq[ScanEdge] = 
-        collect(for id in colids:
-          (id: id, pos: rectTable[id].secPos(), etype: Top))
-    botEdges: seq[ScanEdge] = 
-        collect (for id in colids:
-          let rect = rectTable[id]
-          (id: id, pos: rect.secPos + rect.secSz(), etype: Bot))
+    botEdges: seq[ScanEdge] =
+      collect (for id in colids:
+        let rect = rectTable[id]
+        (id: id, pos: rect.secPos + rect.secSz(), etype: Bot))
     edges: seq[ScanEdge] = concat(topEdges, botEdges).sortedByIt(it.pos)
 
   proc finalizeSorts(line: var ScanLine) =
@@ -231,9 +228,9 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
       line.bot = line.sorted.filterIt(it in botSet)
 
   # Prime everything with first edge
-  var edge: ScanEdge  = edges[0]
-  var line: ScanLine  = (pos: edge.pos, 
-                         top: @[], mid: @[], bot: @[], 
+  var edge: ScanEdge = edges[0]
+  var line: ScanLine = (pos: edge.pos,
+                         top: @[], mid: @[], bot: @[],
                          sorted: @[edge.id])
   line.setField(edge.etype, @[edge.id])
   var lastpos = edge.pos
@@ -254,9 +251,10 @@ proc scanLines(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[
     line.appendField(edge.etype, edge.id)
     lastpos = edge.pos
 
-  finalizeSorts(line)   # final, still-open line never hit the "pos > lastpos" branch
+  finalizeSorts(line) # final, still-open line never hit the "pos > lastpos" branch
   result.add(line)
-proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq[CompID]): Graph =
+proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder,
+    ids: seq[CompID]): Graph =
   # Returns DAG = table((frm, to): weight)
   # rectTable is table of rects
   # axis is X or Y
@@ -276,12 +274,13 @@ proc makeGraph*(rectTable: RectTable, axis: Axis, sortOrder: SortOrder, ids: seq
 
 #   for iter in 0..nodes.len:
 #     for ge, weight in graph:
-#       if result[ge.frm] == Weight.low:              
+#       if result[ge.frm] == Weight.low:
 #         continue
 #       result[ge.to] = max(result[ge.to], result[ge.frm] + weight)
 #   result.del(RootNode)
 
-proc longestPathDAG(graph: Graph, nodes: openArray[Node], minpos: WType): Table[CompID, Weight] =
+proc longestPathDAG(graph: Graph, nodes: openArray[Node], minpos: WType): Table[
+    CompID, Weight] =
   # Build adjacency + in-degree for topological sort
   # From Claude -- I totally don't understand this
   # but it's very fast
@@ -320,7 +319,7 @@ proc longestPathDAG(graph: Graph, nodes: openArray[Node], minpos: WType): Table[
         result[to] = max(result[to], result[n] + w)
   result.del(RootNode)
 
-proc compact*(rectTable: RectTable, 
+proc compact*(rectTable: RectTable,
               axis: Axis,
               sortOrder: SortOrder,
               dstRect: WRect,
@@ -329,7 +328,7 @@ proc compact*(rectTable: RectTable,
   let graph = makeGraph(rectTable, axis, sortOrder, ids)
   let nodes = if ids.len == 0: rectTable.keys.toSeq
               else: ids
-  
+
   var lp: Table[CompID, Weight]
   # timeitMs(compactProfile, "bellmanford"):
   #   lp = longestPathBellmanFord(graph, nodes, 0)
@@ -342,7 +341,8 @@ proc compact*(rectTable: RectTable,
 
   elif axis == X and sortOrder == Descending:
     for id in nodes:
-      rectTable[id].x = dstRect.x + dstRect.w - lp[id] + rectTable[id].originToLeftEdge
+      rectTable[id].x = dstRect.x + dstRect.w - lp[id] + rectTable[
+          id].originToLeftEdge
 
   elif axis == Y and sortOrder == Ascending:
     for id in nodes:
@@ -350,7 +350,8 @@ proc compact*(rectTable: RectTable,
 
   elif axis == Y and sortOrder == Descending:
     for id in nodes:
-      rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[id].originToBottomEdge
+      rectTable[id].y = dstRect.y + dstRect.h - lp[id] + rectTable[
+          id].originToBottomEdge
 
 var compactCtr: int
 proc iterCompact*(rectTable: RectTable, spec: CompactSpec, dstRect: WRect) =
@@ -360,8 +361,8 @@ proc iterCompact*(rectTable: RectTable, spec: CompactSpec, dstRect: WRect) =
   var pos, lastPos: PosTable
   pos = rectTable.positions
   while pos != lastPos:
-    compact(rectTable, spec.primax, spec.primAsc, dstRect)
-    compact(rectTable, spec.secax, spec.secAsc, dstRect)
+    compact(rectTable, spec.primary.axis, spec.primary.sortOrder, dstRect)
+    compact(rectTable, spec.secondary.get().axis, spec.secondary.get().sortOrder, dstRect)
     lastPos = pos
     pos = rectTable.positions
     inc compactCtr
@@ -371,4 +372,3 @@ proc compactWorker*(arg: CompactArg) {.thread.} =
     withLock(gLock):
       iterCompact(arg.pRectTable[], arg.spec, arg.dstRect)
   PostMessage(arg.handle, idMsgAlgUpdate, 0, 0)
-  

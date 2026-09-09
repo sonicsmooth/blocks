@@ -8,7 +8,8 @@ type
   IconVariants = array[IconState, string]   # SVG content per state
   IconTable = Table[string, IconVariants]
   BitmapVariants = Table[IconState, wTypes.wBitmap]  # Rendered bitmap per state
-  BitmapCache = Table[string, BitmapVariants]  # Cache of rendered bitmaps
+  BitmapKey = tuple[name: string, size: wSize]
+  BitmapCache = Table[BitmapKey, BitmapVariants]  # Cache of rendered bitmaps
 
 const
   iconsPath = currentSourcePath.parentDir / "icons/svg"
@@ -109,8 +110,8 @@ proc primeBitmapCache*(name: string, sz: wSize) =
     raise newException(KeyError, "Unknown icon name: '" & name & "'")
   let variants = gIcons[name]
   for state in IconState:
-    gBitmapCache[name] = initTable[IconState, wTypes.wBitmap]()
-    gBitmapCache[name][state] = renderBitmap(variants[state], sz)
+    gBitmapCache[(name, sz)] = initTable[IconState, wTypes.wBitmap]()
+    gBitmapCache[(name, sz)][state] = renderBitmap(variants[state], sz)
 
 proc primeBitmapCache*(sz: wSize) =
   # Prime all bitmaps to given size, for all states
@@ -123,15 +124,15 @@ proc iconNames*(): seq[string] =
 
 proc iconBitmap*(name: string, sz: wSize, state: IconState = Normal): wBitmap =
   # Load a bitmap from cache if available, else render fresh, cache, and return
-  if name notin gBitmapCache:
-    echo "cache miss for icon '", name, "' state ", state
-    gBitmapCache[name] = initTable[IconState, wTypes.wBitmap]()
-  if state notin gBitmapCache[name]:
+  if (name, sz) notin gBitmapCache:
+    echo "cache miss for icon '", name, "' state ", state, " with size ", sz
+    gBitmapCache[(name, sz)] = initTable[IconState, wTypes.wBitmap]()
+  if state notin gBitmapCache[(name, sz)]:
     if name notin gIcons:
       raise newException(KeyError, "Unknown icon name: '" & name & "'. Known: " & $iconNames())
     let sData = gIcons[name][state]
-    gBitmapCache[name][state] = renderBitmap(sData, sz)
-  gBitmapCache[name][state]
+    gBitmapCache[(name, sz)][state] = renderBitmap(sData, sz)
+  gBitmapCache[(name, sz)][state]
 
 when isMainModule:
   echo "Loaded ", iconNames().len, " icons:"

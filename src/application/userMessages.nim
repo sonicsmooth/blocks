@@ -6,9 +6,8 @@ from winim/inc/winuser import WM_USER
 # a blaRecv is received by the dialog in question
 
 # There are a few message and ID types
-# IDs for widgets
-# IDs for messages used in SendMessage (received by a Window)
-# Keys for the pubsub mechanism
+# IDs for UI-specific messages used in SendMessage (received by a Window)
+# Keys for the pubsub mechanism with domain data
 
 type
   # Platform (UI)-specific message IDs for sending messages to windows
