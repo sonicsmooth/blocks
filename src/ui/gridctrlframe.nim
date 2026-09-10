@@ -18,8 +18,8 @@ type
     idSnap, idDynamic, idBaseSync,
     idVisible, idDots, idLines, idDone
   wGridControlPanel = ref object of wPanel
-    grid: Grid       # reference to the grid under control
-    mZctrl: ZoomCtrl # reference to params for grid zoom control
+    grid*: Grid       # reference to the grid under control
+    #mZctrl: ZoomCtrl # reference to params for grid zoom control
     mBDone: wButton
     mIntervalBox: wStaticbox
     mBehaviorBox: wStaticBox
@@ -45,8 +45,6 @@ const
   frameBackgroundColor = 0xf0f0f0
   panelBackgroundColor = 0xf9f9f9
   buttonAreaColor = 0xf0f0f0
-
-#var gFrameShowing: bool
 
 proc edges(w: wWindow): tuple[left, right, top, bot: int] =
   (left: w.position.x,
@@ -175,6 +173,17 @@ wClass(wGridControlPanel of wPanel):
     dc.setBrush(Brush(buttonAreaColor.wColor))
     dc.setPen(Pen(buttonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
+
+  proc onDestroy(self: wGridControlPanel) =
+    self.deregisterListener()
+
+  proc onButtonDone(self: wGridControlpanel) =
+    # Post message for asynchronous close
+    # Otherwise if we do self.parent.close()
+    # we get a synchronous close which
+    # destroys this button while still in the handler
+    discard PostMessage(self.parent.handle, WM_CLOSE, 0, 0)
+
 
   proc eventMatchAndStrip(self: wGridControlPanel, event: wEvent): (wWindow, string) =
     let txtCtrls = [self.txtSizeX, self.txtSizeY]
@@ -345,7 +354,7 @@ wClass(wGridControlPanel of wPanel):
     self.backgroundColor = panelBackgroundColor
     # Create controls
     self.grid = gr
-    self.mZctrl = gr.mZctrl
+    # self.mZctrl = gr.mZctrl
     self.mBDone = Button(self, idDone, "Done")
     self.mIntervalBox = StaticBox(self, label = "Interval")
     self.mBehaviorBox = StaticBox(self, label = "Behavior")
@@ -357,14 +366,9 @@ wClass(wGridControlPanel of wPanel):
     self.txtDens = StaticText(self, label = "Magnification")
     self.txtSizeX = TextCtrl(self, style = wBorderStatic)
     self.txtSizeY = TextCtrl(self, style = wBorderStatic)
-    # self.txtSizeX = TextCtrl(self, idSpaceX, style = wBorderStatic)
-    # self.txtSizeY = TextCtrl(self, idSpaceY, style = wBorderStatic)
-    self.mCbDivisions = ComboBox(self,
-        choices = gr.allowedDivisionsStr)
-    # self.mCbDivisions = ComboBox(self, idDivisions,
-    #     choices = gr.allowedDivisionsStr)
+    #self.mCbDivisions = ComboBox(self, choices = gr.allowedDivisionsStr)
+    self.mCbDivisions = ComboBox(self) #, choices = gr.allowedDivisionsStr)
     self.mSliderDensity = Slider(self)
-    # self.mSliderDensity = Slider(self, idDensity)
     self.mCbSnap = CheckBox(self, idSnap, "Snap")
     self.mCbVisible = CheckBox(self, idVisible, "Visible")
     self.mCbDynamic = CheckBox(self, idDynamic, "Dynamic")
@@ -372,11 +376,10 @@ wClass(wGridControlPanel of wPanel):
     self.mRbDots = RadioButton(self, idDots, "Dots")
     self.mRbLines = RadioButton(self, idLines, "Lines")
 
-
     self.txtSizeX.setValue($self.grid.minDelta(Major).x)
     self.txtSizeY.setValue($self.grid.minDelta(Major).y)
     self.mCbDivisions.select(self.grid.divisionsIndex)
-    self.mSliderDensity.setValue((self.mZctrl.density * 100.0).int)
+    self.mSliderDensity.setValue((self.grid.mZctrl.density * 100.0).int)
     self.mSliderDensity.setRange(10 .. 200) # from .1 to 2.0
     self.mCbSnap.setValue(self.grid.mSnap)
     self.mCbVisible.setValue(self.grid.mVisible)
@@ -390,6 +393,7 @@ wClass(wGridControlPanel of wPanel):
     # Respond to generic events
     self.wEvent_Size do (event: wEvent): self.onResize()
     self.wEvent_Paint do (event: wEvent): self.onPaint(event)
+    self.wEvent_Destroy do(): self.onDestroy()
 
     # Respond to controls
     self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
@@ -440,19 +444,33 @@ wClass(wGridControlPanel of wPanel):
     #--
     self.registerListener(idGCFZoom, (w: wWindow, e: wEvent)=>(
         onGCFZoom(w.wGridControlPanel, e)))
-    self.mBDone.wEvent_Button do(): self.parent.destroy()
-    #self.wEvent_Destroy do(): self.deregisterListener()
-    self.wEvent_Close do(): self.deregisterListener()
+    self.mBDone.wEvent_Button do(): self.onButtonDone()
 
 wClass(wGridControlFrame of wFrame):
+  proc setGrid*(self: wGridControlFrame, grid: Grid) =
+    self.mPanel.grid = grid
+  proc onClose(self: wGridControlFrame, event: wEvent) =
+    # You can logic or check to event.veto() to 
+    # stop the frame from closing and cascading
+    # onDestroys down the tree
+    # event.skip will override the veto(), but that's dumb
+    # so don't use it
+    echo "GridControlFrame onClose -- hiding"
+    self.hide()
+    event.veto()
+
   proc onDestroy(self: wGridControlFrame) =
+    # event.veto doesn't do anything here
+    # Do cleanup and announcements here
+    echo "GridControlFrame onDestroy"
     sendToListeners(idGCFClosing, self.mHwnd.WPARAM, 0)
 
-  proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid) =
+  proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid=nil) =
+    when defined(debug):
+      echo "GridControlFrame init"
     let
       sz: wSize = (self.dpiScale(450), self.dpiScale(240))
       style = wModalFrame
-    # TODO figure out why dpiscale returns 0
     wFrame(self).init(owner, title = "Grid Settings", size = sz, style = style)
     self.marginLeft = self.dpiScale(12)
     self.marginRight = self.dpiScale(12)
@@ -460,7 +478,8 @@ wClass(wGridControlFrame of wFrame):
     self.marginDown = self.dpiScale(0)
     self.backgroundColor = frameBackgroundColor
     self.mPanel = GridControlPanel(self, gr)
-    self.wEvent_Close do(): self.onDestroy()
+    self.wEvent_Close do(event: wEvent): self.onClose(event)
+    self.wEvent_Destroy do(): self.onDestroy()
 
 when isMainModule:
   import jsoninit

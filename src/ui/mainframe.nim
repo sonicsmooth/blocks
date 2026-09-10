@@ -36,6 +36,9 @@ type
     mainPanel*: wMainPanel
     bandToolBars: seq[wToolBar]
     invalidate*: proc()
+    # Dialogs
+    gridCtrlFrame: wGridControlFrame
+    placementFrame: wPlacementFrame
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
@@ -103,7 +106,6 @@ wClass(wMainFrame of wFrame):
     menu2.append(idCmdPlace, "Place", bitmap=iconBitmap("place", small))
     menu3.append(idCmdAbout, "About", bitmap=iconBitmap("info",  small))
     menu3.append(idCmdHelp,  "Help",  bitmap=iconBitmap("help",  small))
-
 
   proc setupReBar(self: wMainFrame): wReBar =
     # Set up three things in the rebar
@@ -181,16 +183,20 @@ wClass(wMainFrame of wFrame):
       let state = self.bandToolbars[1].toolState(idCmdGridShow)
       sendToListeners(idGCFVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
-      if self.gridCtrlFrameShowing: return
+      #if self.gridCtrlFrameShowing: return
+      if self.gridCtrlFrame.isShown: return
       if self.mainPanel.isNil: return
-      let gr = self.mainPanel.blockPanel.editor.doc.grid
-      GridControlFrame(self, gr).show()
-      self.gridCtrlFrameShowing = true
+      #let gr = self.mainPanel.blockPanel.editor.doc.grid
+      #GridControlFrame(self, gr).show()
+      self.gridCtrlFrame.setGrid(self.mainPanel.blockPanel.editor.doc.grid)
+      self.gridCtrlFrame.show()
+      #self.gridCtrlFrameShowing = true
     of idCmdPlace:
       if self.placementFrameShowing: return
       if self.mainPanel.isNil: return
-      PlacementFrame(self).show()
-      self.placementFrameShowing = true
+      if not self.placementFrameShowing:
+        PlacementFrame(self).show()
+        self.placementFrameShowing = true
 
     else:
       discard
@@ -319,7 +325,9 @@ wClass(wMainFrame of wFrame):
 
   proc onGCFCtrlFrameClosing(self: wMainFrame, event: wEvent) =
     self.gridCtrlFrameShowing = false
+
   proc onMsgPlacementFrameClosing(self: wMainFrame, event: wEvent) =
+    echo "main frame received placementframe closing"
     self.placementFrameShowing = false
 
   proc show*(self: wMainFrame) =
@@ -346,10 +354,23 @@ wClass(wMainFrame of wFrame):
     wFrame(self).init(title="Blocks Frame", size=size)
     
     # Create controls -- these are declared in wNim already
+    let small = appDpiScale(smallraw)
+    let big   = appDpiScale(bigraw)
+    block: # Priming cache
+      echo "priming bitmap cache"
+      let iconNames = ["new_document", "file_open", "save", "close",
+                       "preferences", "gridonoff", "gridsettings",
+                       "exit", "place", "info", "help"]
+      initIconBitmaps(iconNames, [small, big])
+      echo "done priming bitmap cache"
     self.mMenuBar   = self.setupMenuBar()
     self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()
     
+    # Create dialogs that need to be shown instantly
+    self.gridCtrlFrame = self.GridControlFrame()
+    self.placementFrame = self.PlacementFrame()
+
     var accel = self.AcceleratorTable()
     accel.add('i', idCmdInfo)
 
@@ -382,7 +403,7 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idGCFLines,   (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
     #--
     self.registerListener(idGCFClosing, (w:wWindow, e:wEvent)=>onGCFCtrlFrameClosing(w.wMainFrame, e))
-    self.registerListener(idPlcFrameClosing, (w:wWindow, e:wEvent)=>onMsgPlacementFrameClosing(w.wMainFrame, e))
+    self.registerListener(idPFClosing, (w:wWindow, e:wEvent)=>onMsgPlacementFrameClosing(w.wMainFrame, e))
     
     if not barebones:
       self.mainPanel = MainPanel(self)

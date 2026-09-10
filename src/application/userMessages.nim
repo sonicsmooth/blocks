@@ -23,11 +23,11 @@ type
 
   # Domain-specific keys (topics) for the pubsub mechanism
   CompactDlgPubSubTopic* = enum
-    Test, RandAll, RandPos, Undo, Done, # Signals
+    Test, RandAll, RandPos, Undo, # Signals
     Qty, Selected, # Integers
     RegionX, RegionY, RegionW, RegionH, CurrentTemp, # Floats
     CompactReq # CompactRequest
-  SignalTopic* = range[Test..Done]
+  # SignalTopic* = range[Test..Undo]
     
 const
   # Get rid of these
@@ -55,7 +55,7 @@ const
   idGCFClosing*         = WM_USER + ord(woGridCtrlFrameClosing)
   
   # # Placement Frame
-  idPlcFrameClosing*    = WM_USER + ord(woPlcFrameClosing)
+  idPFClosing*    = WM_USER + ord(woPlcFrameClosing)
 
 
   

@@ -10,14 +10,11 @@ import pubsub
 import utils
 import uicommon
 import routing
-import viewport
+import world
 
 # Create a panel to hold some controls,
 # then place it in a frame
 type
-  CtrlID = enum
-    idQty = wIdUser, idX, idY, idW, idH,
-    idTemp, idRndAll, idRndPos, idTest
   wPlacementPanel = ref object of wPanel
     # Static Boxes
     sbBoundReg, sbCompactMethod, sbAnneal,
@@ -55,8 +52,6 @@ type
     cbDrawRegion: wCheckBox
 
     # iconTable: Table[wTypes.wButton, string]
-
-
   wPlacementFrame* = ref object of wFrame
     mPanel: wPlacementPanel
 
@@ -90,9 +85,9 @@ proc fontDescent(font: wFont): int =
   result = tm.tmDescent
 
 
-proc errcol(event: wEvent) =
-  SetBkColor(event.wParam, RGB(255, 199, 206))
-  SetTextColor(event.wParam, RGB(156, 0, 6))
+# proc errcol(event: wEvent) =
+#   SetBkColor(event.wParam, RGB(255, 199, 206))
+#   SetTextColor(event.wParam, RGB(156, 0, 6))
 
 proc setBitmap(ctrl: wCheckBox, bmp: wBitmap) =
   discard SendMessage(ctrl.handle, BM_SETIMAGE, IMAGE_BITMAP.WPARAM, bmp.handle.LPARAM)
@@ -417,6 +412,10 @@ wClass(wPlacementPanel of wPanel):
         width = buttWidth
         height = buttHeight
 
+  proc dumpLayout(self: wPlacementPanel, path: string) =
+    # write x,y,w,h of all widgets
+    discard
+
   proc onResize(self: wPlacementPanel) =
     self.layout()
 
@@ -434,12 +433,16 @@ wClass(wPlacementPanel of wPanel):
     dc.setPen(Pen(doneAreaColor.wColor))
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
+  proc onDestroy(self: wPlacementPanel) =
+    # Clean up pubsub
+    echo "PlacementPanel onDestroy"
+
   proc onTextFocus(self: wPlacementPanel, event: wEvent) = 
     cast[wTextCtrl](event.window).setInsertionPointEnd()
     event.skip()
 
 
-  # TODO: redo all parseNumbers
+#   # TODO: redo all parseNumbers
   proc onTextEdit(self: wPlacementPanel, event: wEvent) =
     const
       errBg = 0xcec7ff
@@ -497,10 +500,8 @@ wClass(wPlacementPanel of wPanel):
   proc onCheckBoxDrawRegion(self: wPlacementPanel, event: wEvent) =
     let drawSz = appDpiScale((iconSizeRaw, iconSizeRaw))
     if self.cbDrawRegion.value:
-      echo "clicked"
       self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Pressed))
     else:
-      echo "unclicked"
       self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Hover))
 
   proc onButtonCompactGo(self: wPlacementPanel, event: wEvent) =
@@ -568,7 +569,6 @@ wClass(wPlacementPanel of wPanel):
       else:               btn.setBitmap(iconBitmap("lower_right_vh_arrow", iconSz, state))
 
   proc onButtonMouseEnterLeave(self: wPlacementPanel, event: wEvent) =
-    #let btn = cast[wButton](event.window)
     let btn = cast[wStaticBitmap](event.window)
     let state = if event.eventType == wEvent_MouseEnter: Hover else: Normal
     self.updateCompactButton(btn, state)
@@ -599,9 +599,12 @@ wClass(wPlacementPanel of wPanel):
     publish(Undo)
   
   proc onButtonDone(self: wPlacementPanel) =
-    echo "placement panel done"
-    publish(Done)
-    self.parent.close() # Close the panel
+    echo "placementPanel.onButtonDone()"
+    # Post message for asynchronous close
+    # Otherwise if we do self.parent.close()
+    # we get a synchronous close which
+    # destroys this button while still in the handler
+    discard PostMessage(self.parent.handle, WM_CLOSE, 0, 0)
   
   proc onMethodRadioButton(self: wPlacementPanel, event: wEvent) =
     if self.rbNone.value or self.rbStack.value: # No strategy
@@ -648,10 +651,6 @@ wClass(wPlacementPanel of wPanel):
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
     discard
 
-  proc onDestroy(self: wPlacementPanel, event: wEvent) =
-    # Too late to prevent closing
-    echo "Placement panel onDestroy"
-
   proc requiredSize(self: wPlacementPanel): wSize =
     # After layout() has positioned everything, find the true extent
     var maxRight, maxBottom: int
@@ -664,17 +663,17 @@ wClass(wPlacementPanel of wPanel):
   proc init*(self: wPlacementPanel, parent: wWindow) =
     wPanel(self).init(parent)
     self.backgroundColor = panelBackgroundColor
-    echo "placementpanel init dpi: ", wAppGetDpi()
     let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
-    # echo "priming bitmap cache"
-    # for iconName in @["arrow_left", "arrow_right", "arrow_up", "arrow_down",
-    #                   "upper_left_hv_arrow", "upper_left_vh_arrow",
-    #                   "upper_right_hv_arrow", "upper_right_vh_arrow",
-    #                   "lower_left_hv_arrow", "lower_left_vh_arrow",
-    #                   "lower_right_hv_arrow", "lower_right_vh_arrow",
-    #                   "drag"]:
-    #   initIconBitmaps(iconName, iconSz)
-    # echo "done priming bitmap cache"
+    block: # Priming cache
+      echo "priming bitmap cache"
+      let iconNames =["arrow_left", "arrow_right", "arrow_up", "arrow_down",
+                      "upper_left_hv_arrow", "upper_left_vh_arrow",
+                      "upper_right_hv_arrow", "upper_right_vh_arrow",
+                      "lower_left_hv_arrow", "lower_left_vh_arrow",
+                      "lower_right_hv_arrow", "lower_right_vh_arrow",
+                      "drag"]
+      initIconBitmaps(iconNames, iconSz)
+      echo "done priming bitmap cache"
     
     block: # Create controls
       # Static Boxes
@@ -746,7 +745,7 @@ wClass(wPlacementPanel of wPanel):
       self.cbDrawRegion = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
       self.cbMonitor    = CheckBox(self, label="Monitor Progress")
 
-    block:# Configure fonts
+    block: # Configure fonts
       # Let "medium" be the default size, so change some elements to large or smal
       self.stCompTitle.font    = Font(pointSize=fontSizeLarge, weight=wFontWeightBold)
       self.stStrat.font        = Font(pointSize=fontSizeSmall)
@@ -757,7 +756,7 @@ wClass(wPlacementPanel of wPanel):
     block: # Respond to generic events
       self.wEvent_Size do (event: wEvent): self.onResize()
       self.wEvent_Paint do (event: wEvent): self.onPaint(event)
-      self.wEvent_Destroy do (event: wEvent): self.onDestroy(event)
+      self.wEvent_Destroy do (event: wEvent): self.onDestroy()
 
     block: # Respond to controls events
       # Text Controls
@@ -833,9 +832,18 @@ wClass(wPlacementPanel of wPanel):
 
 wClass(wPlacementFrame of wFrame):
   proc onClose(self: wPlacementFrame, event: wEvent) =
+    # You can logic or check to event.veto() to 
+    # stop the frame from closing and cascading
+    # onDestroys down the tree
+    # event.skip will override the veto(), but that's dumb
+    # so don't use it
     echo "PlacementFrame onClose"
-    sendToListeners(idPlcFrameClosing, self.handle.WPARAM, 0)
-    event.skip()
+
+  proc onDestroy(self: wPlacementFrame) =
+    # event.veto doesn't do anything here
+    # Do cleanup and announcements here
+    echo "PlacementFrame onDestroy"
+    sendToListeners(idPFClosing, self.handle.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
     wFrame(self).init(owner, title = "Placement")
@@ -845,32 +853,35 @@ wClass(wPlacementFrame of wFrame):
     self.clientSize = self.mPanel.requiredSize
     # Respond to generic events
     self.wEvent_Close do (event: wEvent): self.onClose(event)
+    self.wEvent_Destroy do (): self.onDestroy()
 
 
 when isMainModule:
-  # import jsoninit
+
+  proc createTestFrame(parent: wWindow) =
+    PlacementFrame(parent).show()
 
   try:
-    #jsonInitGlobals()
     wSetSystemDPIAware()
     registerListener(Qty, proc(q: int) = echo "Listener says Qty: ", q)
+    registerListener(RandAll, proc() = echo "Listener says RandAll")
+    registerListener(RandPos, proc() = echo "Listener says RandPos")
+    registerListener(Test, proc() = echo "Listener says Test")
     registerListener(RegionX, proc(x: float) = echo "Listener says RegionX: ", x)
     registerListener(RegionY, proc(y: float) = echo "Listener says RegionY: ", y)
     registerListener(RegionW, proc(w: float) = echo "Listener says RegionW: ", w)
     registerListener(RegionH, proc(h: float) = echo "Listener says RegionH: ", h)
-    registerListener(RandAll, proc() = echo "Listener says RandAll")
-    registerListener(RandPos, proc() = echo "Listener says RandPos")
-    registerListener(Test, proc() = echo "Listener says Test")
-    registerListener(Undo, proc() = echo "Listener says Undo")
     registerListener(CompactReq, proc(req: CompactRequest) =
       echo "Listener says CompactRequest: ", req)
+    registerListener(Undo, proc() = echo "Listener says Undo")
 
     let
       app = App()
-      f1 = PlacementFrame(nil)
-      #f2 = PlacementFrame(nil)
-    f1.show()
-    #f2.show()
+      appFrame = Frame(nil, title="Fake Application Frame")
+      goButton = appFrame.Button(label="Press me")
+
+    goButton.wEvent_Button do(): createTestFrame(appFrame)
+    appFrame.show()
     app.mainLoop()
   except Exception as e:
     echo e.msg

@@ -1,5 +1,4 @@
 import wnim
-import wNim/private/wTypes
 
 
 proc appDpiScale*[T:(int, int)](value: T): T =

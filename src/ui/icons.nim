@@ -2,6 +2,10 @@ import std/[os, tables]
 import wNim
 import pixie/fileformats/[png, svg]
 
+# TODO: cache bitmaps at compile time
+# TODO: Maybe not possible with win32, so
+# TODO: prerender bitmaps without wnim
+# TODO: then convert/cast to wBitmap at runtime.
 
 type
   IconState* = enum Normal, Hover, Pressed
@@ -103,18 +107,47 @@ proc renderBitmap(svgData: string, sz: wSize): wBitmap =
   let wimg = Image(pngBytes[0].addr, pngBytes.len)
   Bitmap(wimg)
 
-proc initIconBitmaps*(name: string, sz: wSize) =
+proc initIconBitmaps*(name: string, size: wSize) =
   # Render and cache specific bitmap to given size, for all states
   if name notin gIcons:
     raise newException(KeyError, "Unknown icon name: '" & name & "'.")
   for state, svg in gIcons[name]:
-    echo "caching ", name, " ", state, " ", sz
-    gBitmapCache[(name, sz, state)] = renderBitmap(svg, sz)
+    if (name, size, state) notin gBitmapCache:
+      # echo "rendering/caching ", name, " ", state, " ", size
+      gBitmapCache[(name, size, state)] = renderBitmap(svg, size)
+
+proc initIconBitmaps*(name: string, sizes: openArray[wSize]) =
+  # TODO: multithread
+  for size in sizes:
+    initIconBitmaps(name, size)
+
+proc initIconBitmaps*(names: openArray[string], size: wSize) =
+  # Render and cache all given names at given size
+  # TODO: multithreaded
+  for name in names:
+    initIconBitmaps(name, size)
+
+proc initIconBitmaps*(names: openArray[string], sizes: openArray[wSize]) =
+  # Render and cache all given names at all given sizes
+  # TODO: multithreaded
+  for name in names:
+    for sz in sizes:
+      initIconBitmaps(name, sz)
 
 proc initIconBitmaps*(sz: wSize) =
   # Prime all bitmaps to given size, for all states
+  # TODO: multithreaded
   for name, _ in gIcons:
     initIconBitmaps(name, sz)
+
+proc initIconBitmaps*(sizes: openArray[wSize]) =
+  # Prime all bitmaps to given sizes, for all states
+  # TODO: multithreaded
+  var names: seq[string]
+  for name, _ in gIcons:
+    names.add(name)
+  initIconBitmaps(names, sizes)
+
 
 proc iconNames*(): seq[string] =
   for name in gIcons.keys:
@@ -140,3 +173,32 @@ when isMainModule:
       echo "  ", key, " -- missing: ", missing
   if not anyMissing:
     echo "  (no missing states)"
+  
+  # Test rendering
+  echo renderBitmap(gIcons["stop"][Normal], (24, 24)).size
+
+  echo "caching stop at 24"
+  initIconBitmaps("stop", (24, 24))
+  gBitmapCache.clear()
+
+  echo "caching done at 16, 24"
+  initIconBitmaps("done", [(16, 16), (24, 24)])
+  gBitmapCache.clear()
+
+  echo "caching close, drag at 16"
+  initIconBitmaps(["close", "drag"], (16, 16))
+  gBitmapCache.clear()
+  
+  echo "caching delete, help at 16, 24"
+  initIconBitmaps(["delete", "help"], [(16, 16), (24, 24)])
+  gBitmapCache.clear()
+
+  echo "caching all at 16"
+  initIconBitmaps((16, 16))
+  gBitmapCache.clear()
+
+  echo "caching all at 16, 24"
+  initIconBitmaps([(16, 16), (24, 24)])
+  gBitmapCache.clear()
+
+  
