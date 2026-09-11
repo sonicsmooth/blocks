@@ -1,11 +1,15 @@
 import std/strformat
-import wnim/wTypes
+import wnim
+import winim
 
+import uicommon
 
 proc derefAs*[T](event: wEvent): T =
   # Event's wparam and lparam are both parts of a 64-bit
   # pointer-to-object.  Return the object.
   # The object is usually string (or cstring?)
+  # TODO: check if we need both WP and LP since
+  # TODO: each of these is machine-word size, ie 64 bit
   let
     wp = event.mWparam.int64
     lp = event.mLparam.int64
@@ -31,3 +35,52 @@ proc displayParams*(event: wEvent) =
   stdout.write(&"wparam: 0x{wpuhi:04x}_{wpulo:04x} -> ({wpslo}, {wpshi}), ")
   stdout.write(&"lparam: 0x{lpuhi:04x}_{lpulo:04x} -> ({lpslo}, {lpshi})")
   stdout.write('\n')
+
+
+
+
+proc appDpiScale*[T:(int, int)](value: T): T =
+  let d = wAppGetDpi()
+  (value[0] * d div 96, value[1] * d div 96)
+
+proc appDpiScale*(value: int): int =
+  value * wAppGetDpi() div 96
+
+# Don't call wAppGetDpi() before the framework has initialized
+# Otherwise the value returned is 96, which is probably not what you want
+
+proc fontDescent*(font: wFont): int =
+  let hdc = GetDC(0)
+  let old = SelectObject(hdc, font.getHandle())
+  var tm: TEXTMETRICW
+  discard GetTextMetricsW(hdc, addr tm)
+  discard SelectObject(hdc, old)
+  discard ReleaseDC(0, hdc)
+  result = tm.tmDescent
+
+proc setBitmap*(ctrl: wCheckBox, bmp: wBitmap) =
+  discard SendMessage(ctrl.handle, BM_SETIMAGE, IMAGE_BITMAP.WPARAM, bmp.handle.LPARAM)
+
+proc barHeight*(): int =
+  appDpiScale(gButtHeightRaw + 2 * gVmargRaw)
+
+proc requiredSize*(ctrls: openArray[wControl], addButtonSpace: bool=true): wSize =
+  # After layout() has positioned everything, find the true extent of the controls
+  # Ctrls are the are the wControls that define the outer lower right boundary
+  # to which the holding frame will be sized.  Optionally add a space at the 
+  # bottom for Done button, etc.
+  var maxRight, maxBottom: int
+  for ctrl in ctrls:
+    maxRight = max(maxRight, ctrl.position.x + ctrl.size.width)
+    maxBottom = max(maxBottom, ctrl.position.y + ctrl.size.height)
+  result = (maxRight, maxBottom)
+  result.width += appDpiScale(gHmargRaw)
+  if addButtonSpace:
+    result.height += barHeight() + appDpiScale(gVmargRaw)
+
+method release*(self: wComboBox) =
+  echo "in method"
+  self.mParent.systemDisconnect(self.mCommandConn)
+  wasMoved(self.mEdit)
+  wasMoved(self.mList)
+  free(self[])

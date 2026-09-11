@@ -11,6 +11,7 @@ import utils
 import uicommon
 import routing
 import world
+import wnimutils
 
 # Create a panel to hold some controls,
 # then place it in a frame
@@ -46,68 +47,32 @@ type
     rbNone, rbStack, rbAnneal, rbStrat1, rbStrat2, 
       rbWiggle, rbSwap, rbHV, rbVH: wRadioButton
 
+    # Checkboxes
+    cbMonitor, cbDrawRegion: wCheckBox
+
     # Other
     slStartTemp: wSlider
-    cbMonitor: wCheckBox
-    cbDrawRegion: wCheckBox
 
-    # iconTable: Table[wTypes.wButton, string]
   wPlacementFrame* = ref object of wFrame
     mPanel: wPlacementPanel
 
-const
-  frameBackgroundColor = 0xd0d0d0
-  panelBackgroundColor = 0xf0f0f0
-  doneAreaColor = 0xe4e4e4 #0xf0f0f0
-  buttHeightRaw = 30
-  buttWidthRaw = 110
-  iconSizeRaw = 40
-  txtCtrlWidthRaw = 60
-  hmargRaw = 12 # distance from edge
-  vmargRaw = 12
-  hpadRaw = 12 
-  vpadRaw = 12
-  hspcRaw = 12 # Distance between group boxes
-  vspcRaw = 12
-  vgapRaw = 4
-  # bigDescentRaw = 4 # fudged until it looks ok
-  fontSizeSmall = 9
-  # fontSizeMed = 12
-  fontSizeLarge = 16
-
-proc fontDescent(font: wFont): int =
-  let hdc = GetDC(0)
-  let old = SelectObject(hdc, font.getHandle())
-  var tm: TEXTMETRICW
-  discard GetTextMetricsW(hdc, addr tm)
-  discard SelectObject(hdc, old)
-  discard ReleaseDC(0, hdc)
-  result = tm.tmDescent
-
-
-# proc errcol(event: wEvent) =
-#   SetBkColor(event.wParam, RGB(255, 199, 206))
-#   SetTextColor(event.wParam, RGB(156, 0, 6))
-
-proc setBitmap(ctrl: wCheckBox, bmp: wBitmap) =
-  discard SendMessage(ctrl.handle, BM_SETIMAGE, IMAGE_BITMAP.WPARAM, bmp.handle.LPARAM)
 
 wClass(wPlacementPanel of wPanel):
   proc layout(self: wPlacementPanel) =
     let
-      hmarg = self.dpiScale(hmargRaw) # from panel edge
-      vmarg = self.dpiScale(vmargRaw) # from panel edge
-      hpad = self.dpiScale(hpadRaw) # small spaces
-      vpad = self.dpiScale(vpadRaw) # small spaces
-      hspc = self.dpiScale(hspcRaw) # larger spaces
-      vspc = self.dpiScale(vspcRaw) # larger spaces
+      hmarg = self.dpiScale(gHmargRaw) # from panel edge
+      vmarg = self.dpiScale(gVmargRaw) # from panel edge
+      hpad = self.dpiScale(gHpadRaw) # small spaces
+      vpad = self.dpiScale(gVpadRaw) # small spaces
+      hspc = self.dpiScale(gHspcRaw) # larger spaces
+      vspc = self.dpiScale(gVspcRaw) # larger spaces
       boxvspc = self.dpiScale(20) # down from top of static box to avoid text
-      vgap = self.dpiScale(vgapRaw) # tiny space
-      bbTxtAdjust = self.dpiScale(8) # get top compass buttons to align with box line not text
-      buttWidth = self.dpiScale(buttWidthRaw)
-      buttHeight = self.dpiScale(buttHeightRaw)
-      arrowBtnSize = self.dpiScale(iconSizeRaw)
-      txtCtrlWidth = self.dpiScale(txtCtrlWidthRaw)
+      vgap = self.dpiScale(gVgapRaw) # tiny space
+      bbTxtAdjust = self.dpiScale(gTxtVadjust) # get top compass buttons to align with box line not text
+      buttWidth = self.dpiScale(gButtWidthRaw)
+      buttHeight = self.dpiScale(gButtHeightRaw)
+      arrowBtnSize = self.dpiScale(gIconSizeRaw)
+      txtCtrlWidth = self.dpiScale(gTxtCtrlWidthRaw)
       offset = fontDescent(self.stCurrTempNum.font) - fontDescent(self.stCurrTemp.font)
       startTempNumExtraOne = self.dpiScale(10)
 
@@ -419,19 +384,15 @@ wClass(wPlacementPanel of wPanel):
   proc onResize(self: wPlacementPanel) =
     self.layout()
 
-  proc barHeight(self: wPlacementPanel): int =
-    self.dpiScale(buttHeightRaw + 2 * vmargRaw)
-
   proc onPaint(self: wPlacementPanel, event: wEvent) =
     var dc = PaintDC(self)
-    let
-      sz = self.size
-      barheight = self.barHeight()
+    let sz = self.size
+    let bh = barheight()
 
     # Rectangle behind button
-    dc.setBrush(Brush(doneAreaColor.wColor))
-    dc.setPen(Pen(doneAreaColor.wColor))
-    dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
+    dc.setBrush(Brush(gButtonAreaColor.wColor))
+    dc.setPen(Pen(gButtonAreaColor.wColor))
+    dc.drawRectangle(0, sz.height - bh, sz.width, bh)
 
   proc onDestroy(self: wPlacementPanel) =
     # Clean up pubsub
@@ -498,7 +459,7 @@ wClass(wPlacementPanel of wPanel):
     publish(Test)
   
   proc onCheckBoxDrawRegion(self: wPlacementPanel, event: wEvent) =
-    let drawSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    let drawSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
     if self.cbDrawRegion.value:
       self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Pressed))
     else:
@@ -550,7 +511,7 @@ wClass(wPlacementPanel of wPanel):
       doMonitor: self.cbMonitor.value ))
 
   proc updateCompactButton(self: wPlacementPanel, btn: wStaticBitmap, state: IconState) =
-    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    let iconSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
     if   btn == self.bLeft:  btn.setBitmap(iconBitmap("arrow_left" , iconSz, state))
     elif btn == self.bRight: btn.setBitmap(iconBitmap("arrow_right", iconSz, state))
     elif btn == self.bUp:    btn.setBitmap(iconBitmap("arrow_up",    iconSz, state))
@@ -588,7 +549,7 @@ wClass(wPlacementPanel of wPanel):
     let cb = cast[wCheckBox](event.window)
     if cb == self.cbDrawRegion:
       let state = if event.eventType == wEvent_MouseEnter: Hover else: Normal
-      let drawSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+      let drawSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
       if cb.value:
         cb.setBitmap(iconBitmap("drag", drawSz, Pressed))
       else:
@@ -652,20 +613,15 @@ wClass(wPlacementPanel of wPanel):
     discard
 
   proc requiredSize(self: wPlacementPanel): wSize =
-    # After layout() has positioned everything, find the true extent
-    var maxRight, maxBottom: int
-    for ctrl in [self.sbAnneal]:  # whichever controls define the outer boundary
-      maxRight = max(maxRight, ctrl.position.x + ctrl.size.width)
-      maxBottom = max(maxBottom, ctrl.position.y + ctrl.size.height)
-    result = (maxRight + self.dpiScale(hmargRaw),
-              maxBottom + self.barHeight() + self.dpiScale(vmargRaw))
+    requiredSize([self.sbAnneal.wControl])
 
   proc init*(self: wPlacementPanel, parent: wWindow) =
     wPanel(self).init(parent)
-    self.backgroundColor = panelBackgroundColor
-    let iconSz = appDpiScale((iconSizeRaw, iconSizeRaw))
+    self.backgroundColor = gPanelBackgroundColor
+    let iconSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
     block: # Priming cache
-      echo "priming bitmap cache"
+      when defined(debug):
+        echo "placementframe priming bitmap cache"
       let iconNames =["arrow_left", "arrow_right", "arrow_up", "arrow_down",
                       "upper_left_hv_arrow", "upper_left_vh_arrow",
                       "upper_right_hv_arrow", "upper_right_vh_arrow",
@@ -673,7 +629,8 @@ wClass(wPlacementPanel of wPanel):
                       "lower_right_hv_arrow", "lower_right_vh_arrow",
                       "drag"]
       initIconBitmaps(iconNames, iconSz)
-      echo "done priming bitmap cache"
+      when defined(debug):
+        echo "done priming bitmap cache"
     
     block: # Create controls
       # Static Boxes
@@ -697,7 +654,6 @@ wClass(wPlacementPanel of wPanel):
       self.stMinY         = StaticText(self, label="Y")
       self.stStrat        = StaticText(self, label="Strategy")
       self.stReplFn       = StaticText(self, label="Replacement Function")
-      
       self.stStartTemp    = StaticText(self, label="Start Temp")
       self.stStartTempNum = StaticText(self, label="xx", style=wAlignRight)
       self.stCurrTemp     = StaticText(self, label="Current Temp")
@@ -747,11 +703,11 @@ wClass(wPlacementPanel of wPanel):
 
     block: # Configure fonts
       # Let "medium" be the default size, so change some elements to large or smal
-      self.stCompTitle.font    = Font(pointSize=fontSizeLarge, weight=wFontWeightBold)
-      self.stStrat.font        = Font(pointSize=fontSizeSmall)
-      self.stReplFn.font       = Font(pointSize=fontSizeSmall)
-      self.stStartTempNum.font = Font(pointSize=fontSizeLarge)
-      self.stCurrTempNum.font  = Font(pointSize=fontSizeLarge)
+      self.stCompTitle.font    = Font(pointSize=gFontSizeLarge, weight=wFontWeightBold)
+      self.stStrat.font        = Font(pointSize=gFontSizeSmall)
+      self.stReplFn.font       = Font(pointSize=gFontSizeSmall)
+      self.stStartTempNum.font = Font(pointSize=gFontSizeLarge)
+      self.stCurrTempNum.font  = Font(pointSize=gFontSizeLarge)
    
     block: # Respond to generic events
       self.wEvent_Size do (event: wEvent): self.onResize()
@@ -837,17 +793,19 @@ wClass(wPlacementFrame of wFrame):
     # onDestroys down the tree
     # event.skip will override the veto(), but that's dumb
     # so don't use it
-    echo "PlacementFrame onClose"
+    echo "PlacementFrame onClose; hiding"
+    self.hide()
+    event.veto()
 
   proc onDestroy(self: wPlacementFrame) =
     # event.veto doesn't do anything here
     # Do cleanup and announcements here
-    echo "PlacementFrame onDestroy"
-    sendToListeners(idPFClosing, self.handle.WPARAM, 0)
+    echo "PlacementFrame onDestroy; sending idPFDestroying"
+    sendToListeners(idPFDestroying, self.handle.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
     wFrame(self).init(owner, title = "Placement")
-    self.backgroundColor = frameBackgroundColor
+    self.backgroundColor = gFrameBackgroundColor
     self.mPanel = PlacementPanel(self)
     self.mPanel.layout()
     self.clientSize = self.mPanel.requiredSize
@@ -857,9 +815,7 @@ wClass(wPlacementFrame of wFrame):
 
 
 when isMainModule:
-
-  proc createTestFrame(parent: wWindow) =
-    PlacementFrame(parent).show()
+  var plf: wPlacementFrame
 
   try:
     wSetSystemDPIAware()
@@ -878,9 +834,10 @@ when isMainModule:
     let
       app = App()
       appFrame = Frame(nil, title="Fake Application Frame")
-      goButton = appFrame.Button(label="Press me")
+      goButton = Button(appFrame, label="Press me")
+    plf = PlacementFrame(appFrame)
 
-    goButton.wEvent_Button do(): createTestFrame(appFrame)
+    goButton.wEvent_Button do(): plf.show()
     appFrame.show()
     app.mainLoop()
   except Exception as e:

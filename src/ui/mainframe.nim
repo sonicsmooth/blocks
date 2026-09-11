@@ -5,9 +5,9 @@ import std/[os,
             tables
             ]
 import wNim
-#from winim import LOWORD, HIWORD, DWORD, WORD, WPARAM, LPARAM
 from winim/inc/winbase import MulDiv
-import winim/inc/windef
+#import winim/inc/windef
+import winim
 
 import aboutframe
 import appopts
@@ -31,14 +31,12 @@ type
   wMainFrame* = ref object of wFrame
     editor*: Editor
     doc*: Document
-    gridCtrlFrameShowing: bool
-    placementFrameShowing: bool
     mainPanel*: wMainPanel
     bandToolBars: seq[wToolBar]
     invalidate*: proc()
     # Dialogs
-    gridCtrlFrame: wGridControlFrame
-    placementFrame: wPlacementFrame
+    gcf: wGridControlFrame
+    plf: wPlacementFrame
   MenuCmdID = enum
     idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
@@ -168,8 +166,8 @@ wClass(wMainFrame of wFrame):
       gAppOpts.renderMethod = parseEnum[RenderMethod](v)
       if not self.invalidate.isnil:
         self.invalidate()
-    of idCmdClose: self.destroy()
-    of idCmdExit: self.destroy()
+    of idCmdClose: discard PostMessage(self.handle, WM_CLOSE, 0, 0)
+    of idCmdExit: discard PostMessage(self.handle, WM_CLOSE, 0, 0)
     of idCmdHelp: discard
     of idCmdInfo:
       if self.isReady():
@@ -183,20 +181,14 @@ wClass(wMainFrame of wFrame):
       let state = self.bandToolbars[1].toolState(idCmdGridShow)
       sendToListeners(idGCFVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
-      #if self.gridCtrlFrameShowing: return
-      if self.gridCtrlFrame.isShown: return
+      if self.gcf.isShown: return
       if self.mainPanel.isNil: return
-      #let gr = self.mainPanel.blockPanel.editor.doc.grid
-      #GridControlFrame(self, gr).show()
-      self.gridCtrlFrame.setGrid(self.mainPanel.blockPanel.editor.doc.grid)
-      self.gridCtrlFrame.show()
-      #self.gridCtrlFrameShowing = true
+      self.gcf.setGrid(self.mainPanel.blockPanel.editor.doc.grid)
+      self.gcf.show()
     of idCmdPlace:
-      if self.placementFrameShowing: return
+      if self.plf.isShown: return
       if self.mainPanel.isNil: return
-      if not self.placementFrameShowing:
-        PlacementFrame(self).show()
-        self.placementFrameShowing = true
+      self.plf.show()
 
     else:
       discard
@@ -275,7 +267,6 @@ wClass(wMainFrame of wFrame):
       self.editor.doc.grid.mZctrl.density = mag
       self.editor.viewport.doZoom(0)
       self.refreshCanvas()
-  #--
 
   proc onGCFSnap(self: wMainFrame, event: wEvent) =
     if self.isReady():
@@ -298,7 +289,6 @@ wClass(wMainFrame of wFrame):
       zc.updateBase(gr.divisions)
       vp.rawZoom = oldz
       self.refreshCanvas()
-  #--
 
   proc onGCFVisible(self: wMainFrame, event: wEvent) =
     discard
@@ -323,12 +313,11 @@ wClass(wMainFrame of wFrame):
       self.refreshCanvas()
   #--
 
-  proc onGCFCtrlFrameClosing(self: wMainFrame, event: wEvent) =
-    self.gridCtrlFrameShowing = false
+  proc onGCFDestroying(self: wMainFrame, event: wEvent) =
+    echo "MainFrame onGCFDestroying"
 
-  proc onMsgPlacementFrameClosing(self: wMainFrame, event: wEvent) =
-    echo "main frame received placementframe closing"
-    self.placementFrameShowing = false
+  proc onPFDestroying(self: wMainFrame, event: wEvent) =
+    echo "MainFrame onPFDestroying"
 
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
@@ -347,6 +336,13 @@ wClass(wMainFrame of wFrame):
         self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
       event.skip()
 
+  proc onClose(self: wMainFrame, event: wEvent) =
+    echo "MainFrame onClose"
+    event.skip()
+
+  proc onDestroy(self: wMainFrame) =
+    echo "MainFrame onDestroy"
+
   proc init*(self: wMainFrame, size: wSize, barebones: bool) = 
     when defined(debug):
       echo "mainframe init"
@@ -357,22 +353,28 @@ wClass(wMainFrame of wFrame):
     let small = appDpiScale(smallraw)
     let big   = appDpiScale(bigraw)
     block: # Priming cache
-      echo "priming bitmap cache"
+      when defined(debug):
+        echo "mainframe priming bitmap cache"
       let iconNames = ["new_document", "file_open", "save", "close",
                        "preferences", "gridonoff", "gridsettings",
                        "exit", "place", "info", "help"]
       initIconBitmaps(iconNames, [small, big])
-      echo "done priming bitmap cache"
+      when defined(debug):
+        echo "done priming beitmap cache"
     self.mMenuBar   = self.setupMenuBar()
     self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()
     
-    # Create dialogs that need to be shown instantly
-    self.gridCtrlFrame = self.GridControlFrame()
-    self.placementFrame = self.PlacementFrame()
+    # Create dialogs so they are shown instantly
+    self.gcf = GridControlFrame(self)
+    self.plf = PlacementFrame(self)
 
     var accel = self.AcceleratorTable()
     accel.add('i', idCmdInfo)
+
+    # Respond to generic events
+    self.wEvent_Close do(event: wEvent): self.onClose(event)
+    self.wEvent_Destroy do(): self.onDestroy()
 
     # Connect internal Events
     self.wEvent_Size     do (event: wEvent): self.onResize(event)
@@ -381,29 +383,26 @@ wClass(wMainFrame of wFrame):
     self.wEvent_Timer    do (event: wEvent): self.onTimer(event)
 
     # Respond to buttons & send msg
-    self.idMsgMouseMove       do (event: wEvent): self.onUserMouseNotify(event)
-    self.idMsgSlider          do (event: wEvent): self.onUserSliderNotify(event)
+    self.idMsgMouseMove do (event: wEvent): self.onUserMouseNotify(event)
+    self.idMsgSlider    do (event: wEvent): self.onUserSliderNotify(event)
 
     # Startup
     self.startTimer(0.0,   id=1) # one-shot to start
     
-    # # Respond to incoming messages
+    # Respond to incoming messages
     self.registerListener(idGCFRequestX,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
     self.registerListener(idGCFRequestY,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
     self.registerListener(idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onGCFDivisionsSelect(w.wMainFrame, e))
     self.registerListener(idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onGCFDivisionsValue(w.wMainFrame, e))
     self.registerListener(idGCFDensity,         (w:wWindow, e:wEvent)=>onGCFDensity(w.wMainFrame, e))
-    #---
-    self.registerListener(idGCFSnap,     (w:wWindow, e:wEvent)=>onGCFSnap(w.wMainFrame, e))
-    self.registerListener(idGCFDynamic,  (w:wWindow, e:wEvent)=>onGCFDynamic(w.wMainFrame, e))
-    self.registerListener(idGCFBaseSync, (w:wWindow, e:wEvent)=>onGCFBaseSync(w.wMainFrame, e))
-    #--
-    self.registerListener(idGCFVisible, (w:wWindow, e:wEvent)=>onGCFVisible(w.wMainFrame, e))
-    self.registerListener(idGCFDots,    (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
-    self.registerListener(idGCFLines,   (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
-    #--
-    self.registerListener(idGCFClosing, (w:wWindow, e:wEvent)=>onGCFCtrlFrameClosing(w.wMainFrame, e))
-    self.registerListener(idPFClosing, (w:wWindow, e:wEvent)=>onMsgPlacementFrameClosing(w.wMainFrame, e))
+    self.registerListener(idGCFSnap,            (w:wWindow, e:wEvent)=>onGCFSnap(w.wMainFrame, e))
+    self.registerListener(idGCFDynamic,         (w:wWindow, e:wEvent)=>onGCFDynamic(w.wMainFrame, e))
+    self.registerListener(idGCFBaseSync,        (w:wWindow, e:wEvent)=>onGCFBaseSync(w.wMainFrame, e))
+    self.registerListener(idGCFVisible,         (w:wWindow, e:wEvent)=>onGCFVisible(w.wMainFrame, e))
+    self.registerListener(idGCFDots,            (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
+    self.registerListener(idGCFLines,           (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
+    self.registerListener(idGCFDestroying,      (w:wWindow, e:wEvent)=>onGCFDestroying(w.wMainFrame, e))
+    self.registerListener(idPFDestroying,       (w:wWindow, e:wEvent)=>onPFDestroying(w.wMainFrame, e))
     
     if not barebones:
       self.mainPanel = MainPanel(self)

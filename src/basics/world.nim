@@ -12,11 +12,13 @@ import std/[json,
 
 when defined(worldInt): 
   static:
-    echo "WType defined as int"
+    discard
+    # echo "WType defined as int"
   type WType* = int
 elif defined(worldFloat):
   static:
-    echo "WType defined as float"
+    discard
+    # echo "WType defined as float"
   type WType* = float
 else:
   static:

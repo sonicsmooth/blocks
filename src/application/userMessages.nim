@@ -17,16 +17,14 @@ type
     woGridRequestY, woGridDivisionsSelect, woGridDivisionsValue,
     woGridDivisionsReset, woGridDensity, woGridSnap, woGridDynamic,
     woGridBaseSync, woGridVisible, woGridDots, woGridLines,
-    woGridCtrlFrameClosing, 
-
-    woPlcFrameClosing, 
+    woGCFDestroying, woPFDestroying
 
   # Domain-specific keys (topics) for the pubsub mechanism
   CompactDlgPubSubTopic* = enum
-    Test, RandAll, RandPos, Undo, # Signals
-    Qty, Selected, # Integers
+    Test, RandAll, RandPos, Undo,                    # Signals
+    Qty, Selected,                                   # Integers
     RegionX, RegionY, RegionW, RegionH, CurrentTemp, # Floats
-    CompactReq # CompactRequest
+    CompactReq                                       # CompactRequest
   # SignalTopic* = range[Test..Undo]
     
 const
@@ -52,10 +50,10 @@ const
   idGCFVisible*         = WM_USER + ord(woGridVisible)
   idGCFDots*            = WM_USER + ord(woGridDots)
   idGCFLines*           = WM_USER + ord(woGridLines)
-  idGCFClosing*         = WM_USER + ord(woGridCtrlFrameClosing)
+  idGCFDestroying*         = WM_USER + ord(woGCFDestroying)
   
   # # Placement Frame
-  idPFClosing*    = WM_USER + ord(woPlcFrameClosing)
+  idPFDestroying*    = WM_USER + ord(woPFDestroying)
 
 
   
