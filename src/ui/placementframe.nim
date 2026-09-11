@@ -1,4 +1,5 @@
 
+import std/os
 from std/strutils import strip
 
 import wNim
@@ -36,8 +37,6 @@ type
 
     # Buttons
     bRandomizeAll, bRandomizePos, bTest,
-      #bLeft, bRight, bUp, bDown,
-      #bLeftUp, bRightUp, bLeftDown, bRightDown,
       bUndo, bDone: wButton
 
     # Static images
@@ -60,327 +59,326 @@ type
 
 wClass(wPlacementPanel of wPanel):
   proc layout(self: wPlacementPanel) =
-    let
-      hmarg = self.dpiScale(gHmargRaw) # from panel edge
-      vmarg = self.dpiScale(gVmargRaw) # from panel edge
-      hpad = self.dpiScale(gHpadRaw) # small spaces
-      vpad = self.dpiScale(gVpadRaw) # small spaces
-      hspc = self.dpiScale(gHspcRaw) # larger spaces
-      vspc = self.dpiScale(gVspcRaw) # larger spaces
-      boxvspc = self.dpiScale(20) # down from top of static box to avoid text
-      vgap = self.dpiScale(gVgapRaw) # tiny space
-      bbTxtAdjust = self.dpiScale(gTxtVadjust) # get top compass buttons to align with box line not text
-      buttWidth = self.dpiScale(gButtWidthRaw)
-      buttHeight = self.dpiScale(gButtHeightRaw)
-      arrowBtnSize = self.dpiScale(gIconSizeRaw)
-      txtCtrlWidth = self.dpiScale(gTxtCtrlWidthRaw)
-      offset = fontDescent(self.stCurrTempNum.font) - fontDescent(self.stCurrTemp.font)
-      startTempNumExtraOne = self.dpiScale(10)
+    when defined(bakedLayout):
+      include "../ui/layouts/wPlacementPanel.layout"
+    else:
+      let
+        hmarg = self.dpiScale(gHmargRaw) # from panel edge
+        vmarg = self.dpiScale(gVmargRaw) # from panel edge
+        hpad = self.dpiScale(gHpadRaw) # small spaces
+        vpad = self.dpiScale(gVpadRaw) # small spaces
+        hspc = self.dpiScale(gHspcRaw) # larger spaces
+        vspc = self.dpiScale(gVspcRaw) # larger spaces
+        boxvspc = self.dpiScale(20) # down from top of static box to avoid text
+        vgap = self.dpiScale(gVgapRaw) # tiny space
+        bbTxtAdjust = self.dpiScale(gTxtVadjust) # get top compass buttons to align with box line not text
+        buttWidth = self.dpiScale(gButtWidthRaw)
+        buttHeight = self.dpiScale(gButtHeightRaw)
+        arrowBtnSize = self.dpiScale(gIconSizeRaw)
+        txtCtrlWidth = self.dpiScale(gTxtCtrlWidthRaw)
+        offset = fontDescent(self.stCurrTempNum.font) - fontDescent(self.stCurrTemp.font)
+        startTempNumExtraOne = self.dpiScale(10)
+      self.stCompTitle.fit()
+      self.stSelected.fit()
+      self.stCurrTempNum.fit()
+      self.layout:
+        # Top Row
+        self.stQty:
+          left = self.left + hmarg
+          centerY = self.bRandomizeAll.centerY
+          width = self.stQty.defaultWidth
+          height = self.stQty.defaultHeight
+        self.txtQty:
+          left = self.stQty.right
+          centerY = self.bRandomizeAll.centerY
+          width = txtCtrlWidth
+          height = self.txtQty.defaultHeight
+        self.stSelected:
+          left = self.txtQty.right + hspc
+          centerY = self.bRandomizeAll.centerY
+          width = self.stSelected.defaultWidth
+          height = self.stSelected.defaultHeight
+        self.stSelectedNum:
+          left = self.stSelected.right + hpad
+          bottom = self.stSelected.bottom
+          width = txtCtrlWidth
+          height = self.stSelectedNum.defaultHeight
+        self.bRandomizeAll:
+          right = self.bRandomizePos.left - hspc
+          top = self.top + vmarg
+          width = buttWidth
+          height = buttHeight
+        self.bRandomizePos:
+          right = self.bTest.left - hspc
+          top = self.bRandomizeAll.top
+          width = buttWidth
+          height = buttHeight
+        self.bTest:
+          right == self.sbAnneal.right
+          top = self.bRandomizeAll.top
+          height = buttHeight
+          width = self.dpiScale(80)
 
-    self.stCompTitle.fit()
-    self.stSelected.fit()
-    self.stCurrTempNum.fit()
-    self.layout:
-      # Top Row
-      self.stQty:
-        left = self.left + hmarg
-        centerY = self.bRandomizeAll.centerY
-        width = self.stQty.defaultWidth
-        height = self.stQty.defaultHeight
-      self.txtQty:
-        left = self.stQty.right
-        centerY = self.bRandomizeAll.centerY
-        width = txtCtrlWidth
-        height = self.txtQty.defaultHeight
-      self.stSelected:
-        left = self.txtQty.right + hspc
-        centerY = self.bRandomizeAll.centerY
-        width = self.stSelected.defaultWidth
-        height = self.stSelected.defaultHeight
-      self.stSelectedNum:
-        left = self.stSelected.right + hpad
-        bottom = self.stSelected.bottom
-        width = txtCtrlWidth
-        height = self.stSelectedNum.defaultHeight
-      self.bRandomizeAll:
-        right = self.bRandomizePos.left - hspc
-        top = self.top + vmarg
-        width = buttWidth
-        height = buttHeight
-      self.bRandomizePos:
-        right = self.bTest.left - hspc
-        top = self.bRandomizeAll.top
-        width = buttWidth
-        height = buttHeight
-      self.bTest:
-        right == self.sbAnneal.right
-        top = self.bRandomizeAll.top
-        height = buttHeight
-        width = self.dpiScale(80)
+        # Title
+        self.stCompTitle:
+          left = self.left + hmarg
+          top = self.bRandomizeAll.bottom + vspc
+          width = self.stCompTitle.defaultWidth
+          height = self.stCompTitle.defaultHeight
 
-      # Title
-      self.stCompTitle:
-        left = self.left + hmarg
-        top = self.bRandomizeAll.bottom + vspc
-        width = self.stCompTitle.defaultWidth
-        height = self.stCompTitle.defaultHeight
+        # 8 Compass buttons
+        self.bLeftUp:
+          top = self.stCompTitle.bottom + bbTxtAdjust
+          left = self.left + hmarg
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.bUp:
+          top = self.stCompTitle.bottom + bbTxtAdjust
+          left = self.bLeftUp.right
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.bRightUp:
+          top = self.stCompTitle.bottom + bbTxtAdjust
+          left = self.bUp.right
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.bLeft:
+          top = self.bLeftUp.bottom
+          left = self.bLeftUp.left
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.bRight:
+          top = self.bRightUp.bottom
+          left = self.bRightUp.left
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.bLeftDown:
+          top = self.bLeft.bottom
+          left = self.bLeft.left
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.bDown:
+          top = self.bLeft.bottom
+          left = self.bLeftDown.right
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.bRightDown:
+          top = self.bRight.bottom
+          left = self.bDown.right
+          width = arrowBtnSize
+          height = arrowBtnSize
 
-      # 8 Compass buttons
-      self.bLeftUp:
-        top = self.stCompTitle.bottom + bbTxtAdjust
-        left = self.left + hmarg
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.bUp:
-        top = self.stCompTitle.bottom + bbTxtAdjust
-        left = self.bLeftUp.right
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.bRightUp:
-        top = self.stCompTitle.bottom + bbTxtAdjust
-        left = self.bUp.right
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.bLeft:
-        top = self.bLeftUp.bottom
-        left = self.bLeftUp.left
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.bRight:
-        top = self.bRightUp.bottom
-        left = self.bRightUp.left
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.bLeftDown:
-        top = self.bLeft.bottom
-        left = self.bLeft.left
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.bDown:
-        top = self.bLeft.bottom
-        left = self.bLeftDown.right
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.bRightDown:
-        top = self.bRight.bottom
-        left = self.bDown.right
-        width = arrowBtnSize
-        height = arrowBtnSize
+        # Static Boxes, Left
+        self.sbBoundReg:
+          top = self.stCompTitle.bottom
+          left = self.bRightUp.right + hspc
+          bottom = self.bDown.bottom
+          right >= self.txtH.right + hpad
+        self.sbMinSpacing:
+          left = self.bLeft.left
+          top = self.bDown.bottom + vspc
+          bottom = self.sbAnneal.bottom
+          width = self.sbOrder.width
+        self.sbOrder:
+          left = self.sbMinSpacing.right + hspc
+          top = self.sbMinSpacing.top
+          bottom = self.sbAnneal.bottom
+          right = self.sbBoundReg.right
 
-      # Static Boxes, Left
-      self.sbBoundReg:
-        top = self.stCompTitle.bottom
-        left = self.bRightUp.right + hspc
-        bottom = self.bDown.bottom
-        right >= self.txtH.right + hpad
-      self.sbMinSpacing:
-        left = self.bLeft.left
-        top = self.bDown.bottom + vspc
-        bottom = self.sbAnneal.bottom
-        width = self.sbOrder.width
-      self.sbOrder:
-        left = self.sbMinSpacing.right + hspc
-        top = self.sbMinSpacing.top
-        bottom = self.sbAnneal.bottom
-        right = self.sbBoundReg.right
+        # Static Boxes, Right
+        self.sbCompactMethod:
+          top = self.sbBoundReg.top
+          left = self.sbBoundReg.right + hspc
+          bottom = self.rbNone.bottom + vpad
+          right = self.sbAnneal.right
+        self.sbAnneal:
+          top = self.sbCompactMethod.bottom + vspc
+          left = self.sbBoundReg.right + hspc
+          bottom = self.cbMonitor.bottom + vpad
+          right = self.stStartTempNum.right + vmarg
 
-      # Static Boxes, Right
-      self.sbCompactMethod:
-        top = self.sbBoundReg.top
-        left = self.sbBoundReg.right + hspc
-        bottom = self.rbNone.bottom + vpad
-        right = self.sbAnneal.right
-      self.sbAnneal:
-        top = self.sbCompactMethod.bottom + vspc
-        left = self.sbBoundReg.right + hspc
-        bottom = self.cbMonitor.bottom + vpad
-        right = self.stStartTempNum.right + vmarg
+        # Bounding Region contents
+        self.cbDrawRegion:
+          top = self.sbBoundReg.top + boxvspc
+          #left = self.sbBoundReg.left + hpad
+          left = self.stDrawRegion.right + hpad
+          width = arrowBtnSize
+          height = arrowBtnSize
+        self.stDrawRegion:
+          centerY = self.cbDrawRegion.centerY
+          left = self.sbBoundReg.left + hpad
+          width = self.stDrawRegion.defaultWidth
+          height = self.stDrawRegion.defaultHeight
 
-      # Bounding Region contents
-      self.cbDrawRegion:
-        top = self.sbBoundReg.top + boxvspc
-        #left = self.sbBoundReg.left + hpad
-        left = self.stDrawRegion.right + hpad
-        width = arrowBtnSize
-        height = arrowBtnSize
-      self.stDrawRegion:
-        centerY = self.cbDrawRegion.centerY
-        left = self.sbBoundReg.left + hpad
-        width = self.stDrawRegion.defaultWidth
-        height = self.stDrawRegion.defaultHeight
+        self.stX:
+          top = self.cbDrawRegion.bottom + vpad
+          left = self.sbBoundReg.left + hpad
+          width = self.stX.defaultWidth
+          height = self.stX.defaultHeight
+        self.stY:
+          top = self.cbDrawRegion.bottom + vpad
+          left = self.txtX.right + hpad
+          width = self.stY.defaultWidth
+          height = self.stY.defaultHeight
+        self.stW:
+          top = self.cbDrawRegion.bottom + vpad
+          left = self.txtY.right + hpad
+          width = self.stW.defaultWidth
+          height = self.stW.defaultHeight
+        self.stH:
+          top = self.cbDrawRegion.bottom + vpad
+          left = self.txtW.right + hpad
+          width = self.stH.defaultWidth
+          height = self.stH.defaultHeight
 
-      self.stX:
-        top = self.cbDrawRegion.bottom + vpad
-        left = self.sbBoundReg.left + hpad
-        width = self.stX.defaultWidth
-        height = self.stX.defaultHeight
-      self.stY:
-        top = self.cbDrawRegion.bottom + vpad
-        left = self.txtX.right + hpad
-        width = self.stY.defaultWidth
-        height = self.stY.defaultHeight
-      self.stW:
-        top = self.cbDrawRegion.bottom + vpad
-        left = self.txtY.right + hpad
-        width = self.stW.defaultWidth
-        height = self.stW.defaultHeight
-      self.stH:
-        top = self.cbDrawRegion.bottom + vpad
-        left = self.txtW.right + hpad
-        width = self.stH.defaultWidth
-        height = self.stH.defaultHeight
+        self.txtY:
+          top = self.stY.bottom
+          left = self.stY.left
+          width = txtCtrlWidth
+          height = self.txtY.defaultHeight
+        self.txtX:
+          top = self.stX.bottom
+          left = self.stX.left
+          width = txtCtrlWidth
+          height = self.txtX.defaultHeight
+        self.txtW:
+          top = self.stW.bottom
+          left = self.stW.left
+          width = txtCtrlWidth
+          height = self.txtW.defaultHeight
+        self.txtH:
+          top = self.stH.bottom
+          left = self.stH.left
+          width = txtCtrlWidth
+          height = self.txtW.defaultHeight
 
-      self.txtY:
-        top = self.stY.bottom
-        left = self.stY.left
-        width = txtCtrlWidth
-        height = self.txtY.defaultHeight
-      self.txtX:
-        top = self.stX.bottom
-        left = self.stX.left
-        width = txtCtrlWidth
-        height = self.txtX.defaultHeight
-      self.txtW:
-        top = self.stW.bottom
-        left = self.stW.left
-        width = txtCtrlWidth
-        height = self.txtW.defaultHeight
-      self.txtH:
-        top = self.stH.bottom
-        left = self.stH.left
-        width = txtCtrlWidth
-        height = self.txtW.defaultHeight
+        # Minimum Spacing contents
+        self.txtMinX:
+          top = self.sbMinSpacing.top + boxvspc
+          left = self.stMinX.right
+          width = txtCtrlWidth
+          height = self.txtMinX.defaultHeight
+        self.txtMinY:
+          top = self.txtMinX.bottom + vgap
+          left = self.txtMinX.left
+          width = txtCtrlWidth
+          height = self.txtMinY.defaultHeight
+        self.stMinX:
+          bottom = self.txtMinX.bottom
+          left = self.sbMinSpacing.left + hpad
+          width = self.stMinX.defaultWidth
+          height = self.stMinX.defaultHeight
+        self.stMiny:
+          bottom = self.txtMinY.bottom + vgap
+          left = self.sbMinSpacing.left + hpad
+          width = self.stMinY.defaultWidth
+          height = self.stMinY.defaultHeight
 
-      # Minimum Spacing contents
-      self.txtMinX:
-        top = self.sbMinSpacing.top + boxvspc
-        left = self.stMinX.right
-        width = txtCtrlWidth
-        height = self.txtMinX.defaultHeight
-      self.txtMinY:
-        top = self.txtMinX.bottom + vgap
-        left = self.txtMinX.left
-        width = txtCtrlWidth
-        height = self.txtMinY.defaultHeight
-      self.stMinX:
-        bottom = self.txtMinX.bottom
-        left = self.sbMinSpacing.left + hpad
-        width = self.stMinX.defaultWidth
-        height = self.stMinX.defaultHeight
-      self.stMiny:
-        bottom = self.txtMinY.bottom + vgap
-        left = self.sbMinSpacing.left + hpad
-        width = self.stMinY.defaultWidth
-        height = self.stMinY.defaultHeight
+        # Order contents
+        self.rbHV:
+          top = self.sborder.top + boxvspc
+          left = self.sbOrder.left + hpad
+          width = self.rbHV.defaultWidth
+          height = self.rbHV.defaultHeight
+        self.rbVH:
+          top = self.rbHV.bottom
+          left = self.sbOrder.left + hpad
+          width = self.rbVH.defaultWidth
+          height = self.rbVH.defaultHeight
 
-      # Order contents
-      self.rbHV:
-        top = self.sborder.top + boxvspc
-        left = self.sbOrder.left + hpad
-        width = self.rbHV.defaultWidth
-        height = self.rbHV.defaultHeight
-      self.rbVH:
-        top = self.rbHV.bottom
-        left = self.sbOrder.left + hpad
-        width = self.rbVH.defaultWidth
-        height = self.rbVH.defaultHeight
+        # Compact Method contents
+        self.rbNone:
+          top = self.sbCompactMethod.top + boxvspc
+          left = self.sbCompactMethod.left + hpad
+          width = self.rbNone.defaultWidth
+          height = self.rbNone.defaultHeight
+        self.rbStack:
+          top = self.sbCompactMethod.top + boxvspc
+          left = self.rbNone.right + hpad
+          width = self.rbStack.defaultWidth
+          height = self.rbStack.defaultHeight
+        self.rbAnneal:
+          top = self.sbCompactMethod.top + boxvspc
+          left = self.rbStack.right + hpad
+          width = self.rbAnneal.defaultWidth
+          height = self.rbAnneal.defaultHeight
 
-      # Compact Method contents
-      self.rbNone:
-        top = self.sbCompactMethod.top + boxvspc
-        left = self.sbCompactMethod.left + hpad
-        width = self.rbNone.defaultWidth
-        height = self.rbNone.defaultHeight
-      self.rbStack:
-        top = self.sbCompactMethod.top + boxvspc
-        left = self.rbNone.right + hpad
-        width = self.rbStack.defaultWidth
-        height = self.rbStack.defaultHeight
-      self.rbAnneal:
-        top = self.sbCompactMethod.top + boxvspc
-        left = self.rbStack.right + hpad
-        width = self.rbAnneal.defaultWidth
-        height = self.rbAnneal.defaultHeight
+        # Anneal contents
+        self.stStrat:
+          top = self.sbAnneal.top + boxvspc
+          left = self.sbAnneal.left + hpad
+          width = self.stStrat.defaultWidth
+          height = self.stStrat.defaultHeight
+        self.rbStrat1:
+          top = self.stStrat.bottom
+          left = self.sbAnneal.left + hpad
+          width = self.rbStrat1.defaultWidth
+          height = self.rbStrat1.defaultHeight
+        self.rbStrat2:
+          top = self.rbStrat1.bottom
+          left = self.sbAnneal.left + hpad
+          width = self.rbStrat2.defaultWidth
+          height = self.rbStrat2.defaultHeight
 
-      # Anneal contents
-      self.stStrat:
-        top = self.sbAnneal.top + boxvspc
-        left = self.sbAnneal.left + hpad
-        width = self.stStrat.defaultWidth
-        height = self.stStrat.defaultHeight
-      self.rbStrat1:
-        top = self.stStrat.bottom
-        left = self.sbAnneal.left + hpad
-        width = self.rbStrat1.defaultWidth
-        height = self.rbStrat1.defaultHeight
-      self.rbStrat2:
-        top = self.rbStrat1.bottom
-        left = self.sbAnneal.left + hpad
-        width = self.rbStrat2.defaultWidth
-        height = self.rbStrat2.defaultHeight
+        self.stReplFn:
+          top = self.sbAnneal.top + boxvspc
+          left = self.rbStrat1.right + hspc * 2
+          width = self.stReplFn.defaultWidth
+          height = self.stReplFn.defaultHeight
+        self.rbWiggle:
+          top = self.stReplFn.bottom
+          left = self.stReplFn.left
+          width = self.rbWiggle.defaultWidth
+          height = self.rbWiggle.defaultHeight
+        self.rbSwap:
+          top = self.rbWiggle.bottom
+          left = self.stReplFn.left
+          width = self.rbSwap.defaultWidth
+          height = self.rbSwap.defaultHeight
 
-      self.stReplFn:
-        top = self.sbAnneal.top + boxvspc
-        left = self.rbStrat1.right + hspc * 2
-        width = self.stReplFn.defaultWidth
-        height = self.stReplFn.defaultHeight
-      self.rbWiggle:
-        top = self.stReplFn.bottom
-        left = self.stReplFn.left
-        width = self.rbWiggle.defaultWidth
-        height = self.rbWiggle.defaultHeight
-      self.rbSwap:
-        top = self.rbWiggle.bottom
-        left = self.stReplFn.left
-        width = self.rbSwap.defaultWidth
-        height = self.rbSwap.defaultHeight
+        self.stStartTemp:
+          top = self.rbStrat2.bottom + vpad
+          left = self.sbAnneal.left + hpad
+          width = self.stStartTemp.defaultWidth
+          height = self.stStartTemp.defaultHeight
+        self.slStartTemp:
+          top = self.stStartTemp.bottom
+          left = self.sbAnneal.left + hpad
+          height = self.slStartTemp.defaultHeight
+          right = self.stStartTempNum.left
+        self.stStartTempNum:
+          bottom = self.slStartTemp.bottom - offset
+          right = self.stReplFn.right
+          width = self.stStartTempNum.defaultWidth + startTempNumExtraOne
+          height = self.stStartTempNum.defaultHeight
+        self.stCurrTemp:
+          bottom = self.stCurrTempNum.bottom - offset
+          left = self.sbAnneal.left + hpad
+          width = self.stCurrTemp.defaultWidth
+          height = self.stCurrTemp.defaultHeight
+        self.stCurrTempNum:
+          top = self.slStartTemp.bottom
+          left = self.stCurrTemp.right + hpad
+          width = self.stCurrTempNum.defaultWidth
+          height = self.stCurrTempNum.defaultHeight
+        self.cbMonitor:
+          top = self.stCurrTemp.bottom
+          left = self.sbAnneal.left + hpad
+          width = self.cbMonitor.defaultWidth
+          height = self.cbMonitor.defaultHeight
 
-      self.stStartTemp:
-        top = self.rbStrat2.bottom + vpad
-        left = self.sbAnneal.left + hpad
-        width = self.stStartTemp.defaultWidth
-        height = self.stStartTemp.defaultHeight
-      self.slStartTemp:
-        top = self.stStartTemp.bottom
-        left = self.sbAnneal.left + hpad
-        height = self.slStartTemp.defaultHeight
-        right = self.stStartTempNum.left
-      self.stStartTempNum:
-        bottom = self.slStartTemp.bottom - offset
-        right = self.stReplFn.right
-        width = self.stStartTempNum.defaultWidth + startTempNumExtraOne
-        height = self.stStartTempNum.defaultHeight
-      self.stCurrTemp:
-        bottom = self.stCurrTempNum.bottom - offset
-        left = self.sbAnneal.left + hpad
-        width = self.stCurrTemp.defaultWidth
-        height = self.stCurrTemp.defaultHeight
-      self.stCurrTempNum:
-        top = self.slStartTemp.bottom
-        left = self.stCurrTemp.right + hpad
-        width = self.stCurrTempNum.defaultWidth
-        height = self.stCurrTempNum.defaultHeight
-      self.cbMonitor:
-        top = self.stCurrTemp.bottom
-        left = self.sbAnneal.left + hpad
-        width = self.cbMonitor.defaultWidth
-        height = self.cbMonitor.defaultHeight
-
-      # Done and Undo buttons
-      self.bDone:
-        bottom = self.height - vmarg
-        right = self.right - hmarg
-        width = buttWidth
-        height = buttHeight
-      self.bUndo:
-        bottom = self.height - vmarg
-        right = self.bDone.left - hspc
-        width = buttWidth
-        height = buttHeight
-
-  proc dumpLayout(self: wPlacementPanel, path: string) =
-    # write x,y,w,h of all widgets
-    discard
+        # Done and Undo buttons
+        self.bDone:
+          bottom = self.height - vmarg
+          right = self.right - hmarg
+          width = buttWidth
+          height = buttHeight
+        self.bUndo:
+          bottom = self.height - vmarg
+          right = self.bDone.left - hspc
+          width = buttWidth
+          height = buttHeight
+      self.dumpLayout()
 
   proc onResize(self: wPlacementPanel) =
     self.layout()
@@ -623,7 +621,7 @@ wClass(wPlacementPanel of wPanel):
     let iconSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
     block: # Priming cache
       when defined(debug):
-        echo "placementframe priming bitmap cache"
+        stdout.write "placementframe priming bitmap cache... "
       timeItms(iconProfile, "priming cache placementframe"):
         let iconNames =["arrow_left", "arrow_right", "arrow_up", "arrow_down",
                         "upper_left_hv_arrow", "upper_left_vh_arrow",
@@ -633,7 +631,7 @@ wClass(wPlacementPanel of wPanel):
                         "drag"]
         initIconBitmaps(iconNames, iconSz)
       when defined(debug):
-        echo "done priming bitmap cache"
+        stdout.writeLine "done."
     
     block: # Create controls
       # Static Boxes
@@ -820,7 +818,6 @@ wClass(wPlacementFrame of wFrame):
 
 when isMainModule:
   var plf: wPlacementFrame
-
   try:
     wSetSystemDPIAware()
     registerListener(Qty, proc(q: int) = echo "Listener says Qty: ", q)

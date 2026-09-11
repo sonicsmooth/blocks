@@ -358,14 +358,14 @@ wClass(wMainFrame of wFrame):
     let big   = appDpiScale(bigraw)
     block: # Priming cache
       when defined(debug):
-        echo "mainframe priming bitmap cache"
+        stdout.write "mainframe priming bitmap cache... "
       timeItms(iconProfile, "priming cache mainframe"):
         let iconNames = ["new_document", "file_open", "save", "close",
                         "preferences", "gridonoff", "gridsettings",
                         "exit", "place", "info", "help"]
         initIconBitmaps(iconNames, [small, big])
       when defined(debug):
-        echo "done priming bitmap cache"
+        stdout.writeLine "done."
     self.mMenuBar   = self.setupMenuBar()
     self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()

@@ -1,4 +1,4 @@
-import std/strformat
+import std/[os, strformat]
 import wnim
 import winim
 
@@ -77,4 +77,24 @@ proc requiredSize*(ctrls: openArray[wControl], addButtonSpace: bool=true): wSize
   result.width += appDpiScale(gHmargRaw)
   if addButtonSpace:
     result.height += barHeight() + appDpiScale(gVmargRaw)
+
+proc dumpLayout*[T: wPanel](self: T) =
+  # write x,y,w,h of all widgets
+  
+  # workaround to issues using fieldPairs in a generic proc (#12423)
+  # otherwise use template dumpLayout*(self: typed) =
+  mixin wControl 
+  
+  let path = getAppDir() / "../src/ui/layouts" / $self.typeof & ".layout"
+  when defined(debug):
+    stdout.write "dumping layout to ", path, "..."
+  var f = open(path, fmwrite)
+  defer: close(f)
+  for name, ctrl in self[].fieldPairs:
+    when ctrl is wControl:
+      if not ctrl.isNil:
+        f.writeLine("self.", name, ".position = ", $ctrl.position, ".wPoint")
+        f.writeLine("self.", name, ".size = ", $ctrl.size, ".wSize")
+  when defined(debug):
+    stdout.writeLine "done"
 

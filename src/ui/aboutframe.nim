@@ -31,7 +31,7 @@ proc heart*(w,h: int): Image =
   result.fillPath(path, "#7B42FC")
 
 proc junkTxt*(w,h: int): Image = 
-  let fontPath = getAppDir() / ".." / "fonts/Ubuntu-Regular_1.ttf"
+  let fontPath = getAppDir() / "../fonts/Ubuntu-Regular_1.ttf"
   let typeface = readTypeface(fontPath)
   let spans = @[
     newSpan("verb [with object] ",

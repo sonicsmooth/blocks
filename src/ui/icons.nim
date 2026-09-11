@@ -115,32 +115,27 @@ proc initIconBitmaps*(name: string, size: wSize) =
       gBitmapCache[(name, size, state)] = renderBitmap(svg, size)
 
 proc initIconBitmaps*(name: string, sizes: openArray[wSize]) =
-  # TODO: multithread
   for size in sizes:
     initIconBitmaps(name, size)
 
 proc initIconBitmaps*(names: openArray[string], size: wSize) =
   # Render and cache all given names at given size
-  # TODO: multithreaded
   for name in names:
     initIconBitmaps(name, size)
 
 proc initIconBitmaps*(names: openArray[string], sizes: openArray[wSize]) =
   # Render and cache all given names at all given sizes
-  # TODO: multithreaded
   for name in names:
     for sz in sizes:
       initIconBitmaps(name, sz)
 
 proc initIconBitmaps*(sz: wSize) =
   # Prime all bitmaps to given size, for all states
-  # TODO: multithreaded
   for name, _ in gIcons:
     initIconBitmaps(name, sz)
 
 proc initIconBitmaps*(sizes: openArray[wSize]) =
   # Prime all bitmaps to given sizes, for all states
-  # TODO: multithreaded
   var names: seq[string]
   for name, _ in gIcons:
     names.add(name)
