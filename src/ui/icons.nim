@@ -1,11 +1,6 @@
 import std/[os, tables]
 import wNim
-import pixie/fileformats/[png, svg]
-
-# TODO: cache bitmaps at compile time
-# TODO: Maybe not possible with win32, so
-# TODO: prerender bitmaps without wnim
-# TODO: then convert/cast to wBitmap at runtime.
+import pixie/fileformats/[svg]
 
 type
   IconState* = enum Normal, Hover, Pressed
@@ -100,11 +95,14 @@ else:
   let gIcons: IconTable = buildIconTable()
 var gBitmapCache: BitmapCache
 
+
 proc renderBitmap(svgData: string, sz: wSize): wBitmap =
   let svgObj = parseSvg(svgData, sz.width, sz.height)
   let im = newImage(svgObj)
-  let pngBytes = im.encodePng()
-  let wimg = Image(pngBytes[0].addr, pngBytes.len)
+  for i in 0 ..< im.data.len:
+    swap(im.data[i].r, im.data[i].b)
+  let wimg = Image(im.width, im.height, im.width * 4,
+                   wPixelFormat32bppPARGB, im.data[0].addr)
   Bitmap(wimg)
 
 proc initIconBitmaps*(name: string, size: wSize) =
@@ -164,6 +162,7 @@ proc iconBitmap*(name: string, sz: wSize, state: IconState = Normal): wBitmap =
   gBitmapCache[(name, sz, state)]
 
 when isMainModule:
+  import monoprofile
   echo "Loaded ", iconNames().len, " icons:"
   var anyMissing = false
   for (key, baseFile) in baseNames:
@@ -175,30 +174,38 @@ when isMainModule:
     echo "  (no missing states)"
   
   # Test rendering
-  echo renderBitmap(gIcons["stop"][Normal], (24, 24)).size
+  echo "caching stop at 24, normal only, reporting size"
+  timeItms(iconProfile, "normal, 24"):
+    echo renderBitmap(gIcons["stop"][Normal], (24, 24)).size
 
   echo "caching stop at 24"
-  initIconBitmaps("stop", (24, 24))
+  timeItms(iconProfile, "time: "):
+    initIconBitmaps("stop", (24, 24))
   gBitmapCache.clear()
 
   echo "caching done at 16, 24"
-  initIconBitmaps("done", [(16, 16), (24, 24)])
+  timeItms(iconProfile, "time: "):
+    initIconBitmaps("done", [(16, 16), (24, 24)])
   gBitmapCache.clear()
 
   echo "caching close, drag at 16"
-  initIconBitmaps(["close", "drag"], (16, 16))
+  timeItms(iconProfile, "time: "):
+    initIconBitmaps(["close", "drag"], (16, 16))
   gBitmapCache.clear()
   
   echo "caching delete, help at 16, 24"
-  initIconBitmaps(["delete", "help"], [(16, 16), (24, 24)])
+  timeItms(iconProfile, "time: "):
+    initIconBitmaps(["delete", "help"], [(16, 16), (24, 24)])
   gBitmapCache.clear()
 
   echo "caching all at 16"
-  initIconBitmaps((16, 16))
+  timeItms(iconProfile, "time: "):
+    initIconBitmaps((16, 16))
   gBitmapCache.clear()
 
   echo "caching all at 16, 24"
-  initIconBitmaps([(16, 16), (24, 24)])
+  timeItms(iconProfile, "time: "):
+    initIconBitmaps([(16, 16), (24, 24)])
   gBitmapCache.clear()
 
   

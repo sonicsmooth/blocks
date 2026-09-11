@@ -54,12 +54,14 @@ wClass(wSDLPanel of wPanel):
     
     # Choose Direct3D 11; default of 9 deletes its
     # textures when screen is resized
-    echo "Available renderers"
+    when defined(debug):
+      echo "Available renderers"
     var renderIndex: Table[string, int32]
     for i in 0 ..< getNumRenderDrivers():
       var info: RendererInfo
       discard getRenderDriverInfo(i, info)
-      echo "  ", i, ": ", info.name
+      when defined(debug):
+        echo "  ", i, ": ", info.name
       renderIndex[$info.name] = i
 
     self.sdlRenderer =
@@ -129,7 +131,8 @@ wClass(wTestPanel of wSDLPanel):
     self.refresh()
 
   proc init*(self: wTestPanel, parent: wWindow) =
-    echo "wTestPanel.init()"
+    when defined(debug):
+      echo "wTestPanel.init()"
     wSDLPanel(self).init(parent) #, style=wBorderSimple)
     self.rects.add(rect( 10,  20, 100, 100, toColorRGBA(Red.toU32_RGB(),     127), (Right, Down)))
     self.rects.add(rect( 30,  40, 100, 100, toColorRGBA(Green.toU32_RGB(),   127), (Right, Down)))
@@ -152,10 +155,10 @@ wClass(wTestPanel of wSDLPanel):
 
 wClass(wSDLFrame of wFrame):
   proc init*(self: wSDLFrame, size: wSize) =
-    echo "wSDLFrame.init()"
+    when defined(debug):
+      echo "wSDLFrame.init()"
     wFrame(self).init(title="SDL Frame", size=size)
     self.mPanel = TestPanel(self)
-
 
 if isMainModule:
   initSDL()

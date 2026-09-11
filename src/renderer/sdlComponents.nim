@@ -31,7 +31,8 @@ proc tryFont(size: float): FontPtr =
     if not result.isNil:
       if gFontName.isNone:
         gFontName = some(p)
-        echo "SDL Loaded ", p, " with size ", size
+        when defined(debug):
+          echo "SDL Loaded ", p, " with size ", size
       return result
 
 # TODO: see whether other places need this, not just components

@@ -78,9 +78,3 @@ proc requiredSize*(ctrls: openArray[wControl], addButtonSpace: bool=true): wSize
   if addButtonSpace:
     result.height += barHeight() + appDpiScale(gVmargRaw)
 
-method release*(self: wComboBox) =
-  echo "in method"
-  self.mParent.systemDisconnect(self.mCommandConn)
-  wasMoved(self.mEdit)
-  wasMoved(self.mList)
-  free(self[])

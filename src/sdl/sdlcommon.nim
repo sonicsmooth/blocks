@@ -71,8 +71,8 @@ when isMainModule:
 
   # Choose Direct3D 11; default of 9 deletes its
   # textures when screen is resized
-  echo "Available renderers"
   var renderIndex: Table[string, int32]
+  echo "Available renderers"
   for i in 0 ..< getNumRenderDrivers():
     var info: RendererInfo
     discard getRenderDriverInfo(i, info)

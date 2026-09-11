@@ -26,7 +26,8 @@ proc jsonInitGlobals*() =
     # Assume exe location has been fixed in nim.cfg 
     let initPath = getAppDir() / "../appinit.json"
     if fileExists(initPath):
-      echo "Opening ", initPath
+      when defined(debug):
+        echo "Opening ", initPath
       let initsJ   = parseFile(initPath)["appInits"]
       gAppOptsJ    = initsJ["AppOpts"]
       gViewportJ   = initsJ["Viewport"]

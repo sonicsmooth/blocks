@@ -6,6 +6,7 @@ import winim
 import winim/inc/winuser
 
 import icons
+import monoprofile
 import pubsub
 import utils
 import uicommon
@@ -396,7 +397,8 @@ wClass(wPlacementPanel of wPanel):
 
   proc onDestroy(self: wPlacementPanel) =
     # Clean up pubsub
-    echo "PlacementPanel onDestroy"
+    when defined(debug):
+      echo "PlacementPanel onDestroy"
 
   proc onTextFocus(self: wPlacementPanel, event: wEvent) = 
     cast[wTextCtrl](event.window).setInsertionPointEnd()
@@ -622,13 +624,14 @@ wClass(wPlacementPanel of wPanel):
     block: # Priming cache
       when defined(debug):
         echo "placementframe priming bitmap cache"
-      let iconNames =["arrow_left", "arrow_right", "arrow_up", "arrow_down",
-                      "upper_left_hv_arrow", "upper_left_vh_arrow",
-                      "upper_right_hv_arrow", "upper_right_vh_arrow",
-                      "lower_left_hv_arrow", "lower_left_vh_arrow",
-                      "lower_right_hv_arrow", "lower_right_vh_arrow",
-                      "drag"]
-      initIconBitmaps(iconNames, iconSz)
+      timeItms(iconProfile, "priming cache placementframe"):
+        let iconNames =["arrow_left", "arrow_right", "arrow_up", "arrow_down",
+                        "upper_left_hv_arrow", "upper_left_vh_arrow",
+                        "upper_right_hv_arrow", "upper_right_vh_arrow",
+                        "lower_left_hv_arrow", "lower_left_vh_arrow",
+                        "lower_right_hv_arrow", "lower_right_vh_arrow",
+                        "drag"]
+        initIconBitmaps(iconNames, iconSz)
       when defined(debug):
         echo "done priming bitmap cache"
     
@@ -800,7 +803,8 @@ wClass(wPlacementFrame of wFrame):
   proc onDestroy(self: wPlacementFrame) =
     # event.veto doesn't do anything here
     # Do cleanup and announcements here
-    echo "PlacementFrame onDestroy; sending idPFDestroying"
+    when defined(debug):
+      echo "PlacementFrame onDestroy; sending idPFDestroying"
     sendToListeners(idPFDestroying, self.handle.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =

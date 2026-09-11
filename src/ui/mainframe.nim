@@ -6,7 +6,6 @@ import std/[os,
             ]
 import wNim
 from winim/inc/winbase import MulDiv
-#import winim/inc/windef
 import winim
 
 import aboutframe
@@ -18,6 +17,7 @@ import gridctrlframe
 import icons
 import jsoninit
 import mainpanel
+import monoprofile
 import placementframe
 import reporting
 import routing
@@ -314,10 +314,12 @@ wClass(wMainFrame of wFrame):
   #--
 
   proc onGCFDestroying(self: wMainFrame, event: wEvent) =
-    echo "MainFrame onGCFDestroying"
+    when defined(debug):
+      echo "MainFrame onGCFDestroying"
 
   proc onPFDestroying(self: wMainFrame, event: wEvent) =
-    echo "MainFrame onPFDestroying"
+    when defined(debug):
+      echo "MainFrame onPFDestroying"
 
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
@@ -337,11 +339,13 @@ wClass(wMainFrame of wFrame):
       event.skip()
 
   proc onClose(self: wMainFrame, event: wEvent) =
-    echo "MainFrame onClose"
+    when defined(debug):
+      echo "MainFrame onClose"
     event.skip()
 
   proc onDestroy(self: wMainFrame) =
-    echo "MainFrame onDestroy"
+    when defined(debug):
+      echo "MainFrame onDestroy"
 
   proc init*(self: wMainFrame, size: wSize, barebones: bool) = 
     when defined(debug):
@@ -355,12 +359,13 @@ wClass(wMainFrame of wFrame):
     block: # Priming cache
       when defined(debug):
         echo "mainframe priming bitmap cache"
-      let iconNames = ["new_document", "file_open", "save", "close",
-                       "preferences", "gridonoff", "gridsettings",
-                       "exit", "place", "info", "help"]
-      initIconBitmaps(iconNames, [small, big])
+      timeItms(iconProfile, "priming cache mainframe"):
+        let iconNames = ["new_document", "file_open", "save", "close",
+                        "preferences", "gridonoff", "gridsettings",
+                        "exit", "place", "info", "help"]
+        initIconBitmaps(iconNames, [small, big])
       when defined(debug):
-        echo "done priming beitmap cache"
+        echo "done priming bitmap cache"
     self.mMenuBar   = self.setupMenuBar()
     self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()

@@ -169,7 +169,8 @@ wClass(wGridControlPanel of wPanel):
     dc.drawRectangle(0, sz.height - barheight, sz.width, barheight)
 
   proc onDestroy(self: wGridControlPanel) =
-    echo "GridControlPanel onDestroy"
+    when defined(debug):
+      echo "GridControlPanel onDestroy"
     self.deregisterListener()
 
   proc onButtonDone(self: wGridControlpanel) =
@@ -455,18 +456,19 @@ wClass(wGridControlFrame of wFrame):
     # onDestroys down the tree
     # event.skip will override the veto(), but that's dumb
     # so don't use it
-    echo "GridControlFrame onClose; hiding"
+    when defined(debug):
+      echo "GridControlFrame onClose; hiding"
     self.hide()
     event.veto()
 
   proc onDestroy(self: wGridControlFrame) =
     # event.veto doesn't do anything here
     # Do cleanup and announcements here
-    echo "GridControlFrame onDestroy; sending idGCFDestroying"
+    when defined(debug):
+      echo "GridControlFrame onDestroy; sending idGCFDestroying"
     sendToListeners(idGCFDestroying, self.mHwnd.WPARAM, 0)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid=nil) =
-    echo "initting wGridControlFrame"
     let
       sz: wSize = (self.dpiScale(450), self.dpiScale(240))
       style=wModalFrame
