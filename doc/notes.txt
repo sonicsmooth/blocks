@@ -1,0 +1,3 @@
+wresizer
+combobox patch
+init in wimage
