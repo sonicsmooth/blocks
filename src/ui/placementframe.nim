@@ -59,9 +59,7 @@ type
 
 wClass(wPlacementPanel of wPanel):
   proc layout(self: wPlacementPanel) =
-    when defined(bakedLayout):
-      include "../ui/layouts/wPlacementPanel.layout"
-    else:
+    when defined(dumpLayout):
       let
         hmarg = self.dpiScale(gHmargRaw) # from panel edge
         vmarg = self.dpiScale(gVmargRaw) # from panel edge
@@ -379,6 +377,8 @@ wClass(wPlacementPanel of wPanel):
           width = buttWidth
           height = buttHeight
       self.dumpLayout()
+    else:
+      include "../ui/layouts/wPlacementPanel.layout"
 
   proc onResize(self: wPlacementPanel) =
     self.layout()
@@ -612,8 +612,6 @@ wClass(wPlacementPanel of wPanel):
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
     discard
 
-  proc requiredSize(self: wPlacementPanel): wSize =
-    requiredSize([self.sbAnneal.wControl])
 
   proc init*(self: wPlacementPanel, parent: wWindow) =
     wPanel(self).init(parent)
@@ -810,7 +808,8 @@ wClass(wPlacementFrame of wFrame):
     self.backgroundColor = gFrameBackgroundColor
     self.mPanel = PlacementPanel(self)
     self.mPanel.layout()
-    self.clientSize = self.mPanel.requiredSize
+    self.clientSize = self.mPanel.requiredSize(ignore=[self.mPanel.bDone.wControl,
+                                                       self.mPanel.bUndo.wControl])
     # Respond to generic events
     self.wEvent_Close do (event: wEvent): self.onClose(event)
     self.wEvent_Destroy do (): self.onDestroy()
@@ -832,15 +831,17 @@ when isMainModule:
       echo "Listener says CompactRequest: ", req)
     registerListener(Undo, proc() = echo "Listener says Undo")
 
-    let
-      app = App()
-      appFrame = Frame(nil, title="Fake Application Frame")
-      goButton = Button(appFrame, label="Press me")
-    plf = PlacementFrame(appFrame)
-
-    goButton.wEvent_Button do(): plf.show()
-    appFrame.show()
-    app.mainLoop()
+    when defined(dumpLayout):
+      PlacementFrame(nil)
+    else:
+      let
+        app = App()
+        appFrame = Frame(nil, title="Fake Application Frame")
+        goButton = Button(appFrame, label="Press me")
+      plf = PlacementFrame(appFrame)
+      goButton.wEvent_Button do(): plf.show()
+      appFrame.show()
+      app.mainLoop()
   except Exception as e:
     echo e.msg
     echo e.getStackTrace()

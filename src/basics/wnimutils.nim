@@ -64,15 +64,24 @@ proc setBitmap*(ctrl: wCheckBox, bmp: wBitmap) =
 proc barHeight*(): int =
   appDpiScale(gButtHeightRaw + 2 * gVmargRaw)
 
-proc requiredSize*(ctrls: openArray[wControl], addButtonSpace: bool=true): wSize =
+# TODO: redo this to use mixin pattern as below in dumpLayout
+#proc requiredSize*(ctrls: openArray[wControl], addButtonSpace: bool=true): wSize =
+proc requiredSize*[T: wPanel](self: T, ignore: openArray[wControl]=[], addButtonSpace: bool=true): wSize =
   # After layout() has positioned everything, find the true extent of the controls
-  # Ctrls are the are the wControls that define the outer lower right boundary
-  # to which the holding frame will be sized.  Optionally add a space at the 
-  # bottom for Done button, etc.
+  # Optionally add a space at the bottom for Done button, etc.
+  mixin wControl
+
   var maxRight, maxBottom: int
-  for ctrl in ctrls:
-    maxRight = max(maxRight, ctrl.position.x + ctrl.size.width)
-    maxBottom = max(maxBottom, ctrl.position.y + ctrl.size.height)
+  #for ctrl in ctrls:
+  for name, ctrl in self[].fieldPairs:
+    when ctrl is wControl:
+      if ctrl.isNil:
+        discard
+      elif ctrl in ignore:
+        discard
+      else:
+        maxRight = max(maxRight, ctrl.position.x + ctrl.size.width)
+        maxBottom = max(maxBottom, ctrl.position.y + ctrl.size.height)
   result = (maxRight, maxBottom)
   result.width += appDpiScale(gHmargRaw)
   if addButtonSpace:
