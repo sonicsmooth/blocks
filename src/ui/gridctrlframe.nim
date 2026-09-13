@@ -342,9 +342,6 @@ wClass(wGridControlPanel of wPanel):
     self.txtX.setValue($md.x)
     self.txtY.setValue($md.y)
 
-  proc requiredSize(self: wGridControlPanel): wSize =
-    result = requiredSize([self.sbInterval.wControl, self.sbAppearance.wControl])
-
   proc updateValues(self: wGridControlPanel) =
     self.txtX.setValue($self.grid.minDelta(Major).x)
     self.txtY.setValue($self.grid.minDelta(Major).y)

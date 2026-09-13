@@ -8,6 +8,7 @@ import concurrent
 import document
 import editor
 import mainframe
+import orchestrator
 import renderer
 import reporting
 import sdlframes
@@ -21,6 +22,7 @@ type
     editor: Editor
     renderer: Renderer
     mainFrame: wMainFrame
+    orchestrator: Orchestrator
 
 proc newApplication*(): Application =
   new Application
@@ -30,10 +32,12 @@ proc isReady*(self: Application): bool =
   if self.editor.isNil: return reportNil("app.editor")
   if self.renderer.isNil: return reportNil("app.renderer")
   if self.mainFrame.isNil: return reportNil("app.mainFrame")
+  if self.orchestrator.isNil: return reportNil("app.orch")
   if not self.doc.isReady(): return reportNotReady("app.doc")
   if not self.editor.isReady(): return reportNotReady("app.editor")
   if not self.renderer.isReady(): return reportNotReady("app.renderer")
   if not self.mainFrame.isReady(): return reportNotReady("app.mainFrame")
+  if not self.orchestrator.isReady(): return reportNotReady("app.orch")
   true
 
 
@@ -55,13 +59,15 @@ proc init*(self: Application, w, h: int) =
   self.doc = newDocument()
   self.editor = newEditor(self.doc.grid.mZctrl)
   self.renderer = newRenderer()
+  self.orchestrator = newOrchestrator()
 
   # Assign stuff
-  self.mainFrame.editor = self.editor
-  self.mainFrame.doc    = self.doc
-  self.editor.doc       = self.doc
-  self.renderer.doc     = self.doc
-  self.renderer.editor  = self.editor
+  self.mainFrame.editor    = self.editor
+  self.mainFrame.doc       = self.doc
+  self.editor.doc          = self.doc
+  self.renderer.doc        = self.doc
+  self.renderer.editor     = self.editor
+  self.orchestrator.editor = self.editor
 
   # The block panel needs to point to stuff
   self.mainFrame.mainPanel.blockPanel.renderer = self.renderer
@@ -80,6 +86,7 @@ proc init*(self: Application, w, h: int) =
     self.mainframe.mStatusBar.setStatusText(tmpStr, index=0)
 
   # Initialize data
+  self.orchestrator.init()
   self.mainFrame.mainPanel.randomizeRectsAll()
 
   self.mainFrame.invalidate = proc() =

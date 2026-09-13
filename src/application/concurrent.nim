@@ -1,5 +1,8 @@
 import std/locks
 
+type
+  NotifyProc* = proc() {.gcsafe.}
+
 const
   gNumThreads* = 2
 

@@ -5,7 +5,6 @@ when defined(monotimeProfile):
   import std/[monotimes, times]
 export tables
 
-import wNim/wTypes
 import sdl2 except Color
 
 import appopts

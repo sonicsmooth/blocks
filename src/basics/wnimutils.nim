@@ -1,8 +1,13 @@
-import std/[os, strformat]
+import std/[os, 
+            strformat]
 import wnim
 import winim
-
+from world import PxSize, PxPoint
 import uicommon
+
+
+converter toSize*(size: wSize): PxSize = (size.width, size.height)
+converter toPxPoint*(pt: wPoint): PxPoint = (pt.x, pt.y)
 
 proc derefAs*[T](event: wEvent): T =
   # Event's wparam and lparam are both parts of a 64-bit
@@ -36,9 +41,6 @@ proc displayParams*(event: wEvent) =
   stdout.write(&"lparam: 0x{lpuhi:04x}_{lpulo:04x} -> ({lpslo}, {lpshi})")
   stdout.write('\n')
 
-
-
-
 proc appDpiScale*[T:(int, int)](value: T): T =
   let d = wAppGetDpi()
   (value[0] * d div 96, value[1] * d div 96)
@@ -48,6 +50,7 @@ proc appDpiScale*(value: int): int =
 
 # Don't call wAppGetDpi() before the framework has initialized
 # Otherwise the value returned is 96, which is probably not what you want
+
 
 proc fontDescent*(font: wFont): int =
   let hdc = GetDC(0)
@@ -64,15 +67,12 @@ proc setBitmap*(ctrl: wCheckBox, bmp: wBitmap) =
 proc barHeight*(): int =
   appDpiScale(gButtHeightRaw + 2 * gVmargRaw)
 
-# TODO: redo this to use mixin pattern as below in dumpLayout
-#proc requiredSize*(ctrls: openArray[wControl], addButtonSpace: bool=true): wSize =
 proc requiredSize*[T: wPanel](self: T, ignore: openArray[wControl]=[], addButtonSpace: bool=true): wSize =
   # After layout() has positioned everything, find the true extent of the controls
   # Optionally add a space at the bottom for Done button, etc.
   mixin wControl
 
   var maxRight, maxBottom: int
-  #for ctrl in ctrls:
   for name, ctrl in self[].fieldPairs:
     when ctrl is wControl:
       if ctrl.isNil:

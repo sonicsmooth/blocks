@@ -8,17 +8,11 @@ import std/[algorithm,
             ]
 export options
 
-# Only for posting a message
-# TODO: Replace with channels
-from winim/inc/winuser import PostMessage
-from winim/inc/windef import HWND
 import concurrent
-
 import directions
 import document
 import monoprofile
 from recttable import `[]`, dbComps
-import usermessages
 
 export directions
 
@@ -49,7 +43,7 @@ type
   CompactArg* = tuple
     pRectTable: ptr RectTable
     spec: CompactSpec
-    handle: HWND
+    notify: NotifyProc
     dstRect: WRect
 
 
@@ -371,4 +365,4 @@ proc compactWorker*(arg: CompactArg) {.thread.} =
   {.gcsafe.}:
     withLock(gLock):
       iterCompact(arg.pRectTable[], arg.spec, arg.dstRect)
-  PostMessage(arg.handle, idMsgAlgUpdate, 0, 0)
+  arg.notify()

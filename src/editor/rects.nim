@@ -5,8 +5,6 @@ import std/[math,
             sequtils, 
             strutils, 
             tables, ]
-import wNim/wTypes
-import wNim/private/wHelper
 import colors
 import randrect
 import rotation
@@ -580,9 +578,6 @@ proc doesntFit*(rect: PRect, clientSize: PxSize): bool =
   rect.h >= clientSize.w and
   rect.h >= clientSize.h
 
-
-converter toSize*(size: wSize): PxSize = (size.width, size.height)
-converter toPxPoint*(pt: wPoint): PxPoint = (pt.x, pt.y)
 
 
 

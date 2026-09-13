@@ -435,7 +435,7 @@ wClass(wPlacementPanel of wPanel):
 
     if valInt.isSome() and txtCtrl == self.txtQty:
       publish(Qty, valInt.get())
-      echo "Comitted: ", valInt.get()
+      echo "Committed: ", valInt.get()
     elif valFloat.isSome() and txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH]:
       if   txtCtrl == self.txtX:  publish(RegionX, valFloat.get())
       elif txtCtrl == self.txtY:  publish(RegionY, valFloat.get())

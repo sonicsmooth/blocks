@@ -24,7 +24,7 @@ proc isReady*(self: Document): bool =
 
 
 when isMainModule:
-  import jsonInitGlobals
+  import jsoninit
   jsonInitGlobals()
   let doc: Document = newDocument()
   echo doc[]

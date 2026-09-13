@@ -19,14 +19,6 @@ type
     woGridBaseSync, woGridVisible, woGridDots, woGridLines,
     woGCFDestroying, woPFDestroying
 
-  # Domain-specific keys (topics) for the pubsub mechanism
-  CompactDlgPubSubTopic* = enum
-    Test, RandAll, RandPos, Undo,                    # Signals
-    Qty, Selected,                                   # Integers
-    RegionX, RegionY, RegionW, RegionH, CurrentTemp, # Floats
-    CompactReq                                       # CompactRequest
-  # SignalTopic* = range[Test..Undo]
-    
 const
   # Get rid of these
   idMsgMouseMove*       = WM_USER + ord(woMouseMove)

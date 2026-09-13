@@ -1,6 +1,4 @@
 import std/[segfaults,
-            #strformat,
-            #strutils, 
             tables]
 
 when defined(monotimeProfile):
@@ -18,6 +16,7 @@ import renderer
 import sdlframes
 import usermessages
 import viewport
+import wnimutils
 
 type
   wBlockPanel* = ref object of wSDLPanel

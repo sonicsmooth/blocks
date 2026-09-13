@@ -2,10 +2,8 @@ import std/[options,
             sets, 
             sequtils,
             tables]
-#import std[monotimes, times]
 export sets
 
-import wNim
 import appopts
 import document
 import pointmath

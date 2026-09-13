@@ -1,7 +1,6 @@
 import std/[algorithm, 
             math, 
             ]
-import wNim/wTypes
 
 import colors
 import jsoninit

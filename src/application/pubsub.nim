@@ -1,7 +1,7 @@
 import std/tables
-import usermessages
+import topics
 import pubsubtypes
-export usermessages, pubsubtypes
+export topics, pubsubtypes
 
 type
   Listener*[T] = proc(data: T) {.closure.}
@@ -38,6 +38,10 @@ proc registerListener*[K](topic: K, listener: proc() {.closure.}) =
 # example: registerListener(proc(data: CompactRequest) = echo data)
 proc registerListener*[T](listener: Listener[T]) =
   registerListener(soleTopic(T), listener)
+
+
+  
+
 
 # Generic publish that takes any topic and any data type
 # example: publish(someJunkId, someData)

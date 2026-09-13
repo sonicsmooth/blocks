@@ -1,6 +1,8 @@
-import std/[random, sets, strformat, tables]
+import std/[random, 
+            sets, 
+            strformat, 
+            tables]
 from std/sequtils import toSeq
-import wNim/[wTypes]
 
 
 import appopts

@@ -153,7 +153,7 @@ wClass(wMainPanel of wPanel):
     if self.ctrb1.value: # Not anneal, just normal 2d compact
       let arg: CompactArg = (pRectTable:  dbaddr,
                              spec:        spec,
-                             handle:      self.mHwnd,
+                             notify: proc() {.gcsafe.} = discard PostMessage(self.mHwnd, idMsgAlgUpdate, 0, 0),
                              dstRect:     dstRect)
       gCompactThread.createThread(compactWorker, arg)
       gCompactThread.joinThread()
@@ -168,12 +168,20 @@ wClass(wMainPanel of wPanel):
       let perturbFn = if self.aStratRb3.value: makeWiggler[PosTable, ptr RectTable](dstRect)
                       else:                    makeSwapper[PosTable, ptr RectTable]()
       for i in gAnnealComms.low .. gAnnealComms.high:
+        proc updateFn(ids: seq[CompId]) {.gcsafe, closure.} =
+          # This runs in the anneal thread
+          {.gcsafe.}:
+            gAnnealComms[i].idChan.send(ids)
+          PostMessage(self.handle, idMsgAlgUpdate, 0, i)
+          {.gcsafe.}:
+              discard gAnnealComms[i].ackChan.recv()
         let arg: AnnealArg = (pRectTable: dbaddr,
                               strategy:   strat,
                               initTemp:   self.slider.value.float,
                               perturbFn:  perturbFn,
                               compactFn:  compactfn,
-                              window:     self,
+                              # window:     self,
+                              updateFn:   updateFn,
                               dstRect:    dstRect,
                               comm:       gAnnealComms[i])
         # Weird, TODO: just do once
@@ -281,7 +289,7 @@ wClass(wMainPanel of wPanel):
 
   var ackCnt: int
   proc onAlgUpdate(self: wMainPanel, event: wEvent) =
-    let (idx, _) = paramSplit(event.lParam)
+    let (idx, _) = paramSplit(event.lParam) # -> (low, high) word
     let (msgAvail, msg) = gAnnealComms[idx].sendChan.tryRecv()
     if self.blockPanel != nil:
       if msgAvail:
