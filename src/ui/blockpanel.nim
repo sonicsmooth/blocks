@@ -14,7 +14,7 @@ import reporting
 import renderer
 #import routing
 import sdlframes
-import usermessages
+import routing
 import viewport
 import wnimutils
 

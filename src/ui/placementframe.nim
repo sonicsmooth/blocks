@@ -6,6 +6,7 @@ import wNim
 import winim
 import winim/inc/winuser
 
+import directions
 import icons
 import monoprofile
 import pubsub

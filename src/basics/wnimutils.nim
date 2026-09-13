@@ -2,8 +2,16 @@ import std/[os,
             strformat]
 import wnim
 import winim
+# from winim import LOWORD, HIWORD, WORD, LPARAM, WPARAM
+
 from world import PxSize, PxPoint
 import uicommon
+
+
+
+
+template paramSplit*(x: LPARAM|WPARAM): auto =
+  (LOWORD(x).WORD,  HIWORD(x).WORD)
 
 
 converter toSize*(size: wSize): PxSize = (size.width, size.height)

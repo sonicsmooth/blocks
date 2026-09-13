@@ -22,7 +22,6 @@ import placementframe
 import reporting
 import routing
 import uicommon
-import usermessages
 import wnimutils
 import viewport
 export mainpanel
