@@ -4,19 +4,21 @@ import std/[segfaults,
 when defined(monotimeProfile):
   import std/[monotimes, times]
 
-import wNim
-import winim except PRECT
 
 import editor
 import rects
 import recttable
 import reporting
-import renderer
-#import routing
-import sdlframes
-import routing
 import viewport
+
+#import w32routing
+import renderer
+import sdlframes
+import w32routing
 import wnimutils
+
+import wNim
+import winim except PRECT
 
 type
   wBlockPanel* = ref object of wSDLPanel
@@ -78,7 +80,7 @@ const
     (wKey_8,      Key8     ),
     (wKey_9,      Key9     )
     ].toTable
- 
+
 
 wClass(wBlockPanel of wSDLPanel):
   proc isReady*(self: wBlockPanel): bool =
@@ -92,7 +94,7 @@ wClass(wBlockPanel of wSDLPanel):
   proc mouseWorldPosition*(self: wBlockPanel): WPoint =
     self.mouseClientPosition().toWorld(self.editor.viewport)
 
-  proc processUIKeyEvent*(self: wBlockPanel, event: wEvent) = 
+  proc processUIKeyEvent*(self: wBlockPanel, event: wEvent) =
     # We don't deal with standalone modifier key events
     if event.keyCode == wKey_Ctrl or
        event.keyCode == wKey_Shift or
@@ -121,7 +123,7 @@ wClass(wBlockPanel of wSDLPanel):
               wheelDelta: event.wheelRotation,
               )
 
-  proc processUIMouseMoveEvent*(self: wBlockPanel, event: wEvent) = 
+  proc processUIMouseMoveEvent*(self: wBlockPanel, event: wEvent) =
     # Repackage specific event types and send to editor
     # Send mouse message for x,y position displayed in Frame
     # Maybe get rid of this and resend from editor somehow
@@ -164,7 +166,7 @@ wClass(wBlockPanel of wSDLPanel):
     of wEvent_MiddleDoubleClick:
       mouseEvt.kind = mekDbl
       mouseEvt.button = mbMid
-    of wEvent_RightDoubleClick: 
+    of wEvent_RightDoubleClick:
       mouseEvt.kind = mekDbl
       mouseEvt.button = mbRight
 
@@ -203,7 +205,7 @@ wClass(wBlockPanel of wSDLPanel):
       let t0_render = getMonoTime()
     self.renderer.renderEverything()
     when defined(monotimeProfile):
-      let renderTime_us = (getMonoTime() - t0_render).inMicroseconds 
+      let renderTime_us = (getMonoTime() - t0_render).inMicroseconds
 
 
     when defined(monotimeProfile):
@@ -213,7 +215,7 @@ wClass(wBlockPanel of wSDLPanel):
       echo s
 
 
-  proc onTimer(self: wBlockPanel, event: wEvent) = 
+  proc onTimer(self: wBlockPanel, event: wEvent) =
     if event.timerId == 1:
       self.stopTimer(event.timerId)
       self.refresh(true)
@@ -222,7 +224,7 @@ wClass(wBlockPanel of wSDLPanel):
       self.refresh(true)
 
 
-  proc init*(self: wBlockPanel, parent: wWindow) = 
+  proc init*(self: wBlockPanel, parent: wWindow) =
     when defined(debug):
       echo "blockpanel init"
     wSDLPanel(self).init(parent, style=wBorderSimple)
@@ -246,4 +248,4 @@ wClass(wBlockPanel of wSDLPanel):
     self.wEvent_Timer                do (event: wEvent): self.onTimer(event)
     self.startTimer(0.0,   id=1) # one-shot to start
     self.startTimer(1/60.0, id=2) # ongoing timer for refresh
-    
+

@@ -1,5 +1,6 @@
-import sdl2
 import colors
+
+import sdl2
 
 converter toSdlColor*(c: colors.ColorRGBA): sdl2.Color =
   result.r = c.r

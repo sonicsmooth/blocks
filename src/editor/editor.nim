@@ -1,5 +1,5 @@
 import std/[options,
-            sets, 
+            sets,
             sequtils,
             tables]
 export sets
@@ -19,7 +19,7 @@ import compact, algorithm
 export document, rects, viewport, world
 
 type
-  MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekDbl, 
+  MouseEventKind* = enum mekNone, mekMove, mekDown, mekUp, mekDbl,
                     mekWheelVert, mekWheelHoriz
   MouseButton* = enum mbNone, mbLeft, mbMid, mbRight
   MouseUpDown* = enum mbdirNone, mbDirUp, mbDirDown
@@ -89,8 +89,8 @@ type
     onZoomChanged*: proc() #{.gcsafe.}
     invalidate*:    proc() #{.gcsafe.}
 
-const 
-  cmdTable: CmdTable = 
+const
+  cmdTable: CmdTable =
     {(keyCode: KeyEsc,    ctrl: false, alt: false, shift: false ): CmdEscape,
      (keyCode: KeyLeft,   ctrl: false, alt: false, shift: false ): CmdMove,
      (keyCode: KeyUp,     ctrl: false, alt: false, shift: false ): CmdMove,
@@ -116,7 +116,7 @@ proc `$`*(k: Key): string =
   result &= $k.keyCode
 
 
-proc `$`*(self: Editor): string = 
+proc `$`*(self: Editor): string =
   for k, v in self[].fieldPairs:
     result &= $k & " -> "
     when v is (proc):
@@ -132,7 +132,7 @@ proc `$`*(self: Editor): string =
 
 proc newEditor*(zc: ZoomCtrl): Editor =
   result = new Editor
-  # assign viewport like 
+  # assign viewport like
   result.viewport  = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
   # ... but zc was created before, with grid
   # all other fields can take their default values
@@ -159,7 +159,7 @@ proc randomizeRects*(self: Editor, qty: int, region: WRect) =
   #self.invalidate()
 
 proc updateDestinationBox*(self: Editor) =
-  let 
+  let
     marg = 25
     sz = self.viewport.clientSize
     pdstrect: PRect = (marg, marg, sz.w - 2*marg, sz.h - 2*marg)
@@ -215,7 +215,7 @@ proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   self.fillArea = self.doc.db.fillArea()
 
 proc isSelected*(self: Editor, id: CompID): bool =
-  id in self.selected[] or 
+  id in self.selected[] or
   id in self.tmpSelected[]
 proc isHovering*(self: Editor, id: CompID): bool =
   id in self.hovering[]
@@ -237,7 +237,7 @@ proc doFitCheck*(self: Editor) =
     let pbb = comp.pbbox(self.viewport)
     if pbb.doesntFit(self.viewport.clientSize):
       self.fat.setOne(id)
-proc resetMouseData(self: Editor) = 
+proc resetMouseData(self: Editor) =
   self.mouseData.clickHitId = none(CompId)
   self.mouseData.clickPos = none(PxPoint)
   self.mouseData.state = StateSelectNone
@@ -310,8 +310,8 @@ proc processKeyDown*(self: Editor, key: Key) =
     self.selectBox = (0,0,0,0)
   self.invalidate()
 
-proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) = 
-  let 
+proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
+  let
     vp = self.viewport
     wmp = event.pos.toWorld(vp)
   case self.mouseData.state
@@ -354,7 +354,7 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.doFitCheck()
     self.invalidate()
 
-proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) = 
+proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) =
   if self.mouseData.panState == PanStateDown or
      self.mouseData.panState == PanStateMoving:
     let deltaPx: PxPoint = (event.pos.x - self.mouseData.lastPos.x,
@@ -368,7 +368,7 @@ proc processMouseMoveEvent*(self: Editor, event: MouseEvt) =
   self.processMousePanMoveEvent(event)
   self.mouseData.lastPos = event.pos
 
-proc processLeftMouseClickEvent*(self: Editor, event: MouseEvt) = 
+proc processLeftMouseClickEvent*(self: Editor, event: MouseEvt) =
   if event.edgeDir == mbDirDown:
     if self.mouseData.state == StateSelectNone:
       let
@@ -427,7 +427,7 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
   of mbMid:   self.processMidMouseClickEvent(event)
   of mbRight: self.processRightMouseClickEvent(event)
 
-proc processMouseWheelEvent*(self: Editor, event: MouseEvt) = 
+proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
   #sendToListeners(idGCFZoom, 0, 0)
   self.doFitCheck()
@@ -436,5 +436,3 @@ proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   # TODO ie zoom by bitmap scaling initially,
   # TODO then slowly build up cache so user
   # TODO doesn't notice delay too much
-
-  

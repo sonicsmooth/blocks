@@ -1,13 +1,18 @@
-import std/[sugar, strutils, strformat, parseutils]
-import wNim, winim
+import std/[parseutils,
+            sugar, 
+            strutils,
+            strformat, 
+            ]
 
-import grid 
-import routing
-import utils
-import uicommon
-import wnimutils
+import grid
 import viewport
+import utils
 
+import uicommon
+import w32routing
+import wnimutils
+
+import wNim, winim
 # Create a panel to hold some controls,
 # then place it in a frame
 

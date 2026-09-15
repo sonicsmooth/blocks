@@ -1,17 +1,17 @@
 # Simulated annealing
-import std/[algorithm, 
-            locks, 
-            math, 
-            os, 
-            random, 
-            sets, 
-            strformat, 
+import std/[algorithm,
+            locks,
+            math,
+            os,
+            random,
+            sets,
+            strformat,
             tables]
 import sequtils
 import arange
 import concurrent
-import randrect
 import recttable
+import randrect
 import rotation
 import world
 
@@ -24,7 +24,7 @@ import world
 # best) of these as the starting state for the next temperature.
 # The "nearly best" is actually weighted by the heuristic.
 
-#[ 
+#[
   Strategy 1 -- Randomize from startingState
   interState <- initial State
   For temp in MaxTemp .. 0:
@@ -33,7 +33,7 @@ import world
       perturb rectTable with PerturbFn
       compact and calc heuristic
       capture rectTable positions if heur in top 25
-      
+
   Strategy 2 -- Randomize from compact state
   Compact first and calc heuristic
   interState <- first compacted state
@@ -121,7 +121,7 @@ proc moveAmt(temp: float, maxAmt: PxSize): tuple[x,y:int, rot:Rotation] =
   let xmv  = (rand(maxX) - maxX/2.0).int
   let xmy  = (rand(maxY) - maxY/2.0).int
   let rndrot = temp > (rand(MaxTemp - MinTemp) + MinTemp)
-  let rot = 
+  let rot =
     if rndrot: rand(Rotation)
     else: R0
   result = (xmv, xmy, rot)
@@ -183,7 +183,7 @@ proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: PxSize): se
     item.rot = initState[id].rot + amt.rot
     result.add(id)
 
-# proc copyPositions[S,pT](initState: S, pTable: pT) = 
+# proc copyPositions[S,pT](initState: S, pTable: pT) =
 #   # Just copy the positions
 #   for id, item in pTable[]:
 #     item.x   = initState[id].x
@@ -203,8 +203,8 @@ proc makeWiggler*[S,pT](dstRect: WRect): PerturbFn[S,pT] =
   result = proc(initState: S, pTable: pT, temp: float): seq[CompID] {.closure.} =
     calcWiggle(initState, pTable, temp, maxAmt)
 
-proc capturePos[T](capTable: var Table[float, PosTable], 
-                   varTable: T, 
+proc capturePos[T](capTable: var Table[float, PosTable],
+                   varTable: T,
                    heur: float) =
   if capTable.len < 25:
     capTable[heur] = varTable
@@ -217,22 +217,22 @@ proc capturePos[T](capTable: var Table[float, PosTable],
       capTable.del(hmin)
       capTable[heur] = varTable
 
-proc selectHeuristic(heuristics: openArray[float]): float = 
+proc selectHeuristic(heuristics: openArray[float]): float =
   # Chooses random heuristic with bias towards better ones
-  # The highest scoring heuristic is maybe 5-10x more likely to be 
+  # The highest scoring heuristic is maybe 5-10x more likely to be
   # chosen than the lowest, with an exponential curve in between
   if heuristics.len == 1:
     heuristics[0]
   else:
     let heurs = heuristics.sorted
-    let cdf = 
-      if heurs.len == 25: 
+    let cdf =
+      if heurs.len == 25:
         makeCdf25()
       else:
         makeCdf(heurs.len)
     sample(RND, heurs, cdf)
 
-# proc update(hwnd: HWND, threadIdx: int, ids: seq[CompID], delay: int) = 
+# proc update(hwnd: HWND, threadIdx: int, ids: seq[CompID], delay: int) =
 #   # Sends update message and waits for response
 #   {.gcsafe.}:
 #     gAnnealComms[threadIdx].idChan.send(ids)
@@ -248,7 +248,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
   var bestEver: tuple[heur: float, table: PosTable]
   var heur: float
   var done: bool = false
-  # proc update(ids: seq[CompID] = @[], delay: int = 0) = 
+  # proc update(ids: seq[CompID] = @[], delay: int = 0) =
   #   update(arg.window.mHwnd, arg.comm.index, ids, delay)
   proc sendText(msg: string) =
     {.gcsafe.}:
@@ -258,7 +258,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     discard
   elif arg.strategy == Strat2:
     {.gcsafe.}: arg.compactFn()
-  
+
   var interState = arg.pRectTable[].positions
   var perturbedPositions: PosTable
   var ids: seq[CompID]
@@ -281,7 +281,7 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
       withLock(gLock):
         perturbedPositions = arg.pRectTable[].positions
         done = perturbedPositions == interState
-        if done: 
+        if done:
           break # assume this gets out of withLock
         {.gcsafe.}: arg.compactFn()
 
@@ -305,4 +305,4 @@ proc annealMain*(arg: AnnealArg) {.thread.} =
     sendText(&"Final {bestEver.heur:.5}")
   arg.updateFn(arg.pRectTable[].keys.toSeq)
 
-    
+

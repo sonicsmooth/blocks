@@ -1,6 +1,6 @@
-import std/[random, 
-            sets, 
-            strformat, 
+import std/[random,
+            sets,
+            strformat,
             tables]
 from std/sequtils import toSeq
 
@@ -20,7 +20,7 @@ export rects
 # TODO: Unify functions for individual rects into tables
 # TODO: example rotate, move, id, position, assign field value, etc.
 
-type 
+type
   RectTable* = ref Table[CompID, DBComp]   # meant to be shared
   PosRot = tuple[x: WType, y: WType, rot: Rotation]
   PosTable* = Table[CompID, PosRot] # meant to have value semantics
@@ -69,7 +69,7 @@ proc setPositions*[T:Table](table: var RectTable, pos: T) =
     rect.x = pos[id].x
     rect.y = pos[id].y
 
-proc ptInComps*(table: SomeComps, pt: WPoint): seq[CompID] = 
+proc ptInComps*(table: SomeComps, pt: WPoint): seq[CompID] =
   # Returns seq of DBComp IDs from table if pt in comp's bbox
   # surrounds or contacts pt
   # Optimization? -- return after first one
@@ -77,7 +77,7 @@ proc ptInComps*(table: SomeComps, pt: WPoint): seq[CompID] =
     if isPointInRect(pt, comp.wbbox):
       result.add(id)
 
-proc ptInComps*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] = 
+proc ptInComps*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] =
   # Returns seq of DBComp IDs from table if pt in comp's bbox
   # Pre-select by checking without converting every rect
   #! check logic here.  Not sure this is necessary
@@ -97,14 +97,14 @@ proc ptInComps*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] =
     if isPointInRect(pt, prect):
       result.add(id)
 
-proc rectInComps*(table: SomeComps, rect: WRect): seq[CompID] = 
+proc rectInComps*(table: SomeComps, rect: WRect): seq[CompID] =
   # Return seq of DBComp IDs from table that intersect rect
   # Return seq also includes rect
   # Typically rect is moving around and touches objs in table
-  # Or rect is a bounding box and we're looking for where 
+  # Or rect is a bounding box and we're looking for where
   # it touches other blocks
   for id, comp in table:
-    if isRectInRect(rect, comp.wbbox) or 
+    if isRectInRect(rect, comp.wbbox) or
        isRectOverRect(rect, comp.wbbox):
       result.add(id)
 
@@ -116,7 +116,7 @@ proc rectInComps*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
        isRectOverRect(rect, tpr):
       result.add(id)
 
-proc rectInComps*(table: RectTable, compId: CompID): seq[CompID] = 
+proc rectInComps*(table: RectTable, compId: CompID): seq[CompID] =
   # Uses table[compId] and delegates to rectInComps above
   # I think this checks whether compId intersects with anything
   # else in the table
@@ -124,10 +124,10 @@ proc rectInComps*(table: RectTable, compId: CompID): seq[CompID] =
 
 
 
-proc randomizeRectsAll*(table: var RectTable, qty: int, region: WRect, log: bool=false) = 
+proc randomizeRectsAll*(table: var RectTable, qty: int, region: WRect, log: bool=false) =
   table.clear()
   if qty == 1:
-    table[ 1] = DBComp(id:  1, x: 0, y:  0, w: 200, h: 350, origin: (0, 0), rot: R0, 
+    table[ 1] = DBComp(id:  1, x: 0, y:  0, w: 200, h: 350, origin: (0, 0), rot: R0,
                 penColor: Red, fillColor: colorByName[gAppOpts.singleColor].setAlpha(180))
   else:
     for i in 1..qty:
@@ -145,7 +145,7 @@ proc boundingBox*(table: RectTable): WRect =
 # proc aspectRatio*(table: RectTable): float =
 #   table.values.toSeq.boundingBox.aspectRatio()
 
-proc fillArea*(rtable: RectTable): WType = 
+proc fillArea*(rtable: RectTable): WType =
   # Just the rectangle area
   rtable.values.toSeq.wbboxes.fillArea()
 
@@ -159,7 +159,7 @@ proc falseItems*(comps: CompSet, table: RectTable): seq[CompID] =
     if id notin comps[]:
       result.add(id)
 
-proc toggleOne*(comps: CompSet, id: CompID) {.discardable.} = 
+proc toggleOne*(comps: CompSet, id: CompID) {.discardable.} =
   if id in comps[]:
     comps[].excl(id)
   else:
@@ -181,7 +181,7 @@ proc clearSome*(comps: CompSet, ids: seq[CompID]): seq[CompID] {.discardable.}=
     if id in comps[]:
       result.add(id)
     comps[].excl(id)
-proc clearAll*(comps: CompSet): seq[CompID] {.discardable.} = 
+proc clearAll*(comps: CompSet): seq[CompID] {.discardable.} =
   # Clear all selected ids, return previous selection
   #result = comps.trueItems
   result = comps[].toSeq
@@ -197,7 +197,7 @@ proc setSome*(comps: CompSet, ids: seq[CompID]): seq[CompID] {.discardable.} =
     if id notin comps[]:
       result.add(id)
     comps[].incl(id)
-proc setAll*(comps: CompSet, table: RectTable): seq[CompID] {.discardable.} = 
+proc setAll*(comps: CompSet, table: RectTable): seq[CompID] {.discardable.} =
   # Set all ids; preturn previous unselection
   result = comps.falseItems(table)
   for id in table.keys:

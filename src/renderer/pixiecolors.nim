@@ -1,5 +1,6 @@
-import pixie
 import colors
+
+import pixie
 
 converter toPixieColorRGBA*(c: colors.ColorRGBA): pixie.ColorRGBA {.inline.} =
   pixie.rgba(c.r, c.g, c.b, c.a)

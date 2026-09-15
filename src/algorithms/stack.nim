@@ -1,6 +1,6 @@
 import std/[algorithm,
             #sugar,
-            sequtils, 
+            sequtils,
             tables]
 
 
@@ -102,7 +102,7 @@ proc isXAscending*(spec: CompactSpec): bool =
   (spec.primary.axis == X and spec.primary.sortOrder == Ascending) or
   (spec.secondary.get().axis == X and spec.secondary.get().sortOrder == Ascending)
 
-proc isYAscending*(spec: CompactSpec): bool = 
+proc isYAscending*(spec: CompactSpec): bool =
   (spec.primary.axis == Y and spec.primary.sortOrder == Ascending) or
   (spec.secondary.get().axis == Y and spec.secondary.get().sortOrder == Ascending)
 
@@ -111,7 +111,7 @@ proc stackCompact*(table: var RectTable, dstRect: WRect, spec: CompactSpec) =
   # Then launch stacking routine.
   var dstRect = dstRect
   var rects = table.values.toSeq
-  
+
   if spec.primary.axis == X:
     for rect in rects:
       rect.rotate(Horizontal)
@@ -140,9 +140,3 @@ proc stackCompact*(table: var RectTable, dstRect: WRect, spec: CompactSpec) =
     rect.y = if isYAscending(spec): maxval - rgd  # stack from bottom to top
              else:                  minval + rgd  # stack from top to bottom
   stackCompactSub(table, rects.ids, dstRect, spec)
-
-
-
-
-
-

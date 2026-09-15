@@ -2,14 +2,15 @@ import std/[math,
             sequtils,
             strformat,
             strutils]
-import sdl2 except Color
-import sdl2/ttf
-
 import arange
-import colors, sdlcolors
+import colors
 import grid
 import viewport
 import world
+
+import sdl2 except Color
+import sdl2/ttf
+import sdlcolors
 
 const
   alphaOffset = 20

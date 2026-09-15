@@ -4,27 +4,30 @@ import std/[os,
             sugar,
             tables
             ]
-import wNim
-from winim/inc/winbase import MulDiv
-import winim
 
-import aboutframe
+# Non-winim stuff first
 import appopts
 import document
 import editor
 import grid
+import jsoninit
+import monoprofile
+import reporting
+import viewport
+
+# Followed by Ui stuff
+import aboutframe
 import gridctrlframe
 import icons
-import jsoninit
 import mainpanel
-import monoprofile
 import placementframe
-import reporting
-import routing
-import uicommon
+import w32routing
 import wnimutils
-import viewport
 export mainpanel
+
+import wNim
+from winim/inc/winbase import MulDiv
+import winim
 
 type
   wMainFrame* = ref object of wFrame
@@ -37,7 +40,7 @@ type
     gcf: wGridControlFrame
     plf: wPlacementFrame
   MenuCmdID = enum
-    idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting, 
+    idTool1 = wIdUser, idCmdGridShow, idCmdGridSetting,
               idCmdNew, idCmdOpen, idCmdSave, idCmdClose,
               idCmdPrefs, idCmdDropDown,
               idCmdExit, idCmdHelp, idCmdInfo,idCmdAbout,
@@ -71,7 +74,7 @@ wClass(wMainFrame of wFrame):
     if self.isReady:
       self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
     event.skip()
-  
+
   proc refreshCanvas(self: wMainFrame) =
     when defined(debug):
       echo "mainframe refresh"
@@ -121,7 +124,7 @@ wClass(wMainFrame of wFrame):
     tb1.addTool(idCmdNew,  "New",  iconBitmap("new_document", big))
     tb1.addTool(idCmdOpen, "Open", iconBitmap("file_open",    big))
     tb1.addTool(idCmdSave, "Save", iconBitmap("save",         big))
-    
+
     # 2. Grid controls -- not sure why large icon mis-rendered, so using small
     tb2.addChecktool(idCmdGridShow,    "Grid Show",     iconBitmap("gridonoff",    big))
     tb2.addtool(     idCmdGridSetting, "Grid settings", iconBitmap("gridsettings", big))
@@ -249,7 +252,7 @@ wClass(wMainFrame of wFrame):
     # Presumably the value is not in allowed divisions because
     # if it were we would be in onidGCFDivisionsSelect
     # We're here because user typed in a value, which may or
-    # may not be in allowed divisions, ie able to divide grid 
+    # may not be in allowed divisions, ie able to divide grid
     # size exactly.  We do however assume it's been validated
     # otherwise, which means it should be in DivRange
     if self.isReady():
@@ -327,14 +330,18 @@ wClass(wMainFrame of wFrame):
       echo "mainframe show"
     wFrame.show(self)
     self.refreshCanvas()
-  
-  proc onTimer(self: wMainFrame, event: wEvent) = 
+
+  proc onTimer(self: wMainFrame, event: wEvent) =
     if event.timerId == 1:
       self.stopTimer(event.timerId)
       #if self.statusBar != nil:
+      echo "enabling acrylic"
+      self.enableAcrylic()
+      # self.extendFrameIntoClientArea()
       if self.isReady:
         # Same as onresize
         self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
+        echo "Main frame timeout. Hwnd is ", self.handle
       event.skip()
 
   proc onClose(self: wMainFrame, event: wEvent) =
@@ -346,12 +353,12 @@ wClass(wMainFrame of wFrame):
     when defined(debug):
       echo "MainFrame onDestroy"
 
-  proc init*(self: wMainFrame, size: wSize, barebones: bool) = 
+  proc init*(self: wMainFrame, size: wSize, barebones: bool) =
     when defined(debug):
       echo "mainframe init"
       echo "Main frame hwnd is ", $self.mHwnd
     wFrame(self).init(title="Blocks Frame", size=size)
-    
+
     # Create controls -- these are declared in wNim already
     let small = appDpiScale(smallraw)
     let big   = appDpiScale(bigraw)
@@ -368,7 +375,7 @@ wClass(wMainFrame of wFrame):
     self.mMenuBar   = self.setupMenuBar()
     self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()
-    
+
     # Create dialogs so they are shown instantly
     self.gcf = GridControlFrame(self)
     self.plf = PlacementFrame(self)
@@ -392,7 +399,7 @@ wClass(wMainFrame of wFrame):
 
     # Startup
     self.startTimer(0.0,   id=1) # one-shot to start
-    
+
     # Respond to incoming messages
     self.registerListener(idGCFRequestX,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
     self.registerListener(idGCFRequestY,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
@@ -407,13 +414,13 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idGCFLines,           (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
     self.registerListener(idGCFDestroying,      (w:wWindow, e:wEvent)=>onGCFDestroying(w.wMainFrame, e))
     self.registerListener(idPFDestroying,       (w:wWindow, e:wEvent)=>onPFDestroying(w.wMainFrame, e))
-    
+
     if not barebones:
       self.mainPanel = MainPanel(self)
     when defined(debug):
-      echo "Main frame done initting"
+      echo "Main frame done initting. Hwnd is ", self.handle
 
-  
+
 when isMainModule:
   gQuietReady = true
 
@@ -424,17 +431,16 @@ when isMainModule:
     let app = wNim.App()
     let init_size = (1200, 800)
     let frame = MainFrame(init_size, barebones=true)
-    
+
     # Go App!
     frame.center()
     frame.show()
     app.mainLoop()
-  
+
   except Exception as e:
       echo "Exception!"
       echo e.msg
       echo getStackTrace(e)
-    
 
-    
+
 

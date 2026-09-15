@@ -1,4 +1,4 @@
-import compact
+# import compact
 import editor
 import recttable
 import pubsub
@@ -8,7 +8,7 @@ type Orchestrator* = ref object
   editor*: Editor
 
 
-proc newOrchestrator*(): Orchestrator = 
+proc newOrchestrator*(): Orchestrator =
   new result
 
 proc isReady*(self: Orchestrator): bool =
@@ -26,4 +26,4 @@ proc blockRandomPos(self: Orchestrator) =
 
 
 proc init*(self: Orchestrator) =
-  registerListener(RandPos, proc() = self.blockRandomPos())
+  psAddListener(RandPos, proc() = self.blockRandomPos())

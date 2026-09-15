@@ -1,10 +1,11 @@
 import std/[sets, 
             tables]
+import utils
+
 from winim/inc/windef import WPARAM, LPARAM, HANDLE
 from winim/inc/winuser import SendMessage, WM_USER
 from wnim/private/wTypes import wWindow, wEvent
 from wnim/private/wWindow import connect
-import utils
 
 
 

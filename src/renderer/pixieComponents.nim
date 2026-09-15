@@ -3,11 +3,12 @@ import std/[options,
             tables
 ]
             
-import pixie
 import appopts
-import pixiecolors
 import common
 import rects
+
+import pixie
+import pixiecolors
 export Image
 
 const

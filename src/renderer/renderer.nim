@@ -1,26 +1,27 @@
-import std/[strformat, 
+import std/[strformat,
             options,
             tables]
 when defined(monotimeProfile):
   import std/[monotimes, times]
 export tables
 
-import sdl2 except Color
-
 import appopts
-import background
 import colors
-import sdlcolors
 import common
 import document
 import editor
-import pixiecomponents
+# import grid
 import rects
 import reporting
 import rotation
+import viewport
+
+import sdl2 except Color
+import background
+import sdlcolors
+import pixiecomponents
 import sdlcomponents
 import sdlcommon
-import viewport
 
 export document, editor, sdl2
 
@@ -44,7 +45,7 @@ type
     sdlRenderer*: RendererPtr
     sdlSoftwareRenderer: RendererPtr
     sdlWindow*: WindowPtr
-    textureCache*: Table[CacheKey, TexturePtr] 
+    textureCache*: Table[CacheKey, TexturePtr]
     visibleComponents*: seq[DBComp]
 
 
@@ -77,7 +78,7 @@ proc isReady*(self: Renderer): bool =
 #   if pxSz.w <= clientSize.w or pxSz.h <= clientSize.h:
 #     pxSz
 #   else:
-#     let 
+#     let
 #       rectRatio: float = pxSz.w.float / pxSz.h.float
 #       clientRatio: float = clientSize.w / clientSize.h
 #     var neww, newh: int
@@ -91,7 +92,7 @@ proc isReady*(self: Renderer): bool =
 #       neww = (newh.float * rectRatio).round.int
 #     (neww, newh)
 
-# proc clampRect(self: Renderer, prect: PRect): PRect = 
+# proc clampRect(self: Renderer, prect: PRect): PRect =
 #   let newsz: PxSize = self.clampSize((prect.w, prect.h))
 #   (prect.x, prect.y, newsz.w, newsz.h)
 
@@ -101,8 +102,8 @@ proc isReady*(self: Renderer): bool =
   1. Default renderer -> rp.drawRect
   2. Software renderer -> rp.drawRect -> cache -> blit
   3. Texture as rendering target -> rp.drawRect -> cache -> blit
-  4. Pixie.Image, then update texture cache, then blit to sdlRenderer 
-  5. Lock texture then draw with pixie, then unlock and blit to sdlRenderer ]# 
+  4. Pixie.Image, then update texture cache, then blit to sdlRenderer
+  5. Lock texture then draw with pixie, then unlock and blit to sdlRenderer ]#
 
 
 proc clearTextureCache*(self: Renderer) =
@@ -137,8 +138,8 @@ proc screenRectP(self: Renderer): PRect =
   let sz = self.editor.viewport.clientSize
   (0.PxType, 0.PxType, sz.w, sz.h)
 
-proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod, 
-                  isect: PRect, hov, sel: bool): TexturePtr = 
+proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
+                  isect: PRect, hov, sel: bool): TexturePtr =
   let vp = self.editor.viewport
   let texSz = case comp.rot
               of R0, R180: pxSize(isect.w, isect.h)
@@ -153,7 +154,7 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
     self.sdlRenderer.setRenderTarget(nil)
   of PixieTexture:
     let image = renderDBCompPixie(comp, texSz, vp.zoom, hov, sel)
-    let surface = createRGBSurfaceFrom(addr image.data[0], texSz.w, texSz.h, 
+    let surface = createRGBSurfaceFrom(addr image.data[0], texSz.w, texSz.h,
                                 32, texSz.w * 4, amask, bmask, gmask, rmask)
     sdlFailIf(surface.isNil): "Create surface failed"
     result = self.sdlRenderer.createTextureFromSurface(surface)
@@ -187,7 +188,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
         key = if isFat: (comp.id, hov, sel, some(buildRect))
               else:     (comp.id, hov, sel, none(PRect))
       if key notin self.textureCache:
-        self.textureCache[key] = self.buildTexture(comp, rmethod, buildRect, hov, sel)  
+        self.textureCache[key] = self.buildTexture(comp, rmethod, buildRect, hov, sel)
       let dstRect = if isFat: buildRect else: comp.localPRect(vp)
       self.drawCachedTexture(comp, self.textureCache[key], vp, dstRect)
     self.visibleComponents.add(comp)
@@ -213,7 +214,7 @@ proc drawPlacementBox(self: Renderer) =
 
 proc renderEverything*(self: Renderer) =
   # Typically called from OnPaint
-  let 
+  let
     bg = self.backgroundColor
     vp = self.editor.viewport
     grid = self.doc.grid
@@ -244,7 +245,7 @@ proc renderEverything*(self: Renderer) =
   # let pxwidth = (majdelt.x.float * self.editor.viewport.zoom).round.int
   # txt &= &"majorDelta: {majdelt}\n"
   # txt &= &"majorPx: {pxwidth}"
-  
+
   # self.renderText(txt)
   self.sdlRenderer.present()
 

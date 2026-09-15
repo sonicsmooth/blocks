@@ -1,17 +1,19 @@
 import std/[random]
-import wNim/[wApp, wWindow, wUtils]
-import wNim/[wSlider, wStatusBar]
 
 import appopts
 import anneal
 import concurrent
 import document
 import editor
-import mainframe
 import orchestrator
-import renderer
 import reporting
+
+import renderer
+import mainframe
 import sdlframes
+
+import wNim/[wApp, wWindow, wUtils]
+import wNim/[wSlider, wStatusBar]
 
 export document, editor, renderer
 
@@ -86,7 +88,7 @@ proc init*(self: Application, w, h: int) =
     self.mainframe.mStatusBar.setStatusText(tmpStr, index=0)
 
   # Initialize data
-  self.orchestrator.init()
+  # self.orchestrator.init()
   self.mainFrame.mainPanel.randomizeRectsAll()
 
   self.mainFrame.invalidate = proc() =
@@ -100,7 +102,7 @@ proc init*(self: Application, w, h: int) =
 
   # Editor needs to be able to invalidate panel without knowing about panel
   # refresh has been moved to timer
-  self.editor.invalidate = proc() {.closure.} = 
+  self.editor.invalidate = proc() {.closure.} =
     if gAppOpts.retextureFatOnMove:
       # For every move, we redo the textures that are
       # too big to fit on the screen
@@ -109,7 +111,7 @@ proc init*(self: Application, w, h: int) =
 
 
 
-proc deinit*(app: Application) = 
+proc deinit*(app: Application) =
   # Shut down
   concurrent.deinit()
   anneal.deinit()

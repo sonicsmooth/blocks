@@ -1,5 +1,5 @@
-import grid
 import recttable
+import grid
 import reporting
 import zoomctrl
 export recttable, grid
@@ -12,7 +12,7 @@ type
 
 proc newDocument*(): Document =
   result = new Document
-  result.db = RectTable() #! why not newRectTable?
+  result.db = RectTable()
   let zc = newZoomCtrl(base=5, clickDiv=2400, maxPwr=5, density=1.0, dynamic=true, baseSync=true)
   result.grid = newGrid(zCtrl=zc)
 

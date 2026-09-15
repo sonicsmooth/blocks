@@ -1,20 +1,24 @@
 import std/[algorithm, locks, math, segfaults, sets, strformat, tables ]
 from std/sequtils import toSeq, foldl
-import editor, renderer
-import wNim
-import winim
+
 
 import anneal
 import appopts
-import blockpanel
 import compact
 import concurrent
 import document
+import editor
 import reporting
 import stack
-import routing
-from wnimutils import paramSplit
 import world
+
+import blockpanel
+import renderer
+import w32routing
+from wnimutils import paramSplit
+
+import wNim
+import winim
 
 export blockpanel
 
@@ -36,7 +40,7 @@ type
     slider*: wSlider
     buttons: array[17, wButton]
 
-const 
+const
   randRegion: WRect = (-400, -400, 801, 801)
 
 
@@ -58,7 +62,7 @@ wClass(wMainPanel of wPanel):
     true
 
   proc layout*(self: wMainPanel) =
-    let 
+    let
       bmarg = self.dpiScale(8)
       (cszw, cszh) = self.clientSize
       (bw, bh) = (self.dpiScale(150), self.dpiScale(30))
@@ -66,7 +70,7 @@ wClass(wMainPanel of wPanel):
       bwd2 = bw div 2
     if self.blockPanel != nil:
       self.blockPanel.position = (bw + 2*bmarg + lbpmarg, tbpmarg)
-      self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg, 
+      self.blockPanel.size = (cszw - bw - 2*bmarg - lbpmarg - rbpmarg,
                                cszh - tbpmarg - bbpmarg)
     var yPosAcc = 0
     # Static text position, size
@@ -115,7 +119,7 @@ wClass(wMainPanel of wPanel):
   # TODO: Move this to algorithms or db or something
   # TODO: Since nothing here has to do with UI
   proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
-    # TODO: delegate all this to something else, so we can 
+    # TODO: delegate all this to something else, so we can
     # TODO: get rid of self.blockpanel.editor,... etc.
     if self.isReady():
       # TODO: add new randomize to editor or algorithms or something
@@ -126,7 +130,7 @@ wClass(wMainPanel of wPanel):
       self.blockPanel.editor.updateRatio()
       self.blockPanel.renderer.clearTextureCache()
 
-  proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) = 
+  proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) =
     ##! Move updateratio to algorithm
     when defined(compactProfile):
       echo ""
@@ -159,9 +163,9 @@ wClass(wMainPanel of wPanel):
       gCompactThread.joinThread()
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
-   
+
     elif self.ctrb2.value: # Do anneal
-      proc compactfn() {.closure.} = 
+      proc compactfn() {.closure.} =
         iterCompact(self.blockPanel.editor.doc.db, spec, dstRect)
       let strat = if self.aStratRb1.value: Strategy.Strat1
                   else:                    Strategy.Strat2
@@ -188,7 +192,7 @@ wClass(wMainPanel of wPanel):
         gAnnealComms[i].thread.createThread(annealMain, arg)
         # TODO: figure out how to clearTextureCache when thread is done
         break
-    
+
     elif self.ctrb3.value: # Do stack
       withLock(gLock):
         stackCompact(self.blockPanel.editor.doc.db, dstRect, spec)
@@ -245,14 +249,14 @@ wClass(wMainPanel of wPanel):
       self.randomizeRectsAll(self.spnr.value)
       self.blockPanel.editor.updateRatio()
       self.blockPanel.editor.invalidate()
-  
+
   proc onButtonrandomizePos(self: wMainPanel) =
     if self.blockPanel != nil:
       #let sz = self.blockPanel.clientSize
       self.blockPanel.editor.doc.db.randomizeRectsPos(randRegion)
       self.blockPanel.editor.updateRatio()
       self.blockPanel.editor.invalidate()
-  
+
   proc onButtonTest(self: wMainPanel) =
     if self.blockPanel != nil:
       for rect in self.blockPanel.editor.doc.db.values:
@@ -294,7 +298,7 @@ wClass(wMainPanel of wPanel):
     if self.blockPanel != nil:
       if msgAvail:
         self.blockPanel.editor.text = $idx.int64 & ": " & msg
-    
+
     let (_, _) = gAnnealComms[idx].idChan.tryRecv()
     if self.blockPanel != nil:
       withLock(gLock):
@@ -374,4 +378,3 @@ wClass(wMainPanel of wPanel):
     self.ctrb1.click()
     self.aStratRb1.click()
     self.aStratRb3.click()
-

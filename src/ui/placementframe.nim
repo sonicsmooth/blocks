@@ -2,19 +2,20 @@
 import std/os
 from std/strutils import strip
 
-import wNim
-import winim
-import winim/inc/winuser
-
 import directions
-import icons
 import monoprofile
 import pubsub
 import utils
-import uicommon
-import routing
 import world
+
+import icons
+import uicommon
+import w32routing
 import wnimutils
+
+import wNim
+import winim
+import winim/inc/winuser
 
 # Create a panel to hold some controls,
 # then place it in a frame

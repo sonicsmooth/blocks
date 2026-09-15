@@ -1,6 +1,8 @@
 
+import colors
+
 import pixie
-import colors, pixiecolors
+import pixiecolors
 
 proc newFont(typeface: Typeface, size: float32, color: pixie.Color): Font =
   result = newFont(typeface)

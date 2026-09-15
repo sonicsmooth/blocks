@@ -1,7 +1,8 @@
 import std/os
-import wnim, winim
 import pixie
 import pixieshapes
+
+import wnim, winim
 
 # No wPanel here, just draw directly
 # to frame client area

@@ -1,11 +1,12 @@
 import std/tables
-import wnim
-import sdl2
 
 import colors
+
 import sdlcolors
 import sdlcommon
+import sdl2
 
+import wnim
 
 
 type

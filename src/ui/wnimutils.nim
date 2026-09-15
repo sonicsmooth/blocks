@@ -1,12 +1,39 @@
 import std/[os, 
             strformat]
-import wnim
-import winim
-# from winim import LOWORD, HIWORD, WORD, LPARAM, WPARAM
 
 from world import PxSize, PxPoint
-import uicommon
 
+import uicommon
+import wnim
+import winim
+
+type
+  MARGINS = object
+    cxLeftWidth, cxRightWidth, cyTopHeight, cyBottomHeight: cint
+
+# winim's dwmapi module may already declare DwmSetWindowAttribute for the
+# dark-titlebar trick; if not, or if the newer constant is missing, just add it:
+proc DwmSetWindowAttribute(hwnd: HWND, dwAttribute: DWORD,
+                            pvAttribute: pointer, cbAttribute: DWORD): HRESULT
+  {.importc, stdcall, dynlib: "dwmapi.dll".}
+proc DwmExtendFrameIntoClientArea(hwnd: HWND, pMarInset: ptr MARGINS): HRESULT
+  {.importc, stdcall, dynlib: "dwmapi.dll".}
+
+proc enableAcrylic*(frame: wFrame) =
+  const
+    DWMWA_SYSTEMBACKDROP_TYPE = 38
+    DWMSBT_MAINWINDOW      = 2'i32   # Mica — main app windows
+    DWMSBT_TRANSIENTWINDOW = 3'i32   # Acrylic — dialogs, flyouts, menus (this is what you want)
+  var backdrop = DWMSBT_TRANSIENTWINDOW
+  let hr = DwmSetWindowAttribute(frame.handle, DWMWA_SYSTEMBACKDROP_TYPE,
+                                 addr backdrop, sizeof(int32).DWORD)
+  echo "setattribute result: ", hr
+
+proc extendFrameIntoClientArea*(frame: wFrame) =
+  var margins = MARGINS(cxLeftWidth: -1, cxRightWidth: -1,
+                         cyTopHeight: -1, cyBottomHeight: -1)
+  let hr = DwmExtendFrameIntoClientArea(frame.handle, addr margins)
+  echo "extend frame result: ", hr
 
 
 

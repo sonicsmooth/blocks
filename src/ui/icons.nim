@@ -1,6 +1,6 @@
 import std/[os, tables]
-import wNim
 import pixie/fileformats/[svg]
+import wNim
 
 type
   IconState* = enum Normal, Hover, Pressed
