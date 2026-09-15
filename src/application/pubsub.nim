@@ -29,10 +29,15 @@ You can send a single-topic data like CompactRequest:
 # Domain-specific keys (topics) for the pubsub mechanism
 type
   CompactDlgPubSubTopic* = enum
-    Test, RandAll, RandPos, Undo,                    # Signals only -- no data type
-    Qty, Selected,                                   # Integers
-    RegionX, RegionY, RegionW, RegionH, CurrentTemp, # Floats
-    CompactReq                                       # CompactRequest
+    Test, RandAll, RandPos, Undo, # Signals only -- no data type
+    QtyRequest, QtyChanged,       # Integers
+    SelectedChanged,              # Integer
+    RegionXRequest, RegionXChanged,  # Integers
+    RegionYRequest, RegionYChanged,  # Integers
+    RegionWRequest, RegionWChanged,  # Integers
+    RegionHRequest, RegionHChanged,  # Integers 
+    CurrentTempChanged,           # Float
+    CompactReq                    # CompactRequest
 
 
 # Define the types of things that go across the pubsub mechanism
@@ -75,19 +80,21 @@ proc soleTopic*(t: typedesc[CompactRequest]): CompactDlgPubSubTopic = CompactReq
 
 # Generic registration that takes any topic and any data type
 # example: psAddListener(someJunkId, proc(data: SomeType) = echo data
-proc psAddListener*[K, T](topic: K, listener: Listener[T]) =
-  # tableFor(T).listeners.mgetOrPut(topic, @[]).add(listener)
+proc psAddListener*[K, T](topic: K, listener: Listener[T]): Listener[T] {.discardable.} =
   tableFor(T).mgetOrPut(topic, @[]).add(listener)
+  listener
 
 # Specific registration for signals that don't carry data, ie buttons
 # example: psAddListener(Test, proc() = echo "Test signal received")
-proc psAddListener*[K](topic: K, listener: proc() {.closure.}) =
+proc psAddListener*[K](topic: K, listener: proc() {.closure.}): proc() {.closure.} {.discardable.} =
   psAddListener(topic, proc(data: Signal) = listener())
+  listener
 
 # Specific registration for sole-topic data, eg CompactRequest
 # example: psAddListener(proc(data: CompactRequest) = echo data)
-proc psAddListener*[T](listener: Listener[T]) =
+proc psAddListener*[T](listener: Listener[T]): Listener[T] {.discardable.}=
   psAddListener(soleTopic(T), listener)
+  listener
 
 
   

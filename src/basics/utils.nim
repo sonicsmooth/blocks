@@ -13,8 +13,8 @@ proc excl*[T](s: var seq[T], item: T) =
 proc parseNumber*[T:SomeNumber](s: string, number: var T): bool =
   # Returns true if s can be parsed to int or float
   # Parsed value is returned in val
-  when T is SomeFloat: parseFloat(s, number) == s.len
-  elif T is SomeInteger: parseInt(s, number) == s.len
+  when T is SomeFloat: s.len > 0 and parseFloat(s, number) == s.len
+  elif T is SomeInteger: s.len > 0 and parseInt(s, number) == s.len
 
 proc parseNumber*[T:SomeNumber](s: string): Option[T] =
   # Returns Some(val) if s can be parsed to int or float, else None
@@ -23,3 +23,7 @@ proc parseNumber*[T:SomeNumber](s: string): Option[T] =
     return some(val)
   else:
     return none(T)
+
+echo parseNumber[int]("12")
+echo parseNumber[int]("0")
+echo parseNumber[int]("")

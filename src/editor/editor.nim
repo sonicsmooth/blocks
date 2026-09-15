@@ -4,17 +4,18 @@ import std/[options,
             tables]
 export sets
 
+import algorithm
 import appopts
+import compact
 import document
 import pointmath
+import pubsub
 import rects
 import recttable
 import reporting
 import rotation
 import viewport
 import zoomctrl
-
-import compact, algorithm
 
 export document, rects, viewport, world
 
@@ -71,23 +72,23 @@ type
 
 
   Editor* = ref object of RootObj
-    doc*:          Document
-    viewport*:     Viewport
-    mouseData:     MouseData
-    selectBox*:    PRect # Selection box
-    allBbox*:      WRect # Bounding box of everything
-    dstRect*:      WRect # Where components will be moved to
-    text*:         string
-    fillArea*:     WType
-    ratio:         float
-    hovering*:     CompSet
-    selected*:     CompSet
-    tmpSelected:   CompSet # used during drag-select
-    dirty*:        CompSet # which to clear from cache
-    fat*:          CompSet # which are too big for screen
-    groupRotation: bool # prevents deselection after rotation
-    onZoomChanged*: proc() #{.gcsafe.}
-    invalidate*:    proc() #{.gcsafe.}
+    doc*:           Document
+    viewport*:      Viewport
+    mouseData:      MouseData
+    selectBox*:     PRect # Selection box
+    allBbox*:       WRect # Bounding box of everything
+    dstRect*:       WRect # Where components will be moved to
+    text*:          string
+    fillArea*:      WType
+    ratio:          float
+    hovering*:      CompSet
+    selected*:      CompSet
+    tmpSelected:    CompSet # used during drag-select
+    dirty*:         CompSet # which to clear from cache
+    fat*:           CompSet # which are too big for screen
+    groupRotation:  bool # prevents deselection after rotation
+    onZoomChanged*: proc()
+    invalidate*:    proc()
 
 const
   cmdTable: CmdTable =
@@ -114,7 +115,6 @@ proc `$`*(k: Key): string =
   if k.alt: result &= "alt-"
   if k.shift: result &= "shft-"
   result &= $k.keyCode
-
 
 proc `$`*(self: Editor): string =
   for k, v in self[].fieldPairs:
@@ -143,6 +143,8 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   result.dirty       = newCompSet() #newDirtySet()
   result.fat         = newCompSet()
 
+
+
 proc isReady*(self: Editor): bool =
   if self.doc.isNil: return reportNil("editor.doc")
   if self.viewport.isNil: return reportNil("editor.viewport")
@@ -156,7 +158,6 @@ proc randomizeRects*(self: Editor, qty: int, region: WRect) =
   self.selected.clearAll()
   self.dirty.setAll(self.doc.db)
   self.doc.db.randomizeRectsAll(qty, region, true)
-  #self.invalidate()
 
 proc updateDestinationBox*(self: Editor) =
   let
@@ -429,10 +430,26 @@ proc processMouseClickEvent*(self: Editor, event: MouseEvt) =
 
 proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   self.viewport.doAdaptivePanZoom(event.wheelDelta, event.pos)
-  #sendToListeners(idGCFZoom, 0, 0)
   self.doFitCheck()
   self.onZoomChanged() # checks appopts whether to retexture
   # TODO set up delayed zoom rendering
   # TODO ie zoom by bitmap scaling initially,
   # TODO then slowly build up cache so user
   # TODO doesn't notice delay too much
+
+proc setupListeners*(self: Editor) =
+  psAddListener(QtyRequest, proc(qty: int) = 
+                              if qty > 0 and qty != self.doc.db.len:
+                                self.randomizeRects(qty, self.dstRect)
+                                self.updateRatio()
+                                self.invalidate()
+                                publish(QtySend, self.doc.db.len))
+  psAddListener(RandPos, proc() =
+                           self.doc.db.randomizeRectsPos(self.dstRect)
+                           self.updateRatio()
+                           self.invalidate())
+  psAddListener(RandAll, proc() = 
+                           self.randomizeRects(self.doc.db.len, self.dstRect)
+                           self.updateRatio()
+                           self.invalidate())
+  psAddListener(Test, proc() = echo "Test!")

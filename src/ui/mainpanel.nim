@@ -252,7 +252,6 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonrandomizePos(self: wMainPanel) =
     if self.blockPanel != nil:
-      #let sz = self.blockPanel.clientSize
       self.blockPanel.editor.doc.db.randomizeRectsPos(randRegion)
       self.blockPanel.editor.updateRatio()
       self.blockPanel.editor.invalidate()
@@ -317,7 +316,8 @@ wClass(wMainPanel of wPanel):
 
     # Create controls
     self.txt       = StaticText(self, label="Qty", style=wSpRight)
-    self.spnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
+    #self.spnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
+    self.spnr      = SpinCtrl(self, value=rectQty, style=wAlignRight)
     self.box1      = StaticBox(self, label="Strat and func")
     self.ctrb1     = RadioButton(self, label="None", style=wRbGroup)
     self.ctrb2     = RadioButton(self, label="Anneal")
@@ -370,6 +370,10 @@ wClass(wMainPanel of wPanel):
     self.buttons[13].wEvent_Button do (): self.onButtonCompact↓←()
     self.buttons[14].wEvent_Button do (): self.onButtonCompact↓→()
     self.idMsgAlgUpdate            do (event: wEvent): self.onAlgUpdate(event)
+
+    # Set up pubsub listeners
+    psAddListener(QtyChanged, proc(qty: int) = 
+                                self.spnr.value = qty)
 
     # # Set up stuff
     self.blockPanel = BlockPanel(self)

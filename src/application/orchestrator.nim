@@ -17,13 +17,13 @@ proc isReady*(self: Orchestrator): bool =
   true
 
 
-proc blockRandomPos(self: Orchestrator) =
-  echo "Orchestrator received random pos"
-  if self.isReady():
-    self.editor.doc.db.randomizeRectsPos(self.editor.dstRect)
-    # self.editor.updateRatio()
-    # self.editor.invalidate()
+# proc blockRandomPos(self: Orchestrator) =
+#   echo "Orchestrator received random pos"
+#   if self.isReady():
+#     self.editor.doc.db.randomizeRectsPos(self.editor.dstRect)
+#     # self.editor.updateRatio()
+#     # self.editor.invalidate()
 
 
-proc init*(self: Orchestrator) =
-  psAddListener(RandPos, proc() = self.blockRandomPos())
+# proc init*(self: Orchestrator) =
+#   psAddListener(RandPos, proc() = self.blockRandomPos())

@@ -89,6 +89,7 @@ proc init*(self: Application, w, h: int) =
 
   # Initialize data
   # self.orchestrator.init()
+  self.editor.setupListeners()
   self.mainFrame.mainPanel.randomizeRectsAll()
 
   self.mainFrame.invalidate = proc() =

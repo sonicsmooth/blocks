@@ -334,14 +334,11 @@ wClass(wMainFrame of wFrame):
   proc onTimer(self: wMainFrame, event: wEvent) =
     if event.timerId == 1:
       self.stopTimer(event.timerId)
-      #if self.statusBar != nil:
-      echo "enabling acrylic"
       self.enableAcrylic()
       # self.extendFrameIntoClientArea()
       if self.isReady:
         # Same as onresize
         self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
-        echo "Main frame timeout. Hwnd is ", self.handle
       event.skip()
 
   proc onClose(self: wMainFrame, event: wEvent) =

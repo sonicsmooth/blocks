@@ -55,6 +55,13 @@ type
     # Other
     slStartTemp: wSlider
 
+    # closures for deregistering
+    qtyProc: proc(qty: int) {.closure.}
+    regionXProc: proc(x: float) {.closure.}
+    regionYProc: proc(y: float) {.closure.}
+    regionWProc: proc(w: float) {.closure.}
+    regionHProc: proc(h: float) {.closure.}
+
   wPlacementFrame* = ref object of wFrame
     mPanel: wPlacementPanel
 
@@ -405,7 +412,7 @@ wClass(wPlacementPanel of wPanel):
     event.skip()
 
 
-#   # TODO: redo all parseNumbers
+  # TODO: redo all parseNumbers
   proc onTextEdit(self: wPlacementPanel, event: wEvent) =
     const
       errBg = 0xcec7ff
@@ -435,17 +442,17 @@ wClass(wPlacementPanel of wPanel):
     let valInt = parseNumber[int](txtCtrl.value.strip())
     let valFloat = parseNumber[float](txtCtrl.value.strip())
 
-    if valInt.isSome() and txtCtrl == self.txtQty:
-      publish(Qty, valInt.get())
-      echo "Committed: ", valInt.get()
-    elif valFloat.isSome() and txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH]:
-      if   txtCtrl == self.txtX:  publish(RegionX, valFloat.get())
-      elif txtCtrl == self.txtY:  publish(RegionY, valFloat.get())
-      elif txtCtrl == self.txtW:  publish(RegionW, valFloat.get())
-      elif txtCtrl == self.txtH:  publish(RegionH, valFloat.get())
-      echo "Commited: ", valFloat.get()
+    if txtCtrl == self.txtQty and valInt.isSome():
+      publish(QtyRequest, valInt.get())
+      # echo "Committed: ", valInt.get()
+    elif txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH] and valFloat.isSome():
+      if   txtCtrl == self.txtX:  publish(RegionXRequest, valFloat.get())
+      elif txtCtrl == self.txtY:  publish(RegionYRequest, valFloat.get())
+      elif txtCtrl == self.txtW:  publish(RegionWRequest, valFloat.get())
+      elif txtCtrl == self.txtH:  publish(RegionHRequest, valFloat.get())
+      # echo "Commited: ", valFloat.get()
     else:
-      echo "not commiting: ", txtCtrl.value
+      echo "not commiting: \"", txtCtrl.value, "\""
 
   proc onKillFocus(self: wPlacementPanel, event: wEvent) =
     self.onTextCommit(event)
@@ -491,17 +498,20 @@ wClass(wPlacementPanel of wPanel):
       else:
         raise newException(ValueError, "Invalid window ref")
 
-    var minX, minY: WType
-    if not parseNumber(self.txtMinX.value, minX):
-      echo "Could not parse ", self.txtMinX.value
+    let minX = parseNumber[WType](self.txtMinX.value)
+    if minX.isNone:
+      echo "Could not parse minSpaceX: \"", self.txtMinX.value, "\""
       return
-    if not parseNumber(self.txtMinY.value, minY):
-      echo "Could not parse ", self.txtMinY.value
+    
+    let minY = parseNumber[WType](self.txtMinY.value)
+    if minY.isNone:
+      echo "Could not parse minSpaceY: \"", self.txtMinY.value, "\""
       return
+
     publish(CompactRequest(
       direction: dir,
-      minSpaceX: minX,
-      minSpaceY: minY,
+      minSpaceX: minX.get,
+      minSpaceY: minY.get,
       compactMethod: if   self.rbNone.value:  None
                      elif self.rbStack.value: Stack
                      else:                    Anneal,
@@ -758,17 +768,27 @@ wClass(wPlacementPanel of wPanel):
       self.cbDrawRegion.wEvent_MouseLeave do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
       self.cbMonitor.wEvent_Checkbox      do (event: wEvent): self.onMonitorCheckBox(event)
 
+      # Add Pubsub Listeners
+      # TODO : set up remove listener for when box is destroyed
+      self.qtyProc     = psAddListener(QtyChanged, proc(qty: int) = self.txtQty.value = $qty)
+      self.regionXProc = psAddListener(RegionXChanged, proc(x: float) = self.txtX.setValue($x))
+      self.regionYProc = psAddListener(RegionYChanged, proc(y: float) = self.txtY.changeValue($y))
+      self.regionWProc = psAddListener(RegionWChanged, proc(w: float) = self.txtW.changeValue($w))
+      self.regionHProc = psAddListener(RegionHChanged, proc(h: float) = self.txtH.changeValue($h))
+
     block: # Initial values
       # Click on the radio buttons to set initial state, set qty and slider
-      self.txtQty.value = "10"
-      self.txtX.value = "30"
-      self.txtY.value = "30"
-      self.txtW.value = "500"
-      self.txtH.value = "500"
-      self.txtMinX.value = "2"
-      self.txtMinY.value = "2"
+      # This should set the color (red for blank)
+      self.txtQty.setValue("") #value = "10"
+      self.txtX.setValue("") #value = "30"
+      self.txtY.setValue("") #value = "30"
+      self.txtW.setValue("") #value = "500"
+      self.txtH.setValue("") #value = "500"
+      self.txtMinX.setValue("") #value = "2"
+      self.txtMinY.setValue("") #value = "2"
       self.rbNone.click()
       self.rbStrat1.click()
+
       self.rbWiggle.click()
       self.rbHV.click()
       self.slStartTemp.setRange(1, 100)
@@ -803,6 +823,9 @@ wClass(wPlacementFrame of wFrame):
     # Do cleanup and announcements here
     when defined(debug):
       echo "PlacementFrame onDestroy; sending idPFDestroying"
+
+    # TODO: Do listener deregistering here
+
     sendToListeners(idPFDestroying, self.handle.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
@@ -819,19 +842,26 @@ wClass(wPlacementFrame of wFrame):
 
 when isMainModule:
   var plf: wPlacementFrame
+  var localQty: int
+  var localRX, localRY, localRW, localRH: float
   try:
     wSetSystemDPIAware()
-    registerListener(Qty, proc(q: int) = echo "Listener says Qty: ", q)
-    registerListener(RandAll, proc() = echo "Listener says RandAll")
-    registerListener(RandPos, proc() = echo "Listener says RandPos")
-    registerListener(Test, proc() = echo "Listener says Test")
-    registerListener(RegionX, proc(x: float) = echo "Listener says RegionX: ", x)
-    registerListener(RegionY, proc(y: float) = echo "Listener says RegionY: ", y)
-    registerListener(RegionW, proc(w: float) = echo "Listener says RegionW: ", w)
-    registerListener(RegionH, proc(h: float) = echo "Listener says RegionH: ", h)
-    registerListener(CompactReq, proc(req: CompactRequest) =
+    psAddListener(QtyRequest, proc(qty: int) = localQty=qty; publish(QtyChanged, localQty))
+    psAddListener(QtyChanged, proc(qty: int) = echo "Listener says Qty: ", qty)
+    psAddListener(RandAll, proc() = echo "Listener says RandAll")
+    psAddListener(RandPos, proc() = echo "Listener says RandPos")
+    psAddListener(Test, proc() = echo "Listener says Test")
+    psAddListener(RegionXRequest, proc(x: float) = localRX = x; publish(RegionXChanged, localRX))
+    psAddListener(RegionXChanged, proc(x: float) = echo "Listener says RegionX: ", x)
+    psAddListener(RegionYRequest, proc(y: float) = localRY = y; publish(RegionYChanged, localRY))
+    psAddListener(RegionYChanged, proc(y: float) = echo "Listener says RegionY: ", y)
+    psAddListener(RegionWRequest, proc(w: float) = localRW = w; publish(RegionWChanged, localRW))
+    psAddListener(RegionWChanged, proc(w: float) = echo "Listener says RegionW: ", w)
+    psAddListener(RegionHRequest, proc(h: float) = localRH = h; publish(RegionHChanged, localRH))
+    psAddListener(RegionHChanged, proc(h: float) = echo "Listener says RegionH: ", h)
+    psAddListener(CompactReq, proc(req: CompactRequest) =
       echo "Listener says CompactRequest: ", req)
-    registerListener(Undo, proc() = echo "Listener says Undo")
+    psAddListener(Undo, proc() = echo "Listener says Undo")
 
     when defined(dumpLayout):
       PlacementFrame(nil)
