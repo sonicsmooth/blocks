@@ -17,7 +17,7 @@ export world
 #  DBComp does not consider pixels
 #  Corners, edges, points, etc. are ideal and refer to edges
 
-#  PRect is a graphical literal rectangle
+#  PxRect is a graphical literal rectangle
 #  Corners, edges, points, etc., refer to pixels and their indices
 
 #[
@@ -39,8 +39,8 @@ Edges (x) are *in* the Rect
 #[
 DBComp has position of origin, origin offset, width, height
 WRect has pos of lowerLeft, width, height
-PRect has pos of upperLeft, width, height
-For filling texture cache and blitting we need unrotated PRect from DBComp
+PxRect has pos of upperLeft, width, height
+For filling texture cache and blitting we need unrotated PxRect from DBComp
 Then blit and rotate around origin
 For bounds we need rotated WRect from DBComp
 ]#
@@ -50,15 +50,12 @@ For bounds we need rotated WRect from DBComp
 type 
   CompID* = range[-1..int.high] # negative values indicate null component
   Orientation* = enum Vertical, Horizontal
-  PRect* = tuple[x, y, w, h: PxType]  # screen/pixel rectangle
-  WRect* = tuple[x, y, w, h: WType ]  # world rectangle
-  SomeRect = PRect | WRect
-  
+  EdgeNom* = enum Left, Right, Top, Bottom
   Edge*[T] = object of RootObj
     when T is WRect:
       pt0*: WPoint
       pt1*: WPoint
-    elif T is PRect:
+    elif T is PxRect:
       pt0*: PxPoint
       pt1*: PxPoint
 
@@ -147,8 +144,8 @@ proc wbbox*(comp: DBComp): WRect {.inline.} =
 
 
 # declaration
-proc toPRect*(rect: WRect, vp: Viewport): PRect
-proc pbbox*(comp: DBComp, vp: Viewport): PRect {.inline.} =
+proc toPRect*(rect: WRect, vp: Viewport): PxRect
+proc pbbox*(comp: DBComp, vp: Viewport): PxRect {.inline.} =
   comp.wbbox.toPRect(vp)
 
 
@@ -159,7 +156,7 @@ proc localWRect*(comp: DBComp): WRect =
   # needs its own translation logic, not necessarily this formula.
   (x: comp.x - comp.origin.x, y: comp.y - comp.origin.y, w: comp.w, h: comp.h)
 
-proc localPRect*(comp: DBComp, vp: Viewport): PRect =
+proc localPRect*(comp: DBComp, vp: Viewport): PxRect =
   comp.localWRect.toPRect(vp)
 
 
@@ -221,16 +218,12 @@ proc originToTopEdge*(rect: DBComp, rot: bool=true): WType =
     of R90:  rect.w - rect.origin.x
     of R180: rect.origin.y
     of R270: rect.origin.x
-
 proc originToTopLeft*(comp: DBComp, rot: bool=true): WPoint =
   (comp.originToLeftEdge(rot), comp.originToTopEdge(rot))
-
 proc originToTopRight*(comp: DBComp, rot: bool=true): WPoint =
   (comp.originToRightEdge(rot), comp.originToTopEdge(rot))
-
 proc originToBottomLeft*(comp: DBComp, rot: bool=true): WPoint =
   (comp.originToLeftEdge(rot), comp.originToBottomEdge(rot))
-
 proc originToBottomRight*(comp: DBComp, rot: bool=true): WPoint =
   (comp.originToRightEdge(rot), comp.originToBottomEdge(rot))
 
@@ -301,25 +294,25 @@ proc rotate*(rect: DBComp, orient: Orientation) =
     else: rect.rot = R0
 
 # Procs for rects
-proc pRect*(x, y, w, h: PxType): PRect =
+proc pRect*(x, y, w, h: PxType): PxRect =
   result.x = x
   result.y = y
   result.w = w
   result.h = h
-proc pRect*(startPos, endPos: PxPoint): PRect =
-  # make sure that rect.x,y is always minimum (upper left for PRect)
+proc pRect*(startPos, endPos: PxPoint): PxRect =
+  # make sure that rect.x,y is always minimum (upper left for PxRect)
   let (sx, sy) = startPos
   let (ex, ey) = endPos
   (x: min(sx, ex),
    y: min(sy, ey),
    w: abs(ex - sx),
    h: abs(ey - sy))
-proc shrink*(r: PRect, amt: int): PRect = 
+proc shrink*(r: PxRect, amt: int): PxRect = 
   result.x = r.x + amt
   result.y = r.y + amt
   result.w = r.w - amt * 2
   result.h = r.h - amt * 2
-proc grow*(r: PRect, amt: int): PRect = 
+proc grow*(r: PxRect, amt: int): PxRect = 
   result.x = r.x - amt
   result.y = r.y - amt
   result.w = r.w + amt * 2
@@ -347,22 +340,22 @@ proc size*(rect: SomeRect): auto  = (w: rect.w, h: rect.h)
 proc lowerLeft*(rect: SomeRect): auto =
   when SomeRect is WRect:
     (rect.x, rect.y).toWPoint
-  elif SomeRect is PRect:
+  elif SomeRect is PxRect:
     (rect.x, rect.y + rect.h - 1).toPxPoint
 proc lowerRight*(rect: SomeRect): auto = 
   when SomeRect is WRect:
     (rect.x + rect.w, rect.y).toWPoint
-  elif SomeRect is PRect:
+  elif SomeRect is PxRect:
     (rect.x + rect.w - 1, rect.y + rect.h - 1).toPxPoint
 proc upperLeft*(rect: SomeRect): auto = 
   when SomeRect is WRect:
     (rect.x, rect.y + rect.h).toWPoint
-  elif SomeRect is PRect:
+  elif SomeRect is PxRect:
     (rect.x, rect.y).toPxPoint
 proc upperRight*(rect: SomeRect): auto = 
   when SomeRect is WRect:
     (rect.x + rect.w, rect.y + rect.h).toWPoint
-  elif SomeRect is PRect:
+  elif SomeRect is PxRect:
     (rect.x + rect.w - 1, rect.y).toPxPoint
 proc topEdge*[T: SomeRect](rect: T): TopEdge[T] =
   result.pt0 = rect.upperLeft
@@ -374,23 +367,23 @@ proc leftEdge*[T: SomeRect](rect: T): LeftEdge[T] =
   when T is WRect:
     result.pt0 = rect.lowerLeft
     result.pt1 = rect.upperLeft
-  elif T is PRect:
+  elif T is PxRect:
     result.pt0 = rect.upperLeft
     result.pt1 = rect.lowerLeft
 proc rightEdge*[T: SomeRect](rect: T): RightEdge[T] =
   when T is WRect:
     result.pt0 = rect.lowerRight
     result.pt1 = rect.upperRight
-  elif T is PRect:
+  elif T is PxRect:
     result.pt0 = rect.upperRight
     result.pt1 = rect.lowerRight
 proc top*(rect: SomeRect): auto = rect.upperLeft.y
 proc bottom*(rect: SomeRect): auto = rect.lowerLeft.y
 proc left*(rect: SomeRect): auto = rect.lowerLeft.x
 proc right*(rect: SomeRect): auto = rect.lowerRight.x
-proc toWRect*(rect: PRect, vp: Viewport): WRect =
+proc toWRect*(rect: PxRect, vp: Viewport): WRect =
   # Converts from screen/pixel space to world space
-  # PRect has x,y in upper left, so choose lower left then convert
+  # PxRect has x,y in upper left, so choose lower left then convert
   when WType is SomeFloat:
     (x: rect.x.toWorldX(vp),
      y: (rect.y + rect.h).toWorldY(vp),
@@ -401,7 +394,7 @@ proc toWRect*(rect: PRect, vp: Viewport): WRect =
      y: (rect.y + rect.h).toWorldY(vp),
      w: (rect.w.float / vp.zoom).round.WType,
      h: (rect.h.float / vp.zoom).round.WType)
-proc toPRect*(rect: WRect, vp: Viewport): PRect  = 
+proc toPRect*(rect: WRect, vp: Viewport): PxRect  = 
   # Output's origin is upper left of rectangle
   let
     origin = rect.upperLeft.toPixel(vp)
@@ -432,7 +425,7 @@ proc fillArea*(rects: openArray[SomeRect]): auto =
   # Total area of all rectangles.  Does not account for overlap.
   when SomeRect is WRect:
     var a: WType
-  elif SomeRect is PRect:
+  elif SomeRect is PxRect:
     var a: PxType
   for r in rects:
     a += r.area
@@ -450,7 +443,7 @@ proc grow*(rect: WRect, amt: WType): WRect  =
    y: rect.y - amt, 
    w: rect.w + amt * 2, 
    h: rect.h + amt * 2)
-proc grow*(rect: PRect, amt: PxType): PRect  =
+proc grow*(rect: PxRect, amt: PxType): PxRect  =
   (x: rect.x - amt,
    y: rect.y - amt,
    w: rect.w + amt * 2,
@@ -475,7 +468,7 @@ proc `==`*[T](edge1, edge2: HorizEdge[T]): bool  = edge1.y == edge2.y
 proc isPointInRect*(pt: WPoint, rect: WRect): bool  = 
     pt.x >= rect.left   and pt.x <= rect.right and
     pt.y >= rect.bottom and pt.y <= rect.top
-proc isPointInRect*(pt: PxPoint, rect: PRect): bool  = 
+proc isPointInRect*(pt: PxPoint, rect: PxRect): bool  = 
   pt.x >= rect.left and pt.x <= rect.right and
   pt.y >= rect.top  and pt.y <= rect.bottom
 proc isEdgeInRect[T: SomeRect](edge: VertEdge[T], rect: T): bool  =
@@ -486,7 +479,7 @@ proc isEdgeInRect[T: SomeRect](edge: VertEdge[T], rect: T): bool  =
      edge.pt1.y > rect.topEdge.y and 
      edge >= rect.leftEdge and 
      edge <= rect.rightEdge)
-  elif T is PRect:
+  elif T is PxRect:
     (isPointInRect(edge.pt0, rect) or isPointInRect(edge.pt1, rect)) or 
     (edge.pt0.y < rect.topEdge.y and 
      edge.pt1.y > rect.bottomEdge.y and 
@@ -499,7 +492,7 @@ proc isEdgeInRect[T: SomeRect](edge: HorizEdge[T], rect: T): bool  =
     (edge.pt0.x < rect.leftEdge.x and 
      edge.pt1.x > rect.rightEdge.x and 
      edge >= rect.bottomEdge and edge <= rect.topEdge)
-  elif T is PRect:
+  elif T is PxRect:
     (isPointInRect(edge.pt0, rect) or isPointInRect(edge.pt1, rect)) or 
     (edge.pt0.x < rect.leftEdge.x and 
      edge.pt1.x > rect.rightEdge.x and 
@@ -519,11 +512,18 @@ proc isRectOverRect*[T: SomeRect](rect1, rect2: T): bool =
     rect1.bottomEdge < rect2.bottomEdge and
     rect1.leftEdge   < rect2.leftEdge   and
     rect1.rightEdge  > rect2.rightEdge
-  elif T is PRect:
+  elif T is PxRect:
     rect1.topEdge    < rect2.topEdge    and
     rect1.bottomEdge > rect2.bottomEdge and
     rect1.leftEdge   < rect2.leftEdge   and
     rect1.rightEdge  > rect2.rightEdge
+
+proc isPointNearEdge*(pt: WPoint, edge: Edge, margin: WType): bool =
+  when edge is HorizEdge:
+    pt.y >= edge.y - margin and pt.y <= edge.y + margin
+  elif edge is VertEdge:
+    pt.x >= edge.x - margin and pt.x <= edge.x + margin
+
 
 proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
   # Returns true if rect1 and rect2 do not have any overlap
@@ -532,17 +532,17 @@ proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
     rect1.topEdge    < rect2.bottomEdge or
     rect1.rightEdge  < rect2.leftEdge or
     rect1.leftEdge   > rect2.rightEdge
-  elif T is PRect:
+  elif T is PxRect:
     rect1.bottomEdge < rect2.topEdge or
     rect1.topEdge    > rect2.bottomEdge or
     rect1.rightEdge  < rect2.leftEdge or
     rect1.leftEdge   > rect2.rightEdge
 
-proc isRectTooBig*(prect: PRect, maxSize: uint): bool =
+proc isRectTooBig*(prect: PxRect, maxSize: uint): bool =
   prect.w > maxSize or
   prect.h > maxSize
 
-proc intersect*(rect, client: PRect): PRect =
+proc intersect*(rect, client: PxRect): PxRect =
   # Common rectangle shared by client and component rectangles
   # The size is used to create the texture.
   # The position is used for final blitting
@@ -572,7 +572,7 @@ proc intersect*(rect, client: PRect): PRect =
     h = max(0, ibot - itop + 1)
   (ileft, itop, w, h)
 
-proc doesntFit*(rect: PRect, clientSize: PxSize): bool =
+proc doesntFit*(rect: PxRect, clientSize: PxSize): bool =
   rect.w >= clientSize.w and
   rect.w >= clientSize.h and
   rect.h >= clientSize.w and

@@ -108,7 +108,7 @@ proc rectInComps*(table: SomeComps, rect: WRect): seq[CompID] =
        isRectOverRect(rect, comp.wbbox):
       result.add(id)
 
-proc rectInComps*(table: SomeComps, rect: PRect, vp: Viewport): seq[CompID] =
+proc rectInComps*(table: SomeComps, rect: PxRect, vp: Viewport): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
   for id, comp in table:
     let tpr = comp.wbbox.toPRect(vp)

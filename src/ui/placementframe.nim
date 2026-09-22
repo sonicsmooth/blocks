@@ -58,6 +58,7 @@ type
 
     # closures for deregistering
     qtyListener:       proc(qty: int) {.closure.}
+    regionListener:    proc(x: WRect) {.closure.}
     regionXListener:   proc(x: float) {.closure.}
     regionYListener:   proc(y: float) {.closure.}
     regionWListener:   proc(w: float) {.closure.}
@@ -774,7 +775,17 @@ wClass(wPlacementPanel of wPanel):
       # A *Request is received only by the owner of the data
       # In this case, starttemp is owned by the placement dialog
       # TODO : set up remove listener for when box is destroyed
-      self.qtyListener       = psAddListener(QtyChanged,       proc(qty: int) = self.txtQty.value = $qty)
+      self.qtyListener = psAddListener(QtyChanged, proc(qty: int) = self.txtQty.value = $qty)
+
+      ## Listen for the whole rectangle, sent by Editor when
+      ## dragging region and by Application at startup
+      self.regionListener = psAddListener(RegionChanged, proc(r: WRect) = 
+                                                           self.txtX.setValue($r.x) # trigger wEvent_Text
+                                                           self.txtY.setValue($r.y) # trigger wEvent_Text
+                                                           self.txtW.setValue($r.w) # trigger wEvent_Text
+                                                           self.txtH.setValue($r.h)) # trigger wEvent_Text
+                                              
+      ## List for parts of rectangle, sent by self when editing boxes            
       self.regionXListener   = psAddListener(RegionXChanged,   proc(x: float) = self.txtX.setValue($x)) # trigger wEvent_Text
       self.regionYListener   = psAddListener(RegionYChanged,   proc(y: float) = self.txtY.setValue($y)) # trigger wEvent_Text
       self.regionWListener   = psAddListener(RegionWChanged,   proc(w: float) = self.txtW.setValue($w)) # trigger wEvent_Text

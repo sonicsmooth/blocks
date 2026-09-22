@@ -10,7 +10,6 @@ import colors
 import common
 import document
 import editor
-# import grid
 import pubsub
 import rects
 import reporting
@@ -36,7 +35,7 @@ export document, editor, sdl2
 # rotation land, since this will be rebuilt on that foundation anyway.
 
 type
-  CacheKey = tuple[id:CompID, hovering, selected: bool, rect: Option[PRect]]
+  CacheKey = tuple[id:CompID, hovering, selected: bool, rect: Option[PxRect]]
   Renderer* = ref object of RootObj
     # Read-only domain data
     doc*: Document # For the design data
@@ -76,7 +75,7 @@ proc isReady*(self: Renderer): bool =
 
 # proc clampSize(self: Renderer, pxSz: PxSize): PxSize =
 #   # Return the given prect if one or more of its dimensions fits in client area
-#   # If both dimensions exceed client size, then return a PRect with the
+#   # If both dimensions exceed client size, then return a PxRect with the
 #   # same aspect ratio and with one dim that matches client dim.
 #   # Used for extreme zoom where the component is bigger than the viewing area
 #   let clientSize: PxSize = self.editor.viewport.clientSize
@@ -97,7 +96,7 @@ proc isReady*(self: Renderer): bool =
 #       neww = (newh.float * rectRatio).round.int
 #     (neww, newh)
 
-# proc clampRect(self: Renderer, prect: PRect): PRect =
+# proc clampRect(self: Renderer, prect: PxRect): PxRect =
 #   let newsz: PxSize = self.clampSize((prect.w, prect.h))
 #   (prect.x, prect.y, newsz.w, newsz.h)
 
@@ -139,17 +138,17 @@ proc clearFontCaches*(self: Renderer) =
   clearTypefaceCache()
   clearFontCache()
 
-proc screenRectP(self: Renderer): PRect =
+proc screenRectP(self: Renderer): PxRect =
   let sz = self.editor.viewport.clientSize
   (0.PxType, 0.PxType, sz.w, sz.h)
 
 proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
-                  isect: PRect, hov, sel: bool): TexturePtr =
+                  isect: PxRect, hov, sel: bool): TexturePtr =
   let vp = self.editor.viewport
   let texSz = case comp.rot
               of R0, R180: pxSize(isect.w, isect.h)
               else: pxSize(isect.h, isect.w)
-  let texRect: PRect = (0, 0, texSz.w, texSz.h)
+  let texRect: PxRect = (0, 0, texSz.w, texSz.h)
   case rmethod
   of SDLTexture:
     result = self.sdlRenderer.createTexture(SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, texSz.w, texSz.h)
@@ -170,7 +169,7 @@ proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
   else:
     raise newException(ValueError, &"Unsupported cached render method: {rmethod}")
 
-proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Viewport, dstRect: PRect) =
+proc drawCachedTexture(self: Renderer, comp: DBComp, texture: TexturePtr, vp: Viewport, dstRect: PxRect) =
   let pivot = comp.rotationPoint(vp)
   self.sdlRenderer.copyEx(texture, nil, addr dstRect, -comp.rot.toFloat, addr pivot)
 
@@ -191,7 +190,7 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
         isFat = comp.id in self.editor.fat[]
         buildRect = if isFat: intersect(self.editor.viewport.clientRect, pbb) else: pbb
         key = if isFat: (comp.id, hov, sel, some(buildRect))
-              else:     (comp.id, hov, sel, none(PRect))
+              else:     (comp.id, hov, sel, none(PxRect))
       if key notin self.textureCache:
         self.textureCache[key] = self.buildTexture(comp, rmethod, buildRect, hov, sel)
       let dstRect = if isFat: buildRect else: comp.localPRect(vp)
@@ -214,17 +213,52 @@ proc drawPlacementBox(self: Renderer) =
   let penColor = DarkOrchid
   let dstRectP = self.editor.dstRect.toPRect(self.editor.viewport)
   self.sdlRenderer.drawFilledOutlineRectSDL(dstRectP, fillColor, penColor)
-  # Not sure why 20 isn't getting converted automatically
-  let ulDstRectP = (dstRectP.x,               dstRectP.y,               20.PxType, 20.PxType).PRect
-  let urDstRectP = (dstRectP.x+dstRectP.w-20, dstRectP.y,               20.PxType, 20.PxType).PRect
-  let llDstRectP = (dstRectP.x,               dstRectP.y+dstRectP.h-20, 20.PxType, 20.PxType).PRect
-  let lrDstRectP = (dstRectP.x+dstRectP.w-20, dstRectP.y+dstRectP.h-20, 20.PxType, 20.PxType).PRect
-  self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP, fillColor, penColor)
-  self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
-  self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
-  self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
-
-
+  let x = dstRectP.x
+  let y = dstRectP.y
+  let w = dstRectP.w
+  let h = dstRectP.h
+  # let marg = self.editor.dstSelMargin
+  # let ulDstRectP: PxRect = (x-marg+2,   y-marg+2,   marg*2, marg*2)
+  # let urDstRectP: PxRect = (x+w-marg-2, y-marg+2,   marg*2, marg*2)
+  # let llDstRectP: PxRect = (x-marg+2,   y+h-marg-2, marg*2, marg*2)
+  # let lrDstRectP: PxRect = (x+w-marg-2, y+h-marg-2, marg*2, marg*2)
+  # self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP, fillColor, penColor)
+  # self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
+  # self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
+  # self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
+  if self.editor.isEdgeOnlyHovered(Left):
+    self.sdlRenderer.drawLine(x+1, y, x+1, y+h)
+    self.sdlRenderer.drawLine(x+2, y, x+2, y+h)
+  elif self.editor.isEdgeOnlyHovered(Right):
+    self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+h)
+    self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+h)
+  elif self.editor.isEdgeOnlyHovered(Top):
+    self.sdlRenderer.drawLine(x, y+1, x+w, y+1)
+    self.sdlRenderer.drawLine(x, y+2, x+w, y+2)
+  elif self.editor.isEdgeOnlyHovered(Bottom):
+    self.sdlRenderer.drawLine(x, y+h-2, x+w, y+h-2)
+    self.sdlRenderer.drawLine(x, y+h-3, x+w, y+h-3)
+  let corner = 20
+  if self.editor.areTwoEdgesHovered(Left, Top):
+    self.sdlRenderer.drawLine(x, y+1, x+corner, y+1)
+    self.sdlRenderer.drawLine(x, y+2, x+corner, y+2)
+    self.sdlRenderer.drawLine(x+1, y, x+1, y+corner)
+    self.sdlRenderer.drawLine(x+2, y, x+2, y+corner)
+  elif self.editor.areTwoEdgesHovered(Right, Top):
+    self.sdlRenderer.drawLine(x+w-1, y+1, x+w-1-corner, y+1)
+    self.sdlRenderer.drawLine(x+w-1, y+2, x+w-1-corner, y+2)
+    self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+corner)
+    self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+corner)
+  elif self.editor.areTwoEdgesHovered(Left, Bottom):
+    self.sdlRenderer.drawLine(x, y+h-2, x+corner, y+h-2)
+    self.sdlRenderer.drawLine(x, y+h-3, x+corner, y+h-3)
+    self.sdlRenderer.drawLine(x+1, y+h-1-corner, x+1, y+h-1)
+    self.sdlRenderer.drawLine(x+2, y+h-1-corner, x+2, y+h-1)
+  elif self.editor.areTwoEdgesHovered(Right, Bottom):
+    self.sdlRenderer.drawLine(x+w-1, y+h-2, x+w-1-corner, y+h-2)
+    self.sdlRenderer.drawLine(x+w-1, y+h-3, x+w-1-corner, y+h-3)
+    self.sdlRenderer.drawLine(x+w-2, y+h-1, x+w-2, y+h-1-corner)
+    self.sdlRenderer.drawLine(x+w-3, y+h-1, x+w-3, y+h-1-corner)
 
 proc renderEverything*(self: Renderer) =
   # Typically called from OnPaint

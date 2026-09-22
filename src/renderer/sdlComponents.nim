@@ -22,7 +22,7 @@ var
   gFontCache: Table[int, FontPtr]
   gFontName: Option[string]
 
-proc toSdlRect(prect: PRect): sdl2.Rect =
+proc toSdlRect(prect: PxRect): sdl2.Rect =
   (x: prect.x.cint,
    y: prect.y.cint,
    w: prect.w.cint,
@@ -60,7 +60,7 @@ proc clearFontCache*() =
     f.close() # is this equivalent to destroy in other objects?
   gFontCache.clear()
 
-proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PxRect, fillColor, penColor: ColorRGBA) =
   let rect = rect.toSdlRect() #(rect.x.cint, rect.y.cint, rect.w.cint, rect.h.cint)
   rp.setDrawColor(fillColor)
   rp.fillRect(addr rect)
@@ -73,12 +73,12 @@ proc highlight(selected, hovering: bool): float =
   elif (selected, hovering) == (true,  false): 1.5
   else: 1.9
 
-proc drawSolid(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+proc drawSolid(rp: RendererPtr, rect: PxRect, fillColor, penColor: ColorRGBA) =
   let rect = rect.toSdlRect() #(rect.x.cint, rect.y.cint, rect.w.cint, rect.h.cint)
   rp.setDrawColor(fillColor)
   rp.fillRect(addr rect)
 
-proc drawBorder(rp: RendererPtr, rect: PRect, color: ColorRGBA, hov, sel: bool) =
+proc drawBorder(rp: RendererPtr, rect: PxRect, color: ColorRGBA, hov, sel: bool) =
   if not hov and not sel:
     let rect = rect.toSdlRect()
     rp.setDrawColor(color)
@@ -102,7 +102,7 @@ proc drawBorder(rp: RendererPtr, rect: PRect, color: ColorRGBA, hov, sel: bool) 
     rp.setDrawColor(color)
     rp.drawRect(addr r3)
 
-proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
+proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PxRect, zoom: float, rot: bool) =
   # Render component text to surface->texture->renderer
   let 
     fnt = font(comp, zoom)
@@ -110,7 +110,7 @@ proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot:
     textSurface = fnt.renderUtf8Blended(($comp.id).cstring, comp.penColor)
     textTexture = rp.createTextureFromSurface(textSurface)
     (tsw, tsh) = (textSurface.w, textSurface.h)
-    texRect: PRect = (prect.x + (w div 2) - (tsw div 2),
+    texRect: PxRect = (prect.x + (w div 2) - (tsw div 2),
                       prect.y + (h div 2) - (tsh div 2), tsw, tsh)
     texSdlRect = texRect.toSdlRect()
     rotAmt = if rot: -comp.rot.toFloat else: 0.0
@@ -118,7 +118,7 @@ proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot:
   textSurface.destroy()
   textTexture.destroy()
 
-proc drawOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: bool) =
+proc drawOrigin(rp: RendererPtr, comp: DBComp, prect: PxRect, zoom: float, rot: bool) =
   # When rot is false/true, everything is treated as an un/rotated component
   # The opx here is identical to comp.rotationPoint(vp) when rot is false
   # There appears to be a -1 in here for some reason, I think when you're measuring
@@ -134,7 +134,7 @@ proc drawOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: b
   rp.drawLine(prect.x + opx.x - extent, prect.y + opx.y, prect.x + opx.x + extent, prect.y + opx.y)
   rp.drawLine(prect.x + opx.x, prect.y + opx.y - extent, prect.x + opx.x, prect.y + opx.y + extent)
 
-proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PRect, vp: Viewport, hov, sel, rot: bool) =
+proc renderDBCompSDL*(rp: RendererPtr, comp: DBComp, prect: PxRect, vp: Viewport, hov, sel, rot: bool) =
   # Draw rectangle, origin, and its text using SDL2 renderer to prect
   # prect is rectangle in pixels
   # hov, sel is whether this is hovering and/or selected

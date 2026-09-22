@@ -189,7 +189,7 @@ wClass(wBlockPanel of wSDLPanel):
     if self.isReady():
       self.editor.viewport.resize(event.size) # should invoke converter
       self.editor.doFitCheck()
-      self.editor.updateDestinationBox()
+      # self.editor.updateDestinationBox()
     event.skip()
 
   when defined(loopProfile):
@@ -207,13 +207,11 @@ wClass(wBlockPanel of wSDLPanel):
     when defined(monotimeProfile):
       let renderTime_us = (getMonoTime() - t0_render).inMicroseconds
 
-
     when defined(monotimeProfile):
       var s: string
       s = s & "last: " & $lpt_ms & " ms; "
       s = s & "render: " & $renderTime_us & " us; "
       echo s
-
 
   proc onTimer(self: wBlockPanel, event: wEvent) =
     if event.timerId == 1:

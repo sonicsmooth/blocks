@@ -123,29 +123,22 @@ proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
 
 # Convert from anything to pixels through viewport
 # pixel = world * zoom + pan.  Flip zoom for y
-proc toPixelX*[T:WType](x: T, vp: Viewport): PxType =
+proc toPixelX*(x: WType, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
   (x.float * vp.mZoom + vp.mPan.x.float)
 
-proc toPixelY*[T:WType](y: T, vp: Viewport): PxType =
+proc toPixelY*(y: WType, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
   (y.float * (-vp.mZoom) + vp.mPan.y.float)
 
-proc toPixel*[T:WPoint](pt: T, vp: Viewport): PxPoint =
-  (pt[0].toPixelX(vp), pt[1].toPixelY(vp))
+proc toPixel*(pt: WPoint, vp: Viewport): PxPoint =
+  (pt.x.toPixelX(vp), pt.y.toPixelY(vp))
 
-# # Same as above, but without the pan offset
-# proc toPixelXScale*[T:WType](x: T, vp: Viewport): PxType =
-#   # Implicit conversion to PxType which includes rounding
-#   x.float * vp.mZoom
+proc toPixelScale*(a: WType, vp: Viewport): PxType =
+  a * vp.zoom
 
-# proc toPixelYScale*[T:WType](y: T, vp: Viewport): PxType =
-#   # Implicit conversion to PxType which includes rounding
-#   # Note the lack of negative sign here
-#   y.float * vp.mZoom
-
-proc toPixelScale*[T:WPoint](pt: T, vp: Viewport): PxPoint =
-  (pt[0] * vp.zoom, pt[1] * vp.zoom)
+proc toPixelScale*(pt: WPoint, vp: Viewport): PxPoint =
+  (pt.x * vp.zoom, pt.y * vp.zoom)
 # There is also a toPixelScale in render/common.nim
 
 
@@ -158,8 +151,14 @@ proc toWorldX*(x: PxType, vp: Viewport): WType =
 proc toWorldY*(y: PxType, vp: Viewport): WType =
   (y - vp.mPan.y).float / (-vp.mZoom)
 
-proc toWorld*[T: SomePoint](pt: T, vp: Viewport): WPoint =
-  (pt[0].toWorldX(vp), pt[1].toWorldY(vp))
+proc toWorld*(pt: PxPoint, vp: Viewport): WPoint =
+  (pt.x.toWorldX(vp), pt.y.toWorldY(vp))
+
+proc toWorldScale*(a: PxType, vp: Viewport): WType = 
+  a.float / vp.zoom
+
+proc toWorldScale*(pt: PxPoint, vp: Viewport): WPoint =
+  (pt.x.float / vp.zoom, pt.y.float / vp.zoom)
 
 # proc isPointVisible*(wpt: WPoint, vp: Viewport): bool =
 #   # Returns true if pt is visible on screen
@@ -199,7 +198,7 @@ when isMainModule:
     let wpty: WType = 10
     let wpt1: WPoint = (wptx, wpty)
     let wpt2: WPoint = (20, 20)
-    var vp: Viewport = Viewport(pan: (400, 400), zoom: 1.0)
+    var vp: Viewport = Viewport(mPan: (400, 400), mZoom: 1.0)
     assert toPixelX(wptx, vp) == 410
     assert toPixelY(wpty, vp) == 390
     assert toPixel(wpt1, vp) == (x: 410, y: 390)
@@ -208,7 +207,7 @@ when isMainModule:
     assert toWorld((402, 398), vp) == (x: 2.0, y: 2.0)
     assert wpt1.toPixel(vp).toWorld(vp) == wpt1
     assert wpt2.toPixel(vp).toWorld(vp) == wpt2
-    vp.zoom = 1.2
+    vp.mZoom = 1.2
     assert wptx.toPixelX(vp) == 412
     assert wpty.toPixelY(vp) == 388
     assert toPixel(wpt1, vp) == (x: 412, y: 388)

@@ -75,9 +75,11 @@ type
     doc*:           Document
     viewport*:      Viewport
     mouseData:      MouseData
-    selectBox*:     PRect # Selection box
+    selectBox*:     PxRect # Selection box
     allBbox*:       WRect # Bounding box of everything
     dstRect*:       WRect # Where components will be moved to
+    dstSelMargin*:  PxType # How far in from the edge the drag region is active
+    dstEdgeHighlight: array[EdgeNom, bool]
     text*:          string
     ratio:          float
     hovering*:      CompSet
@@ -141,8 +143,7 @@ proc newEditor*(zc: ZoomCtrl): Editor =
   result.tmpSelected = newCompSet()
   result.dirty       = newCompSet()
   result.fat         = newCompSet()
-
-
+  result.dstSelMargin = gAppOpts.dstSelMargin
 
 proc isReady*(self: Editor): bool =
   if self.doc.isNil: return reportNil("editor.doc")
@@ -151,16 +152,17 @@ proc isReady*(self: Editor): bool =
   if not self.viewport.isReady(): return reportNotReady("editor.viewport")
   true
 
-proc updateDestinationBox*(self: Editor) =
-  let
-    marg = 25
-    sz = self.viewport.clientSize
-    pdstrect: PRect = (marg, marg, sz.w - 2*marg, sz.h - 2*marg)
-  publish(RegionXRequest, pdstrect.x)
-  publish(RegionYRequest, pdstrect.y)
-  publish(RegionWRequest, pdstrect.w)
-  publish(RegionHRequest, pdstrect.h)
-  # self.dstRect = pdstrect.toWRect(self.viewport)
+# proc updateDestinationBox*(self: Editor) =
+#   let
+#     marg = 25
+#     sz = self.viewport.clientSize
+#     pdstrect: PxRect = (marg, marg, sz.w - 2*marg, sz.h - 2*marg)
+#   publish(RegionRequest, pdstrect)
+#   # publish(RegionXRequest, pdstrect.x)
+#   # publish(RegionYRequest, pdstrect.y)
+#   # publish(RegionWRequest, pdstrect.w)
+#   # publish(RegionHRequest, pdstrect.h)
+#   # self.dstRect = pdstrect.toWRect(self.viewport)
 
 proc updateBoundingBox*(self: Editor) =
   self.allBbox = self.doc.db.boundingBox()
@@ -217,7 +219,7 @@ proc isSelected*(self: Editor, id: CompID): bool =
   id in self.tmpSelected[]
 proc isHovering*(self: Editor, id: CompID): bool =
   id in self.hovering[]
-proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
+proc evaluateComponentHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
   # Mutate self.hovering
   # Return true if something changed
   let oldhover = self.hovering[]
@@ -228,6 +230,30 @@ proc evaluateHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
     hoveringComps.toHashSet != oldhover
   else:
     false
+proc evaluateDstRectHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
+  let wpt = pos.toWorld(self.viewport)
+  let wmarg = self.dstSelMargin.toWorldScale(self.viewport)
+  self.dstEdgeHighlight[EdgeNom.Left]   = isPointNearEdge(wpt, self.dstRect.leftEdge,   wmarg)
+  self.dstEdgeHighlight[EdgeNom.Right]  = isPointNearEdge(wpt, self.dstRect.rightEdge,  wmarg)
+  self.dstEdgeHighlight[EdgeNom.Top]    = isPointNearEdge(wpt, self.dstRect.topEdge,    wmarg)
+  self.dstEdgeHighlight[EdgeNom.Bottom] = isPointNearEdge(wpt, self.dstRect.bottomEdge, wmarg)
+  for b in self.dstEdgeHighlight:
+    if b: return true
+  return false
+proc isEdgeOnlyHovered*(self: Editor, edge: EdgeNom): bool =
+  if not self.dstEdgeHighlight[edge]:
+    false
+  else:
+    case edge:
+    of Left, Right:
+      (not self.dstEdgeHighlight[EdgeNom.Top   ]) and
+      (not self.dstEdgeHighlight[EdgeNom.Bottom])
+    of Top, Bottom:
+      (not self.dstEdgeHighlight[EdgeNom.Left ]) and
+      (not self.dstEdgeHighlight[EdgeNom.Right])
+proc areTwoedgesHovered*(self: Editor, edge1, edge2: EdgeNom): bool =
+  self.dstEdgeHighlight[edge1] and self.dstEdgeHighlight[edge2]
+
 proc doFitCheck*(self: Editor) =
   # Which components are bigger than client area?
   self.fat.clearAll()
@@ -314,7 +340,9 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     wmp = event.pos.toWorld(vp)
   case self.mouseData.state
   of StateSelectNone:
-    if self.evaluateHovering(event.pos):
+    if self.evaluateComponentHovering(event.pos):
+      self.invalidate()
+    if self.evaluateDstRectHovering(event.pos):
       self.invalidate()
   of StateSelectDownInComp, StateSelectDraggingComp:
     self.groupRotation = false
@@ -458,17 +486,10 @@ proc setupListeners*(self: Editor) =
                            if not self.invalidate.isnil():
                             self.invalidate())
   psAddListener(Test, proc() = echo "Test!")
-  psAddListener(RegionXRequest, proc(x: float) =
-                                  self.dstRect.x = x
-                                  publish(RegionXChanged, x))
-  psAddListener(RegionYRequest, proc(y: float) =
-                                  self.dstRect.y = y
-                                  publish(RegionYChanged, y))
-  psAddListener(RegionWRequest, proc(w: float) =
-                                  self.dstRect.w = w
-                                  publish(RegionWChanged, w))
-  psAddListener(RegionHRequest, proc(h: float) =
-                                  self.dstRect.h = h
-                                  publish(RegionHChanged, h))
+  psAddListener(RegionRequest,  proc(r: WRect) = self.dstRect   = r; publish(RegionChanged,  r))
+  psAddListener(RegionXRequest, proc(x: float) = self.dstRect.x = x; publish(RegionXChanged, x))
+  psAddListener(RegionYRequest, proc(y: float) = self.dstRect.y = y; publish(RegionYChanged, y))
+  psAddListener(RegionWRequest, proc(w: float) = self.dstRect.w = w; publish(RegionWChanged, w))
+  psAddListener(RegionHRequest, proc(h: float) = self.dstRect.h = h; publish(RegionHChanged, h))
 
 

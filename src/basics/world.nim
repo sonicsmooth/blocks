@@ -15,25 +15,25 @@ export typetraits
 
 when defined(worldInt): 
   type WType* = int
-  #type WType* = distinct int
 elif defined(worldFloat):
   type WType* = float
-  #type WType* = distinct float
-
 else:
   static:
     echo "WType not defined by -d:worldInt or -d:worldFloat; defaulting to float"
   type WType* = float
-  #type WType* = distinct float
 
 type
-  WPoint* = tuple[x, y: WType]
-  WSize* = tuple[w, h: WType]
-  PxType* = cint
-  PxPoint* = tuple[x, y: PxType] # same as sdl2.Point
-  PxSize* = tuple[w, h: PxType]
+  WPoint*    = tuple[x, y: WType]
+  WSize*     = tuple[w, h: WType]
+  WRect*     = tuple[x, y, w, h: WType ]  # world rectangle
+  PxType*    = cint
+  PxPoint*   = tuple[x, y: PxType] # same as sdl2.Point
+  PxSize*    = tuple[w, h: PxType]
+  PxRect*    = tuple[x, y, w, h: PxType]  # screen/pixel rectangle
   SomePoint* = WPoint | PxPoint
-  SomeSize* = WSize | PxSize
+  SomeSize*  = WSize  | PxSize
+  SomeRect*  = PxRect | WRect
+
 
 # Single dimension converting any type of number to a world coordinate
 converter toWType*[T:SomeNumber](a: T): WType =
@@ -70,7 +70,7 @@ converter toPxSize*[T:SomeNumber](pt: tuple[w, h: T]): PxSize  =
 proc pxSize*(w, h: SomeNumber): PxSize =
   (w, h)
 
-# TODO: do we need this?  Can we do this for PRect, WPoint, WRect?
+# TODO: do we need this?  Can we do this for PxRect, WPoint, WRect?
 proc toPxPoint*(jn: JsonNode): PxPoint =
   let
     sp = captureBetween(jn.getStr, '(', ')').split(',')

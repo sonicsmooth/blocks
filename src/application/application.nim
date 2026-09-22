@@ -115,10 +115,11 @@ proc init*(self: Application, w, h: int) =
   # not to need it
   self.editor.setupListeners()
   publish(QtyRequest, gAppOpts.compQty)
-  publish(RegionXRequest, gAppOpts.dstRect.x)
-  publish(RegionYRequest, gAppOpts.dstRect.y)
-  publish(RegionWRequest, gAppOpts.dstRect.w)
-  publish(RegionHRequest, gAppOpts.dstRect.h)
+  publish(RegionRequest,  gAppOpts.dstRect)
+  # publish(RegionXRequest, gAppOpts.dstRect.x)
+  # publish(RegionYRequest, gAppOpts.dstRect.y)
+  # publish(RegionWRequest, gAppOpts.dstRect.w)
+  # publish(RegionHRequest, gAppOpts.dstRect.h)
 
 
 

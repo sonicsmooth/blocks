@@ -2,6 +2,7 @@ import std/tables
 
 import directions
 from world import WType, PxType
+from rects import PxRect, WRect
 
 #[
 How PubSub works
@@ -29,18 +30,21 @@ You can send a single-topic data like CompactRequest:
 # Domain-specific keys (topics) for the pubsub mechanism
 type
   CompactDlgPubSubTopic* = enum
-    Test, RandAll, RandPos, Undo, # Signals only -- no data type
-    QtyRequest, QtyChanged,       # Integers
-    SelectedChanged,              # Integer
-    RegionXRequest, RegionXChanged,  # Integers
-    RegionYRequest, RegionYChanged,  # Integers
-    RegionWRequest, RegionWChanged,  # Integers
-    RegionHRequest, RegionHChanged,  # Integers 
-    StartTempRequest, CurrTempChanged,           # Floats
+    Test, RandAll, RandPos, Undo,      # Signals only -- no data type
+    QtyRequest, QtyChanged,            # Integers
+    SelectedChanged,                   # Integer
+    RegionXRequest,   RegionXChanged,  # WType
+    RegionYRequest,   RegionYChanged,  # WType
+    RegionWRequest,   RegionWChanged,  # WType
+    RegionHRequest,   RegionHChanged,  # WType
+    RegionRequest,    RegionChanged,   # WRect
+    StartTempRequest, CurrTempChanged, # Floats
     CompactReq                    # CompactRequest
   AnotherDlgPubSubTopic* = enum DpsJunk1, DpsJunk2, DpsJunk3
 
-  # Define the types of things that go across the pubsub mechanism
+  # Define some types of things that go across the pubsub mechanism
+  # This is in addition to any other object that already exists
+  # Such as int, float, PxRect, etc.
   Event* = object          # Empty data to satisfy one of the Event topics
   CompactRequest* = object  # Sent by dialog box to satisfy the CompactReq topic
     direction*: CompactDir
@@ -65,6 +69,8 @@ var
   gPubSubInts:            PubSubTable[CompactDlgPubSubTopic, int]
   gPubSubInt32s:          PubSubTable[CompactDlgPubSubTopic, int32]
   gPubSubFloats:          PubSubTable[CompactDlgPubSubTopic, float]
+  gPubSubPxRects:         PubSubTable[CompactDlgPubSubTopic, PxRect]
+  gPubSubWRects:          PubSubTable[CompactDlgPubSubTopic, WRect]
   gPubSubCompactRequests: PubSubTable[CompactDlgPubSubTopic, CompactRequest]
   gPubSubDummyEvents:     PubSubTable[AnotherDlgPubSubTopic, Event]
   gPubSubDummyInts:       PubSubTable[AnotherDlgPubSubTopic, int]
@@ -77,6 +83,8 @@ template topicTable(K, T: typedesc): untyped =
     elif T is int: gPubSubInts
     elif T is int32: gPubSubInt32s
     elif T is float: gPubSubFloats
+    elif T is PxRect: gPubSubPxRects
+    elif T is WRect: gPubSubWRects
     elif T is CompactRequest: gPubSubCompactRequests
     else: {.error: "No pubsub table for " & $K & "/" & $T.}
   elif K is AnotherDlgPubSubTopic:
