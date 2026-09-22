@@ -6,6 +6,7 @@ import concurrent
 import document
 import editor
 import orchestrator
+import pubsub
 import reporting
 
 import renderer
@@ -89,8 +90,7 @@ proc init*(self: Application, w, h: int) =
 
   # Initialize data
   # self.orchestrator.init()
-  self.editor.setupListeners()
-  self.mainFrame.mainPanel.randomizeRectsAll()
+
 
   self.mainFrame.invalidate = proc() =
     self.renderer.clearTextureCache()
@@ -109,6 +109,16 @@ proc init*(self: Application, w, h: int) =
       # too big to fit on the screen
       self.editor.dirtifyFatComponents()
     self.renderer.syncTextureCache()
+
+  # Set up initial quantity after invalidate has been setup
+  # It's guarded against a null invalidate, but it's nice
+  # not to need it
+  self.editor.setupListeners()
+  publish(QtyRequest, gAppOpts.compQty)
+  publish(RegionXRequest, gAppOpts.dstRect.x)
+  publish(RegionYRequest, gAppOpts.dstRect.y)
+  publish(RegionWRequest, gAppOpts.dstRect.w)
+  publish(RegionHRequest, gAppOpts.dstRect.h)
 
 
 

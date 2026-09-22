@@ -27,13 +27,11 @@ proc enableAcrylic*(frame: wFrame) =
   var backdrop = DWMSBT_TRANSIENTWINDOW
   let hr = DwmSetWindowAttribute(frame.handle, DWMWA_SYSTEMBACKDROP_TYPE,
                                  addr backdrop, sizeof(int32).DWORD)
-  echo "setattribute result: ", hr
 
 proc extendFrameIntoClientArea*(frame: wFrame) =
   var margins = MARGINS(cxLeftWidth: -1, cxRightWidth: -1,
                          cyTopHeight: -1, cyBottomHeight: -1)
   let hr = DwmExtendFrameIntoClientArea(frame.handle, addr margins)
-  echo "extend frame result: ", hr
 
 
 

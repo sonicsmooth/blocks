@@ -1,5 +1,6 @@
 import std/[os, parseopt, strutils, strformat]
 import jsoninit
+import world
 
 type
   RenderMethod* = enum
@@ -10,6 +11,7 @@ type
     compQty*: int = 1
     enableBbox*: bool = false # calc and show
     enableDstRect*: bool = false # show (calc always anyway)
+    dstRect*: tuple[x,y,w,h: WType]
     enableText*: bool = true
     enableHover*: bool = true
     oneOffset*: bool = false
@@ -19,6 +21,9 @@ type
     reTextureFatOnMove*: bool = false
     showScale*: bool = true
     singleColor*: string
+    compactDlgMinSpacingX*: WType
+    compactDlgMinSpacingY*: WType
+    compactDlgTempStart*: float
 
 ## GLOBAL VAR FOR USE EVERYWHERE
 var
@@ -40,7 +45,8 @@ proc showAppHelp*(opts: AppOpts) =
 proc parseAppOptions*(): AppOpts = 
   # Start with values in json file, then override 
   # with command line values
-  jsonInitGlobals()
+  # gAppOptsJ already filled in via jsoninit
+  #jsonInitGlobals() # fills in gAppOptsJ
   try:
     result = gAppOptsJ.to(AppOpts)
   except CatchableError as e:

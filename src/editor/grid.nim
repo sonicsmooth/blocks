@@ -52,8 +52,8 @@ proc allowedDivisions*(grid: Grid): seq[int] =
   # are 2,4,5,8,10,16.
   var xset, yset: set[DivRange]
   for d in DivRange.low .. DivRange.high:
-    if grid.mMajorXSpace mod d == 0: xset.incl(d)
-    if grid.mMajorYSpace mod d == 0: yset.incl(d)
+    if grid.mMajorXSpace mod d.WType == 0: xset.incl(d)
+    if grid.mMajorYSpace mod d.WType == 0: yset.incl(d)
   let isect = xset * yset
   for i in isect:
     result.add(i)
@@ -201,7 +201,9 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
   # Round to nearest minor grid point
   # Returns same type of point as is passed in.
   # If this is a WPoint, and that is integer-based, then
-  # rounding will occur in implicit conversion
+  # rounding will occur during implicit conversion
+  static:
+    echo T
   let md = minDelta(grid, scale)
   when WType is SomeFloat:
     if md == (0.0, 0.0): return pt
@@ -212,11 +214,11 @@ proc snap*[T:tuple[x, y: SomeNumber]](pt: T, grid: Grid, scale: Scale): T =
     elif T is SomeInteger:
         return pt
   let
-    xcnt:  float = (pt[0] / md.x).round
-    ycnt:  float = (pt[1] / md.y).round
+    xcnt:  float = (pt.x.float / md.x.float).round
+    ycnt:  float = (pt.y.float / md.y.float).round
     xsnap: float = xcnt * md.x.float
     ysnap: float = ycnt * md.y.float
-  (xsnap, ysnap)
+  (xsnap, ysnap) # converted to tuple[SomeNumber]
 
 
 proc newGrid*(zCtrl: ZoomCtrl): Grid = 

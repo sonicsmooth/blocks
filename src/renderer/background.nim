@@ -36,7 +36,7 @@ proc renderText*(rp: RendererPtr, x,y: cint, txt: string, font: FontPtr) =
 
   var txtSzW, txtSzH: cint
   discard sizeText(font, maxLine.cstring, addr txtSzW, addr txtSzH)
-  txtSzH *= lines.len
+  txtSzH *= lines.len.cint
   let texRect = rect(x - txtSzW, y - txtSzH, txtSzW, txtSzH)
   let txtSurface = renderTextBlendedWrapped(font, txt, Black, 0)
   let txtTexture = rp.createTextureFromSurface(txtSurface)
@@ -48,18 +48,18 @@ proc renderText*(rp: RendererPtr, x,y: cint, txt: string, font: FontPtr) =
 proc drawScale*(rp: RendererPtr, vp: Viewport, grid: Grid, font: FontPtr) =
   let
     csz = vp.clientSize
-    left = 150
+    left: cint = 150
     majDelta = grid.minDelta(Major).x
     minDelta = grid.minDelta(Minor).x
-    majDeltaPx = (majDelta.float * vp.zoom).round.int
-    minDeltaPx = (minDelta.float * vp.zoom).round.int
-    botMajor = csz.h - 100
-    botMinor = csz.h - 60
+    majDeltaPx: cint = (majDelta.float * vp.zoom).round.cint
+    minDeltaPx: cint = (minDelta.float * vp.zoom).round.cint
+    botMajor: cint = csz.h.cint - 100.cint
+    botMinor: cint = csz.h.cint - 60.cint
 
   # Major line
   rp.setDrawColor(DarkSlateGray)
   var r1, r2, r3: sdl2.Rect
-  let ht = 11
+  let ht: cint = 11
   r1 = (left, botMajor - 1, majDeltaPx, 3)
   r2 = (left, botMajor - (ht div 2), 3, ht)
   r3 = (left + majDeltaPx, botMajor - (ht div 2), 3, ht)
@@ -124,11 +124,11 @@ proc drawGrid*(rp: RendererPtr, vp: Viewport, grid: Grid) =
       rp.setDrawColor(lsg)
       for xwf in arange(worldStartMinor.x .. worldEndMinor.x, worldStepMinor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
-        rp.drawLine(xpx, 0, xpx, size.h - 1)
+        rp.drawLine(xpx, 0, xpx, size.h.cint - 1)
 
       for ywf in arange(worldStartMinor.y .. worldEndMinor.y, worldStepMinor.y.float):
         let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
-        rp.drawLine(0, ypx, size.w - 1, ypx)
+        rp.drawLine(0, ypx, size.w.cint - 1, ypx)
 
     elif grid.mDotsOrLines == Dots:
       var pts: seq[Point]
@@ -152,11 +152,11 @@ proc drawGrid*(rp: RendererPtr, vp: Viewport, grid: Grid) =
       rp.setDrawColor(lsg)
       for xwf in arange(worldStartMajor.x .. worldEndMajor.x, worldStepMajor.x.float):
         let xpx = (xwf * vp.zoom + vp.pan.x.float).round.cint
-        rp.drawLine(xpx, 0, xpx, size.h - 1)
+        rp.drawLine(xpx, 0, xpx, size.h.cint - 1)
 
       for ywf in arange(worldStartMajor.y .. worldEndMajor.y, worldStepMajor.y.float):
         let ypx = (ywf * vp.zoom + vp.pan.y.float).round.cint
-        rp.drawLine(0, ypx, size.w - 1, ypx)
+        rp.drawLine(0, ypx, size.w.cint - 1, ypx)
     
     elif grid.mDotsOrLines == Dots:
       var pts: seq[Point]
@@ -184,13 +184,13 @@ proc drawGrid*(rp: RendererPtr, vp: Viewport, grid: Grid) =
     rp.setDrawColor(DarkRed)
 
     # Horizontals
-    rp.drawLine(o.x - extent, o.y,   o.x + extent, o.y    )
-    rp.drawLine(o.x - extent, o.y-1, o.x + extent, o.y - 1)
-    rp.drawLine(o.x - extent, o.y+1, o.x + extent, o.y + 1)
+    rp.drawLine((o.x - extent).cint, (o.y  ).cint, (o.x + extent).cint, (o.y    ).cint)
+    rp.drawLine((o.x - extent).cint, (o.y-1).cint, (o.x + extent).cint, (o.y - 1).cint)
+    rp.drawLine((o.x - extent).cint, (o.y+1).cint, (o.x + extent).cint, (o.y + 1).cint)
     
     # Verticals
-    rp.drawLine(o.x,     o.y - extent, o.x,     o.y + extent)
-    rp.drawLine(o.x - 1, o.y - extent, o.x - 1, o.y + extent)
-    rp.drawLine(o.x + 1, o.y - extent, o.x + 1, o.y + extent)
+    rp.drawLine((o.x).cint,     (o.y - extent).cint, (o.x    ).cint, (o.y + extent).cint)
+    rp.drawLine((o.x - 1).cint, (o.y - extent).cint, (o.x - 1).cint, (o.y + extent).cint)
+    rp.drawLine((o.x + 1).cint, (o.y - extent).cint, (o.x + 1).cint, (o.y + extent).cint)
 
 

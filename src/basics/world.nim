@@ -1,8 +1,11 @@
 import std/[json,
             math, 
-            parseutils, 
-            strutils]
+            parseutils,
+            #random,
+            strutils,
+            typetraits]
 
+export typetraits
 # Type conversion to world coordinate types.
 # This is not pan/zoom.  See viewport for pan/zoom.
 # This is more about converting numbers and tuples to
@@ -11,19 +14,17 @@ import std/[json,
 
 
 when defined(worldInt): 
-  static:
-    discard
-    # echo "WType defined as int"
   type WType* = int
+  #type WType* = distinct int
 elif defined(worldFloat):
-  static:
-    discard
-    # echo "WType defined as float"
   type WType* = float
+  #type WType* = distinct float
+
 else:
   static:
     echo "WType not defined by -d:worldInt or -d:worldFloat; defaulting to float"
   type WType* = float
+  #type WType* = distinct float
 
 type
   WPoint* = tuple[x, y: WType]
@@ -36,14 +37,16 @@ type
 
 # Single dimension converting any type of number to a world coordinate
 converter toWType*[T:SomeNumber](a: T): WType =
-  when T is SomeInteger and WType is SomeInteger:
+  when T is SomeInteger and distinctBase(WType) is SomeInteger:
     a.WType
-  elif a is SomeFloat and WType is SomeInteger:
+  elif a is SomeFloat and distinctBase(WType) is SomeInteger:
+    when(debug):
+      echo "Rounding ", a
     a.round.WType
-  elif WType is SomeFloat:
+  elif distinctBase(WType) is SomeFloat:
     a.WType
   else:
-    raise newException(TypeError, "Weird Condition")
+    raiseAssert("Weird Condition: WType is neither integer nor float")
 
 converter toPxType*[T:SomeNumber](a: T): PxType =
   # PxType is always an integer
@@ -67,12 +70,15 @@ converter toPxSize*[T:SomeNumber](pt: tuple[w, h: T]): PxSize  =
 proc pxSize*(w, h: SomeNumber): PxSize =
   (w, h)
 
+# TODO: do we need this?  Can we do this for PRect, WPoint, WRect?
 proc toPxPoint*(jn: JsonNode): PxPoint =
   let
     sp = captureBetween(jn.getStr, '(', ')').split(',')
     x = parseBiggestInt(sp[0].strip)
     y = parseBiggestInt(sp[1].strip)
   (x, y)
+
+
 
 when isMainModule:
   when WType is int:

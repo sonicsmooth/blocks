@@ -10,6 +10,7 @@ type
     db*: RectTable
     grid*: Grid
 
+
 proc newDocument*(): Document =
   result = new Document
   result.db = RectTable()

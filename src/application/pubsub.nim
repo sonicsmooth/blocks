@@ -1,7 +1,7 @@
 import std/tables
 
 import directions
-from world import WType
+from world import WType, PxType
 
 #[
 How PubSub works
@@ -36,13 +36,12 @@ type
     RegionYRequest, RegionYChanged,  # Integers
     RegionWRequest, RegionWChanged,  # Integers
     RegionHRequest, RegionHChanged,  # Integers 
-    CurrentTempChanged,           # Float
+    StartTempRequest, CurrTempChanged,           # Floats
     CompactReq                    # CompactRequest
+  AnotherDlgPubSubTopic* = enum DpsJunk1, DpsJunk2, DpsJunk3
 
-
-# Define the types of things that go across the pubsub mechanism
-type
-  Signal* = object          # Empty data to satisfy one of the Signal topics
+  # Define the types of things that go across the pubsub mechanism
+  Event* = object          # Empty data to satisfy one of the Event topics
   CompactRequest* = object  # Sent by dialog box to satisfy the CompactReq topic
     direction*: CompactDir
     minSpaceX*: WType
@@ -52,42 +51,56 @@ type
     replacementFunction*: ReplacementOption
     startTemp*: float
     doMonitor*: bool
-  AnotherRequest* = object  # Placeholder to satisfy some other tbd topic
+  DummyRequest* = object  # Placeholder to satisfy some other tbd topic
     placeholder1*: int
     placeholder2*: float
     placeholder3*: string
 
-    
-type
+  # Define the types of listener tables
   Listener*[T] = proc(data: T) {.closure.}
-  PubSub[K, T] = Table[K, seq[Listener[T]]]
+  PubSubTable[K, T] = Table[K, seq[Listener[T]]]
 
 var
-  gPubSubEvent:          PubSub[CompactDlgPubSubTopic, Signal]
-  gPubSubInt:            PubSub[CompactDlgPubSubTopic, int]
-  gPubSubFloat:          PubSub[CompactDlgPubSubTopic, float]
-  gPubSubCompactRequest: PubSub[CompactDlgPubSubTopic, CompactRequest]
+  gPubSubEvents:          PubSubTable[CompactDlgPubSubTopic, Event]
+  gPubSubInts:            PubSubTable[CompactDlgPubSubTopic, int]
+  gPubSubInt32s:          PubSubTable[CompactDlgPubSubTopic, int32]
+  gPubSubFloats:          PubSubTable[CompactDlgPubSubTopic, float]
+  gPubSubCompactRequests: PubSubTable[CompactDlgPubSubTopic, CompactRequest]
+  gPubSubDummyEvents:     PubSubTable[AnotherDlgPubSubTopic, Event]
+  gPubSubDummyInts:       PubSubTable[AnotherDlgPubSubTopic, int]
+  gPubSubDummyInt32s:     PubSubTable[AnotherDlgPubSubTopic, int32]
+  gPubSubDummyFloats:     PubSubTable[AnotherDlgPubSubTopic, float]
 
-template tableFor(T: typedesc): untyped =
-  # Paste in the table for a given data type
-  when T is Signal:          gPubSubEvent
-  elif T is int:             gPubSubInt
-  elif T is float:           gPubSubFloat
-  elif T is CompactRequest:  gPubSubCompactRequest
-  else: {.error: "No pubsub channel registered for type " & $T.}
+template topicTable(K, T: typedesc): untyped =
+  when K is CompactDlgPubSubTopic:
+    when T is Event: gPubSubEvents
+    elif T is int: gPubSubInts
+    elif T is int32: gPubSubInt32s
+    elif T is float: gPubSubFloats
+    elif T is CompactRequest: gPubSubCompactRequests
+    else: {.error: "No pubsub table for " & $K & "/" & $T.}
+  elif K is AnotherDlgPubSubTopic:
+    when T is Event: gPubSubDummyEvents
+    elif T is int: gPubSubDummyInts
+    elif T is int32: gPubSubDummyInt32s
+    elif T is float: gPubSubDummyFloats
+    else: {.error: "No pubsub table for " & $K & "/" & $T.}
+  else:
+    {.error: "No topic-kind registered for " & $K.}
+
 
 proc soleTopic*(t: typedesc[CompactRequest]): CompactDlgPubSubTopic = CompactReq
 
 # Generic registration that takes any topic and any data type
-# example: psAddListener(someJunkId, proc(data: SomeType) = echo data
+# example: psAddListener(someJunkId, proc(data: SomeType) = echo data)
 proc psAddListener*[K, T](topic: K, listener: Listener[T]): Listener[T] {.discardable.} =
-  tableFor(T).mgetOrPut(topic, @[]).add(listener)
+  topicTable(K, T).mgetOrPut(topic, @[]).add(listener)
   listener
 
 # Specific registration for signals that don't carry data, ie buttons
 # example: psAddListener(Test, proc() = echo "Test signal received")
 proc psAddListener*[K](topic: K, listener: proc() {.closure.}): proc() {.closure.} {.discardable.} =
-  psAddListener(topic, proc(data: Signal) = listener())
+  psAddListener(topic, proc(data: Event) = listener())
   listener
 
 # Specific registration for sole-topic data, eg CompactRequest
@@ -97,21 +110,17 @@ proc psAddListener*[T](listener: Listener[T]): Listener[T] {.discardable.}=
   listener
 
 
-  
-
-
 # Generic publish that takes any topic and any data type
 # example: publish(someJunkId, someData)
 proc publish*[K, T](topic: K, data: T) =
-  if topic in tableFor(T): #.listeners:
-    #for listener in tableFor(T).listeners[topic]:
-    for listener in tableFor(T)[topic]:
+  if topic in topicTable(K, T):
+    for listener in topicTable(K, T)[topic]:
       listener(data)
 
 # Specific publish for signals that don't carry data
 # example: publish(Test)
 proc publish*(topic: CompactDlgPubSubTopic) =
-  publish(topic, Signal())
+  publish(topic, Event())
 
 # Specific publish for soletopic data, eg CompactRequest
 # example: publish(myCompactRequest)

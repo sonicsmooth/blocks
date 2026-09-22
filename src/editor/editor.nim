@@ -64,7 +64,7 @@ type
     PanStateDown
     PanStateMoving
   MouseData = tuple
-    clickHitId : Option[CompID]
+    clickHitId:  Option[CompID]
     clickPos:    Option[PxPoint] # only used for select box
     lastPos:     PxPoint
     state:       MouseState
@@ -79,7 +79,6 @@ type
     allBbox*:       WRect # Bounding box of everything
     dstRect*:       WRect # Where components will be moved to
     text*:          string
-    fillArea*:      WType
     ratio:          float
     hovering*:      CompSet
     selected*:      CompSet
@@ -133,14 +132,14 @@ proc `$`*(self: Editor): string =
 proc newEditor*(zc: ZoomCtrl): Editor =
   result = new Editor
   # assign viewport like
-  result.viewport  = newViewport(pan=(400,400), clicks=0, zCtrl=zc)
+  result.viewport  = newViewport(pan=(400, 400), clicks=0, zCtrl=zc)
   # ... but zc was created before, with grid
   # all other fields can take their default values
   # and are assigned later
-  result.hovering    = newCompSet() #newHoverSet()
-  result.selected    = newCompSet() #newSelectedSet()
-  result.tmpSelected = newCompSet() #newSelectedSet()
-  result.dirty       = newCompSet() #newDirtySet()
+  result.hovering    = newCompSet()
+  result.selected    = newCompSet()
+  result.tmpSelected = newCompSet()
+  result.dirty       = newCompSet()
   result.fat         = newCompSet()
 
 
@@ -152,19 +151,16 @@ proc isReady*(self: Editor): bool =
   if not self.viewport.isReady(): return reportNotReady("editor.viewport")
   true
 
-
-proc randomizeRects*(self: Editor, qty: int, region: WRect) =
-  self.hovering.clearAll()
-  self.selected.clearAll()
-  self.dirty.setAll(self.doc.db)
-  self.doc.db.randomizeRectsAll(qty, region, true)
-
 proc updateDestinationBox*(self: Editor) =
   let
     marg = 25
     sz = self.viewport.clientSize
     pdstrect: PRect = (marg, marg, sz.w - 2*marg, sz.h - 2*marg)
-  self.dstRect = pdstrect.toWRect(self.viewport)
+  publish(RegionXRequest, pdstrect.x)
+  publish(RegionYRequest, pdstrect.y)
+  publish(RegionWRequest, pdstrect.w)
+  publish(RegionHRequest, pdstrect.h)
+  # self.dstRect = pdstrect.toWRect(self.viewport)
 
 proc updateBoundingBox*(self: Editor) =
   self.allBbox = self.doc.db.boundingBox()
@@ -173,7 +169,8 @@ proc updateRatio*(self: Editor) =
   if self.doc.db.len == 0:
     self.ratio = 0.0
   else:
-    let ratio = self.fillArea.float / self.allBbox.area.float
+    # let ratio = self.fillArea.float / self.allBbox.area.float
+    let ratio = self.doc.db.fillArea().float / self.allBbox.area.float
     if ratio != self.ratio:
       self.ratio = ratio
 
@@ -213,7 +210,7 @@ proc deleteRects(self: Editor, compIDs: seq[CompID]) =
   self.dirty.setSome(compIDs)
   for id in compIDs:
     self.doc.db.del(id) # Todo: check whether this deletes rect
-  self.fillArea = self.doc.db.fillArea()
+  # self.fillArea = self.doc.db.fillArea()
 
 proc isSelected*(self: Editor, id: CompID): bool =
   id in self.selected[] or
@@ -262,7 +259,7 @@ proc processKeyDown*(self: Editor, key: Key) =
     let
       sc = if key.shift: Tiny else: Minor
       md: WPoint = minDelta(self.doc.grid, scale=sc)
-      moveby: WPoint = md .* moveTable[key.keyCode]
+      moveby: WPoint = md *. moveTable[key.keyCode]
     #self.moveRectsBy(sel, moveBy)
     self.moveSelectedRectsBy(moveBy)
     self.resetMouseData()
@@ -438,18 +435,40 @@ proc processMouseWheelEvent*(self: Editor, event: MouseEvt) =
   # TODO doesn't notice delay too much
 
 proc setupListeners*(self: Editor) =
+  echo "editor setting up listeners"
   psAddListener(QtyRequest, proc(qty: int) = 
                               if qty > 0 and qty != self.doc.db.len:
-                                self.randomizeRects(qty, self.dstRect)
-                                self.updateRatio()
+                                self.doc.db.randomizeRectsAll(qty, self.dstRect, true)
+                                publish(QtyChanged, self.doc.db.len))
+  psAddListener(QtyChanged, proc(_: int) =
+                              self.updateRatio()
+                              if not self.invalidate.isnil():
                                 self.invalidate()
-                                publish(QtySend, self.doc.db.len))
+                              self.hovering.clearAll()
+                              self.selected.clearAll()
+                              self.dirty.setAll(self.doc.db))
   psAddListener(RandPos, proc() =
                            self.doc.db.randomizeRectsPos(self.dstRect)
                            self.updateRatio()
-                           self.invalidate())
+                           if not self.invalidate.isnil():
+                            self.invalidate())
   psAddListener(RandAll, proc() = 
-                           self.randomizeRects(self.doc.db.len, self.dstRect)
+                           self.doc.db.randomizeRectsAll(self.doc.db.len, self.dstRect, true)
                            self.updateRatio()
-                           self.invalidate())
+                           if not self.invalidate.isnil():
+                            self.invalidate())
   psAddListener(Test, proc() = echo "Test!")
+  psAddListener(RegionXRequest, proc(x: float) =
+                                  self.dstRect.x = x
+                                  publish(RegionXChanged, x))
+  psAddListener(RegionYRequest, proc(y: float) =
+                                  self.dstRect.y = y
+                                  publish(RegionYChanged, y))
+  psAddListener(RegionWRequest, proc(w: float) =
+                                  self.dstRect.w = w
+                                  publish(RegionWChanged, w))
+  psAddListener(RegionHRequest, proc(h: float) =
+                                  self.dstRect.h = h
+                                  publish(RegionHChanged, h))
+
+

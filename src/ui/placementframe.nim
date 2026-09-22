@@ -1,7 +1,8 @@
-
-import std/os
+#import std/os
 from std/strutils import strip
+import std/math
 
+import appopts
 import directions
 import monoprofile
 import pubsub
@@ -56,11 +57,13 @@ type
     slStartTemp: wSlider
 
     # closures for deregistering
-    qtyProc: proc(qty: int) {.closure.}
-    regionXProc: proc(x: float) {.closure.}
-    regionYProc: proc(y: float) {.closure.}
-    regionWProc: proc(w: float) {.closure.}
-    regionHProc: proc(h: float) {.closure.}
+    qtyListener:       proc(qty: int) {.closure.}
+    regionXListener:   proc(x: float) {.closure.}
+    regionYListener:   proc(y: float) {.closure.}
+    regionWListener:   proc(w: float) {.closure.}
+    regionHListener:   proc(h: float) {.closure.}
+    startTempListener: proc(t: float) {.closure.}
+    currTempListener:  proc(t: float) {.closure.}
 
   wPlacementFrame* = ref object of wFrame
     mPanel: wPlacementPanel
@@ -87,7 +90,6 @@ wClass(wPlacementPanel of wPanel):
         startTempNumExtraOne = self.dpiScale(10)
       self.stCompTitle.fit()
       self.stSelected.fit()
-      self.stCurrTempNum.fit()
       self.layout:
         # Top Row
         self.stQty:
@@ -202,7 +204,7 @@ wClass(wPlacementPanel of wPanel):
           top = self.sbCompactMethod.bottom + vspc
           left = self.sbBoundReg.right + hspc
           bottom = self.cbMonitor.bottom + vpad
-          right = self.stStartTempNum.right + vmarg
+          right = self.stStartTempNum.right + hmarg
 
         # Bounding Region contents
         self.cbDrawRegion:
@@ -366,7 +368,7 @@ wClass(wPlacementPanel of wPanel):
         self.stCurrTempNum:
           top = self.slStartTemp.bottom
           left = self.stCurrTemp.right + hpad
-          width = self.stCurrTempNum.defaultWidth
+          width = self.stCurrTempNum.defaultWidth + startTempNumExtraOne
           height = self.stCurrTempNum.defaultHeight
         self.cbMonitor:
           top = self.stCurrTemp.bottom
@@ -444,13 +446,11 @@ wClass(wPlacementPanel of wPanel):
 
     if txtCtrl == self.txtQty and valInt.isSome():
       publish(QtyRequest, valInt.get())
-      # echo "Committed: ", valInt.get()
     elif txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH] and valFloat.isSome():
       if   txtCtrl == self.txtX:  publish(RegionXRequest, valFloat.get())
       elif txtCtrl == self.txtY:  publish(RegionYRequest, valFloat.get())
       elif txtCtrl == self.txtW:  publish(RegionWRequest, valFloat.get())
       elif txtCtrl == self.txtH:  publish(RegionHRequest, valFloat.get())
-      # echo "Commited: ", valFloat.get()
     else:
       echo "not commiting: \"", txtCtrl.value, "\""
 
@@ -572,7 +572,6 @@ wClass(wPlacementPanel of wPanel):
     publish(Undo)
   
   proc onButtonDone(self: wPlacementPanel) =
-    echo "placementPanel.onButtonDone()"
     # Post message for asynchronous close
     # Otherwise if we do self.parent.close()
     # we get a synchronous close which
@@ -620,6 +619,8 @@ wClass(wPlacementPanel of wPanel):
 
   proc onTempSlider(self: wPlacementPanel) =
     self.stStartTempNum.label = $self.slStartTemp.value
+    # Also copy this to curr temp since that's where the next anneal with start
+    publish(CurrTempChanged, self.slStartTemp.value.float)
  
   proc onMonitorCheckBox(self: wPlacementPanel, event: wEvent) =
     discard
@@ -629,6 +630,7 @@ wClass(wPlacementPanel of wPanel):
     wPanel(self).init(parent)
     self.backgroundColor = gPanelBackgroundColor
     let iconSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
+    
     block: # Priming cache
       when defined(debug):
         stdout.write "placementframe priming bitmap cache... "
@@ -666,9 +668,9 @@ wClass(wPlacementPanel of wPanel):
       self.stStrat        = StaticText(self, label="Strategy")
       self.stReplFn       = StaticText(self, label="Replacement Function")
       self.stStartTemp    = StaticText(self, label="Start Temp")
-      self.stStartTempNum = StaticText(self, label="xx", style=wAlignRight)
+      self.stStartTempNum = StaticText(self, label="", style=wAlignRight)
       self.stCurrTemp     = StaticText(self, label="Current Temp")
-      self.stCurrTempNum  = StaticText(self, label="")
+      self.stCurrTempNum  = StaticText(self, label="", style=wAlignRight)
       
       # Text Controls
       self.txtQty      = TextCtrl(self, style=wBorderSimple)
@@ -769,31 +771,38 @@ wClass(wPlacementPanel of wPanel):
       self.cbMonitor.wEvent_Checkbox      do (event: wEvent): self.onMonitorCheckBox(event)
 
       # Add Pubsub Listeners
+      # A *Request is received only by the owner of the data
+      # In this case, starttemp is owned by the placement dialog
       # TODO : set up remove listener for when box is destroyed
-      self.qtyProc     = psAddListener(QtyChanged, proc(qty: int) = self.txtQty.value = $qty)
-      self.regionXProc = psAddListener(RegionXChanged, proc(x: float) = self.txtX.setValue($x))
-      self.regionYProc = psAddListener(RegionYChanged, proc(y: float) = self.txtY.changeValue($y))
-      self.regionWProc = psAddListener(RegionWChanged, proc(w: float) = self.txtW.changeValue($w))
-      self.regionHProc = psAddListener(RegionHChanged, proc(h: float) = self.txtH.changeValue($h))
+      self.qtyListener       = psAddListener(QtyChanged,       proc(qty: int) = self.txtQty.value = $qty)
+      self.regionXListener   = psAddListener(RegionXChanged,   proc(x: float) = self.txtX.setValue($x)) # trigger wEvent_Text
+      self.regionYListener   = psAddListener(RegionYChanged,   proc(y: float) = self.txtY.setValue($y)) # trigger wEvent_Text
+      self.regionWListener   = psAddListener(RegionWChanged,   proc(w: float) = self.txtW.setValue($w)) # trigger wEvent_Text
+      self.regionHListener   = psAddListener(RegionHChanged,   proc(h: float) = self.txtH.setValue($h)) # trigger wEvent_Text
+      self.startTempListener = psAddListener(StartTempRequest, proc(t: float) =
+                                                                 self.slStartTemp.value = t.round.int
+                                                                 self.onTempSlider()) # because setting value doesn't trigger wEvent_Slider
+      self.currTempListener  = psAddListener(CurrTempChanged,  proc(t: float) = self.stCurrTempNum.label = $t.round.int)
 
     block: # Initial values
       # Click on the radio buttons to set initial state, set qty and slider
       # This should set the color (red for blank)
-      self.txtQty.setValue("") #value = "10"
-      self.txtX.setValue("") #value = "30"
-      self.txtY.setValue("") #value = "30"
-      self.txtW.setValue("") #value = "500"
-      self.txtH.setValue("") #value = "500"
-      self.txtMinX.setValue("") #value = "2"
-      self.txtMinY.setValue("") #value = "2"
+      self.txtQty.setValue("")
+      self.txtX.setValue("")
+      self.txtY.setValue("")
+      self.txtW.setValue("")
+      self.txtH.setValue("")
+      self.txtMinX.setValue("")
+      self.txtMinY.setValue("")
       self.rbNone.click()
       self.rbStrat1.click()
 
+      self.txtMinX.setValue($gAppOpts.compactDlgMinSpacingX) # trigger color, but keep local (sent with compact request)
+      self.txtMinY.setValue($gAppOpts.compactDlgMinSpacingY)
       self.rbWiggle.click()
       self.rbHV.click()
       self.slStartTemp.setRange(1, 100)
-      self.slStartTemp.value = 50
-      self.stStartTempNum.label = $self.slStartTemp.value
+      publish(StartTempRequest, gAppOpts.compactDlgTempStart)
 
     block: # Update arrow buttons down below after the radio buttons are clicked, so they have the right icon
       self.cbDrawRegion.setBitmap(iconBitmap("drag", iconSz))
@@ -838,6 +847,8 @@ wClass(wPlacementFrame of wFrame):
     # Respond to generic events
     self.wEvent_Close do (event: wEvent): self.onClose(event)
     self.wEvent_Destroy do (): self.onDestroy()
+    self.wEvent_Timer do(): self.enableAcrylic()
+    self.startTimer(0.0)
 
 
 when isMainModule:
@@ -845,6 +856,7 @@ when isMainModule:
   var localQty: int
   var localRX, localRY, localRW, localRH: float
   try:
+    gAppOpts = parseAppOptions()
     wSetSystemDPIAware()
     psAddListener(QtyRequest, proc(qty: int) = localQty=qty; publish(QtyChanged, localQty))
     psAddListener(QtyChanged, proc(qty: int) = echo "Listener says Qty: ", qty)
@@ -863,17 +875,14 @@ when isMainModule:
       echo "Listener says CompactRequest: ", req)
     psAddListener(Undo, proc() = echo "Listener says Undo")
 
-    when defined(dumpLayout):
-      PlacementFrame(nil)
-    else:
-      let
-        app = App()
-        appFrame = Frame(nil, title="Fake Application Frame")
-        goButton = Button(appFrame, label="Press me")
-      plf = PlacementFrame(appFrame)
-      goButton.wEvent_Button do(): plf.show()
-      appFrame.show()
-      app.mainLoop()
+    let
+      app = App()
+      appFrame = Frame(nil, title="Fake Application Frame")
+      goButton = Button(appFrame, label="Press me")
+    plf = PlacementFrame(appFrame)
+    goButton.wEvent_Button do(): plf.show()
+    appFrame.show()
+    app.mainLoop()
   except Exception as e:
     echo e.msg
     echo e.getStackTrace()

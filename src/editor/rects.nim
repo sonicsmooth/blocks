@@ -255,8 +255,8 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
   # Creat a DBComp with random position, size, color
   var rw: WType
   var rh: WType
-  let rectPosX: WType = region.x + rand(region.w)
-  let rectPosY: WType = region.y + rand(region.h)
+  let rectPosX: WType = region.x + rand(region.w.distinctBase)
+  let rectPosY: WType = region.y + rand(region.h.distinctBase)
 
   if log: # Make log distribution
     while true:

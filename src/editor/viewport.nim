@@ -93,7 +93,7 @@ proc doZoom*(vp: var Viewport, delta: int) =
   let
     maxzClicks =  vp.mZctrl.clickDiv * vp.mZctrl.maxPwr
   vp.mZclicks = clamp(vp.mZclicks + delta.float, -maxzClicks.float, maxzClicks.float)
-  vp.mRawZoom = pow(vp.mZctrl.base.float, vp.mZclicks / vp.mZctrl.clickDiv )
+  vp.mRawZoom = pow(vp.mZctrl.base.float, vp.mZclicks / vp.mZctrl.clickDiv.float )
   vp.mZoom = vp.mRawZoom * vp.mZctrl.density
   if vp.mZctrl.dynamic:
     vp.mZctrl.updateLogStep(vp.mZclicks)

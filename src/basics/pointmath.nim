@@ -1,28 +1,34 @@
+# import world
+
 # Hopefully this can cover all the +-*/ for different combinations of stuff
 # TODO: expand so a and b don't have to be the same type when b is a scalar
 # TODO: for example WPoint is WType but b needn't be WType.  b should be
 # TODO: able to be an int or float.  Return int if both are ints, float otherwise
-proc `+`*[T:SomeNumber](a: tuple[x, y: T], b: tuple[x, y: T]): auto =
+proc `+`*[T](a, b: tuple[x, y: T]): tuple[x, y: T] = 
   (a.x + b.x, a.y + b.y)
 
-proc `+=`*[T:SomeNumber](a: var tuple[x, y: T], b: tuple[x, y: T]) =
+proc `+=`*[T](a: var tuple[x, y: T], b: tuple[x, y: T]) =
   a = (a.x + b.x, a.y + b.y)
 
-proc `-`*[T:SomeNumber](a: tuple[x, y: T], b: tuple[x, y: T]): auto =
+proc `-`*[T](a, b: tuple[x, y: T]): tuple[x, y: T] =
   (a.x - b.x, a.y - b.y)
 
-proc `-=`*[T:SomeNumber](a: var tuple[x, y: T], b: tuple[x, y: T]) =
+proc `-=`*[T](a: var tuple[x, y: T], b: tuple[x, y: T]) =
   a = (a.x - b.x, a.y - b.y)
 
-proc `*`*[T: SomeNumber](a: tuple[x, y: T], b: T): auto =
-  (x: (a.x * b), y: (a.y * b))
+proc `*`*[T](a: tuple[x, y: T], b: T): tuple[x, y: T] =
+  ((a.x * b), (a.y * b))
 
-proc `.*`*[T: SomeNumber](a,b: tuple[x, y: T]): auto =
-  (x: (a.x * b.x), y: (a.y * b.y))
-
+proc `*.`*[T](a,b: tuple[x, y: T]): tuple[x, y: T] =
+  ((a.x * b.x), (a.y * b.y))
 
 
 # TODO figure out how to multiply PxSize, WSize, PxPoint, WPoint, etc.
+#proc `+`*(a, b: PxPoint): PxPoint = (a.x + b.x, a.y + b.y)
+#proc `+=`*(a: var PxPoint, b: PxPoint) = a = a + b
+#proc `-`*(a, b: PxPoint): PxPoint = (a.x - b.x, a.y - b.y)
+#proc `-=`*(a: var PxPoint, b: PxPoint) = a = a - b
+
 
 when isMainModule:
   import rects

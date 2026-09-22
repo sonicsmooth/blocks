@@ -22,6 +22,12 @@ var
   gFontCache: Table[int, FontPtr]
   gFontName: Option[string]
 
+proc toSdlRect(prect: PRect): sdl2.Rect =
+  (x: prect.x.cint,
+   y: prect.y.cint,
+   w: prect.w.cint,
+   h: prect.h.cint)
+
 proc tryFont(size: float): FontPtr =
   for p in fontCandidates():
     if isNone(gFontName) and not fileExists(p):
@@ -36,10 +42,10 @@ proc tryFont(size: float): FontPtr =
       return result
 
 # TODO: see whether other places need this, not just components
-proc font*(size: cint): FontPtr =
+proc font*(size: int): FontPtr =
   # Return properly sized font ptr from cache based on size
   if size notin gFontCache:
-    gFontCache[size] = tryFont(size)
+    gFontCache[size] = tryFont(size.float)
   gFontCache[size]
 
 proc font*(comp: DBComp, zoom: float): FontPtr =
@@ -47,7 +53,7 @@ proc font*(comp: DBComp, zoom: float): FontPtr =
   let wbb = comp.wbbox
   let fsz = min(wbb.w, wbb.h).float
   let scaledSize = (fsz * gFontScale * zoom).round.int.clamp(fontRange)
-  font(scaledSize)
+  sdlComponents.font(scaledSize)
 
 proc clearFontCache*() = 
   for f in gFontCache.values:
@@ -55,6 +61,7 @@ proc clearFontCache*() =
   gFontCache.clear()
 
 proc drawFilledOutlineRectSDL*(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+  let rect = rect.toSdlRect() #(rect.x.cint, rect.y.cint, rect.w.cint, rect.h.cint)
   rp.setDrawColor(fillColor)
   rp.fillRect(addr rect)
   rp.setDrawColor(penColor)
@@ -67,24 +74,27 @@ proc highlight(selected, hovering: bool): float =
   else: 1.9
 
 proc drawSolid(rp: RendererPtr, rect: PRect, fillColor, penColor: ColorRGBA) =
+  let rect = rect.toSdlRect() #(rect.x.cint, rect.y.cint, rect.w.cint, rect.h.cint)
   rp.setDrawColor(fillColor)
   rp.fillRect(addr rect)
 
 proc drawBorder(rp: RendererPtr, rect: PRect, color: ColorRGBA, hov, sel: bool) =
   if not hov and not sel:
+    let rect = rect.toSdlRect()
     rp.setDrawColor(color)
     rp.drawRect(addr rect)
   elif hov and not sel:
-    let r1 = rect.shrink(0)
-    let r2 = rect.shrink(1)
+    #TODO: check if we can convert toSdlRect at the top of this proc
+    let r1 = rect.shrink(0).toSdlRect()
+    let r2 = rect.shrink(1).toSdlRect()
     rp.setDrawColor(color)
     rp.drawRect(addr r1)
     rp.setDrawColor(color)
     rp.drawRect(addr r2)
   elif sel:
-    let r1 = rect.shrink(0)
-    let r2 = rect.shrink(1)
-    let r3 = rect.shrink(2)
+    let r1 = rect.shrink(0).toSdlRect()
+    let r2 = rect.shrink(1).toSdlRect()
+    let r3 = rect.shrink(2).toSdlRect()
     rp.setDrawColor(color)
     rp.drawRect(addr r1)
     rp.setDrawColor(color)
@@ -102,8 +112,9 @@ proc drawCompText(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot:
     (tsw, tsh) = (textSurface.w, textSurface.h)
     texRect: PRect = (prect.x + (w div 2) - (tsw div 2),
                       prect.y + (h div 2) - (tsh div 2), tsw, tsh)
+    texSdlRect = texRect.toSdlRect()
     rotAmt = if rot: -comp.rot.toFloat else: 0.0
-  rp.copyEx(textTexture, nil, addr texRect, rotAmt, nil)
+  rp.copyEx(textTexture, nil, addr texSdlRect, rotAmt, nil)
   textSurface.destroy()
   textTexture.destroy()
 
@@ -114,6 +125,7 @@ proc drawOrigin(rp: RendererPtr, comp: DBComp, prect: PRect, zoom: float, rot: b
   # from the opposite side, ie origin-to-top, you have to adjust.
   # Here we check against distance to top edge because we want y=0 to 
   # be at maximum pixels away from the top
+  let prect = prect.toSdlRect()
   let extent = (10.0 * zoom).round.cint
   var opx = comp.originToTopLeft(rot).toPixelScale(zoom)
   if gAppOpts.oneOffset:

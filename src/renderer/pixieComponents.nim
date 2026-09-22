@@ -40,10 +40,10 @@ proc font*(comp: DBComp, zoom: float): Font =
   let 
     wbb = comp.wbbox
     fsz = min(wbb.w, wbb.h).float
-    scaledSize = (fsz * gFontScale * zoom).round.int.clamp(fontRange)
+    scaledSize = (fsz * gFontScale * zoom).round.int.clamp(fontRange).float
   result = tryFont(scaledSize)
   if not result.isNil:
-    result.size = scaledSize.float
+    result.size = scaledSize
     result.paint.color = comp.penColor
 
 proc clearTypefaceCache*() = 
@@ -92,7 +92,7 @@ proc drawOrigin(ctx: Context, opx: PxPoint, penColor: Color, zoom: float) =
     midh:   float = opx.x.float
     left:   float = midh - extent
     right:  float = midh + extent
-    midv:   float = opx.y.float - offset
+    midv:   float = opx.y.float - offset.float
     top:    float = midv - extent
     bottom: float = midv + extent
   ctx.fillStyle = color(penColor.r, penColor.g, penColor.b, 1.0).darken(0.2)
@@ -103,7 +103,7 @@ proc renderDBCompPixie*(comp: DBComp, texSz: PxSize, zoom: float, hov, sel: bool
   # Draw rectangle to new image using pixie and return image
   # comp is database object
   # PxSize is size of texture to draw to
-  let image = newImage(texSz.w, texSz.h)
+  let image = newImage(texSz.w.int, texSz.h.int)
   let ctx = image.newContext()
   if gAppOpts.blockFill == Solid:
     image.drawSolid(comp.fillColor)

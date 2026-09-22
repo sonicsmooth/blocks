@@ -8,6 +8,7 @@ import compact
 import concurrent
 import document
 import editor
+import pubsub
 import reporting
 import stack
 import world
@@ -116,19 +117,19 @@ wClass(wMainPanel of wPanel):
       butt.size     = (bw, bh)
       yPosAcc += bh
 
-  # TODO: Move this to algorithms or db or something
-  # TODO: Since nothing here has to do with UI
-  proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
-    # TODO: delegate all this to something else, so we can
-    # TODO: get rid of self.blockpanel.editor,... etc.
-    if self.isReady():
-      # TODO: add new randomize to editor or algorithms or something
-      # TODO: Algorithms should have pointer to editor and doc
-      self.blockPanel.editor.randomizeRects(qty, randRegion)
-      ##! Move updateRatio to algorithm, solve clearTextureCache
-      self.blockPanel.editor.fillArea = self.blockPanel.editor.doc.db.fillArea()
-      self.blockPanel.editor.updateRatio()
-      self.blockPanel.renderer.clearTextureCache()
+  # # TODO: Move this to algorithms or db or something
+  # # TODO: Since nothing here has to do with UI
+  # proc randomizeRectsAll*(self: wMainPanel, qty: int=self.spnr.value) =
+  #   # TODO: delegate all this to something else, so we can
+  #   # TODO: get rid of self.blockpanel.editor,... etc.
+  #   if self.isReady():
+  #     # TODO: add new randomize to editor or algorithms or something
+  #     # TODO: Algorithms should have pointer to editor and doc
+  #     self.blockPanel.editor.randomizeRects(qty, randRegion)
+  #     ##! Move updateRatio to algorithm, solve clearTextureCache
+  #     self.blockPanel.editor.fillArea = self.blockPanel.editor.doc.db.fillArea()
+  #     self.blockPanel.editor.updateRatio()
+  #     self.blockPanel.renderer.clearTextureCache()
 
   proc delegate1DButtonCompact(self: wMainPanel, axis: Axis, sortOrder: SortOrder) =
     ##! Move updateratio to algorithm
@@ -207,14 +208,14 @@ wClass(wMainPanel of wPanel):
 
   proc onSpinSpin(self: wMainPanel, event: wEvent) =
     let qty = event.getSpinPos() + event.getSpinDelta()
-    self.randomizeRectsAll(qty)
+    publish(QtyRequest, qty)
     if self.blockPanel != nil:
       self.blockPanel.editor.updateRatio()
     self.blockPanel.editor.invalidate()
 
   proc onSpinTextEnter(self: wMainPanel) =
     if self.spnr.value > 0:
-      self.randomizeRectsAll(self.spnr.value)
+      publish(QtyRequest, self.spnr.value)
       if self.blockPanel != nil:
         self.blockPanel.editor.updateRatio()
       self.blockPanel.editor.invalidate()
@@ -246,9 +247,11 @@ wClass(wMainPanel of wPanel):
 
   proc onButtonrandomizeAll(self: wMainPanel) =
     if self.blockPanel != nil:
-      self.randomizeRectsAll(self.spnr.value)
-      self.blockPanel.editor.updateRatio()
-      self.blockPanel.editor.invalidate()
+      # TODO: does this need to be guarded?
+      publish(RandAll)
+      # self.randomizeRectsAll(self.spnr.value)
+      # self.blockPanel.editor.updateRatio()
+      # self.blockPanel.editor.invalidate()
 
   proc onButtonrandomizePos(self: wMainPanel) =
     if self.blockPanel != nil:
@@ -312,12 +315,11 @@ wClass(wMainPanel of wPanel):
       echo "mainpanel init"
     wPanel(self).init(parent)
 
-    let rectQty = gAppOpts.compQty
-
     # Create controls
     self.txt       = StaticText(self, label="Qty", style=wSpRight)
     #self.spnr      = SpinCtrl(self, id=wCommandID(1), value=rectQty, style=wAlignRight)
-    self.spnr      = SpinCtrl(self, value=rectQty, style=wAlignRight)
+    #self.spnr      = SpinCtrl(self, value=rectQty, style=wAlignRight)
+    self.spnr      = SpinCtrl(self, style=wAlignRight)
     self.box1      = StaticBox(self, label="Strat and func")
     self.ctrb1     = RadioButton(self, label="None", style=wRbGroup)
     self.ctrb2     = RadioButton(self, label="Anneal")
@@ -347,13 +349,13 @@ wClass(wMainPanel of wPanel):
     self.buttons[16] = Button(self, label = "Load"              )
 
     # Connect events
-    self.wEvent_Size                do (event: wEvent): self.onResize(event)
+    self.wEvent_Size               do (event: wEvent): self.onResize(event)
     self.spnr.wEvent_Spin          do (event: wEvent): self.onSpinSpin(event)
     self.spnr.wEvent_TextEnter     do (): self.onSpinTextEnter()
     self.ctrb1.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
     self.ctrb2.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
     self.ctrb3.wEvent_RadioButton  do (event: wEvent): self.onStrategyRadioButton(event)
-    self.slider.wEvent_Slider        do (event: wEvent): self.onSlider(event)
+    self.slider.wEvent_Slider      do (event: wEvent): self.onSlider(event)
     self.buttons[ 0].wEvent_Button do (): self.onButtonrandomizeAll()
     self.buttons[ 1].wEvent_Button do (): self.onButtonrandomizePos()
     self.buttons[ 2].wEvent_Button do (): self.onButtonTest()
@@ -372,10 +374,9 @@ wClass(wMainPanel of wPanel):
     self.idMsgAlgUpdate            do (event: wEvent): self.onAlgUpdate(event)
 
     # Set up pubsub listeners
-    psAddListener(QtyChanged, proc(qty: int) = 
-                                self.spnr.value = qty)
+    psAddListener(QtyChanged, proc(qty: int) = self.spnr.setValue($qty))
 
-    # # Set up stuff
+    # Set up stuff
     self.blockPanel = BlockPanel(self)
     self.spnr.setRange(1, 10000)
     self.slider.setValue(20)

@@ -353,7 +353,6 @@ wClass(wMainFrame of wFrame):
   proc init*(self: wMainFrame, size: wSize, barebones: bool) =
     when defined(debug):
       echo "mainframe init"
-      echo "Main frame hwnd is ", $self.mHwnd
     wFrame(self).init(title="Blocks Frame", size=size)
 
     # Create controls -- these are declared in wNim already
@@ -415,7 +414,7 @@ wClass(wMainFrame of wFrame):
     if not barebones:
       self.mainPanel = MainPanel(self)
     when defined(debug):
-      echo "Main frame done initting. Hwnd is ", self.handle
+      echo "Main frame done initting"
 
 
 when isMainModule:

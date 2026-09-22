@@ -36,10 +36,12 @@ proc jsonInitGlobals*() =
       gPanelSpecsJ = initsJ["MainPanel"]
     else:
       echo "Cannot open ", initPath
-  except CatchableError as e:
+  except CatchableError as x:
     echo "Key not found in jsoninit.nim"
-    echo e.msg
+    echo x.msg
+
+# Everybody uses this, so just run it whenever this module is imported
+jsonInitGlobals()
 
 when isMainModule:
-  jsonInitGlobals()
   echo gAppOptsJ.pretty()

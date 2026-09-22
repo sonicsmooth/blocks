@@ -11,10 +11,12 @@ import common
 import document
 import editor
 # import grid
+import pubsub
 import rects
 import reporting
 import rotation
 import viewport
+import world
 
 import sdl2 except Color
 import background
@@ -57,8 +59,11 @@ when defined(profile):
 proc newRenderer*(): Renderer =
   result = new Renderer
 
+proc clearTextureCache*(self: Renderer)
 proc init*(self: Renderer) =
   self.backgroundColor = MintCream
+  psAddListener(QtyChanged, proc(_: int) = self.clearTextureCache())
+
 
 proc isReady*(self: Renderer): bool =
   if self.doc.isNil: return reportNil("renderer.doc")
@@ -209,6 +214,15 @@ proc drawPlacementBox(self: Renderer) =
   let penColor = DarkOrchid
   let dstRectP = self.editor.dstRect.toPRect(self.editor.viewport)
   self.sdlRenderer.drawFilledOutlineRectSDL(dstRectP, fillColor, penColor)
+  # Not sure why 20 isn't getting converted automatically
+  let ulDstRectP = (dstRectP.x,               dstRectP.y,               20.PxType, 20.PxType).PRect
+  let urDstRectP = (dstRectP.x+dstRectP.w-20, dstRectP.y,               20.PxType, 20.PxType).PRect
+  let llDstRectP = (dstRectP.x,               dstRectP.y+dstRectP.h-20, 20.PxType, 20.PxType).PRect
+  let lrDstRectP = (dstRectP.x+dstRectP.w-20, dstRectP.y+dstRectP.h-20, 20.PxType, 20.PxType).PRect
+  self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
 
 
 
