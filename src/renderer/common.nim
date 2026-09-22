@@ -1,6 +1,4 @@
-
-import std/[os,
-            sequtils]
+import std/os
 
 # Okay to import the whole thing because we're in renderer directory
 import rects
@@ -13,7 +11,8 @@ const
   defFontSize* = 25
 
 proc fontCandidates*(): seq[string] =
-  result = gCandidates.toSeq
+  for candidate in gCandidates:
+    result.add(getAppDir() / candidate)
   result.add(getEnv("WINDIR") / "Fonts" / "arial.ttf")
   result.add(getEnv("WINDIR") / "Fonts" / "segoeui.ttf")
 
