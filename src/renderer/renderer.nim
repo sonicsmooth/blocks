@@ -211,7 +211,7 @@ proc drawPlacementBox(self: Renderer) =
       return
   let fillColor = DarkOrchid.setAlpha(10)
   let penColor = DarkOrchid
-  let dstRectP = self.editor.dstRect.toPRect(self.editor.viewport)
+  let dstRectP = self.editor.dstRect.toPxRect(self.editor.viewport)
   self.sdlRenderer.drawFilledOutlineRectSDL(dstRectP, fillColor, penColor)
   let x = dstRectP.x
   let y = dstRectP.y
@@ -226,35 +226,35 @@ proc drawPlacementBox(self: Renderer) =
   # self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
   # self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
   # self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
-  if self.editor.isEdgeOnlyHovered(Left):
+  if self.editor.isEdgeSoleHovered(Left):
     self.sdlRenderer.drawLine(x+1, y, x+1, y+h)
     self.sdlRenderer.drawLine(x+2, y, x+2, y+h)
-  elif self.editor.isEdgeOnlyHovered(Right):
+  elif self.editor.isEdgeSoleHovered(Right):
     self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+h)
     self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+h)
-  elif self.editor.isEdgeOnlyHovered(Top):
+  elif self.editor.isEdgeSoleHovered(Top):
     self.sdlRenderer.drawLine(x, y+1, x+w, y+1)
     self.sdlRenderer.drawLine(x, y+2, x+w, y+2)
-  elif self.editor.isEdgeOnlyHovered(Bottom):
+  elif self.editor.isEdgeSoleHovered(Bottom):
     self.sdlRenderer.drawLine(x, y+h-2, x+w, y+h-2)
     self.sdlRenderer.drawLine(x, y+h-3, x+w, y+h-3)
-  let corner = 20
-  if self.editor.areTwoEdgesHovered(Left, Top):
+  let corner = self.editor.dstSelCornerMargin
+  if self.editor.isCornerHovered(LeftEdge, TopEdge):
     self.sdlRenderer.drawLine(x, y+1, x+corner, y+1)
     self.sdlRenderer.drawLine(x, y+2, x+corner, y+2)
     self.sdlRenderer.drawLine(x+1, y, x+1, y+corner)
     self.sdlRenderer.drawLine(x+2, y, x+2, y+corner)
-  elif self.editor.areTwoEdgesHovered(Right, Top):
+  elif self.editor.isCornerHovered(RightEdge, TopEdge):
     self.sdlRenderer.drawLine(x+w-1, y+1, x+w-1-corner, y+1)
     self.sdlRenderer.drawLine(x+w-1, y+2, x+w-1-corner, y+2)
     self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+corner)
     self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+corner)
-  elif self.editor.areTwoEdgesHovered(Left, Bottom):
+  elif self.editor.isCornerHovered(LeftEdge, BottomEdge):
     self.sdlRenderer.drawLine(x, y+h-2, x+corner, y+h-2)
     self.sdlRenderer.drawLine(x, y+h-3, x+corner, y+h-3)
     self.sdlRenderer.drawLine(x+1, y+h-1-corner, x+1, y+h-1)
     self.sdlRenderer.drawLine(x+2, y+h-1-corner, x+2, y+h-1)
-  elif self.editor.areTwoEdgesHovered(Right, Bottom):
+  elif self.editor.isCornerHovered(RightEdge, BottomEdge):
     self.sdlRenderer.drawLine(x+w-1, y+h-2, x+w-1-corner, y+h-2)
     self.sdlRenderer.drawLine(x+w-1, y+h-3, x+w-1-corner, y+h-3)
     self.sdlRenderer.drawLine(x+w-2, y+h-1, x+w-2, y+h-1-corner)
@@ -280,7 +280,7 @@ proc renderEverything*(self: Renderer) =
     self.drawPlacementBox()
   # if gAppOpts.enableBbox:
   #   #self.updateBoundingBox()
-  #   self.sdlRenderer.drawOutlineRectSDL(self.editor.allBbox.toPRect(self.editor.viewport).grow(1), Green)
+  #   self.sdlRenderer.drawOutlineRectSDL(self.editor.allBbox.toPxRect(self.editor.viewport).grow(1), Green)
   # txt &= &"pan: {self.editor.viewport.pan}\n"
   # txt &= &"zClicks: {self.editor.viewport.zClicks}\n"
   # txt &= &"level: {self.editor.viewport.zCtrl.logStep}\n"

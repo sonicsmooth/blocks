@@ -93,7 +93,7 @@ proc ptInComps*(table: SomeComps, pt: PxPoint, vp: Viewport): seq[CompID] =
   # Add the id if the point is in the bounding box in pixel space
   # Seems like what we just did... not sure why this is the way it is
   for (id, bb) in preBbs:
-    let prect = bb.toPRect(vp)
+    let prect = bb.toPxRect(vp)
     if isPointInRect(pt, prect):
       result.add(id)
 
@@ -111,7 +111,7 @@ proc rectInComps*(table: SomeComps, rect: WRect): seq[CompID] =
 proc rectInComps*(table: SomeComps, rect: PxRect, vp: Viewport): seq[CompID] =
   # Return seq of DBComp IDs that intersect rect
   for id, comp in table:
-    let tpr = comp.wbbox.toPRect(vp)
+    let tpr = comp.wbbox.toPxRect(vp)
     if isRectInRect(rect, tpr) or
        isRectOverRect(rect, tpr):
       result.add(id)

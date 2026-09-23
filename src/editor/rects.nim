@@ -51,6 +51,7 @@ type
   CompID* = range[-1..int.high] # negative values indicate null component
   Orientation* = enum Vertical, Horizontal
   EdgeNom* = enum Left, Right, Top, Bottom
+  # CornerNom* = enum UpperLeft, UpperRight, LowerLeft, LowerRight
   Edge*[T] = object of RootObj
     when T is WRect:
       pt0*: WPoint
@@ -144,9 +145,9 @@ proc wbbox*(comp: DBComp): WRect {.inline.} =
 
 
 # declaration
-proc toPRect*(rect: WRect, vp: Viewport): PxRect
+proc toPxRect*(rect: WRect, vp: Viewport): PxRect
 proc pbbox*(comp: DBComp, vp: Viewport): PxRect {.inline.} =
-  comp.wbbox.toPRect(vp)
+  comp.wbbox.toPxRect(vp)
 
 
 proc localWRect*(comp: DBComp): WRect =
@@ -157,7 +158,7 @@ proc localWRect*(comp: DBComp): WRect =
   (x: comp.x - comp.origin.x, y: comp.y - comp.origin.y, w: comp.w, h: comp.h)
 
 proc localPRect*(comp: DBComp, vp: Viewport): PxRect =
-  comp.localWRect.toPRect(vp)
+  comp.localWRect.toPxRect(vp)
 
 
 proc pxSize*(comp: DBComp, vp: Viewport): PxSize {.inline.} =
@@ -294,12 +295,12 @@ proc rotate*(rect: DBComp, orient: Orientation) =
     else: rect.rot = R0
 
 # Procs for rects
-proc pRect*(x, y, w, h: PxType): PxRect =
+proc pxRect*(x, y, w, h: PxType): PxRect =
   result.x = x
   result.y = y
   result.w = w
   result.h = h
-proc pRect*(startPos, endPos: PxPoint): PxRect =
+proc pxRect*(startPos, endPos: PxPoint): PxRect =
   # make sure that rect.x,y is always minimum (upper left for PxRect)
   let (sx, sy) = startPos
   let (ex, ey) = endPos
@@ -360,23 +361,30 @@ proc upperRight*(rect: SomeRect): auto =
 proc topEdge*[T: SomeRect](rect: T): TopEdge[T] =
   result.pt0 = rect.upperLeft
   result.pt1 = rect.upperRight
+  assert result.pt0.x < result.pt1.x and result.pt0.y == result.pt1.y
 proc bottomEdge*[T: SomeRect](rect: T): BottomEdge[T] =
   result.pt0 = rect.lowerLeft
   result.pt1 = rect.lowerRight
+  assert result.pt0.x < result.pt1.x and result.pt0.y == result.pt1.y
 proc leftEdge*[T: SomeRect](rect: T): LeftEdge[T] =
   when T is WRect:
     result.pt0 = rect.lowerLeft
     result.pt1 = rect.upperLeft
+    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
   elif T is PxRect:
     result.pt0 = rect.upperLeft
     result.pt1 = rect.lowerLeft
+    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
 proc rightEdge*[T: SomeRect](rect: T): RightEdge[T] =
   when T is WRect:
     result.pt0 = rect.lowerRight
     result.pt1 = rect.upperRight
+    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
   elif T is PxRect:
     result.pt0 = rect.upperRight
     result.pt1 = rect.lowerRight
+    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
+
 proc top*(rect: SomeRect): auto = rect.upperLeft.y
 proc bottom*(rect: SomeRect): auto = rect.lowerLeft.y
 proc left*(rect: SomeRect): auto = rect.lowerLeft.x
@@ -394,7 +402,7 @@ proc toWRect*(rect: PxRect, vp: Viewport): WRect =
      y: (rect.y + rect.h).toWorldY(vp),
      w: (rect.w.float / vp.zoom).round.WType,
      h: (rect.h.float / vp.zoom).round.WType)
-proc toPRect*(rect: WRect, vp: Viewport): PxRect  = 
+proc toPxRect*(rect: WRect, vp: Viewport): PxRect  = 
   # Output's origin is upper left of rectangle
   let
     origin = rect.upperLeft.toPixel(vp)
@@ -463,7 +471,6 @@ proc `>`* [T](edge1, edge2: HorizEdge[T]): bool  = edge1.y >  edge2.y
 proc `>=`*[T](edge1, edge2: HorizEdge[T]): bool  = edge1.y >= edge2.y
 proc `==`*[T](edge1, edge2: HorizEdge[T]): bool  = edge1.y == edge2.y
 
-
 # Procs for hit testing
 proc isPointInRect*(pt: WPoint, rect: WRect): bool  = 
     pt.x >= rect.left   and pt.x <= rect.right and
@@ -518,11 +525,52 @@ proc isRectOverRect*[T: SomeRect](rect1, rect2: T): bool =
     rect1.leftEdge   < rect2.leftEdge   and
     rect1.rightEdge  > rect2.rightEdge
 
-proc isPointNearEdge*(pt: WPoint, edge: Edge, margin: WType): bool =
+proc isPointNearEdge*[E](pt: WPoint, edge: E, emarg, cmarg: WType): bool =
+  ## Return true if point is within edgeMarge of edge,
+  ## but away from corners by cmarg
   when edge is HorizEdge:
-    pt.y >= edge.y - margin and pt.y <= edge.y + margin
+    pt.y >= edge.y - emarg and pt.y <= edge.y + emarg and
+    pt.x >= edge.pt0.x + cmarg and pt.x < edge.pt1.x - cmarg
   elif edge is VertEdge:
-    pt.x >= edge.x - margin and pt.x <= edge.x + margin
+    pt.x >= edge.x - emarg and pt.x <= edge.x + emarg and
+    pt.y >= edge.pt0.y + cmarg and pt.y <= edge.pt1.y - cmarg
+
+proc isPointNearCorner*[E1, E2](pt: WPoint, edge1: E1, edge2: E2, emarg, cmarg: WType): bool =
+  ## Return true if pt is within emarg on outside of corner
+  ## and within cmarg on inside of corner
+  when (E1 is VertEdge and E2 is HorizEdge):
+    # In world coords VertEdge.pt0.y < VertEdge.pt1.y and as pt1.y is 'up' relatively
+    (edge1.pt1 == edge2.pt0 and  # upper left; use edge1.pt1
+     pt.x >= edge1.pt1.x - emarg and pt.x <= edge1.pt1.x + cmarg and
+     pt.y >= edge1.pt1.y - cmarg and pt.y <= edge1.pt1.y + emarg) or 
+    (edge1.pt1 == edge2.pt1 and # upper right; use edge1.pt1
+     pt.x >= edge1.pt1.x - cmarg and pt.x <= edge1.pt1.x + emarg and
+     pt.y >= edge1.pt1.y - cmarg and pt.y <= edge1.pt1.y + emarg) or
+    (edge1.pt0 == edge2.pt0 and # lower left; use edge1.pt0
+     pt.x >= edge1.pt0.x - emarg and pt.x <= edge1.pt0.x + cmarg and
+     pt.y >= edge1.pt0.y - emarg and pt.y <= edge1.pt0.y + cmarg) or
+    (edge1.pt0 == edge2.pt1 and # lower right; use edge1.pt0
+     pt.x >= edge1.pt0.x - cmarg and pt.x <= edge1.pt0.x + emarg and
+     pt.y >= edge1.pt0.y - emarg and pt.y <= edge1.pt0.y + cmarg)
+  elif (E1 is HorizEdge and E2 is VertEdge):
+    (edge1.pt0 == edge2.pt1 and  # upper left; use edge1.pt0
+     pt.x >= edge1.pt0.x - emarg and pt.x <= edge1.pt0.x + cmarg and
+     pt.y >= edge1.pt0.y - cmarg and pt.y <= edge1.pt0.y + emarg) or 
+    (edge1.pt1 == edge2.pt1 and # upper right; use edge1.pt1
+     pt.x >= edge1.pt1.x - cmarg and pt.x <= edge1.pt1.x + emarg and
+     pt.y >= edge1.pt1.y - cmarg and pt.y <= edge1.pt1.y + emarg) or
+    (edge1.pt0 == edge2.pt0 and # lower left, use edge1.pt0
+     pt.x >= edge1.pt0.x - emarg and pt.x <= edge1.pt0.x + cmarg and
+     pt.y >= edge1.pt0.y - emarg and pt.y <= edge1.pt0.y + cmarg) or
+    (edge1.pt1 == edge2.pt0 and # lower right; use edge1.pt1
+     pt.x >= edge1.pt1.x - cmarg and pt.x <= edge1.pt1.x + emarg and
+     pt.y >= edge1.pt1.y - emarg and pt.y <= edge1.pt1.y + cmarg)
+  else:
+    {.error: "isPointNearCorner requires one vertical and one horizontal edge."}
+    false
+
+
+
 
 
 proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
@@ -537,11 +585,9 @@ proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
     rect1.topEdge    > rect2.bottomEdge or
     rect1.rightEdge  < rect2.leftEdge or
     rect1.leftEdge   > rect2.rightEdge
-
 proc isRectTooBig*(prect: PxRect, maxSize: uint): bool =
   prect.w > maxSize or
   prect.h > maxSize
-
 proc intersect*(rect, client: PxRect): PxRect =
   # Common rectangle shared by client and component rectangles
   # The size is used to create the texture.
@@ -571,7 +617,6 @@ proc intersect*(rect, client: PxRect): PxRect =
     w = max(0, iright - ileft + 1)
     h = max(0, ibot - itop + 1)
   (ileft, itop, w, h)
-
 proc doesntFit*(rect: PxRect, clientSize: PxSize): bool =
   rect.w >= clientSize.w and
   rect.w >= clientSize.h and

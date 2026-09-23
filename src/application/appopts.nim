@@ -12,7 +12,8 @@ type
     enableBbox*: bool = false # calc and show
     enableDstRect*: bool = false # show (calc always anyway)
     dstRect*: tuple[x,y,w,h: WType]
-    dstSelMargin*: PxType
+    dstSelEdgeMargin*: PxType
+    dstSelCornerMargin*: PxType
     enableText*: bool = true
     enableHover*: bool = true
     oneOffset*: bool = false
