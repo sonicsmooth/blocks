@@ -181,8 +181,8 @@ proc renderDBComps(self: Renderer, rmethod: RenderMethod) =
     if isRectSeparate(pbb, self.screenRectP): continue
     # Not really needed since we limit texture size
     if isRectTooBig(pbb, 16384): continue
-    let hov = self.editor.isHovering(comp.id)
-    let sel = self.editor.isSelected(comp.id)
+    let hov = self.editor.isCompHovering(comp.id)
+    let sel = self.editor.isCompSelected(comp.id)
     if rmethod == SDLDirect:
       self.sdlRenderer.renderDBCompSDL(comp, pbb, vp, hov, sel, true)
     else:
@@ -226,35 +226,35 @@ proc drawPlacementBox(self: Renderer) =
   # self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
   # self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
   # self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
-  if self.editor.isEdgeSoleHovered(Left):
+  if self.editor.isDstEdgeSoleHovering(LeftEdge):
     self.sdlRenderer.drawLine(x+1, y, x+1, y+h)
     self.sdlRenderer.drawLine(x+2, y, x+2, y+h)
-  elif self.editor.isEdgeSoleHovered(Right):
+  elif self.editor.isDstEdgeSoleHovering(RightEdge):
     self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+h)
     self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+h)
-  elif self.editor.isEdgeSoleHovered(Top):
+  elif self.editor.isDstEdgeSoleHovering(TopEdge):
     self.sdlRenderer.drawLine(x, y+1, x+w, y+1)
     self.sdlRenderer.drawLine(x, y+2, x+w, y+2)
-  elif self.editor.isEdgeSoleHovered(Bottom):
+  elif self.editor.isDstEdgeSoleHovering(BottomEdge):
     self.sdlRenderer.drawLine(x, y+h-2, x+w, y+h-2)
     self.sdlRenderer.drawLine(x, y+h-3, x+w, y+h-3)
   let corner = self.editor.dstSelCornerMargin
-  if self.editor.isCornerHovered(LeftEdge, TopEdge):
+  if self.editor.isDstCornerHovering(LeftEdge, TopEdge):
     self.sdlRenderer.drawLine(x, y+1, x+corner, y+1)
     self.sdlRenderer.drawLine(x, y+2, x+corner, y+2)
     self.sdlRenderer.drawLine(x+1, y, x+1, y+corner)
     self.sdlRenderer.drawLine(x+2, y, x+2, y+corner)
-  elif self.editor.isCornerHovered(RightEdge, TopEdge):
+  elif self.editor.isDstCornerHovering(RightEdge, TopEdge):
     self.sdlRenderer.drawLine(x+w-1, y+1, x+w-1-corner, y+1)
     self.sdlRenderer.drawLine(x+w-1, y+2, x+w-1-corner, y+2)
     self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+corner)
     self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+corner)
-  elif self.editor.isCornerHovered(LeftEdge, BottomEdge):
+  elif self.editor.isDstCornerHovering(LeftEdge, BottomEdge):
     self.sdlRenderer.drawLine(x, y+h-2, x+corner, y+h-2)
     self.sdlRenderer.drawLine(x, y+h-3, x+corner, y+h-3)
     self.sdlRenderer.drawLine(x+1, y+h-1-corner, x+1, y+h-1)
     self.sdlRenderer.drawLine(x+2, y+h-1-corner, x+2, y+h-1)
-  elif self.editor.isCornerHovered(RightEdge, BottomEdge):
+  elif self.editor.isDstCornerHovering(RightEdge, BottomEdge):
     self.sdlRenderer.drawLine(x+w-1, y+h-2, x+w-1-corner, y+h-2)
     self.sdlRenderer.drawLine(x+w-1, y+h-3, x+w-1-corner, y+h-3)
     self.sdlRenderer.drawLine(x+w-2, y+h-1, x+w-2, y+h-1-corner)

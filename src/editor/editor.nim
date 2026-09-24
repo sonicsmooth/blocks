@@ -57,8 +57,10 @@ type
     StateSelectNone
     StateSelectDownInComp
     StateSelectDownInSpace
+    StateSelectDownInDstRect
     StateSelectDraggingComp
     StateSelectDraggingSpace
+    StateSelectDraggingDstRect
   PanState = enum
     PanStateNone
     PanStateDown
@@ -80,8 +82,7 @@ type
     dstRect*:       WRect # Where components will be moved to
     dstSelEdgeMargin*:  PxType # How far in from the edge the drag region is active
     dstSelCornerMargin*:  PxType # How far in from the edge the drag region is active
-    dstEdgeHighlight: array[EdgeNom, bool]
-    # dstCornerHighlight: array[CornerNom, bool]
+    dstEdgeHovering: array[EdgeNom, bool]
     text*:          string
     ratio:          float
     hovering*:      CompSet
@@ -155,18 +156,6 @@ proc isReady*(self: Editor): bool =
   if not self.viewport.isReady(): return reportNotReady("editor.viewport")
   true
 
-# proc updateDestinationBox*(self: Editor) =
-#   let
-#     marg = 25
-#     sz = self.viewport.clientSize
-#     pdstrect: PxRect = (marg, marg, sz.w - 2*marg, sz.h - 2*marg)
-#   publish(RegionRequest, pdstrect)
-#   # publish(RegionXRequest, pdstrect.x)
-#   # publish(RegionYRequest, pdstrect.y)
-#   # publish(RegionWRequest, pdstrect.w)
-#   # publish(RegionHRequest, pdstrect.h)
-#   # self.dstRect = pdstrect.toWRect(self.viewport)
-
 proc updateBoundingBox*(self: Editor) =
   self.allBbox = self.doc.db.boundingBox()
 
@@ -217,94 +206,95 @@ proc deleteRects(self: Editor, compIDs: seq[CompID]) =
     self.doc.db.del(id) # Todo: check whether this deletes rect
   # self.fillArea = self.doc.db.fillArea()
 
-proc isSelected*(self: Editor, id: CompID): bool =
+proc isCompSelected*(self: Editor, id: CompID): bool =
   id in self.selected[] or
   id in self.tmpSelected[]
-proc isHovering*(self: Editor, id: CompID): bool =
+proc isCompHovering*(self: Editor, id: CompID): bool =
   id in self.hovering[]
-
-proc evaluateComponentHovering(self: Editor, pos: PxPoint): bool {.discardable.} =
+proc doEvaluateCompHovering(self: Editor, pos: PxPoint) =
   # Mutate self.hovering
-  # Return true if something changed
-  let oldhover = self.hovering[]
   if gAppOpts.enableHover:
     self.hovering.clearAll()
     let hoveringComps = self.doc.db.ptInComps(pos, self.viewport)
     self.hovering.setSome(hoveringComps)
-    hoveringComps.toHashSet != oldhover
-  else:
-    false
-
-proc evaluateRectHovering(self: Editor, pos: PxPoint, rect: WRect): bool {.discardable.} =
-  # Mutate self.dstEdgeHighlight
+proc doEvaluateRectHovering(self: Editor, pos: PxPoint, rect: WRect) =
+  # Mutate self.dstEdgeHovering
   # Tells us what mouse is doing around edges of rect
   let wpt = pos.toWorld(self.viewport)
   let emarg = self.dstSelEdgeMargin.toWorldScale(self.viewport)
   let cmarg = self.dstSelCornerMargin.toWorldScale(self.viewport)
-  self.dstEdgeHighlight[EdgeNom.Left  ] = false
-  self.dstEdgeHighlight[EdgeNom.Right ] = false
-  self.dstEdgeHighlight[EdgeNom.Top   ] = false
-  self.dstEdgeHighlight[EdgeNom.Bottom] = false
+  for b in EdgeNom: self.dstEdgeHovering[b] = false
   # One item is true when near edge
   # Two items are true when near corner
-
   if isPointNearEdge(wpt, rect.leftEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Left] = true
+    self.dstEdgeHovering[EdgeNom.Left] = true
   elif isPointNearEdge(wpt, rect.rightEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Right] = true
+    self.dstEdgeHovering[EdgeNom.Right] = true
   elif isPointNearEdge(wpt, rect.topEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Top] = true
+    self.dstEdgeHovering[EdgeNom.Top] = true
   elif isPointNearEdge(wpt, rect.bottomEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Bottom] = true
+    self.dstEdgeHovering[EdgeNom.Bottom] = true
   elif isPointNearCorner(wpt, rect.leftEdge, rect.topEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Left ] = true
-    self.dstEdgeHighlight[EdgeNom.Top ] = true
+    self.dstEdgeHovering[EdgeNom.Left ] = true
+    self.dstEdgeHovering[EdgeNom.Top ] = true
   elif isPointNearCorner(wpt, rect.rightEdge, rect.topEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Right] = true
-    self.dstEdgeHighlight[EdgeNom.Top] = true
+    self.dstEdgeHovering[EdgeNom.Right] = true
+    self.dstEdgeHovering[EdgeNom.Top] = true
   elif isPointNearCorner(wpt, rect.leftEdge, rect.bottomEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Left ] = true
-    self.dstEdgeHighlight[EdgeNom.Bottom ] = true
+    self.dstEdgeHovering[EdgeNom.Left ] = true
+    self.dstEdgeHovering[EdgeNom.Bottom ] = true
   elif isPointNearCorner(wpt, rect.rightEdge, rect.bottomEdge, emarg, cmarg):
-    self.dstEdgeHighlight[EdgeNom.Right] = true
-    self.dstEdgeHighlight[EdgeNom.Bottom] = true
-  
-  for b in self.dstEdgeHighlight:
-    if b: return true
-  return false
+    self.dstEdgeHovering[EdgeNom.Right] = true
+    self.dstEdgeHovering[EdgeNom.Bottom] = true
 
-proc isEdgeSoleHovered*(self: Editor, edge: EdgeNom): bool =
-  # Return if only given edge is highlighted
-  if not self.dstEdgeHighlight[edge]:
-    false
+# TODO: Figure out generic way so it's not just dstEdge
+proc isDstEdgeSoleHovering*(self: Editor, E: typedesc): bool =
+  when E is LeftEdge:
+    self.dstEdgeHovering[EdgeNom.Left] and
+    (not self.dstEdgeHovering[EdgeNom.Top]) and
+    (not self.dstEdgeHovering[EdgeNom.Bottom])
+  elif E is RightEdge:
+    self.dstEdgeHovering[EdgeNom.Right] and
+    (not self.dstEdgeHovering[EdgeNom.Top]) and
+    (not self.dstEdgeHovering[EdgeNom.Bottom])
+  elif E is TopEdge:
+    self.dstEdgeHovering[EdgeNom.Top] and
+    (not self.dstEdgeHovering[EdgeNom.Left]) and
+    (not self.dstEdgeHovering[EdgeNom.Right])
+  elif E is BottomEdge:
+    self.dstEdgeHovering[EdgeNom.Bottom] and
+    (not self.dstEdgeHovering[EdgeNom.Left]) and
+    (not self.dstEdgeHovering[EdgeNom.Right])
   else:
-    case edge:
-    of Left, Right:
-      (not self.dstEdgeHighlight[EdgeNom.Top   ]) and
-      (not self.dstEdgeHighlight[EdgeNom.Bottom])
-    of Top, Bottom:
-      (not self.dstEdgeHighlight[EdgeNom.Left ]) and
-      (not self.dstEdgeHighlight[EdgeNom.Right])
-
-proc isCornerHovered*(self: Editor, E1, E2: typedesc): bool =
+    {.error: "isDstEdgeSoleHovering requires LeftEdge, RightEdge, TopEdge, or BottomEdge".}
+proc anyDstEdgeHovering(self: Editor) : bool =
+  for b in self.dstEdgeHovering:
+    if b: return true
+proc isDstCornerHovering*(self: Editor, E1, E2: typedesc): bool =
   when (E1 is LeftEdge and E2 is TopEdge) or
        (E1 is TopEdge and E2 is LeftEdge):
-    self.dstEdgeHighlight[EdgeNom.Left] and
-    self.dstEdgeHighlight[EdgeNom.Top]
+    self.dstEdgeHovering[EdgeNom.Left] and
+    self.dstEdgeHovering[EdgeNom.Top]
   elif (E1 is RightEdge and E2 is TopEdge) or
        (E1 is TopEdge and E2 is RightEdge):
-    self.dstEdgeHighlight[EdgeNom.Right] and
-    self.dstEdgeHighlight[EdgeNom.Top]
+    self.dstEdgeHovering[EdgeNom.Right] and
+    self.dstEdgeHovering[EdgeNom.Top]
   elif (E1 is LeftEdge and E2 is BottomEdge) or
        (E1 is BottomEdge and E2 is LeftEdge):
-    self.dstEdgeHighlight[EdgeNom.Left] and
-    self.dstEdgeHighlight[EdgeNom.Bottom]
+    self.dstEdgeHovering[EdgeNom.Left] and
+    self.dstEdgeHovering[EdgeNom.Bottom]
   elif (E1 is RightEdge and E2 is BottomEdge) or
        (E1 is BottomEdge and E2 is RightEdge):
-    self.dstEdgeHighlight[EdgeNom.Right] and
-    self.dstEdgeHighlight[EdgeNom.Bottom]
+    self.dstEdgeHovering[EdgeNom.Right] and
+    self.dstEdgeHovering[EdgeNom.Bottom]
   else:
-    {.error: "isCornerHovered requires one vertical and one horizontal edge".}
+    {.error: "isDstCornerHovered requires one vertical and one horizontal edge".}
+proc anyDstCornerHovering(self: Editor): bool =
+  let h = self.dstEdgeHovering
+  (h[EdgeNom.Left  ] and h[EdgeNom.Top   ]) or
+  (h[EdgeNom.Right ] and h[EdgeNom.Top   ]) or
+  (h[EdgeNom.Left  ] and h[EdgeNom.Bottom]) or
+  (h[EdgeNom.Right ] and h[EdgeNom.Bottom])
 
 proc doFitCheck*(self: Editor) =
   # Which components are bigger than client area?
@@ -319,7 +309,6 @@ proc resetMouseData(self: Editor) =
   self.mouseData.state = StateSelectNone
   self.mouseData.panState = PanStateNone
   self.groupRotation= false
-
 
 proc processKeyDown*(self: Editor, key: Key) =
   if key notin cmdTable:
@@ -380,11 +369,28 @@ proc processKeyDown*(self: Editor, key: Key) =
     of StateSelectDraggingSpace:
       self.selectBox = (0,0,0,0)
       self.mouseData.state = StateSelectNone
+    of StateSelectDownInDstRect:
+      self.selectBox = (0,0,0,0)
+      self.mouseData.state = StateSelectNone
+    of StateSelectDraggingDstRect:
+      self.selectBox = (0,0,0,0)
+      self.mouseData.state = StateSelectNone
   of CmdSelectAll:
     self.selected.setAll(self.doc.db)
     self.resetMouseData()
     self.selectBox = (0,0,0,0)
   self.invalidate()
+
+proc adjustRectX(rect: var WRect, amt: WType) =
+  rect.x += amt
+  rect.w -= amt
+proc adjustRectY(rect: var WRect, amt: WType) =
+  rect.y += amt
+  rect.h -= amt
+proc adjustRectW(rect: var WRect, amt: WType) =
+  rect.w += amt
+proc adjustRectH(rect: var WRect, amt: WType) =
+  rect.h += amt
 
 proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
   let
@@ -392,10 +398,9 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     wmp = event.pos.toWorld(vp)
   case self.mouseData.state
   of StateSelectNone:
-    if self.evaluateComponentHovering(event.pos):
-      self.invalidate()
-    if self.evaluateRectHovering(event.pos, self.dstRect):
-      self.invalidate()
+    # Don't need to call invalidate for some reason. Timer running maybe?
+    self.doEvaluateCompHovering(event.pos)
+    self.doEvaluateRectHovering(event.pos, self.dstRect)
   of StateSelectDownInComp, StateSelectDraggingComp:
     self.groupRotation = false
     let
@@ -431,6 +436,31 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.mouseData.state = StateSelectDraggingSpace
     self.doFitCheck()
     self.invalidate()
+  of StateSelectDownInDstRect, StateSelectDraggingDstRect:
+    let delta = wmp - self.mouseData.lastPos.toWorld(vp)
+    if self.isDstEdgeSoleHovering(LeftEdge):
+      adjustRectX(self.dstRect, delta.x)
+    elif self.isDstEdgeSoleHovering(RightEdge):
+      adjustRectW(self.dstRect, delta.x)
+    elif self.isDstEdgeSoleHovering(TopEdge):
+      adjustRectH(self.dstRect, delta.y)
+    elif self.isDstEdgeSoleHovering(BottomEdge):
+      adjustRectY(self.dstRect, delta.y)
+    elif self.isDstCornerHovering(LeftEdge, TopEdge):
+      adjustRectX(self.dstRect, delta.x)
+      adjustRectH(self.dstRect, delta.y)
+    elif self.isDstCornerHovering(RightEdge, TopEdge):
+      adjustRectW(self.dstRect, delta.x)
+      adjustRectH(self.dstRect, delta.y)
+    elif self.isDstCornerHovering(LeftEdge, BottomEdge):
+      adjustRectX(self.dstRect, delta.x)
+      adjustRectY(self.dstRect, delta.y)
+    elif self.isDstCornerHovering(RightEdge, BottomEdge):
+      adjustRectW(self.dstRect, delta.x)
+      adjustRectY(self.dstRect, delta.y)
+    publish(RegionChanged, self.dstRect)
+
+    
 
 proc processMousePanMoveEvent*(self: Editor, event: MouseEvt) =
   if self.mouseData.panState == PanStateDown or
@@ -450,14 +480,22 @@ proc processLeftMouseClickEvent*(self: Editor, event: MouseEvt) =
   if event.edgeDir == mbDirDown:
     if self.mouseData.state == StateSelectNone:
       let
-        hoveringComps = self.doc.db.ptInComps(event.pos, self.viewport)
-        isHovering = hoveringComps.len > 0
-        topComp = if isHovering: some(hoveringComps[^1])
-                  else:          none(CompID)
+        hoveringComps = ptInComps(self.doc.db, event.pos, self.viewport)
+        anyCompHovering = hoveringComps.len > 0
+        topComp = if anyCompHovering: some(hoveringComps[^1])
+                  else:               none(CompID)
       self.mouseData.clickHitId = topComp
       self.mouseData.clickPos = some(event.pos)
-      self.mouseData.state = if isHovering: StateSelectDownInComp
-                             else:          StateSelectDownInSpace
+      self.mouseData.state = if anyCompHovering: StateSelectDownInComp
+                             elif self.anyDstEdgeHovering:
+                                block: 
+                                  echo "down in edge"
+                                  StateSelectDownInDstRect
+                             elif self.anyDstCornerHovering:
+                                block:
+                                  echo "down in corner"
+                                  StateSelectDownInDstRect
+                             else: StateSelectDownInSpace
   elif event.edgeDir == mbDirUp:
     case self.mouseData.state
     of StateSelectDownInComp:
@@ -479,6 +517,10 @@ proc processLeftMouseClickEvent*(self: Editor, event: MouseEvt) =
     of StateSelectDraggingSpace:
       self.selected.setSome(self.tmpSelected[].toSeq)
       self.tmpSelected.clearAll()
+    of StateSelectDownInDstRect:
+      discard
+    of StateSelectDraggingDstRect:
+      discard
     else:
       discard
     self.selectBox = (0,0,0,0)

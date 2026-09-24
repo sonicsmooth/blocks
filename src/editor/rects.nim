@@ -304,10 +304,10 @@ proc pxRect*(startPos, endPos: PxPoint): PxRect =
   # make sure that rect.x,y is always minimum (upper left for PxRect)
   let (sx, sy) = startPos
   let (ex, ey) = endPos
-  (x: min(sx, ex),
-   y: min(sy, ey),
-   w: abs(ex - sx),
-   h: abs(ey - sy))
+  result = (x: min(sx, ex),
+            y: min(sy, ey),
+            w: abs(ex - sx),
+            h: abs(ey - sy))
 proc shrink*(r: PxRect, amt: int): PxRect = 
   result.x = r.x + amt
   result.y = r.y + amt
@@ -361,29 +361,29 @@ proc upperRight*(rect: SomeRect): auto =
 proc topEdge*[T: SomeRect](rect: T): TopEdge[T] =
   result.pt0 = rect.upperLeft
   result.pt1 = rect.upperRight
-  assert result.pt0.x < result.pt1.x and result.pt0.y == result.pt1.y
+  assert result.pt0.x <= result.pt1.x and result.pt0.y == result.pt1.y
 proc bottomEdge*[T: SomeRect](rect: T): BottomEdge[T] =
   result.pt0 = rect.lowerLeft
   result.pt1 = rect.lowerRight
-  assert result.pt0.x < result.pt1.x and result.pt0.y == result.pt1.y
+  assert result.pt0.x <= result.pt1.x and result.pt0.y == result.pt1.y
 proc leftEdge*[T: SomeRect](rect: T): LeftEdge[T] =
   when T is WRect:
     result.pt0 = rect.lowerLeft
     result.pt1 = rect.upperLeft
-    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
+    assert result.pt0.x == result.pt1.x and result.pt0.y <= result.pt1.y
   elif T is PxRect:
     result.pt0 = rect.upperLeft
     result.pt1 = rect.lowerLeft
-    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
+    assert result.pt0.x == result.pt1.x and result.pt0.y <= result.pt1.y
 proc rightEdge*[T: SomeRect](rect: T): RightEdge[T] =
   when T is WRect:
     result.pt0 = rect.lowerRight
     result.pt1 = rect.upperRight
-    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
+    assert result.pt0.x == result.pt1.x and result.pt0.y <= result.pt1.y
   elif T is PxRect:
     result.pt0 = rect.upperRight
     result.pt1 = rect.lowerRight
-    assert result.pt0.x == result.pt1.x and result.pt0.y < result.pt1.y
+    assert result.pt0.x == result.pt1.x and result.pt0.y <= result.pt1.y
 
 proc top*(rect: SomeRect): auto = rect.upperLeft.y
 proc bottom*(rect: SomeRect): auto = rect.lowerLeft.y
