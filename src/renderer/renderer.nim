@@ -73,35 +73,6 @@ proc isReady*(self: Renderer): bool =
   if not self.editor.isReady(): return reportNotReady("renderer.editor")
   true
 
-# proc clampSize(self: Renderer, pxSz: PxSize): PxSize =
-#   # Return the given prect if one or more of its dimensions fits in client area
-#   # If both dimensions exceed client size, then return a PxRect with the
-#   # same aspect ratio and with one dim that matches client dim.
-#   # Used for extreme zoom where the component is bigger than the viewing area
-#   let clientSize: PxSize = self.editor.viewport.clientSize
-#   if pxSz.w <= clientSize.w or pxSz.h <= clientSize.h:
-#     pxSz
-#   else:
-#     let
-#       rectRatio: float = pxSz.w.float / pxSz.h.float
-#       clientRatio: float = clientSize.w / clientSize.h
-#     var neww, newh: int
-#     if rectRatio <= clientRatio:
-#       # Set rect width to client width
-#       neww = clientSize.w
-#       newh = (neww.float / rectRatio).round.int
-#     else:
-#       # Set rect height to client height
-#       newh = clientSize.h
-#       neww = (newh.float * rectRatio).round.int
-#     (neww, newh)
-
-# proc clampRect(self: Renderer, prect: PxRect): PxRect =
-#   let newsz: PxSize = self.clampSize((prect.w, prect.h))
-#   (prect.x, prect.y, newsz.w, newsz.h)
-
-
-
 #[ Component rendering options:
   1. Default renderer -> rp.drawRect
   2. Software renderer -> rp.drawRect -> cache -> blit
@@ -212,20 +183,23 @@ proc drawPlacementBox(self: Renderer) =
   let fillColor = DarkOrchid.setAlpha(10)
   let penColor = DarkOrchid
   let dstRectP = self.editor.dstRect.toPxRect(self.editor.viewport)
+
+  # Main box
   self.sdlRenderer.drawFilledOutlineRectSDL(dstRectP, fillColor, penColor)
-  let x = dstRectP.x
-  let y = dstRectP.y
-  let w = dstRectP.w
-  let h = dstRectP.h
-  # let marg = self.editor.dstSelMargin
-  # let ulDstRectP: PxRect = (x-marg+2,   y-marg+2,   marg*2, marg*2)
-  # let urDstRectP: PxRect = (x+w-marg-2, y-marg+2,   marg*2, marg*2)
-  # let llDstRectP: PxRect = (x-marg+2,   y+h-marg-2, marg*2, marg*2)
-  # let lrDstRectP: PxRect = (x+w-marg-2, y+h-marg-2, marg*2, marg*2)
-  # self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP, fillColor, penColor)
-  # self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
-  # self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
-  # self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
+  
+  # Corner boxes
+  let (x,y,w,h) = dstRectP
+  let cmarg = self.editor.dstSelCornerMargin
+  let ulDstRectP: PxRect = (x,           y,           cmarg, cmarg)
+  let urDstRectP: PxRect = (x+w-cmarg, y,           cmarg, cmarg)
+  let llDstRectP: PxRect = (x,           y+h-cmarg, cmarg, cmarg)
+  let lrDstRectP: PxRect = (x+w-cmarg, y+h-cmarg, cmarg, cmarg)
+  self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
+
+  # Edge highlight
   if self.editor.isDstEdgeSoleHovering(LeftEdge):
     self.sdlRenderer.drawLine(x+1, y, x+1, y+h)
     self.sdlRenderer.drawLine(x+2, y, x+2, y+h)
@@ -238,27 +212,21 @@ proc drawPlacementBox(self: Renderer) =
   elif self.editor.isDstEdgeSoleHovering(BottomEdge):
     self.sdlRenderer.drawLine(x, y+h-2, x+w, y+h-2)
     self.sdlRenderer.drawLine(x, y+h-3, x+w, y+h-3)
+
+  # Corner highlight
   let corner = self.editor.dstSelCornerMargin
   if self.editor.isDstCornerHovering(LeftEdge, TopEdge):
-    self.sdlRenderer.drawLine(x, y+1, x+corner, y+1)
-    self.sdlRenderer.drawLine(x, y+2, x+corner, y+2)
-    self.sdlRenderer.drawLine(x+1, y, x+1, y+corner)
-    self.sdlRenderer.drawLine(x+2, y, x+2, y+corner)
+    self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP.shrink(2), fillColor, penColor)
   elif self.editor.isDstCornerHovering(RightEdge, TopEdge):
-    self.sdlRenderer.drawLine(x+w-1, y+1, x+w-1-corner, y+1)
-    self.sdlRenderer.drawLine(x+w-1, y+2, x+w-1-corner, y+2)
-    self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+corner)
-    self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+corner)
+    self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP.shrink(2), fillColor, penColor)
   elif self.editor.isDstCornerHovering(LeftEdge, BottomEdge):
-    self.sdlRenderer.drawLine(x, y+h-2, x+corner, y+h-2)
-    self.sdlRenderer.drawLine(x, y+h-3, x+corner, y+h-3)
-    self.sdlRenderer.drawLine(x+1, y+h-1-corner, x+1, y+h-1)
-    self.sdlRenderer.drawLine(x+2, y+h-1-corner, x+2, y+h-1)
+    self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP.shrink(2), fillColor, penColor)
   elif self.editor.isDstCornerHovering(RightEdge, BottomEdge):
-    self.sdlRenderer.drawLine(x+w-1, y+h-2, x+w-1-corner, y+h-2)
-    self.sdlRenderer.drawLine(x+w-1, y+h-3, x+w-1-corner, y+h-3)
-    self.sdlRenderer.drawLine(x+w-2, y+h-1, x+w-2, y+h-1-corner)
-    self.sdlRenderer.drawLine(x+w-3, y+h-1, x+w-3, y+h-1-corner)
+    self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP.shrink(2), fillColor, penColor)
 
 proc renderEverything*(self: Renderer) =
   # Typically called from OnPaint

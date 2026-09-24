@@ -534,6 +534,9 @@ proc isPointNearEdge*[E](pt: WPoint, edge: E, emarg, cmarg: WType): bool =
   elif edge is VertEdge:
     pt.x >= edge.x - emarg and pt.x <= edge.x + emarg and
     pt.y >= edge.pt0.y + cmarg and pt.y <= edge.pt1.y - cmarg
+  else:
+    {.error: "isPointNearEdge requires HorizEdge or VertEdge"}
+
 
 proc isPointNearCorner*[E1, E2](pt: WPoint, edge1: E1, edge2: E2, emarg, cmarg: WType): bool =
   ## Return true if pt is within emarg on outside of corner
@@ -566,8 +569,8 @@ proc isPointNearCorner*[E1, E2](pt: WPoint, edge1: E1, edge2: E2, emarg, cmarg: 
      pt.x >= edge1.pt1.x - cmarg and pt.x <= edge1.pt1.x + emarg and
      pt.y >= edge1.pt1.y - emarg and pt.y <= edge1.pt1.y + cmarg)
   else:
-    {.error: "isPointNearCorner requires one vertical and one horizontal edge."}
-    false
+    {.error: "isPointNearCorner requires one vertical and one horizontal edge"}
+    # false
 
 
 
