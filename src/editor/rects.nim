@@ -51,7 +51,10 @@ type
   CompID* = range[-1..int.high] # negative values indicate null component
   Orientation* = enum Vertical, Horizontal
   EdgeNom* = enum Left, Right, Top, Bottom
-  # CornerNom* = enum UpperLeft, UpperRight, LowerLeft, LowerRight
+  Regions* = enum ULCorner, URCorner, BLCorner, LRCorner,
+                  ULQuad, URQuad, BLQuad, LRQuad,
+                  LeftHalf, RightHalf, UpperHalf, LowerHalf
+                  LeftBand, RightBand, UpperBand, LowerBand
   Edge*[T] = object of RootObj
     when T is WRect:
       pt0*: WPoint
@@ -524,7 +527,6 @@ proc isRectOverRect*[T: SomeRect](rect1, rect2: T): bool =
     rect1.bottomEdge > rect2.bottomEdge and
     rect1.leftEdge   < rect2.leftEdge   and
     rect1.rightEdge  > rect2.rightEdge
-
 proc isPointNearEdge*[E](pt: WPoint, edge: E, emarg, cmarg: WType): bool =
   ## Return true if point is within edgeMarge of edge,
   ## but away from corners by cmarg
@@ -536,8 +538,6 @@ proc isPointNearEdge*[E](pt: WPoint, edge: E, emarg, cmarg: WType): bool =
     pt.y >= edge.pt0.y + cmarg and pt.y <= edge.pt1.y - cmarg
   else:
     {.error: "isPointNearEdge requires HorizEdge or VertEdge"}
-
-
 proc isPointNearCorner*[E1, E2](pt: WPoint, edge1: E1, edge2: E2, emarg, cmarg: WType): bool =
   ## Return true if pt is within emarg on outside of corner
   ## and within cmarg on inside of corner
@@ -570,7 +570,23 @@ proc isPointNearCorner*[E1, E2](pt: WPoint, edge1: E1, edge2: E2, emarg, cmarg: 
      pt.y >= edge1.pt1.y - emarg and pt.y <= edge1.pt1.y + cmarg)
   else:
     {.error: "isPointNearCorner requires one vertical and one horizontal edge"}
-    # false
+    
+proc isPointInBody*(pt: WPoint, rect: WRect, emarg, cmarg: WType): bool =
+  # True if point is inside body and outside all edge and corner hover areas
+  let (x,y,w,h) = rect
+  let xWithinMain = pt.x >= x + emarg and pt.x <= x + w - emarg
+  let yWithinMain = pt.y >= y + emarg and pt.y <= y + h - emarg
+  let withinMain = xWithinMain and yWithinMain
+  let xWithinLeftCorner  = pt.x >= x     - emarg and pt.x <= x     + cmarg
+  let xWithinRightCorner = pt.x >= x + w - cmarg and pt.x <= x + w + emarg
+  let yWithinLowerCorner = pt.y >= y     - emarg and pt.y <= y     + cmarg
+  let yWithinUpperCorner = pt.y >= y + h - cmarg and pt.y <= y + h + emarg
+  let withinAnyCorner = xWithinLeftCorner  and yWithinUpperCorner or
+                        xWithinRightCorner and yWithinUpperCorner or
+                        xWithinLeftCorner  and yWithinLowerCorner or
+                        xWithinRightCorner and yWithinLowerCorner
+  withinMain and not withinAnyCorner
+  
 
 
 

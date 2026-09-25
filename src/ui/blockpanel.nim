@@ -81,6 +81,17 @@ const
     (wKey_9,      Key9     )
     ].toTable
 
+let gCursorNwse = Cursor(wCursorSizeNwse)  # module-level, built once
+let gCursorNesw = Cursor(wCursorSizeNesw)
+
+proc cursorFor(hint: EditorCursorHint): wCursor =
+  case hint
+  of chSizeWE:   wSizeWeCursor()
+  of chSizeNS:   wSizeNsCursor()
+  of chSizeNWSE: gCursorNwse
+  of chSizeNESW: gCursorNesw
+  of chMove:     wSizeAllCursor()
+  of chDefault:  wArrorCursor()
 
 wClass(wBlockPanel of wSDLPanel):
   proc isReady*(self: wBlockPanel): bool =
@@ -130,6 +141,7 @@ wClass(wBlockPanel of wSDLPanel):
     let hWnd = GetAncestor(self.handle, GA_ROOT)
     SendMessage(hWnd, idMsgMouseMove, event.wParam, event.lParam)
     self.editor.processMouseMoveEvent(self.fillMouse(event))
+    self.setCursor(cursorFor(self.editor.getCursorHint()))
 
   proc processUIMouseButtonEvent*(self: wBlockPanel, event: wEvent) =
     if event.eventType == wEvent_LeftDown:
