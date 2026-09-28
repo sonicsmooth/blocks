@@ -101,7 +101,7 @@ proc clearTextureCache(self: Renderer, id: CompID) =
 
 proc syncTextureCache*(self: Renderer) =
   # Clear texture for dirty items
-  for id in self.editor.dirty[].items: #.trueItems:
+  for id in self.editor.dirty[].items:
     self.clearTextureCache(id)
   self.editor.dirty.clearAll()
 
@@ -111,7 +111,7 @@ proc clearFontCaches*(self: Renderer) =
 
 proc screenRectP(self: Renderer): PxRect =
   let sz = self.editor.viewport.clientSize
-  (0.PxType, 0.PxType, sz.w, sz.h)
+  (0.toPxType, 0.toPxType, sz.w, sz.h)
 
 proc buildTexture(self: Renderer, comp: DBComp, rmethod: RenderMethod,
                   isect: PxRect, hov, sel: bool): TexturePtr =
@@ -177,56 +177,59 @@ proc drawSelectBox(self: Renderer) =
   self.sdlRenderer.drawFilledOutlineRectSDL(self.editor.selectBox, fillColor, penColor)
 
 proc drawPlacementBox(self: Renderer) =
-  if self.editor.dstRect.w == 0 or
-     self.editor.dstRect.h == 0:
+  if self.editor.dstRect.rect.w == 0 or
+     self.editor.dstRect.rect.h == 0:
       return
   let fillColor = DarkOrchid.setAlpha(10)
   let penColor = DarkOrchid
-  let dstRectP = self.editor.dstRect.toPxRect(self.editor.viewport)
-
-  # Main box
-  self.sdlRenderer.drawFilledOutlineRectSDL(dstRectP, fillColor, penColor)
+  let dstRectP = self.editor.dstRect.rect.toPxRect(self.editor.viewport)
   
-  # Corner boxes
+  # Main body rectangle
   let (x,y,w,h) = dstRectP
-  let cmarg = self.editor.dstSelCornerMargin
-  let ulDstRectP: PxRect = (x,           y,           cmarg, cmarg)
-  let urDstRectP: PxRect = (x+w-cmarg, y,           cmarg, cmarg)
-  let llDstRectP: PxRect = (x,           y+h-cmarg, cmarg, cmarg)
-  let lrDstRectP: PxRect = (x+w-cmarg, y+h-cmarg, cmarg, cmarg)
-  self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP, fillColor, penColor)
-  self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP, fillColor, penColor)
-  self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP, fillColor, penColor)
-  self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(dstRectP, fillColor, penColor)
+
+  # Corner boxes
+  let cmarg = self.editor.dstRect.selCornerMargin
+  let tlDstRectP: PxRect = (x,         y,         cmarg, cmarg)
+  let trDstRectP: PxRect = (x+w-cmarg, y,         cmarg, cmarg)
+  let blDstRectP: PxRect = (x,         y+h-cmarg, cmarg, cmarg)
+  let brDstRectP: PxRect = (x+w-cmarg, y+h-cmarg, cmarg, cmarg)
+  self.sdlRenderer.drawFilledOutlineRectSDL(tlDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(trDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(blDstRectP, fillColor, penColor)
+  self.sdlRenderer.drawFilledOutlineRectSDL(brDstRectP, fillColor, penColor)
 
   # Edge highlight
-  if self.editor.isDstEdgeSoleHovering(LeftEdge):
+  let hk = self.editor.dstRect.hoverKind
+  case hk:
+  of hkLeftEdge:
     self.sdlRenderer.drawLine(x+1, y, x+1, y+h)
     self.sdlRenderer.drawLine(x+2, y, x+2, y+h)
-  elif self.editor.isDstEdgeSoleHovering(RightEdge):
+  of hkRightEdge:
     self.sdlRenderer.drawLine(x+w-2, y, x+w-2, y+h)
     self.sdlRenderer.drawLine(x+w-3, y, x+w-3, y+h)
-  elif self.editor.isDstEdgeSoleHovering(TopEdge):
+  of hkTopEdge:
     self.sdlRenderer.drawLine(x, y+1, x+w, y+1)
     self.sdlRenderer.drawLine(x, y+2, x+w, y+2)
-  elif self.editor.isDstEdgeSoleHovering(BottomEdge):
+  of hkBottomEdge:
     self.sdlRenderer.drawLine(x, y+h-2, x+w, y+h-2)
     self.sdlRenderer.drawLine(x, y+h-3, x+w, y+h-3)
 
   # Corner highlight
-  let corner = self.editor.dstSelCornerMargin
-  if self.editor.isDstCornerHovering(LeftEdge, TopEdge):
-    self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP.shrink(1), fillColor, penColor)
-    self.sdlRenderer.drawFilledOutlineRectSDL(ulDstRectP.shrink(2), fillColor, penColor)
-  elif self.editor.isDstCornerHovering(RightEdge, TopEdge):
-    self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP.shrink(1), fillColor, penColor)
-    self.sdlRenderer.drawFilledOutlineRectSDL(urDstRectP.shrink(2), fillColor, penColor)
-  elif self.editor.isDstCornerHovering(LeftEdge, BottomEdge):
-    self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP.shrink(1), fillColor, penColor)
-    self.sdlRenderer.drawFilledOutlineRectSDL(llDstRectP.shrink(2), fillColor, penColor)
-  elif self.editor.isDstCornerHovering(RightEdge, BottomEdge):
-    self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP.shrink(1), fillColor, penColor)
-    self.sdlRenderer.drawFilledOutlineRectSDL(lrDstRectP.shrink(2), fillColor, penColor)
+  of hkTLCorner:
+    self.sdlRenderer.drawFilledOutlineRectSDL(tlDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(tlDstRectP.shrink(2), fillColor, penColor)
+  of hkTRCorner:
+    self.sdlRenderer.drawFilledOutlineRectSDL(trDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(trDstRectP.shrink(2), fillColor, penColor)
+  of hkBLCorner:
+    self.sdlRenderer.drawFilledOutlineRectSDL(blDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(blDstRectP.shrink(2), fillColor, penColor)
+  of hkBRCorner:
+    self.sdlRenderer.drawFilledOutlineRectSDL(brDstRectP.shrink(1), fillColor, penColor)
+    self.sdlRenderer.drawFilledOutlineRectSDL(brDstRectP.shrink(2), fillColor, penColor)
+  of hkBody, hkChild, hkNone:
+    discard
 
 proc renderEverything*(self: Renderer) =
   # Typically called from OnPaint

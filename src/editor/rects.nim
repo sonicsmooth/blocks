@@ -50,11 +50,10 @@ For bounds we need rotated WRect from DBComp
 type 
   CompID* = range[-1..int.high] # negative values indicate null component
   Orientation* = enum Vertical, Horizontal
-  EdgeNom* = enum Left, Right, Top, Bottom
-  Regions* = enum ULCorner, URCorner, BLCorner, LRCorner,
-                  ULQuad, URQuad, BLQuad, LRQuad,
-                  LeftHalf, RightHalf, UpperHalf, LowerHalf
-                  LeftBand, RightBand, UpperBand, LowerBand
+  # Regions* = enum ULCorner, URCorner, BLCorner, LRCorner,
+  #                 ULQuad, URQuad, BLQuad, LRQuad,
+  #                 LeftHalf, RightHalf, UpperHalf, LowerHalf
+  #                 LeftBand, RightBand, UpperBand, LowerBand
   Edge*[T] = object of RootObj
     when T is WRect:
       pt0*: WPoint
@@ -165,8 +164,8 @@ proc localPRect*(comp: DBComp, vp: Viewport): PxRect =
 
 
 proc pxSize*(comp: DBComp, vp: Viewport): PxSize {.inline.} =
-  let w = (comp.w * vp.zoom).PxType
-  let h = (comp.h * vp.zoom).PxType
+  let w = (comp.w * vp.zoom).toPxType
+  let h = (comp.h * vp.zoom).toPxType
   (w: w, h: h)
 
 proc wbboxes*[T:DBComp](rects: openArray[T]): seq[WRect] =
@@ -236,7 +235,7 @@ proc rotationPoint*(comp: DBComp, vp: Viewport): PxPoint =
   # copyEx requires distance from upper left of blit target
   # Steal a couple lines from above
   (comp.origin.x * vp.zoom,
-  (comp.h - comp.origin.y) * vp.zoom ) #- 1)
+  (comp.h - comp.origin.y) * vp.zoom ).toPxPoint
 
 proc ids*(rects: openArray[DBComp]): seq[CompID] =
   # Get all CompIDs
@@ -257,13 +256,13 @@ proc randRect*(id: CompID, region: WRect, log: bool=false): DBComp =
 
   if log: # Make log distribution
     while true:
-      rw = RND.sample(WRANGE.toSeq, wcdf)
-      rh = RND.sample(HRANGE.toSeq, hcdf)
+      rw = RND.sample(WRANGE.toSeq, wcdf).WType
+      rh = RND.sample(HRANGE.toSeq, hcdf).WType
       if rw/rh >= (1/3) and rw/rh <= 3.0:
         break
   else: # Flat distribution
-    rw = rand(WRANGE)
-    rh = rand(HRANGE)
+    rw = rand(WRANGE).WType
+    rh = rand(HRANGE).WType
 
   let fillColor = randColor()
   let penColor   = (fillColor - 50).setAlpha(255)
@@ -312,15 +311,15 @@ proc pxRect*(startPos, endPos: PxPoint): PxRect =
             w: abs(ex - sx),
             h: abs(ey - sy))
 proc shrink*(r: PxRect, amt: int): PxRect = 
-  result.x = r.x + amt
-  result.y = r.y + amt
-  result.w = r.w - amt * 2
-  result.h = r.h - amt * 2
+  result.x = r.x + amt.toPxType
+  result.y = r.y + amt.toPxType
+  result.w = r.w - amt.toPxType * 2
+  result.h = r.h - amt.toPxType * 2
 proc grow*(r: PxRect, amt: int): PxRect = 
-  result.x = r.x - amt
-  result.y = r.y - amt
-  result.w = r.w + amt * 2
-  result.h = r.h + amt * 2
+  result.x = r.x - amt.toPxType
+  result.y = r.y - amt.toPxType
+  result.w = r.w + amt.toPxType * 2
+  result.h = r.h + amt.toPxType * 2
 
 proc wRect*(x,y,w,h: WType): WRect =
   result.x = x
@@ -527,6 +526,8 @@ proc isRectOverRect*[T: SomeRect](rect1, rect2: T): bool =
     rect1.bottomEdge > rect2.bottomEdge and
     rect1.leftEdge   < rect2.leftEdge   and
     rect1.rightEdge  > rect2.rightEdge
+
+# TODO: Extend to PxType and PxPoint and PxType?
 proc isPointNearEdge*[E](pt: WPoint, edge: E, emarg, cmarg: WType): bool =
   ## Return true if point is within edgeMarge of edge,
   ## but away from corners by cmarg
@@ -538,6 +539,7 @@ proc isPointNearEdge*[E](pt: WPoint, edge: E, emarg, cmarg: WType): bool =
     pt.y >= edge.pt0.y + cmarg and pt.y <= edge.pt1.y - cmarg
   else:
     {.error: "isPointNearEdge requires HorizEdge or VertEdge"}
+
 proc isPointNearCorner*[E1, E2](pt: WPoint, edge1: E1, edge2: E2, emarg, cmarg: WType): bool =
   ## Return true if pt is within emarg on outside of corner
   ## and within cmarg on inside of corner
@@ -605,8 +607,8 @@ proc isRectSeparate*[T: SomeRect](rect1, rect2: T): bool =
     rect1.rightEdge  < rect2.leftEdge or
     rect1.leftEdge   > rect2.rightEdge
 proc isRectTooBig*(prect: PxRect, maxSize: uint): bool =
-  prect.w > maxSize or
-  prect.h > maxSize
+  prect.w > maxSize.toPxType or
+  prect.h > maxSize.toPxType
 proc intersect*(rect, client: PxRect): PxRect =
   # Common rectangle shared by client and component rectangles
   # The size is used to create the texture.

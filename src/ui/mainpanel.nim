@@ -139,7 +139,7 @@ wClass(wMainPanel of wPanel):
     if self.blockPanel != nil:
       var db = self.blockPanel.editor.doc.db
       withLock(gLock):
-        compact(db, axis, sortOrder, self.blockPanel.editor.dstRect)
+        compact(db, axis, sortOrder, self.blockPanel.editor.dstRect.rect)
       self.blockPanel.editor.updateRatio()
       self.refresh(false)
       GC_fullCollect()
@@ -153,7 +153,7 @@ wClass(wMainPanel of wPanel):
     for i in gAnnealComms.low .. gAnnealComms.high:
       if gAnnealComms[i].thread.running:
         return
-    let dstRect = self.blockPanel.editor.dstRect
+    let dstRect = self.blockPanel.editor.dstRect.rect
     let dbaddr = addr self.blockPanel.editor.doc.db
     if self.ctrb1.value: # Not anneal, just normal 2d compact
       let arg: CompactArg = (pRectTable:  dbaddr,

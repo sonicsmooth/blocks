@@ -181,7 +181,6 @@ wClass(wBlockPanel of wSDLPanel):
     of wEvent_RightDoubleClick:
       mouseEvt.kind = mekDbl
       mouseEvt.button = mbRight
-
     else: return
     self.editor.processMouseClickEvent(mouseEvt)
 
@@ -257,5 +256,5 @@ wClass(wBlockPanel of wSDLPanel):
     self.wEvent_KeyUp                do (event: wEvent): self.processUIKeyEvent(event)
     self.wEvent_Timer                do (event: wEvent): self.onTimer(event)
     self.startTimer(0.0,   id=1) # one-shot to start
-    self.startTimer(1/60.0, id=2) # ongoing timer for refresh
+    # self.startTimer(1/60.0, id=2) # ongoing timer for refresh
 

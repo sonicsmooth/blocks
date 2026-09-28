@@ -118,27 +118,27 @@ proc doAdaptivePanZoom*(vp: var Viewport, zoomClicks: int, mousePos: PxPoint) =
   let zr = vp.mZoom / vp1.mZoom
   # Should convert to PxPoint implicitly
   vp.doPan((x: (mousePos.x.float * (1.0 - zr)) + (pan.x.float * (zr - 1.0)),
-            y: (mousePos.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0))))
+            y: (mousePos.y.float * (1.0 - zr)) + (pan.y.float * (zr - 1.0))).toPxPoint)
 
 
 # Convert from anything to pixels through viewport
 # pixel = world * zoom + pan.  Flip zoom for y
 proc toPixelX*(x: WType, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
-  (x.float * vp.mZoom + vp.mPan.x.float)
+  (x.float * vp.mZoom + vp.mPan.x.float).toPxType
 
 proc toPixelY*(y: WType, vp: Viewport): PxType =
   # Implicit conversion to PxType which includes rounding
-  (y.float * (-vp.mZoom) + vp.mPan.y.float)
+  (y.float * (-vp.mZoom) + vp.mPan.y.float).toPxType
 
 proc toPixel*(pt: WPoint, vp: Viewport): PxPoint =
-  (pt.x.toPixelX(vp), pt.y.toPixelY(vp))
+  (pt.x.toPixelX(vp), pt.y.toPixelY(vp)).toPxPoint
 
 proc toPixelScale*(a: WType, vp: Viewport): PxType =
-  a * vp.zoom
+  (a * vp.zoom).toPxType
 
 proc toPixelScale*(pt: WPoint, vp: Viewport): PxPoint =
-  (pt.x * vp.zoom, pt.y * vp.zoom)
+  (pt.x * vp.zoom, pt.y * vp.zoom).toPxPoint
 # There is also a toPixelScale in render/common.nim
 
 

@@ -835,6 +835,7 @@ wClass(wPlacementFrame of wFrame):
     # event.skip will override the veto(), but that's dumb
     # so don't use it
     echo "PlacementFrame onClose; hiding"
+    sendToListeners(idPFHiding, self.handle.WPARAM, 0)
     self.hide()
     event.veto()
 
@@ -843,9 +844,7 @@ wClass(wPlacementFrame of wFrame):
     # Do cleanup and announcements here
     when defined(debug):
       echo "PlacementFrame onDestroy; sending idPFDestroying"
-
     # TODO: Do listener deregistering here
-
     sendToListeners(idPFDestroying, self.handle.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
@@ -856,6 +855,7 @@ wClass(wPlacementFrame of wFrame):
     self.clientSize = self.mPanel.requiredSize(ignore=[self.mPanel.bDone.wControl,
                                                        self.mPanel.bUndo.wControl])
     # Respond to generic events
+    self.wEvent_Show do (event: wEvent): echo "SHOWINg!"
     self.wEvent_Close do (event: wEvent): self.onClose(event)
     self.wEvent_Destroy do (): self.onDestroy()
     self.wEvent_Timer do(): self.enableAcrylic()

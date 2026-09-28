@@ -15,6 +15,7 @@ import sdlframes
 
 import wNim/[wApp, wWindow, wUtils]
 import wNim/[wSlider, wStatusBar]
+import winim
 
 export document, editor, renderer
 
@@ -102,13 +103,13 @@ proc init*(self: Application, w, h: int) =
       self.renderer.clearTextureCache()
 
   # Editor needs to be able to invalidate panel without knowing about panel
-  # refresh has been moved to timer
   self.editor.invalidate = proc() {.closure.} =
     if gAppOpts.retextureFatOnMove:
-      # For every move, we redo the textures that are
-      # too big to fit on the screen
+      # Mark the textures that are too big to fit on the screen
       self.editor.dirtifyFatComponents()
-    self.renderer.syncTextureCache()
+    self.renderer.syncTextureCache() # Clear cache for dirty items
+    self.mainFrame.mainPanel.blockPanel.refresh(true)
+    self.mainFrame.mainPanel.blockPanel.handle.UpdateWindow()
 
   # Set up initial quantity after invalidate has been setup
   # It's guarded against a null invalidate, but it's nice

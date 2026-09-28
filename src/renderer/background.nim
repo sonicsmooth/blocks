@@ -178,8 +178,9 @@ proc drawGrid*(rp: RendererPtr, vp: Viewport, grid: Grid) =
 
   if grid.mOriginVisible:
     let
-      extent: PxType = 25.0 * vp.zoom
-      o: PxPoint = (0, 0).toPixel(vp)
+      extent: PxType = (25.0 * vp.zoom).toPxType
+      wo: WPoint = (0, 0)
+      o: PxPoint = toPixel(wo, vp)
         
     rp.setDrawColor(DarkRed)
 

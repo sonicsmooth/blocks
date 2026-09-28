@@ -16,8 +16,8 @@ proc fontCandidates*(): seq[string] =
   result.add(getEnv("WINDIR") / "Fonts" / "arial.ttf")
   result.add(getEnv("WINDIR") / "Fonts" / "segoeui.ttf")
 
-proc toPixelScale*[T:WPoint](pt: T, zoom: float): PxPoint =
-  (pt[0] * zoom, pt[1] * zoom)
+proc toPixelScale*(pt: WPoint, zoom: float): PxPoint =
+  (pt.x * zoom.toWType, pt.y * zoom.toWType).toPxPoint
 
 proc pxOrigin*(comp: DBComp, zoom: float): PxPoint =
   # Return the origin position in pixels

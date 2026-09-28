@@ -112,12 +112,11 @@ proc pairs[T](a: openArray[T]): seq[(T, T)] =
     result.add((a[i], a[i+1]))
     i += 2
 
-# TODO: this movement should be in world space not pixel space
-proc moveAmt(temp: float, maxAmt: PxSize): tuple[x,y:int, rot:Rotation] =
+proc moveAmt(temp: float, maxAmt: WSize): tuple[x,y:int, rot:Rotation] =
   # At maximum temp, maximum move is wSize/2
   # At maximum temp, probability of rotation is 100%
   let maxX = maxAmt.w.float  * temp / MaxTemp
-  let maxY = maxAmt.h.float * temp / MaxTemp
+  let maxY = maxAmt.h.float  * temp / MaxTemp
   let xmv  = (rand(maxX) - maxX/2.0).int
   let xmy  = (rand(maxY) - maxY/2.0).int
   let rndrot = temp > (rand(MaxTemp - MinTemp) + MinTemp)
@@ -153,8 +152,10 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float): seq[CompID] =
     let a = idSet.pop
     if a in pairTable:
       let b = pairTable[a]
-      let aPos: world.PxPoint = (initState[a].x, initState[a].y)
-      let bPos: world.PxPoint = (initState[b].x, initState[b].y)
+      # let aPos: PxPoint = (initState[a].x, initState[a].y).toPxPoint
+      # let bPos: PxPoint = (initState[b].x, initState[b].y).toPxPoint
+      let aPos = (initState[a].x, initState[a].y).toWPoint
+      let bPos = (initState[b].x, initState[b].y).toWPoint
       pTable[][a].x = bPos.x
       pTable[][a].y = bPos.y
       pTable[][a].rot = rand(Rotation) #todo: probability based on temp
@@ -170,16 +171,16 @@ proc calcSwap*[S,pT](initState: S, pTable: pT, temp: float): seq[CompID] =
       pTable[][a].rot = initState[a].rot
 
 # TODO: put this in world space not pixel space
-proc calcWiggle[S,pT](initState: S, pTable: pT, temp: float, maxAmt: PxSize): seq[CompID] =
+proc calcWiggle[S, pT](initState: S, pTable: pT, temp: float, maxAmt: WSize): seq[CompID] =
   # Copies x,y values from initState to pTable with some amount
   # changed based on temperature
   # initState must have at least the same keys as varTable.
   # Both tables must have x,y properties
   # Mutates pTable in place
   for id, item in pTable[]:
-    let amt = moveAmt(temp, maxAmt)
-    item.x = initState[id].x + amt.x
-    item.y = initState[id].y + amt.y
+    let amt = moveAmt(temp, maxAmt) # tuple[x,y:int, rot:Rotation]
+    item.x = initState[id].x + amt.x.WType
+    item.y = initState[id].y + amt.y.WType
     item.rot = initState[id].rot + amt.rot
     result.add(id)
 
@@ -198,8 +199,8 @@ proc makeSwapper*[S,pT](): PerturbFn[S,pT] =
 
 proc makeWiggler*[S,pT](dstRect: WRect): PerturbFn[S,pT] =
   let moveScale = 0.5
-  let maxAmt: PxSize = ((dstRect.w.float * moveScale).int,
-                        (dstRect.h.float * moveScale).int)
+  let maxAmt: WSize = ((dstRect.w.float * moveScale),
+                       (dstRect.h.float * moveScale)).toWSize
   result = proc(initState: S, pTable: pT, temp: float): seq[CompID] {.closure.} =
     calcWiggle(initState, pTable, temp, maxAmt)
 

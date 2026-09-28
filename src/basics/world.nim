@@ -36,7 +36,7 @@ type
 
 
 # Single dimension converting any type of number to a world coordinate
-converter toWType*[T:SomeNumber](a: T): WType =
+proc toWType*[T:SomeNumber](a: T): WType {.inline.} =
   when T is SomeInteger and distinctBase(WType) is SomeInteger:
     a.WType
   elif a is SomeFloat and distinctBase(WType) is SomeInteger:
@@ -48,24 +48,24 @@ converter toWType*[T:SomeNumber](a: T): WType =
   else:
     raiseAssert("Weird Condition: WType is neither integer nor float")
 
-converter toPxType*[T:SomeNumber](a: T): PxType =
+proc toPxType*[T:SomeNumber](a: T): PxType {.inline.} =
   # PxType is always an integer
   when T is SomeInteger:
     a.PxType
   elif T is SomeFloat:
     a.round.PxType
 
-converter toWPoint*[T:SomeNumber](pt: tuple[x, y: T]): WPoint  =
-  (pt[0],  pt[1]) # toWType is called implicitly for each part of tuple
+proc toWPoint*[T:SomeNumber](pt: tuple[x, y: T]): WPoint  =
+  (pt[0].toWType,  pt[1].toWType)
 
-converter toWSize*[T:SomeNumber](pt: tuple[w, h: T]): WSize   =
-  (pt[0],  pt[1]) # toWType is called implicitly for each part of tuple
+proc toWSize*[T:SomeNumber](pt: tuple[w, h: T]): WSize   =
+  (pt[0].toWType,  pt[1].toWType)
 
-converter toPxPoint*[T:SomeNumber](pt: tuple[x, y: T]): PxPoint =
-  (pt[0], pt[1]) # toPxType is called implicitly for each part of tuple
+proc toPxPoint*[T:tuple[x,y:SomeNumber]](pt: T): PxPoint =
+  (pt[0].toPxType, pt[1].toPxType)
 
-converter toPxSize*[T:SomeNumber](pt: tuple[w, h: T]): PxSize  =
-  (pt[0], pt[1]) # toPxType is called implicitly for each part of tuple
+proc toPxSize*[T:SomeNumber](pt: tuple[w, h: T]): PxSize  =
+  (pt[0].toPxType, pt[1].toPxType)
 
 proc pxSize*(w, h: SomeNumber): PxSize =
   (w, h)
@@ -76,7 +76,7 @@ proc toPxPoint*(jn: JsonNode): PxPoint =
     sp = captureBetween(jn.getStr, '(', ')').split(',')
     x = parseBiggestInt(sp[0].strip)
     y = parseBiggestInt(sp[1].strip)
-  (x, y)
+  (x.toPxType, y.toPxType)
 
 
 
