@@ -109,7 +109,10 @@ proc init*(self: Application, w, h: int) =
       self.editor.dirtifyFatComponents()
     self.renderer.syncTextureCache() # Clear cache for dirty items
     self.mainFrame.mainPanel.blockPanel.refresh(true)
-    self.mainFrame.mainPanel.blockPanel.handle.UpdateWindow()
+    # self.mainFrame.mainPanel.blockPanel.handle.UpdateWindow()
+
+  self.editor.checkPLF = proc(): bool {.closure.} =
+    self.mainFrame.isPLFShowing()
 
   # Set up initial quantity after invalidate has been setup
   # It's guarded against a null invalidate, but it's nice

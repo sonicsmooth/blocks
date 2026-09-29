@@ -99,7 +99,7 @@ type
     dirty*:         CompSet # which to clear from cache
     fat*:           CompSet # which are too big for screen
     groupRotation:  bool # prevents deselection after rotation
-    placementDlgShowing*: bool
+    checkPLF*:      proc():bool
     onZoomChanged*: proc()
     invalidate*:    proc()
 
@@ -257,35 +257,8 @@ proc doEvaluateRectHovering(self: Editor, pos: PxPoint, rect: WRect) =
   else:
     self.dstRect.hoverKind = hkNone
 
-# # TODO: Figure out generic way so it's not just dstEdge
-# proc isDstEdgeSoleHovering*(self: Editor, E: typedesc): bool =
-#   when E is LeftEdge:
-#     self.dstRect.hoverKind == hkLeftEdge
-#   elif E is RightEdge:
-#     self.dstRect.hoverKind == hkRightEdge
-#   elif E is TopEdge:
-#     self.dstRect.hoverKind == hkTopEdge
-#   elif E is BottomEdge:
-#     self.dstRect.hoverKind == hkBottomEdge
-#   else:
-#     {.error: "isDstEdgeSoleHovering requires LeftEdge, RightEdge, TopEdge, or BottomEdge".}
 proc anyDstEdgeHovering(self: Editor) : bool =
   self.dstRect.hoverKind in [hkLeftEdge, hkRightEdge, hkTopEdge, hkBottomEdge]
-# proc isDstCornerHovering*(self: Editor, E1, E2: typedesc): bool =
-#   when (E1 is LeftEdge and E2 is TopEdge) or
-#        (E1 is TopEdge and E2 is LeftEdge):
-#     self.dstRect.hoverKind == hkTLCorner
-#   elif (E1 is RightEdge and E2 is TopEdge) or
-#        (E1 is TopEdge and E2 is RightEdge):
-#     self.dstRect.hoverKind == hkTRCorner
-#   elif (E1 is LeftEdge and E2 is BottomEdge) or
-#        (E1 is BottomEdge and E2 is LeftEdge):
-#     self.dstRect.hoverKind == hkBLCorner
-#   elif (E1 is RightEdge and E2 is BottomEdge) or
-#        (E1 is BottomEdge and E2 is RightEdge):
-#     self.dstRect.hoverKind == hkBRCorner
-#   else:
-#     {.error: "isDstCornerHovered requires one vertical and one horizontal edge".}
 proc anyDstCornerHovering(self: Editor): bool =
   self.dstRect.hoverKind in [hkTLCorner, hkTRCorner, hkBLCorner, hkBRCorner]
 
@@ -297,7 +270,6 @@ proc getCursorHint*(self: Editor): EditorCursorHint =
   elif hk == hkTopEdge  or hk == hkBottomEdge: chSizeNS
   elif hk == hkBody: chMove
   else: chDefault
-
 
 proc doFitCheck*(self: Editor) =
   # Which components are bigger than client area?

@@ -247,7 +247,8 @@ proc renderEverything*(self: Renderer) =
 
   # Draw various boxes and text, then done
   #self.updateDestinationBox()
-  if gAppOpts.enableDstRect:
+  #if gAppOpts.enableDstRect:
+  if self.editor.checkPLF():
     self.drawPlacementBox()
   # if gAppOpts.enableBbox:
   #   #self.updateBoundingBox()

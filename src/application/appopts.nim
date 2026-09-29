@@ -10,7 +10,6 @@ type
     appHelp*: bool = false
     compQty*: int = 1
     enableBbox*: bool = false # calc and show
-    enableDstRect*: bool = false # show (calc always anyway)
     dstRect*: tuple[x,y,w,h: WType]
     dstSelEdgeMargin*: PxType
     dstSelCornerMargin*: PxType
@@ -63,7 +62,6 @@ proc parseAppOptions*(): AppOpts =
       case key:
       of "help", "h": result.appHelp = true
       of "bbox": result.enableBbox = true
-      of "dstrect": result.enableDstRect = true
       of "notext": result.enableText = false
       of "nohover": result.enableHover = false
       of "qty", "q": result.compQty = val.parseInt

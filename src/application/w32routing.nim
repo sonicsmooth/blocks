@@ -26,7 +26,7 @@ type
     woGridRequestY, woGridDivisionsSelect, woGridDivisionsValue,
     woGridDivisionsReset, woGridDensity, woGridSnap, woGridDynamic,
     woGridBaseSync, woGridVisible, woGridDots, woGridLines,
-    woGCFDestroying, woPFShowing, woPFHiding, woPFDestroying
+    woGCFDestroying, woPFDestroying
 
 const
   # Get rid of these
@@ -54,8 +54,6 @@ const
   idGCFDestroying*         = WM_USER + ord(woGCFDestroying)
   
   # # Placement Frame
-  idPFShowing*       = WM_USER + ord(woPFShowing)
-  idPFHiding    *    = WM_USER + ord(woPFHiding)
   idPFDestroying*    = WM_USER + ord(woPFDestroying)
 
 

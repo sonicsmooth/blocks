@@ -323,6 +323,9 @@ wClass(wMainFrame of wFrame):
     when defined(debug):
       echo "MainFrame onPFDestroying"
 
+  proc isPLFShowing*(self: wMainFrame): bool =
+    self.plf.isShown
+
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
     # So we're just hiding it in an overloaded show()
