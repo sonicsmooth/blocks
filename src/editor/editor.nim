@@ -99,7 +99,7 @@ type
     dirty*:         CompSet # which to clear from cache
     fat*:           CompSet # which are too big for screen
     groupRotation:  bool # prevents deselection after rotation
-    checkPLF*:      proc():bool
+    checkPLF*:      proc(): bool
     onZoomChanged*: proc()
     invalidate*:    proc()
 
@@ -230,15 +230,10 @@ proc doEvaluateRectHovering(self: Editor, pos: PxPoint, rect: WRect) =
   let wpt = pos.toWorld(self.viewport)
   let emarg = self.dstRect.selEdgeMargin.toWorldScale(self.viewport)
   let cmarg = self.dstRect.selCornerMargin.toWorldScale(self.viewport)
-  # for b in EdgeNom: self.dstRect.dstEdgeHovering[b] = false
-  # self.dstRect.dstBodyHovering = false
-  # One item is true when near edge
-  # Two items are true when near corner
   if isPointNearEdge(wpt, rect.leftEdge, emarg, cmarg):
     self.dstRect.hoverKind = hkLeftEdge
   elif isPointNearEdge(wpt, rect.rightEdge, emarg, cmarg):
     self.dstRect.hoverKind = hkRightEdge
-    # self.dstRect.dstEdgeHovering[EdgeNom.Right] = true
   elif isPointNearEdge(wpt, rect.topEdge, emarg, cmarg):
     self.dstRect.hoverKind = hkTopEdge
   elif isPointNearEdge(wpt, rect.bottomEdge, emarg, cmarg):
@@ -251,8 +246,7 @@ proc doEvaluateRectHovering(self: Editor, pos: PxPoint, rect: WRect) =
     self.dstRect.hoverKind = hkBLCorner
   elif isPointNearCorner(wpt, rect.rightEdge, rect.bottomEdge, emarg, cmarg):
     self.dstRect.hoverKind = hkBRCorner
-  elif isPointInBody(wpt, self.dstRect.rect, emarg, cmarg) and
-                           self.hovering[].len == 0:
+  elif isPointInBody(wpt, self.dstRect.rect, emarg, cmarg) and self.hovering[].len == 0:
     self.dstRect.hoverKind = hkBody
   else:
     self.dstRect.hoverKind = hkNone
@@ -374,7 +368,8 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
   of StateSelectNone:
     # Don't need to call invalidate for some reason. Timer running maybe?
     self.doEvaluateCompHovering(event.pos) # Checks all rects
-    self.doEvaluateRectHovering(event.pos, self.dstRect.rect)
+    if self.checkPLF():
+      self.doEvaluateRectHovering(event.pos, self.dstRect.rect)
   of StateSelectDownInComp, StateSelectDraggingComp:
     self.groupRotation = false
     let
@@ -404,7 +399,6 @@ proc processMouseSelectMoveEvent*(self: Editor, event: MouseEvt) =
     self.tmpSelected.setSome(touchingCompsW)
     self.mouseData.state = StateSelectDraggingSpace
     self.doFitCheck()
-    # self.invalidate()
   of StateSelectDownInDstRect, StateSelectDraggingDstRect:
     let delta = wmp - self.mouseData.lastPos.toWorld(vp)
     if self.dstRect.hoverKind == hkLeftEdge:
@@ -458,9 +452,10 @@ proc processLeftMouseClickEvent*(self: Editor, event: MouseEvt) =
       self.mouseData.clickHitId = topComp
       self.mouseData.clickPos = some(event.pos)
       self.mouseData.state = if anyCompHovering: StateSelectDownInComp
-                             elif self.anyDstCornerHovering or
-                                  self.anyDstEdgeHovering or
-                                  self.dstRect.hoverKind == hkBody:
+                             elif self.checkPLF() and 
+                                    (self.anyDstCornerHovering or
+                                     self.anyDstEdgeHovering or
+                                     self.dstRect.hoverKind == hkBody):
                                   StateSelectDownInDstRect
                              else: StateSelectDownInSpace
   elif event.edgeDir == mbDirUp:
@@ -491,7 +486,6 @@ proc processLeftMouseClickEvent*(self: Editor, event: MouseEvt) =
     else:
       discard
     self.selectBox = (0,0,0,0)
-    # self.invalidate()
     self.resetMouseData()
 
 proc processMidMouseClickEvent*(self: Editor, event: MouseEvt) =

@@ -128,7 +128,7 @@ wClass(wMainFrame of wFrame):
     # 2. Grid controls -- not sure why large icon mis-rendered, so using small
     tb2.addChecktool(idCmdGridShow,    "Grid Show",     iconBitmap("gridonoff",    big))
     tb2.addtool(     idCmdGridSetting, "Grid settings", iconBitmap("gridsettings", big))
-    tb2.addTool(     idCmdPlace,       "Place",         iconBitmap("place",        big))
+    tb2.addChecktool(idCmdPlace,       "Place",         iconBitmap("place",        big))
     tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
 
     ddcb.size = (self.dpiScale(150), ddcb.size.height)
@@ -188,9 +188,10 @@ wClass(wMainFrame of wFrame):
       self.gcf.setGrid(self.mainPanel.blockPanel.editor.doc.grid)
       self.gcf.show()
     of idCmdPlace:
-      if self.plf.isShown: return
-      if self.mainPanel.isNil: return
-      self.plf.show()
+      if self.plf.isShown:
+        self.plf.hide()
+      else:
+        self.plf.show()
 
     else:
       discard
@@ -319,9 +320,17 @@ wClass(wMainFrame of wFrame):
     when defined(debug):
       echo "MainFrame onGCFDestroying"
 
-  proc onPFDestroying(self: wMainFrame, event: wEvent) =
+  proc onPLFDestroying(self: wMainFrame, event: wEvent) =
     when defined(debug):
-      echo "MainFrame onPFDestroying"
+      echo "MainFrame onPLFDestroying"
+    # Release placement button
+    self.bandToolbars[1].toggleTool(idCmdPlace, false)
+
+  proc onPLFHiding(self: wMainFrame, event: wEvent) =
+    when defined(debug):
+      echo "MainFrame onPLFHiding"
+    # Release placement button
+    self.bandToolbars[1].toggleTool(idCmdPlace, false)
 
   proc isPLFShowing*(self: wMainFrame): bool =
     self.plf.isShown
@@ -412,7 +421,8 @@ wClass(wMainFrame of wFrame):
     self.registerListener(idGCFDots,            (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
     self.registerListener(idGCFLines,           (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
     self.registerListener(idGCFDestroying,      (w:wWindow, e:wEvent)=>onGCFDestroying(w.wMainFrame, e))
-    self.registerListener(idPFDestroying,       (w:wWindow, e:wEvent)=>onPFDestroying(w.wMainFrame, e))
+    self.registerListener(idPLFHiding,          (w:wWindow, e:wEvent)=>onPLFHiding(w.wMainFrame, e))
+    self.registerListener(idPLFDestroying,       (w:wWindow, e:wEvent)=>onPLFDestroying(w.wMainFrame, e))
 
     if not barebones:
       self.mainPanel = MainPanel(self)

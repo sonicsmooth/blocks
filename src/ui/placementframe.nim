@@ -856,6 +856,7 @@ wClass(wPlacementFrame of wFrame):
     # so don't use it
     echo "PlacementFrame onClose; hiding"
     self.hide()
+    sendToListeners(idPLFHiding, self.handle.WPARAM, 0)
     event.veto()
 
   proc onDestroy(self: wPlacementFrame) =
@@ -864,7 +865,7 @@ wClass(wPlacementFrame of wFrame):
     when defined(debug):
       echo "PlacementFrame onDestroy; sending idPFDestroying"
     # TODO: Do listener deregistering here
-    sendToListeners(idPFDestroying, self.handle.WPARAM, 0)
+    sendToListeners(idPLFDestroying, self.handle.WPARAM, 0)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
     wFrame(self).init(owner, title = "Placement")
