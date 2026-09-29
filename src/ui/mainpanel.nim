@@ -314,6 +314,7 @@ wClass(wMainPanel of wPanel):
     when defined(debug):
       echo "mainpanel init"
     wPanel(self).init(parent)
+    self.setDoubleBuffered(true)
 
     # Create controls
     self.txt       = StaticText(self, label="Qty", style=wSpRight)

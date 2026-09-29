@@ -71,27 +71,26 @@ type
 
 
 wClass(wPlacementPanel of wPanel):
-  proc layout(self: wPlacementPanel) =
-    when defined(dumpLayout):
-      let
-        hmarg = self.dpiScale(gHmargRaw) # from panel edge
-        vmarg = self.dpiScale(gVmargRaw) # from panel edge
-        hpad = self.dpiScale(gHpadRaw) # small spaces
-        vpad = self.dpiScale(gVpadRaw) # small spaces
-        hspc = self.dpiScale(gHspcRaw) # larger spaces
-        vspc = self.dpiScale(gVspcRaw) # larger spaces
-        boxvspc = self.dpiScale(20) # down from top of static box to avoid text
-        vgap = self.dpiScale(gVgapRaw) # tiny space
-        bbTxtAdjust = self.dpiScale(gTxtVadjust) # get top compass buttons to align with box line not text
-        buttWidth = self.dpiScale(gButtWidthRaw)
-        buttHeight = self.dpiScale(gButtHeightRaw)
-        arrowBtnSize = self.dpiScale(gIconSizeRaw)
-        txtCtrlWidth = self.dpiScale(gTxtCtrlWidthRaw)
-        offset = fontDescent(self.stCurrTempNum.font) - fontDescent(self.stCurrTemp.font)
-        startTempNumExtraOne = self.dpiScale(10)
-      self.stCompTitle.fit()
-      self.stSelected.fit()
-      self.layout:
+  proc firstlayout(self: wPlacementPanel) = 
+    let
+      hmarg = self.dpiScale(gHmargRaw) # from panel edge
+      vmarg = self.dpiScale(gVmargRaw) # from panel edge
+      buttWidth = self.dpiScale(gButtWidthRaw)
+      buttHeight = self.dpiScale(gButtHeightRaw)
+      hspc = self.dpiScale(gHspcRaw) # larger spaces
+      vspc = self.dpiScale(gVspcRaw) # larger spaces
+      hpad = self.dpiScale(gHpadRaw) # small spaces
+      vpad = self.dpiScale(gVpadRaw) # small spaces
+      boxvspc = self.dpiScale(20) # down from top of static box to avoid text
+      vgap = self.dpiScale(gVgapRaw) # tiny space
+      bbTxtAdjust = self.dpiScale(gTxtVadjust) # get top compass buttons to align with box line not text
+      arrowBtnSize = self.dpiScale(gIconSizeRaw)
+      txtCtrlWidth = self.dpiScale(gTxtCtrlWidthRaw)
+      offset = fontDescent(self.stCurrTempNum.font) - fontDescent(self.stCurrTemp.font)
+      startTempNumExtraOne = self.dpiScale(10)
+    self.stCompTitle.fit()
+    self.stSelected.fit()
+    self.layout:
         # Top Row
         self.stQty:
           left = self.left + hmarg
@@ -388,12 +387,32 @@ wClass(wPlacementPanel of wPanel):
           right = self.bDone.left - hspc
           width = buttWidth
           height = buttHeight
-      self.dumpLayout()
-    else:
-      include "../ui/layouts/wPlacementPanel.layout"
 
-  proc onResize(self: wPlacementPanel) =
-    self.layout()
+  proc nextLayout(self: wPlacementPanel) =
+    #include "../ui/layouts/wPlacementPanel.layout"
+    let
+      hmarg = self.dpiScale(gHmargRaw) # from panel edge
+      vmarg = self.dpiScale(gVmargRaw) # from panel edge
+      buttWidth = self.dpiScale(gButtWidthRaw)
+      buttHeight = self.dpiScale(gButtHeightRaw)
+      hspc = self.dpiScale(gHspcRaw) # larger spaces
+      vspc = self.dpiScale(gVspcRaw) # larger spaces
+    self.layout:
+      # Done and Undo buttons
+      self.bDone:
+        bottom = self.height - vmarg
+        right = self.right - hmarg
+        width = buttWidth
+        height = buttHeight
+      self.bUndo:
+        bottom = self.height - vmarg
+        right = self.bDone.left - hspc
+        width = buttWidth
+        height = buttHeight
+
+  proc onResize(self: wPlacementPanel, event: wEvent) =
+    self.nextLayout()
+    event.skip()    
 
   proc onPaint(self: wPlacementPanel, event: wEvent) =
     var dc = PaintDC(self)
@@ -630,6 +649,7 @@ wClass(wPlacementPanel of wPanel):
   proc init*(self: wPlacementPanel, parent: wWindow) =
     wPanel(self).init(parent)
     self.backgroundColor = gPanelBackgroundColor
+    self.setDoubleBuffered(true)
     let iconSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
     
     block: # Priming cache
@@ -724,7 +744,7 @@ wClass(wPlacementPanel of wPanel):
       self.stCurrTempNum.font  = Font(pointSize=gFontSizeLarge)
    
     block: # Respond to generic events
-      self.wEvent_Size do (event: wEvent): self.onResize()
+      self.wEvent_Size do (event: wEvent): self.onResize(event)
       self.wEvent_Paint do (event: wEvent): self.onPaint(event)
       self.wEvent_Destroy do (event: wEvent): self.onDestroy()
 
@@ -850,7 +870,10 @@ wClass(wPlacementFrame of wFrame):
     wFrame(self).init(owner, title = "Placement")
     self.backgroundColor = gFrameBackgroundColor
     self.mPanel = PlacementPanel(self)
-    self.mPanel.layout()
+    self.mPanel.firstLayout()
+    when defined(dumpLayout):
+      self.mpanel.dumpLayout()
+
     self.clientSize = self.mPanel.requiredSize(ignore=[self.mPanel.bDone.wControl,
                                                        self.mPanel.bUndo.wControl])
     # Respond to generic events
