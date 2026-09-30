@@ -127,7 +127,7 @@ wClass(wMainFrame of wFrame):
 
     # 2. Grid controls -- not sure why large icon mis-rendered, so using small
     tb2.addChecktool(idCmdGridShow,    "Grid Show",     iconBitmap("gridonoff",    big))
-    tb2.addtool(     idCmdGridSetting, "Grid settings", iconBitmap("gridsettings", big))
+    tb2.addChecktool(idCmdGridSetting, "Grid settings", iconBitmap("gridsettings", big))
     tb2.addChecktool(idCmdPlace,       "Place",         iconBitmap("place",        big))
     tb2.toggleTool(idCmdGridShow, gGridSpecsJ["visible"].getBool)
 
@@ -174,6 +174,10 @@ wClass(wMainFrame of wFrame):
     of idCmdInfo:
       if self.isReady():
         echo self.mainPanel.blockPanel.editor
+        echo "Number of win32 listener events: ", totalEvents()
+        echo "Number of win32 listener handles: ", uniqueHandles().len
+        echo "Listener table:"
+        echo gEventListeners
         # TODO: show channels, listeners, font cache, etc.
     of idCmdAbout:
       let f = AboutFrame(self)
@@ -181,15 +185,27 @@ wClass(wMainFrame of wFrame):
     of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar hence [1]
       let state = self.bandToolbars[1].toolState(idCmdGridShow)
-      sendToListeners(idGCFVisible, self.mHwnd.WPARAM, state.LPARAM)
+      sendToW32Listeners(idGCFVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
-      if self.gcf.isShown: return
       if self.mainPanel.isNil: return
-      self.gcf.setGrid(self.mainPanel.blockPanel.editor.doc.grid)
-      self.gcf.show()
+      if self.gcf.isNil:
+        self.gcf = GridControlFrame(self)
+        self.gcf.setGrid(self.mainPanel.blockPanel.editor.doc.grid)
+      if self.gcf.isShown:
+        when defined(cacheDialogs):
+          self.gcf.hide()
+        else:
+          self.gcf.close()
+      else:
+        self.gcf.show()
     of idCmdPlace:
+      if self.plf.isNil:
+        self.plf = PlacementFrame(self)
       if self.plf.isShown:
-        self.plf.hide()
+        when defined(cacheDialogs):
+          self.plf.hide()
+        else:
+          self.plf.close()
       else:
         self.plf.show()
 
@@ -229,14 +245,14 @@ wClass(wMainFrame of wFrame):
         echo "refXSpace:   ", gr.refXSpace
         echo "minDelta:    ", gr.minDelta(Major)
         # Send message to update display to both X and Y
-        sendToListeners(idGCFSizeX, event.wParam, event.lParam)
-        sendToListeners(idGCFSizeY, event.wParam, event.lParam)
+        sendToW32Listeners(idGCFSizeX, event.wParam, event.lParam)
+        sendToW32Listeners(idGCFSizeY, event.wParam, event.lParam)
       elif event.mMsg == idGCFRequestY:
         gr.refYSpace = newsz
         # Send message to update display to only Y
-        sendToListeners(idGCFSizeY, event.wParam, event.lParam)
+        sendToW32Listeners(idGCFSizeY, event.wParam, event.lParam)
       self.refreshCanvas()
-      sendToListeners(idGCFDivisionsReset, 0, 0)
+      sendToW32Listeners(idGCFDivisionsReset, 0, 0)
 
   proc onGCFDivisionsSelect(self: wMainFrame, event: wEvent) =
     # Change divisions based on given index and force zoom
@@ -316,24 +332,37 @@ wClass(wMainFrame of wFrame):
       self.refreshCanvas()
   #--
 
+  # TODO: Figure out a way to combine the various onshowing/hiding/destroying/
+  # TODO: isShowing, etc., with any number of dialogs, ie by using their
+  # TODO: typedesc or enums or something
   proc onGCFDestroying(self: wMainFrame, event: wEvent) =
     when defined(debug):
       echo "MainFrame onGCFDestroying"
+    self.bandToolbars[1].toggleTool(idCmdGridSetting, false)
+    self.gcf = nil
+
+  proc onGCFHiding(self: wMainFrame, event: wEvent) =
+    when defined(debug):
+      echo "MainFrame onGCFHiding"
+    self.bandToolbars[1].toggleTool(idCmdGridSetting, false)
+
+  proc isCFGShowing*(self: wMainFrame): bool =
+    not self.gcf.isnil and self.gcf.isShown
 
   proc onPLFDestroying(self: wMainFrame, event: wEvent) =
     when defined(debug):
       echo "MainFrame onPLFDestroying"
     # Release placement button
     self.bandToolbars[1].toggleTool(idCmdPlace, false)
+    self.plf = nil
 
   proc onPLFHiding(self: wMainFrame, event: wEvent) =
     when defined(debug):
       echo "MainFrame onPLFHiding"
-    # Release placement button
     self.bandToolbars[1].toggleTool(idCmdPlace, false)
 
   proc isPLFShowing*(self: wMainFrame): bool =
-    self.plf.isShown
+    not self.plf.isnil and self.plf.isShown
 
   proc show*(self: wMainFrame) =
     # Need to call forcredraw a couple times after show
@@ -347,7 +376,6 @@ wClass(wMainFrame of wFrame):
     if event.timerId == 1:
       self.stopTimer(event.timerId)
       self.enableAcrylic()
-      # self.extendFrameIntoClientArea()
       if self.isReady:
         # Same as onresize
         self.statusBar.setStatusText($self.mainPanel.blockPanel.clientSize, index=1)
@@ -361,6 +389,8 @@ wClass(wMainFrame of wFrame):
   proc onDestroy(self: wMainFrame) =
     when defined(debug):
       echo "MainFrame onDestroy"
+    deregisterW32Listener(self)
+    echo gEventListeners
 
   proc init*(self: wMainFrame, size: wSize, barebones: bool) =
     when defined(debug):
@@ -384,9 +414,12 @@ wClass(wMainFrame of wFrame):
     self.mReBar     = self.setupRebar()
     self.mStatusBar = self.setupStatusBar()
 
-    # Create dialogs so they are shown instantly
-    self.gcf = GridControlFrame(self)
-    self.plf = PlacementFrame(self)
+    when defined(cacheDialogs):
+      # Create dialogs ahead of time so they are shown instantly
+      self.gcf = GridControlFrame(self)
+      self.plf = PlacementFrame(self)
+    else:
+      discard
 
     var accel = self.AcceleratorTable()
     accel.add('i', idCmdInfo)
@@ -409,25 +442,26 @@ wClass(wMainFrame of wFrame):
     self.startTimer(0.0,   id=1) # one-shot to start
 
     # Respond to incoming messages
-    self.registerListener(idGCFRequestX,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
-    self.registerListener(idGCFRequestY,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
-    self.registerListener(idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onGCFDivisionsSelect(w.wMainFrame, e))
-    self.registerListener(idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onGCFDivisionsValue(w.wMainFrame, e))
-    self.registerListener(idGCFDensity,         (w:wWindow, e:wEvent)=>onGCFDensity(w.wMainFrame, e))
-    self.registerListener(idGCFSnap,            (w:wWindow, e:wEvent)=>onGCFSnap(w.wMainFrame, e))
-    self.registerListener(idGCFDynamic,         (w:wWindow, e:wEvent)=>onGCFDynamic(w.wMainFrame, e))
-    self.registerListener(idGCFBaseSync,        (w:wWindow, e:wEvent)=>onGCFBaseSync(w.wMainFrame, e))
-    self.registerListener(idGCFVisible,         (w:wWindow, e:wEvent)=>onGCFVisible(w.wMainFrame, e))
-    self.registerListener(idGCFDots,            (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
-    self.registerListener(idGCFLines,           (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
-    self.registerListener(idGCFDestroying,      (w:wWindow, e:wEvent)=>onGCFDestroying(w.wMainFrame, e))
-    self.registerListener(idPLFHiding,          (w:wWindow, e:wEvent)=>onPLFHiding(w.wMainFrame, e))
-    self.registerListener(idPLFDestroying,       (w:wWindow, e:wEvent)=>onPLFDestroying(w.wMainFrame, e))
+    registerW32Listener(self, idGCFRequestX,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
+    registerW32Listener(self, idGCFRequestY,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
+    registerW32Listener(self, idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onGCFDivisionsSelect(w.wMainFrame, e))
+    registerW32Listener(self, idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onGCFDivisionsValue(w.wMainFrame, e))
+    registerW32Listener(self, idGCFDensity,         (w:wWindow, e:wEvent)=>onGCFDensity(w.wMainFrame, e))
+    registerW32Listener(self, idGCFSnap,            (w:wWindow, e:wEvent)=>onGCFSnap(w.wMainFrame, e))
+    registerW32Listener(self, idGCFDynamic,         (w:wWindow, e:wEvent)=>onGCFDynamic(w.wMainFrame, e))
+    registerW32Listener(self, idGCFBaseSync,        (w:wWindow, e:wEvent)=>onGCFBaseSync(w.wMainFrame, e))
+    registerW32Listener(self, idGCFVisible,         (w:wWindow, e:wEvent)=>onGCFVisible(w.wMainFrame, e))
+    registerW32Listener(self, idGCFDots,            (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
+    registerW32Listener(self, idGCFLines,           (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
+    registerW32Listener(self, idGCFHiding    ,      (w:wWindow, e:wEvent)=>onGCFHiding(w.wMainFrame, e))
+    registerW32Listener(self, idGCFDestroying,      (w:wWindow, e:wEvent)=>onGCFDestroying(w.wMainFrame, e))
+    registerW32Listener(self, idPLFHiding,          (w:wWindow, e:wEvent)=>onPLFHiding(w.wMainFrame, e))
+    registerW32Listener(self, idPLFDestroying,      (w:wWindow, e:wEvent)=>onPLFDestroying(w.wMainFrame, e))
 
     if not barebones:
       self.mainPanel = MainPanel(self)
     when defined(debug):
-      echo "Main frame done initting"
+      echo "Main frame done initting; handle is ": self.handle
 
 
 when isMainModule:

@@ -26,7 +26,7 @@ type
     woGridRequestY, woGridDivisionsSelect, woGridDivisionsValue,
     woGridDivisionsReset, woGridDensity, woGridSnap, woGridDynamic,
     woGridBaseSync, woGridVisible, woGridDots, woGridLines,
-    woGCFDestroying, woPLFDestroying, woPLFHiding
+    woGridHiding, woGridDestroying, woPLFDestroying, woPLFHiding
 
 const
   # Get rid of these
@@ -51,9 +51,10 @@ const
   idGCFVisible*         = WM_USER + ord(woGridVisible)
   idGCFDots*            = WM_USER + ord(woGridDots)
   idGCFLines*           = WM_USER + ord(woGridLines)
-  idGCFDestroying*         = WM_USER + ord(woGCFDestroying)
+  idGCFHiding*          = WM_USER + ord(woGridHiding)
+  idGCFDestroying*      = WM_USER + ord(woGridDestroying)
   
-  # # Placement Frame
+  # Placement Frame
   idPLFHiding*    = WM_USER + ord(woPLFHiding)
   idPLFDestroying*    = WM_USER + ord(woPLFDestroying)
 
@@ -68,23 +69,26 @@ const
 type MsgProc* = proc(self: wWindow, event: wEvent) {.nimcall.}
 
 # Any given message int maps to one or more targets
-var gEventListeners = initTable[int32, seq[HANDLE]]()
+var gEventListeners* = initTable[int32, seq[HANDLE]]()
 
-proc uniqueHandles(): HashSet[HANDLE] =
+proc totalEvents*(): int = 
+  gEventListeners.len
+
+proc uniqueHandles*(): HashSet[HANDLE] =
   # Return set of unique handles
   for handles in gEventListeners.values:
     for handle in handles:
       result.incl(handle)
 
-
-proc registerListener*(listener: wWindow, msg: int32, callback: MsgProc) =
+proc registerW32Listener*(listener: wWindow, msg: int32, callback: MsgProc) =
   # This makes window receive messages
   if msg notin gEventListeners:
     gEventListeners[msg] = @[]
   gEventListeners[msg].add(listener.mHwnd)
   listener.connect(msg) do (event: wEvent): callback(listener, event)
 
-proc deregisterListener*(listener: wWindow) = 
+proc deregisterW32Listener*(listener: wWindow) = 
+  echo "Deregistering ", listener.mHwnd
   var keysToDelete: seq[int32] = @[]
   let handle: HANDLE = listener.mHwnd
   for msg, handles in gEventListeners:
@@ -99,7 +103,7 @@ proc deregisterListener*(listener: wWindow) =
     echo "Deregistered ", cnt, " listeners"
     echo uniqueHandles().len, " handles left"
 
-proc sendToListeners*(msg: int32, wp: WPARAM, lp: LPARAM) =
+proc sendToW32Listeners*(msg: int32, wp: WPARAM, lp: LPARAM) =
   # msg is the message
   # wp is usually the hwnd of the sender
   # lp is usually the value to be sent

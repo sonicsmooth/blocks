@@ -176,7 +176,7 @@ wClass(wGridControlPanel of wPanel):
   proc onDestroy(self: wGridControlPanel) =
     when defined(debug):
       echo "GridControlPanel onDestroy"
-    self.deregisterListener()
+    deregisterW32Listener(self)
 
   proc onButtonDone(self: wGridControlpanel) =
     # Post message for asynchronous close; otherwise if we do self.parent.close()
@@ -234,13 +234,13 @@ wClass(wGridControlPanel of wPanel):
       hi32 = (valptr shr 32).uint32
       lo32 = (valptr and 0xffff_ffff'u64).uint32
     if event.mOrigin == self.txtX.mHwnd:
-      sendToListeners(idGCFRequestX, hi32.WPARAM, lo32.LPARAM)
+      sendToW32Listeners(idGCFRequestX, hi32.WPARAM, lo32.LPARAM)
     elif event.mOrigin == self.txtY.mHwnd:
-      sendToListeners(idGCFRequestY, hi32.WPARAM, lo32.LPARAM)
+      sendToW32Listeners(idGCFRequestY, hi32.WPARAM, lo32.LPARAM)
 
   proc onCmdCbDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     let index = self.cbDivisions.selection
-    sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+    sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
 
   proc onCmdCbDivisionsTextEnter(self: wGridControlPanel, event: wEvent) =
     # Check if user-inputted text matches allowed divisions and send index if so
@@ -248,44 +248,44 @@ wClass(wGridControlPanel of wPanel):
     let strval = self.cbDivisions.value
     var index = self.cbDivisions.findText(strval)
     if index >= 0:
-      sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+      sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
     else:
       var val: int
       if parseNumber(strval, val):
         index = self.cbDivisions.findText($val)
         if index >= 0:
           # value found
-          sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+          sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
         else:
           # value not found, clamp to within range
           let cval = clamp(val, DivRange.low, DivRange.high)
-          sendToListeners(idGCFDivisionsValue, self.mHwnd.WPARAM, cval.LPARAM)
+          sendToW32Listeners(idGCFDivisionsValue, self.mHwnd.WPARAM, cval.LPARAM)
     # inputted value cannot be made into integer; don't send anything
 
 
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
     let finalval = self.slDensity.getValue()
-    sendToListeners(idGCFDensity, self.mHWnd.WPARAM, finalval.LPARAM)
+    sendToW32Listeners(idGCFDensity, self.mHWnd.WPARAM, finalval.LPARAM)
   #---
   proc onCmdSnap(self: wGridControlPanel, event: wEvent) =
     let state = self.cbSnap.value
-    sendToListeners(idGCFSnap, self.mHwnd, state.LPARAM)
+    sendToW32Listeners(idGCFSnap, self.mHwnd, state.LPARAM)
   proc onCmdDynamic(self: wGridControlPanel, event: wEvent) =
     let state = self.cbDynamic.value
-    sendToListeners(idGCFDynamic, self.mHwnd, state.LPARAM)
+    sendToW32Listeners(idGCFDynamic, self.mHwnd, state.LPARAM)
   proc onCmdGridBaseSync(self: wGridControlPanel, event: wEvent) =
     let state = self.cbBaseSync.value
-    sendToListeners(idGCFBaseSync, self.mHwnd, state.LPARAM)
+    sendToW32Listeners(idGCFBaseSync, self.mHwnd, state.LPARAM)
   #--
   proc onCmdGridVisible(self: wGridControlPanel, event: wEvent) =
     let state = self.cbVisible.value
-    sendToListeners(idGCFVisible, self.mHwnd, state.LPARAM)
+    sendToW32Listeners(idGCFVisible, self.mHwnd, state.LPARAM)
   proc onCmdDots(self: wGridControlPanel, event: wEvent) =
     let state = self.rbDots.value
-    sendToListeners(idGCFDots, self.mHwnd, state.LPARAM)
+    sendToW32Listeners(idGCFDots, self.mHwnd, state.LPARAM)
   proc onCmdLines(self: wGridControlPanel, event: wEvent) =
     let state = self.rbLines.value
-    sendToListeners(idGCFLines, self.mHwnd, state.LPARAM)
+    sendToW32Listeners(idGCFLines, self.mHwnd, state.LPARAM)
 
   # Respond to incoming messages, including from self
   # Update local UI only.  Don't do anything else.
@@ -317,9 +317,9 @@ wClass(wGridControlPanel of wPanel):
     let oldval = self.grid.divisions
     let newidx = self.cbDivisions.findText($oldval)
     if newidx >= 0:
-      sendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
+      sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
     else:
-      sendToListeners(idGCFDivisionsValue, self.mHwnd.WPARAM, oldval.LPARAM)
+      sendToW32Listeners(idGCFDivisionsValue, self.mHwnd.WPARAM, oldval.LPARAM)
 
   proc onGCFDensity(self: wGridControlPanel, event: wEvent) =
     self.slDensity.setValue(event.lParam)
@@ -427,19 +427,19 @@ wClass(wGridControlPanel of wPanel):
       self.bDone.wEvent_Button          do(): self.onButtonDone()
 
     block: # Update controls from outside messages
-      self.registerListener(idGCFSizeX,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
-      self.registerListener(idGCFSizeY,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
-      self.registerListener(idGCFDivisionsSelect, (w: wWindow, e: wEvent)=>(onGCFDivisionsSelect(w.wGridControlPanel, e)))
-      self.registerListener(idGCFDivisionsValue,  (w: wWindow, e: wEvent)=>(onGCFDivisionsValue(w.wGridControlPanel, e)))
-      self.registerListener(idGCFDivisionsReset,  (w: wWindow, e: wEvent)=>(onGCFDivisionsReset(w.wGridControlPanel, e)))
-      self.registerListener(idGCFDensity,         (w: wWindow, e: wEvent)=>(onGCFDensity(w.wGridControlPanel, e)))
-      self.registerListener(idGCFSnap,            (w: wWindow, e: wEvent)=>(onGCFSnap(w.wGridControlPanel, e)))
-      self.registerListener(idGCFDynamic,         (w: wWindow, e: wEvent)=>(onGCFDynamic(w.wGridControlPanel, e)))
-      self.registerListener(idGCFBaseSync,        (w: wWindow, e: wEvent)=>(onGCFBaseSync(w.wGridControlPanel, e)))
-      self.registerListener(idGCFVisible,         (w: wWindow, e: wEvent)=>(onGCFVisible(w.wGridControlPanel, e)))
-      self.registerListener(idGCFDots,            (w: wWindow, e: wEvent)=>(onGCFDots(w.wGridControlPanel, e)))
-      self.registerListener(idGCFLines,           (w: wWindow, e: wEvent)=>(onGCFLines(w.wGridControlPanel, e)))
-      self.registerListener(idGCFZoom,            (w: wWindow, e: wEvent)=>(onGCFZoom(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFSizeX,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFSizeY,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFDivisionsSelect, (w: wWindow, e: wEvent)=>(onGCFDivisionsSelect(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFDivisionsValue,  (w: wWindow, e: wEvent)=>(onGCFDivisionsValue(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFDivisionsReset,  (w: wWindow, e: wEvent)=>(onGCFDivisionsReset(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFDensity,         (w: wWindow, e: wEvent)=>(onGCFDensity(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFSnap,            (w: wWindow, e: wEvent)=>(onGCFSnap(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFDynamic,         (w: wWindow, e: wEvent)=>(onGCFDynamic(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFBaseSync,        (w: wWindow, e: wEvent)=>(onGCFBaseSync(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFVisible,         (w: wWindow, e: wEvent)=>(onGCFVisible(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFDots,            (w: wWindow, e: wEvent)=>(onGCFDots(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFLines,           (w: wWindow, e: wEvent)=>(onGCFLines(w.wGridControlPanel, e)))
+      registerW32Listener(self, idGCFZoom,            (w: wWindow, e: wEvent)=>(onGCFZoom(w.wGridControlPanel, e)))
 
     block: # Initial values
       if not self.grid.isnil:
@@ -458,17 +458,23 @@ wClass(wGridControlFrame of wFrame):
     # onDestroys down the tree
     # event.skip will override the veto(), but that's dumb
     # so don't use it
-    when defined(debug):
-      echo "GridControlFrame onClose; hiding"
-    self.hide()
-    event.veto()
+    when defined(cacheDialogs):
+      when defined(debug):
+        echo "GridControlFrame onClose hiding; sending idGCFHiding"
+      self.hide()
+      sendToW32Listeners(idGCFHiding, self.handle.WPARAM, 0)
+      event.veto()
+    else:
+      when defined(debug):
+        echo "GridControlFrame onClose"
 
   proc onDestroy(self: wGridControlFrame) =
     # event.veto doesn't do anything here
     # Do cleanup and announcements here
     when defined(debug):
       echo "GridControlFrame onDestroy; sending idGCFDestroying"
-    sendToListeners(idGCFDestroying, self.mHwnd.WPARAM, 0)
+    sendToW32Listeners(idGCFDestroying, self.mHwnd.WPARAM, 0)
+    deregisterW32Listener(self)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid=nil) =
     let
@@ -477,6 +483,7 @@ wClass(wGridControlFrame of wFrame):
     wFrame(self).init(owner, title = "Grid Settings", size=sz) #, style=style)
     self.backgroundColor = gFrameBackgroundColor
     self.mPanel = GridControlPanel(self, gr)
+    
     self.mPanel.layout()
     # Respond to generic events
     self.wEvent_Close do(event: wEvent): self.onClose(event)
@@ -484,7 +491,7 @@ wClass(wGridControlFrame of wFrame):
 
 type
   wDummyFrame = ref object of wFrame
-    gcf1: wGridControlFrame
+    gcf: wGridControlFrame
 
 wClass(wDummyFrame of wFrame):
   proc init(self: wDummyFrame) =
@@ -494,11 +501,16 @@ wClass(wDummyFrame of wFrame):
                     density = 1.0, dynamic = true, baseSync = true)
       gr = newGrid(zc) # requires appinit.json
       goButton = Button(self, label="Press me")
-    self.gcf1 = GridControlFrame(self, gr)
-    goButton.wEvent_Button do(): self.gcf1.show()
+    when defined(cacheDialogs):
+      self.gcf = GridControlFrame(self, gr)
+    goButton.wEvent_Button do():
+      if self.gcf.isNil:
+        self.gcf = GridControlFrame(self, gr)
+        self.gcf.wEvent_Destroy do(): self.gcf = nil
+      self.gcf.show()
 
 when isMainModule:
-    # TODO: for any module that requires appinit internaly,
+    # TODO: for any module that requires appinit internally,
     # TODO: just make it load appinit as needed
   import jsoninit
   

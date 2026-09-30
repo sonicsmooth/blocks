@@ -428,6 +428,7 @@ wClass(wPlacementPanel of wPanel):
     # Clean up pubsub
     when defined(debug):
       echo "PlacementPanel onDestroy"
+    deregisterW32Listener(self)
 
   proc onTextFocus(self: wPlacementPanel, event: wEvent) = 
     cast[wTextCtrl](event.window).setInsertionPointEnd()
@@ -654,7 +655,7 @@ wClass(wPlacementPanel of wPanel):
     
     block: # Priming cache
       when defined(debug):
-        stdout.write "placementframe priming bitmap cache... "
+        stdout.write "Placementframe priming bitmap cache... "
       timeItms(iconProfile, "priming cache placementframe"):
         let iconNames =["arrow_left", "arrow_right", "arrow_up", "arrow_down",
                         "upper_left_hv_arrow", "upper_left_vh_arrow",
@@ -854,18 +855,25 @@ wClass(wPlacementFrame of wFrame):
     # onDestroys down the tree
     # event.skip will override the veto(), but that's dumb
     # so don't use it
-    echo "PlacementFrame onClose; hiding"
-    self.hide()
-    sendToListeners(idPLFHiding, self.handle.WPARAM, 0)
-    event.veto()
+    when defined(cacheDialogs):
+      when defined(debug):
+        echo "PlacementFrame onClose hiding; sending idPLFHiding"
+      self.hide()
+      sendToW32Listeners(idPLFHiding, self.handle.WPARAM, 0)
+      event.veto()
+    else:
+      when defined(debug):
+        echo "PlacementFrame onClose"
+
+
 
   proc onDestroy(self: wPlacementFrame) =
     # event.veto doesn't do anything here
     # Do cleanup and announcements here
     when defined(debug):
-      echo "PlacementFrame onDestroy; sending idPFDestroying"
-    # TODO: Do listener deregistering here
-    sendToListeners(idPLFDestroying, self.handle.WPARAM, 0)
+      echo "PlacementFrame onDestroy; sending idPLFDestroying"
+    sendToW32Listeners(idPLFDestroying, self.handle.WPARAM, 0)
+    deregisterW32Listener(self)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
     wFrame(self).init(owner, title = "Placement")
@@ -912,8 +920,13 @@ when isMainModule:
       app = App()
       appFrame = Frame(nil, title="Fake Application Frame")
       goButton = Button(appFrame, label="Press me")
-    plf = PlacementFrame(appFrame)
-    goButton.wEvent_Button do(): plf.show()
+    when defined(cacheDialogs):
+      plf = PlacementFrame(appFrame)
+    goButton.wEvent_Button do(): 
+      if plf.isNil:
+        plf = PlacementFrame(appFrame)
+        plf.wEvent_Destroy do(): plf = nil
+      plf.show()
     appFrame.show()
     app.mainLoop()
   except Exception as e:
