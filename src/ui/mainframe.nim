@@ -12,6 +12,7 @@ import editor
 import grid
 import jsoninit
 import monoprofile
+import pubsub
 import reporting
 import viewport
 
@@ -178,6 +179,7 @@ wClass(wMainFrame of wFrame):
         echo "Number of win32 listener handles: ", uniqueHandles().len
         echo "Listener table:"
         echo gEventListeners
+        echo psStats()
         # TODO: show channels, listeners, font cache, etc.
     of idCmdAbout:
       let f = AboutFrame(self)
@@ -185,7 +187,7 @@ wClass(wMainFrame of wFrame):
     of idCmdGridShow:
       # We know this comes from the second toolbar in the rebar hence [1]
       let state = self.bandToolbars[1].toolState(idCmdGridShow)
-      sendToW32Listeners(idGCFVisible, self.mHwnd.WPARAM, state.LPARAM)
+      w32SendToListeners(idGCFVisible, self.mHwnd.WPARAM, state.LPARAM)
     of idCmdGridSetting:
       if self.mainPanel.isNil: return
       if self.gcf.isNil:
@@ -245,14 +247,14 @@ wClass(wMainFrame of wFrame):
         echo "refXSpace:   ", gr.refXSpace
         echo "minDelta:    ", gr.minDelta(Major)
         # Send message to update display to both X and Y
-        sendToW32Listeners(idGCFSizeX, event.wParam, event.lParam)
-        sendToW32Listeners(idGCFSizeY, event.wParam, event.lParam)
+        w32SendToListeners(idGCFSizeX, event.wParam, event.lParam)
+        w32SendToListeners(idGCFSizeY, event.wParam, event.lParam)
       elif event.mMsg == idGCFRequestY:
         gr.refYSpace = newsz
         # Send message to update display to only Y
-        sendToW32Listeners(idGCFSizeY, event.wParam, event.lParam)
+        w32SendToListeners(idGCFSizeY, event.wParam, event.lParam)
       self.refreshCanvas()
-      sendToW32Listeners(idGCFDivisionsReset, 0, 0)
+      w32SendToListeners(idGCFDivisionsReset, 0, 0)
 
   proc onGCFDivisionsSelect(self: wMainFrame, event: wEvent) =
     # Change divisions based on given index and force zoom
@@ -346,7 +348,7 @@ wClass(wMainFrame of wFrame):
       echo "MainFrame onGCFHiding"
     self.bandToolbars[1].toggleTool(idCmdGridSetting, false)
 
-  proc isCFGShowing*(self: wMainFrame): bool =
+  proc isGCFShowing*(self: wMainFrame): bool =
     not self.gcf.isnil and self.gcf.isShown
 
   proc onPLFDestroying(self: wMainFrame, event: wEvent) =
@@ -389,7 +391,7 @@ wClass(wMainFrame of wFrame):
   proc onDestroy(self: wMainFrame) =
     when defined(debug):
       echo "MainFrame onDestroy"
-    deregisterW32Listener(self)
+    w32RemoveListener(self)
     echo gEventListeners
 
   proc init*(self: wMainFrame, size: wSize, barebones: bool) =
@@ -442,21 +444,21 @@ wClass(wMainFrame of wFrame):
     self.startTimer(0.0,   id=1) # one-shot to start
 
     # Respond to incoming messages
-    registerW32Listener(self, idGCFRequestX,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
-    registerW32Listener(self, idGCFRequestY,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
-    registerW32Listener(self, idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onGCFDivisionsSelect(w.wMainFrame, e))
-    registerW32Listener(self, idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onGCFDivisionsValue(w.wMainFrame, e))
-    registerW32Listener(self, idGCFDensity,         (w:wWindow, e:wEvent)=>onGCFDensity(w.wMainFrame, e))
-    registerW32Listener(self, idGCFSnap,            (w:wWindow, e:wEvent)=>onGCFSnap(w.wMainFrame, e))
-    registerW32Listener(self, idGCFDynamic,         (w:wWindow, e:wEvent)=>onGCFDynamic(w.wMainFrame, e))
-    registerW32Listener(self, idGCFBaseSync,        (w:wWindow, e:wEvent)=>onGCFBaseSync(w.wMainFrame, e))
-    registerW32Listener(self, idGCFVisible,         (w:wWindow, e:wEvent)=>onGCFVisible(w.wMainFrame, e))
-    registerW32Listener(self, idGCFDots,            (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
-    registerW32Listener(self, idGCFLines,           (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
-    registerW32Listener(self, idGCFHiding    ,      (w:wWindow, e:wEvent)=>onGCFHiding(w.wMainFrame, e))
-    registerW32Listener(self, idGCFDestroying,      (w:wWindow, e:wEvent)=>onGCFDestroying(w.wMainFrame, e))
-    registerW32Listener(self, idPLFHiding,          (w:wWindow, e:wEvent)=>onPLFHiding(w.wMainFrame, e))
-    registerW32Listener(self, idPLFDestroying,      (w:wWindow, e:wEvent)=>onPLFDestroying(w.wMainFrame, e))
+    w32AddListener(self, idGCFRequestX,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
+    w32AddListener(self, idGCFRequestY,        (w:wWindow, e:wEvent)=>onGCFSize(w.wMainFrame, e))
+    w32AddListener(self, idGCFDivisionsSelect, (w:wWindow, e:wEvent)=>onGCFDivisionsSelect(w.wMainFrame, e))
+    w32AddListener(self, idGCFDivisionsValue,  (w:wWindow, e:wEvent)=>onGCFDivisionsValue(w.wMainFrame, e))
+    w32AddListener(self, idGCFDensity,         (w:wWindow, e:wEvent)=>onGCFDensity(w.wMainFrame, e))
+    w32AddListener(self, idGCFSnap,            (w:wWindow, e:wEvent)=>onGCFSnap(w.wMainFrame, e))
+    w32AddListener(self, idGCFDynamic,         (w:wWindow, e:wEvent)=>onGCFDynamic(w.wMainFrame, e))
+    w32AddListener(self, idGCFBaseSync,        (w:wWindow, e:wEvent)=>onGCFBaseSync(w.wMainFrame, e))
+    w32AddListener(self, idGCFVisible,         (w:wWindow, e:wEvent)=>onGCFVisible(w.wMainFrame, e))
+    w32AddListener(self, idGCFDots,            (w:wWindow, e:wEvent)=>onGCFDots(w.wMainFrame, e))
+    w32AddListener(self, idGCFLines,           (w:wWindow, e:wEvent)=>onGCFLines(w.wMainFrame, e))
+    w32AddListener(self, idGCFHiding    ,      (w:wWindow, e:wEvent)=>onGCFHiding(w.wMainFrame, e))
+    w32AddListener(self, idGCFDestroying,      (w:wWindow, e:wEvent)=>onGCFDestroying(w.wMainFrame, e))
+    w32AddListener(self, idPLFHiding,          (w:wWindow, e:wEvent)=>onPLFHiding(w.wMainFrame, e))
+    w32AddListener(self, idPLFDestroying,      (w:wWindow, e:wEvent)=>onPLFDestroying(w.wMainFrame, e))
 
     if not barebones:
       self.mainPanel = MainPanel(self)

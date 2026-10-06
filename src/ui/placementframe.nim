@@ -424,11 +424,22 @@ wClass(wPlacementPanel of wPanel):
     dc.setPen(Pen(gButtonAreaColor.wColor))
     dc.drawRectangle(0, sz.height - bh, sz.width, bh)
 
+
   proc onDestroy(self: wPlacementPanel) =
     # Clean up pubsub
     when defined(debug):
       echo "PlacementPanel onDestroy"
-    deregisterW32Listener(self)
+    w32RemoveListener(self)
+    psRemoveListeners(self)
+
+    # psRemoveListener(self.qtyListener)
+    # psRemoveListener(self.regionListener)
+    # psRemoveListener(self.regionXListener)
+    # psRemoveListener(self.regionYListener)
+    # psRemoveListener(self.regionWListener)
+    # psRemoveListener(self.regionHListener)
+    # psRemoveListener(self.startTempListener)
+    # psRemoveListener(self.currTempListener)
 
   proc onTextFocus(self: wPlacementPanel, event: wEvent) = 
     cast[wTextCtrl](event.window).setInsertionPointEnd()
@@ -859,21 +870,19 @@ wClass(wPlacementFrame of wFrame):
       when defined(debug):
         echo "PlacementFrame onClose hiding; sending idPLFHiding"
       self.hide()
-      sendToW32Listeners(idPLFHiding, self.handle.WPARAM, 0)
+      w32SendToListeners(idPLFHiding, self.handle.WPARAM, 0)
       event.veto()
     else:
       when defined(debug):
         echo "PlacementFrame onClose"
-
-
 
   proc onDestroy(self: wPlacementFrame) =
     # event.veto doesn't do anything here
     # Do cleanup and announcements here
     when defined(debug):
       echo "PlacementFrame onDestroy; sending idPLFDestroying"
-    sendToW32Listeners(idPLFDestroying, self.handle.WPARAM, 0)
-    deregisterW32Listener(self)
+    w32SendToListeners(idPLFDestroying, self.handle.WPARAM, 0)
+    w32RemoveListener(self)
 
   proc init*(self: wPlacementFrame, owner: wWindow) =
     wFrame(self).init(owner, title = "Placement")
@@ -899,22 +908,21 @@ when isMainModule:
   try:
     gAppOpts = parseAppOptions()
     wSetSystemDPIAware()
-    psAddListener(QtyRequest, proc(qty: int) = localQty=qty; publish(QtyChanged, localQty))
-    psAddListener(QtyChanged, proc(qty: int) = echo "Listener says Qty: ", qty)
-    psAddListener(RandAll, proc() = echo "Listener says RandAll")
-    psAddListener(RandPos, proc() = echo "Listener says RandPos")
-    psAddListener(Test, proc() = echo "Listener says Test")
-    psAddListener(RegionXRequest, proc(x: float) = localRX = x; publish(RegionXChanged, localRX))
-    psAddListener(RegionXChanged, proc(x: float) = echo "Listener says RegionX: ", x)
-    psAddListener(RegionYRequest, proc(y: float) = localRY = y; publish(RegionYChanged, localRY))
-    psAddListener(RegionYChanged, proc(y: float) = echo "Listener says RegionY: ", y)
-    psAddListener(RegionWRequest, proc(w: float) = localRW = w; publish(RegionWChanged, localRW))
-    psAddListener(RegionWChanged, proc(w: float) = echo "Listener says RegionW: ", w)
-    psAddListener(RegionHRequest, proc(h: float) = localRH = h; publish(RegionHChanged, localRH))
-    psAddListener(RegionHChanged, proc(h: float) = echo "Listener says RegionH: ", h)
-    psAddListener(CompactReq, proc(req: CompactRequest) =
+    let li01  = psAddListener(QtyRequest, proc(qty: int) = localQty=qty; publish(QtyChanged, localQty))
+    let li02  = psAddListener(QtyChanged, proc(qty: int) = echo "Listener says Qty: ", qty)
+    let li03  = psAddListener(RandAll, proc() = echo "Listener says RandAll")
+    let li04  = psAddListener(RandPos, proc() = echo "Listener says RandPos")
+    let li05  = psAddListener(Test, proc() = echo "Listener says Test")
+    let li06  = psAddListener(RegionXRequest, proc(x: float) = localRX = x; publish(RegionXChanged, localRX))
+    let li07  = psAddListener(RegionXChanged, proc(x: float) = echo "Listener says RegionX: ", x)
+    let li08  = psAddListener(RegionYRequest, proc(y: float) = localRY = y; publish(RegionYChanged, localRY))
+    let li09  = psAddListener(RegionYChanged, proc(y: float) = echo "Listener says RegionY: ", y)
+    let li10 = psAddListener(RegionWRequest, proc(w: float) = localRW = w; publish(RegionWChanged, localRW))
+    let li11 = psAddListener(RegionWChanged, proc(w: float) = echo "Listener says RegionW: ", w)
+    let li12 = psAddListener(RegionHRequest, proc(h: float) = localRH = h; publish(RegionHChanged, localRH))
+    let li13 = psAddListener(RegionHChanged, proc(h: float) = echo "Listener says RegionH: ", h)
+    let li14 = psAddListener(CompactReq, proc(req: CompactRequest) =
       echo "Listener says CompactRequest: ", req)
-    psAddListener(Undo, proc() = echo "Listener says Undo")
 
     let
       app = App()
@@ -929,6 +937,21 @@ when isMainModule:
       plf.show()
     appFrame.show()
     app.mainLoop()
+    psRemoveListener(li01)
+    psRemoveListener(li02)
+    psRemoveListener(li03)
+    psRemoveListener(li04)
+    psRemoveListener(li05)
+    psRemoveListener(li06)
+    psRemoveListener(li07)
+    psRemoveListener(li08)
+    psRemoveListener(li09)
+    psRemoveListener(li10)
+    psRemoveListener(li11)
+    psRemoveListener(li12)
+    psRemoveListener(li13)
+    psRemoveListener(li14)
+
   except Exception as e:
     echo e.msg
     echo e.getStackTrace()

@@ -80,14 +80,14 @@ proc uniqueHandles*(): HashSet[HANDLE] =
     for handle in handles:
       result.incl(handle)
 
-proc registerW32Listener*(listener: wWindow, msg: int32, callback: MsgProc) =
+proc w32AddListener*(listener: wWindow, msg: int32, callback: MsgProc) =
   # This makes window receive messages
   if msg notin gEventListeners:
     gEventListeners[msg] = @[]
   gEventListeners[msg].add(listener.mHwnd)
   listener.connect(msg) do (event: wEvent): callback(listener, event)
 
-proc deregisterW32Listener*(listener: wWindow) = 
+proc w32RemoveListener*(listener: wWindow) = 
   echo "Deregistering ", listener.mHwnd
   var keysToDelete: seq[int32] = @[]
   let handle: HANDLE = listener.mHwnd
@@ -103,7 +103,7 @@ proc deregisterW32Listener*(listener: wWindow) =
     echo "Deregistered ", cnt, " listeners"
     echo uniqueHandles().len, " handles left"
 
-proc sendToW32Listeners*(msg: int32, wp: WPARAM, lp: LPARAM) =
+proc w32SendToListeners*(msg: int32, wp: WPARAM, lp: LPARAM) =
   # msg is the message
   # wp is usually the hwnd of the sender
   # lp is usually the value to be sent

@@ -23,7 +23,3 @@ proc parseNumber*[T:SomeNumber](s: string): Option[T] =
     return some(val)
   else:
     return none(T)
-
-echo parseNumber[int]("12")
-echo parseNumber[int]("0")
-echo parseNumber[int]("")

@@ -176,13 +176,13 @@ wClass(wGridControlPanel of wPanel):
   proc onDestroy(self: wGridControlPanel) =
     when defined(debug):
       echo "GridControlPanel onDestroy"
-    deregisterW32Listener(self)
+    w32RemoveListener(self)
+    # psRemoveListener(self)
 
   proc onButtonDone(self: wGridControlpanel) =
     # Post message for asynchronous close; otherwise if we do self.parent.close()
     # we get a synchronous close which destroys this button while still in the handler
     discard PostMessage(self.parent.handle, WM_CLOSE, 0, 0)
-
 
   proc eventMatchAndStrip(self: wGridControlPanel, event: wEvent): (wWindow, string) =
     let txtCtrls = [self.txtX, self.txtY]
@@ -234,58 +234,52 @@ wClass(wGridControlPanel of wPanel):
       hi32 = (valptr shr 32).uint32
       lo32 = (valptr and 0xffff_ffff'u64).uint32
     if event.mOrigin == self.txtX.mHwnd:
-      sendToW32Listeners(idGCFRequestX, hi32.WPARAM, lo32.LPARAM)
+      w32SendToListeners(idGCFRequestX, hi32.WPARAM, lo32.LPARAM)
     elif event.mOrigin == self.txtY.mHwnd:
-      sendToW32Listeners(idGCFRequestY, hi32.WPARAM, lo32.LPARAM)
-
+      w32SendToListeners(idGCFRequestY, hi32.WPARAM, lo32.LPARAM)
   proc onCmdCbDivisionsSelect(self: wGridControlPanel, event: wEvent) =
     let index = self.cbDivisions.selection
-    sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
-
+    w32SendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
   proc onCmdCbDivisionsTextEnter(self: wGridControlPanel, event: wEvent) =
     # Check if user-inputted text matches allowed divisions and send index if so
     # If not, then try to parse it as a number and send value
     let strval = self.cbDivisions.value
     var index = self.cbDivisions.findText(strval)
     if index >= 0:
-      sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+      w32SendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
     else:
       var val: int
       if parseNumber(strval, val):
         index = self.cbDivisions.findText($val)
         if index >= 0:
           # value found
-          sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
+          w32SendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, index.LPARAM)
         else:
           # value not found, clamp to within range
           let cval = clamp(val, DivRange.low, DivRange.high)
-          sendToW32Listeners(idGCFDivisionsValue, self.mHwnd.WPARAM, cval.LPARAM)
+          w32SendToListeners(idGCFDivisionsValue, self.mHwnd.WPARAM, cval.LPARAM)
     # inputted value cannot be made into integer; don't send anything
-
-
   proc onCmdSliderDensity(self: wGridControlPanel, event: wEvent) =
     let finalval = self.slDensity.getValue()
-    sendToW32Listeners(idGCFDensity, self.mHWnd.WPARAM, finalval.LPARAM)
-  #---
+    w32SendToListeners(idGCFDensity, self.mHWnd.WPARAM, finalval.LPARAM)
   proc onCmdSnap(self: wGridControlPanel, event: wEvent) =
     let state = self.cbSnap.value
-    sendToW32Listeners(idGCFSnap, self.mHwnd, state.LPARAM)
+    w32SendToListeners(idGCFSnap, self.mHwnd, state.LPARAM)
   proc onCmdDynamic(self: wGridControlPanel, event: wEvent) =
     let state = self.cbDynamic.value
-    sendToW32Listeners(idGCFDynamic, self.mHwnd, state.LPARAM)
+    w32SendToListeners(idGCFDynamic, self.mHwnd, state.LPARAM)
   proc onCmdGridBaseSync(self: wGridControlPanel, event: wEvent) =
     let state = self.cbBaseSync.value
-    sendToW32Listeners(idGCFBaseSync, self.mHwnd, state.LPARAM)
-  #--
+    w32SendToListeners(idGCFBaseSync, self.mHwnd, state.LPARAM)
   proc onCmdGridVisible(self: wGridControlPanel, event: wEvent) =
     let state = self.cbVisible.value
-    sendToW32Listeners(idGCFVisible, self.mHwnd, state.LPARAM)
+    w32SendToListeners(idGCFVisible, self.mHwnd, state.LPARAM)
   proc onCmdDots(self: wGridControlPanel, event: wEvent) =
     let state = self.rbDots.value
-    sendToW32Listeners(idGCFDots, self.mHwnd, state.LPARAM)
+    w32SendToListeners(idGCFDots, self.mHwnd, state.LPARAM)
   proc onCmdLines(self: wGridControlPanel, event: wEvent) =
     let state = self.rbLines.value
-    sendToW32Listeners(idGCFLines, self.mHwnd, state.LPARAM)
+    w32SendToListeners(idGCFLines, self.mHwnd, state.LPARAM)
 
   # Respond to incoming messages, including from self
   # Update local UI only.  Don't do anything else.
@@ -317,20 +311,17 @@ wClass(wGridControlPanel of wPanel):
     let oldval = self.grid.divisions
     let newidx = self.cbDivisions.findText($oldval)
     if newidx >= 0:
-      sendToW32Listeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
+      w32SendToListeners(idGCFDivisionsSelect, self.mHwnd.WPARAM, newidx.LPARAM)
     else:
-      sendToW32Listeners(idGCFDivisionsValue, self.mHwnd.WPARAM, oldval.LPARAM)
-
+      w32SendToListeners(idGCFDivisionsValue, self.mHwnd.WPARAM, oldval.LPARAM)
   proc onGCFDensity(self: wGridControlPanel, event: wEvent) =
     self.slDensity.setValue(event.lParam)
-  #--
   proc onGCFSnap(self: wGridControlPanel, event: wEvent) =
     self.cbSnap.value = event.lParam.bool
   proc onGCFDynamic(self: wGridControlPanel, event: wEvent) =
     self.cbDynamic.value = event.lParam.bool
   proc onGCFBaseSync(self: wGridControlPanel, event: wEvent) =
     self.cbBaseSync.value = event.lParam.bool
-  #--
   proc onGCFVisible(self: wGridControlPanel, event: wEvent) =
     let state = event.lParam.bool
     self.cbVisible.value = state
@@ -427,19 +418,19 @@ wClass(wGridControlPanel of wPanel):
       self.bDone.wEvent_Button          do(): self.onButtonDone()
 
     block: # Update controls from outside messages
-      registerW32Listener(self, idGCFSizeX,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFSizeY,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFDivisionsSelect, (w: wWindow, e: wEvent)=>(onGCFDivisionsSelect(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFDivisionsValue,  (w: wWindow, e: wEvent)=>(onGCFDivisionsValue(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFDivisionsReset,  (w: wWindow, e: wEvent)=>(onGCFDivisionsReset(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFDensity,         (w: wWindow, e: wEvent)=>(onGCFDensity(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFSnap,            (w: wWindow, e: wEvent)=>(onGCFSnap(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFDynamic,         (w: wWindow, e: wEvent)=>(onGCFDynamic(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFBaseSync,        (w: wWindow, e: wEvent)=>(onGCFBaseSync(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFVisible,         (w: wWindow, e: wEvent)=>(onGCFVisible(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFDots,            (w: wWindow, e: wEvent)=>(onGCFDots(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFLines,           (w: wWindow, e: wEvent)=>(onGCFLines(w.wGridControlPanel, e)))
-      registerW32Listener(self, idGCFZoom,            (w: wWindow, e: wEvent)=>(onGCFZoom(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFSizeX,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFSizeY,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFDivisionsSelect, (w: wWindow, e: wEvent)=>(onGCFDivisionsSelect(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFDivisionsValue,  (w: wWindow, e: wEvent)=>(onGCFDivisionsValue(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFDivisionsReset,  (w: wWindow, e: wEvent)=>(onGCFDivisionsReset(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFDensity,         (w: wWindow, e: wEvent)=>(onGCFDensity(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFSnap,            (w: wWindow, e: wEvent)=>(onGCFSnap(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFDynamic,         (w: wWindow, e: wEvent)=>(onGCFDynamic(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFBaseSync,        (w: wWindow, e: wEvent)=>(onGCFBaseSync(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFVisible,         (w: wWindow, e: wEvent)=>(onGCFVisible(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFDots,            (w: wWindow, e: wEvent)=>(onGCFDots(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFLines,           (w: wWindow, e: wEvent)=>(onGCFLines(w.wGridControlPanel, e)))
+      w32AddListener(self, idGCFZoom,            (w: wWindow, e: wEvent)=>(onGCFZoom(w.wGridControlPanel, e)))
 
     block: # Initial values
       if not self.grid.isnil:
@@ -462,7 +453,7 @@ wClass(wGridControlFrame of wFrame):
       when defined(debug):
         echo "GridControlFrame onClose hiding; sending idGCFHiding"
       self.hide()
-      sendToW32Listeners(idGCFHiding, self.handle.WPARAM, 0)
+      w32SendToListeners(idGCFHiding, self.handle.WPARAM, 0)
       event.veto()
     else:
       when defined(debug):
@@ -473,8 +464,8 @@ wClass(wGridControlFrame of wFrame):
     # Do cleanup and announcements here
     when defined(debug):
       echo "GridControlFrame onDestroy; sending idGCFDestroying"
-    sendToW32Listeners(idGCFDestroying, self.mHwnd.WPARAM, 0)
-    deregisterW32Listener(self)
+    w32SendToListeners(idGCFDestroying, self.handle.WPARAM, 0)
+    w32RemoveListener(self)
 
   proc init*(self: wGridControlFrame, owner: wWindow, gr: Grid=nil) =
     let
