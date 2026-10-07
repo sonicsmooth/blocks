@@ -2,6 +2,8 @@ import std/[os, parseopt, strutils, strformat]
 import jsoninit
 import world
 
+# TODO: add some hierarchy to appopts
+
 type
   RenderMethod* = enum
     SDLDirect, SDLTexture, PixieTexture, PixieLock

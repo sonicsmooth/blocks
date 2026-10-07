@@ -33,7 +33,7 @@ You can send a single-topic data like CompactRequest:
 
 # Domain-specific keys (topics) for the pubsub mechanism
 type
-  CompactDlgPubSubTopic* = enum
+  CompactDlgTopic* = enum
     Test, RandAll, RandPos, Undo,      # Signals only -- no data type
     QtyRequest, QtyChanged,            # Integers
     SelectedChanged,                   # Integer
@@ -44,7 +44,16 @@ type
     RegionRequest,    RegionChanged,   # WRect
     StartTempRequest, CurrTempChanged, # Floats
     CompactReq                    # CompactRequest
-  AnotherDlgPubSubTopic* = enum DpsJunk1, DpsJunk2, DpsJunk3
+  GridDlgTopic* = enum
+    XRequest, XChanged,                     # Float
+    DivRequest, DivChanged,                 # String
+    MagRequest, MagChanged,                 # Float
+    SnapRequest, SnapChanged,               # Bool
+    DynamicRequest, DynamicChanged,         # Bool
+    CoolZoomRequest, CoolZoomChanged,       # Bool
+    VisibleRequest, VisibleChanged,         # Bool
+    DotsorLinesRequest, DotsorLinesChanged, # Bool
+
 
   # Define some types of things that go across the pubsub mechanism
   # This is in addition to any other object that already exists
@@ -59,43 +68,43 @@ type
     replacementFunction*: ReplacementOption
     startTemp*: float
     doMonitor*: bool
-  DummyRequest* = object  # Placeholder to satisfy some other tbd topic
-    placeholder1*: int
-    placeholder2*: float
-    placeholder3*: string
 
   # Define the types of listener tables
   Listener*[T] = proc(data: T) {.closure.}
   PubSubTable[K, T] = Table[K, seq[Listener[T]]]
 
 var
-  gPubSubEvents:          PubSubTable[CompactDlgPubSubTopic, Event]
-  gPubSubInts:            PubSubTable[CompactDlgPubSubTopic, int]
-  gPubSubInt32s:          PubSubTable[CompactDlgPubSubTopic, int32]
-  gPubSubFloats:          PubSubTable[CompactDlgPubSubTopic, float]
-  gPubSubPxRects:         PubSubTable[CompactDlgPubSubTopic, PxRect]
-  gPubSubWRects:          PubSubTable[CompactDlgPubSubTopic, WRect]
-  gPubSubCompactRequests: PubSubTable[CompactDlgPubSubTopic, CompactRequest]
-  gPubSubDummyEvents:     PubSubTable[AnotherDlgPubSubTopic, Event]
-  gPubSubDummyInts:       PubSubTable[AnotherDlgPubSubTopic, int]
-  gPubSubDummyInt32s:     PubSubTable[AnotherDlgPubSubTopic, int32]
-  gPubSubDummyFloats:     PubSubTable[AnotherDlgPubSubTopic, float]
+  gCompactDlgEvents:      PubSubTable[CompactDlgTopic, Event]
+  gCompactDlgInts:        PubSubTable[CompactDlgTopic, int]
+  gCompactDlgInt32s:      PubSubTable[CompactDlgTopic, int32]
+  gCompactDlgFloats:      PubSubTable[CompactDlgTopic, float]
+  gCompactDlgPxRects:     PubSubTable[CompactDlgTopic, PxRect]
+  gCompactDlgWRects:      PubSubTable[CompactDlgTopic, WRect]
+  gCompactDlgCompactReqs: PubSubTable[CompactDlgTopic, CompactRequest]
+  gGridDlgEvents:         PubSubTable[GridDlgTopic, Event]
+  gGridDlgDotsOrLines:    PubSubTable[GridDlgTopic, DotsOrLines]
+  gGridDlgBools:          PubSubTable[GridDlgTopic, bool]
+  gGridDlgInts:           PubSubTable[GridDlgTopic, int]
+  gGridDlgInt32s:         PubSubTable[GridDlgTopic, int32]
+  gGridDlgFloats:         PubSubTable[GridDlgTopic, float]
 
 template topicTable(K, T: typedesc): untyped =
-  when K is CompactDlgPubSubTopic:
-    when T is Event: gPubSubEvents
-    elif T is int: gPubSubInts
-    elif T is int32: gPubSubInt32s
-    elif T is float: gPubSubFloats
-    elif T is PxRect: gPubSubPxRects
-    elif T is WRect: gPubSubWRects
-    elif T is CompactRequest: gPubSubCompactRequests
+  when K is CompactDlgTopic:
+    when T is Event: gCompactDlgEvents
+    elif T is int: gCompactDlgInts
+    elif T is int32: gCompactDlgInt32s
+    elif T is float: gCompactDlgFloats
+    elif T is PxRect: gCompactDlgPxRects
+    elif T is WRect: gCompactDlgWRects
+    elif T is CompactRequest: gCompactDlgCompactReqs
     else: {.error: "No pubsub table for " & $K & "/" & $T.}
-  elif K is AnotherDlgPubSubTopic:
-    when T is Event: gPubSubDummyEvents
-    elif T is int: gPubSubDummyInts
-    elif T is int32: gPubSubDummyInt32s
-    elif T is float: gPubSubDummyFloats
+  elif K is GridDlgTopic:
+    when T is Event: gGridDlgEvents
+    elif T is DotsOrLines: gGridDlgDotsOrLines
+    elif T is bool: gGridDlgBools
+    elif T is int: gGridDlgInts
+    elif T is int32: gGridDlgInt32s
+    elif T is float: gGridDlgFloats
     else: {.error: "No pubsub table for " & $K & "/" & $T.}
   else:
     {.error: "No topic-kind registered for " & $K.}
@@ -103,11 +112,11 @@ template topicTable(K, T: typedesc): untyped =
 
 template forEachTopicKind(T: typedesc, body: untyped) =
   block:
-    type K {.inject.} = CompactDlgPubSubTopic
+    type K {.inject.} = CompactDlgTopic
     when compiles(topicTable(K, T)):
       body
   block:
-    type K {.inject.} = AnotherDlgPubSubTopic
+    type K {.inject.} = GridDlgTopic
     when compiles(topicTable(K, T)):
       body
 
@@ -125,29 +134,31 @@ proc psLens(): string =
   var totalListeners = 0
   var s, outstr: string
   var t, total: int
-  (s, t) = tableLens("gPubSubEvents", gPubSubEvents); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubInts", gPubSubInts); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubInt32s", gPubSubInt32s); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubFloats", gPubSubFloats); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubPxRects", gPubSubPxRects); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubWRects", gPubSubWRects); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubCompactRequests", gPubSubCompactRequests); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubDummyEvents", gPubSubDummyEvents); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubDummyInts", gPubSubDummyInts); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubDummyInt32s", gPubSubDummyInt32s); outstr &= s; total += t
-  (s, t) = tableLens("gPubSubDummyFloats", gPubSubDummyFloats, newline=false); outstr &= s; total += t
+  (s, t) = tableLens("gCompactDlgEvents", gCompactDlgEvents); outstr &= s; total += t
+  (s, t) = tableLens("gCompactDlgInts", gCompactDlgInts); outstr &= s; total += t
+  (s, t) = tableLens("gCompactDlgInt32s", gCompactDlgInt32s); outstr &= s; total += t
+  (s, t) = tableLens("gCompactDlgFloats", gCompactDlgFloats); outstr &= s; total += t
+  (s, t) = tableLens("gCompactDlgPxRects", gCompactDlgPxRects); outstr &= s; total += t
+  (s, t) = tableLens("gCompactDlgWRects", gCompactDlgWRects); outstr &= s; total += t
+  (s, t) = tableLens("gCompactDlgCompactReqs", gCompactDlgCompactReqs); outstr &= s; total += t
+  (s, t) = tableLens("gGridDlgEvents", gGridDlgEvents); outstr &= s; total += t
+  (s, t) = tableLens("gGridDlgDotsOrLines", gGridDlgDotsOrLines); outstr &= s; total += t
+  (s, t) = tableLens("gGridDlgBools", gGridDlgBools); outstr &= s; total += t
+  (s, t) = tableLens("gGridDlgInts", gGridDlgInts); outstr &= s; total += t
+  (s, t) = tableLens("gGridDlgInt32s", gGridDlgInt32s); outstr &= s; total += t
+  (s, t) = tableLens("gGridDlgFloats", gGridDlgFloats, newline=false); outstr &= s; total += t
   echo outstr
   echo "Total listeners: ", total
 
 
-proc soleTopic*(t: typedesc[CompactRequest]): CompactDlgPubSubTopic = CompactReq
+proc soleTopic*(t: typedesc[CompactRequest]): CompactDlgTopic = CompactReq
 
 # Generic registration that takes any topic and any data type
 # example: psAddListener(someJunkId, proc(data: SomeType) = echo data)
 proc psAddListener*[K, T](topic: K, listener: Listener[T]): Listener[T] {.discardable.} =
   topicTable(K, T).mgetOrPut(topic, @[]).add(listener)
-  echo "Adding Listener [", $K, ", ", $T, "]"
-  echo psLens()
+  # echo "Adding Listener [", $K, ", ", $T, "]"
+  # echo psLens()
   listener
 
 # Specific registration for signals that don't carry data, ie buttons
@@ -163,8 +174,8 @@ proc psAddListener*[T](listener: Listener[T]): Listener[T] {.discardable.}=
 
 proc psRemoveListener*[T](listener: Listener[T]) =
   # Go through all topics
-  echo "Before"
-  echo psLens()
+  # echo "Before"
+  # echo psLens()
   forEachTopicKind(T):
     var pTable = topicTable(K, T).addr
     var emptyTopics: seq[K]
@@ -174,25 +185,16 @@ proc psRemoveListener*[T](listener: Listener[T]) =
         emptyTopics.add(topic)
     for topic in emptyTopics:
       pTable[].del(topic)
-  echo "\nAfter"
-  echo psLens()
+  # echo "\nAfter"
+  # echo psLens()
 
 proc psRemoveListeners*[T](self: T) =
   for name, value in self[].fieldPairs:
     when value is Listener:
-      echo name
+      # echo name
       psRemoveListener(value)
 
 
-
-# let myfn1 = proc(x: int) {.closure.} = echo "hi"
-# let myfn2 = proc(x: int) {.closure.} = echo "bye"
-# psAddListener(SelectedChanged, myfn1)
-# # psAddListener(SelectedChanged, myfn2)
-# # psAddListener(QtyRequest, myfn1)
-# psRemoveListener(myfn1)
-# # psRemoveListener(myfn2)
-# # echo gPubSubInts.len
 
 # Generic publish that takes any topic and any data type
 # example: publish(someJunkId, someData)
@@ -203,7 +205,7 @@ proc publish*[K, T](topic: K, data: T) =
 
 # Specific publish for signals that don't carry data
 # example: publish(Test)
-proc publish*(topic: CompactDlgPubSubTopic) =
+proc publish*(topic: CompactDlgTopic) =
   publish(topic, Event())
 
 # Specific publish for soletopic data, eg CompactRequest
@@ -212,14 +214,16 @@ proc publish*[T](data: T) =
   publish(soleTopic(T), data)
 
 proc psStats*(): string =
-  echo "gPubSubEvents: ", gPubSubEvents.len
-  echo "gPubSubInts: ", gPubSubInts.len
-  echo "gPubSubInt32s: ", gPubSubInt32s.len
-  echo "gPubSubFloats: ", gPubSubFloats.len
-  echo "gPubSubPxRects: ", gPubSubPxRects.len
-  echo "gPubSubWRects: ", gPubSubWRects.len
-  echo "gPubSubCompactRequests: ", gPubSubCompactRequests.len
-  echo "gPubSubDummyEvents: ", gPubSubDummyEvents.len
-  echo "gPubSubDummyInts: ", gPubSubDummyInts.len
-  echo "gPubSubDummyInt32s: ", gPubSubDummyInt32s.len
-  echo "gPubSubDummyFloats: ", gPubSubDummyFloats.len
+  echo "gCompactDlgEvents: ", gCompactDlgEvents.len
+  echo "gCompactDlgInts: ", gCompactDlgInts.len
+  echo "gCompactDlgInt32s: ", gCompactDlgInt32s.len
+  echo "gCompactDlgFloats: ", gCompactDlgFloats.len
+  echo "gCompactDlgPxRects: ", gCompactDlgPxRects.len
+  echo "gCompactDlgWRects: ", gCompactDlgWRects.len
+  echo "gCompactDlgCompactReqs: ", gCompactDlgCompactReqs.len
+  echo "gGridDlgEvents: ", gGridDlgEvents.len
+  echo "gGridDlgDotsOrLines: ", gGridDlgDotsOrLines.len
+  echo "gGridDlgBools: ", gGridDlgBools.len
+  echo "gGridDlgInts: ", gGridDlgInts.len
+  echo "gGridDlgInt32s: ", gGridDlgInt32s.len
+  echo "gGridDlgFloats: ", gGridDlgFloats.len

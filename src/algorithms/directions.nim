@@ -1,5 +1,6 @@
 
 # These are types shared by compact algorithm and compact dialog box
+# and Grid dialog box.
 type
   CompactDir* = enum 
     Left, Right, Up, Down,
@@ -9,6 +10,7 @@ type
   CompactMethod* = enum None, Stack, Anneal
   StrategyOption* = enum Strat1, Strat2
   ReplacementOption* = enum Wiggle, Swap
+  DotsOrLines* = enum Dots, Lines
 
 
 

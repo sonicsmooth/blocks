@@ -1,7 +1,7 @@
-#import std/os
 from std/strutils import strip
-import std/math
+import std/[math, sugar]
 
+# non wNim-dependent imports
 import appopts
 import directions
 import monoprofile
@@ -9,8 +9,10 @@ import pubsub
 import utils
 import world
 
+# wNim-dependent imports
 import icons
 import uicommon
+import txtctrl
 import w32routing
 import wnimutils
 
@@ -28,7 +30,7 @@ type
 
     # Static Texts
     stQty, stSelected, stSelectedNum,
-      stCompTitle, stDrawRegion,
+      stCompTitle,
       stX, stY, stW, stH,
       stMinX, stMinY, stStrat, stReplFn,
       stStartTemp, stStartTempNum,
@@ -51,7 +53,7 @@ type
       rbWiggle, rbSwap, rbHV, rbVH: wRadioButton
 
     # Checkboxes
-    cbMonitor, cbDrawRegion: wCheckBox
+    cbMonitor: wCheckBox
 
     # Other
     slStartTemp: wSlider
@@ -206,36 +208,23 @@ wClass(wPlacementPanel of wPanel):
           bottom = self.cbMonitor.bottom + vpad
           right = self.stStartTempNum.right + hmarg
 
-        # Bounding Region contents
-        self.cbDrawRegion:
-          top = self.sbBoundReg.top + boxvspc
-          #left = self.sbBoundReg.left + hpad
-          left = self.stDrawRegion.right + hpad
-          width = arrowBtnSize
-          height = arrowBtnSize
-        self.stDrawRegion:
-          centerY = self.cbDrawRegion.centerY
-          left = self.sbBoundReg.left + hpad
-          width = self.stDrawRegion.defaultWidth
-          height = self.stDrawRegion.defaultHeight
-
         self.stX:
-          top = self.cbDrawRegion.bottom + vpad
+          top = self.sbBoundReg.top + boxvspc
           left = self.sbBoundReg.left + hpad
           width = self.stX.defaultWidth
           height = self.stX.defaultHeight
         self.stY:
-          top = self.cbDrawRegion.bottom + vpad
+          top = self.sbBoundReg.top + boxvspc
           left = self.txtX.right + hpad
           width = self.stY.defaultWidth
           height = self.stY.defaultHeight
         self.stW:
-          top = self.cbDrawRegion.bottom + vpad
+          top = self.sbBoundReg.top + boxvspc
           left = self.txtY.right + hpad
           width = self.stW.defaultWidth
           height = self.stW.defaultHeight
         self.stH:
-          top = self.cbDrawRegion.bottom + vpad
+          top = self.sbBoundReg.top + boxvspc
           left = self.txtW.right + hpad
           width = self.stH.defaultWidth
           height = self.stH.defaultHeight
@@ -432,63 +421,6 @@ wClass(wPlacementPanel of wPanel):
     w32RemoveListener(self)
     psRemoveListeners(self)
 
-    # psRemoveListener(self.qtyListener)
-    # psRemoveListener(self.regionListener)
-    # psRemoveListener(self.regionXListener)
-    # psRemoveListener(self.regionYListener)
-    # psRemoveListener(self.regionWListener)
-    # psRemoveListener(self.regionHListener)
-    # psRemoveListener(self.startTempListener)
-    # psRemoveListener(self.currTempListener)
-
-  proc onTextFocus(self: wPlacementPanel, event: wEvent) = 
-    cast[wTextCtrl](event.window).setInsertionPointEnd()
-    event.skip()
-
-
-  # TODO: redo all parseNumbers
-  proc onTextEdit(self: wPlacementPanel, event: wEvent) =
-    const
-      errBg = 0xcec7ff
-      errFg = 0x06009c
-    let
-      txtCtrl = cast[wTextCtrl](event.window)
-      valInt = parseNumber[int](txtCtrl.value.strip())
-      valFloat = parseNumber[float](txtCtrl.value.strip())
-
-    if txtCtrl == self.txtQty and valInt.isSome():
-      txtCtrl.backgroundColor = 0xffffff
-      txtCtrl.foregroundColor = 0x000000
-    elif txtCtrl == self.txtQty and not valInt.isSome():
-      txtCtrl.backgroundColor = errBg
-      txtCtrl.foregroundColor = errFg
-    elif txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH, self.txtMinX, self.txtMinY] and valFloat.isSome():
-      txtCtrl.backgroundColor = 0xffffff
-      txtCtrl.foregroundColor = 0x000000
-    else:
-      txtCtrl.backgroundColor = errBg
-      txtCtrl.foregroundColor = errFg
-
-  proc onTextCommit(self: wPlacementPanel, event: wEvent) =
-    # Only qty, x, y, w, h need to get sent when text is entered
-    # min spacing is sent with the arrow buttons
-    let txtCtrl = cast[wTextCtrl](event.window)
-    let valInt = parseNumber[int](txtCtrl.value.strip())
-    let valFloat = parseNumber[float](txtCtrl.value.strip())
-
-    if txtCtrl == self.txtQty and valInt.isSome():
-      publish(QtyRequest, valInt.get())
-    elif txtCtrl in @[self.txtX, self.txtY, self.txtW, self.txtH] and valFloat.isSome():
-      if   txtCtrl == self.txtX:  publish(RegionXRequest, valFloat.get())
-      elif txtCtrl == self.txtY:  publish(RegionYRequest, valFloat.get())
-      elif txtCtrl == self.txtW:  publish(RegionWRequest, valFloat.get())
-      elif txtCtrl == self.txtH:  publish(RegionHRequest, valFloat.get())
-    else:
-      echo "not commiting: \"", txtCtrl.value, "\""
-
-  proc onKillFocus(self: wPlacementPanel, event: wEvent) =
-    self.onTextCommit(event)
-    event.skip()
 
   proc onButtonRandomizeAll(self: wPlacementPanel) =
     publish(RandAll)
@@ -499,13 +431,6 @@ wClass(wPlacementPanel of wPanel):
   proc onButtonTest(self: wPlacementPanel) =
     publish(Test)
   
-  proc onCheckBoxDrawRegion(self: wPlacementPanel, event: wEvent) =
-    let drawSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
-    if self.cbDrawRegion.value:
-      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Pressed))
-    else:
-      self.cbDrawRegion.setBitmap(iconBitmap("drag", drawSz, Hover))
-
   proc onButtonCompactGo(self: wPlacementPanel, event: wEvent) =
     # let btn = cast[wButton](event.window)
     let btn = cast[wStaticBitmap](event.window)
@@ -587,17 +512,6 @@ wClass(wPlacementPanel of wPanel):
     elif event.eventType == wEvent_LeftUp:
       self.updateCompactButton(btn, Hover)
       self.onButtonCompactGo(event)
-    event.skip()
-
-  proc onCheckboxMouseEnterLeave(self: wPlacementPanel, event: wEvent) =
-    let cb = cast[wCheckBox](event.window)
-    if cb == self.cbDrawRegion:
-      let state = if event.eventType == wEvent_MouseEnter: Hover else: Normal
-      let drawSz = appDpiScale((gIconSizeRaw, gIconSizeRaw))
-      if cb.value:
-        cb.setBitmap(iconBitmap("drag", drawSz, Pressed))
-      else:
-        cb.setBitmap(iconBitmap("drag", drawSz, state))
     event.skip()
 
   proc onButtonUndo(self: wPlacementPanel) =
@@ -691,7 +605,7 @@ wClass(wPlacementPanel of wPanel):
       self.stSelected     = StaticText(self, label="Selected")
       self.stSelectedNum  = StaticText(self, label="0")
       self.stCompTitle    = StaticText(self, label="Compact In Region")
-      self.stDrawRegion   = StaticText(self, label="Draw Region")
+      # self.stDrawRegion   = StaticText(self, label="Draw Region")
       self.stX            = StaticText(self, label="X")
       self.stY            = StaticText(self, label="Y")
       self.stW            = StaticText(self, label="W")
@@ -744,7 +658,7 @@ wClass(wPlacementPanel of wPanel):
       self.slStartTemp = Slider(self)
 
       # Checkboxes
-      self.cbDrawRegion = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
+      # self.cbDrawRegion = Checkbox(self, label="xxx", style=BS_PUSHLIKE or BS_BITMAP)
       self.cbMonitor    = CheckBox(self, label="Monitor Progress")
 
     block: # Configure fonts
@@ -762,16 +676,16 @@ wClass(wPlacementPanel of wPanel):
 
     block: # Respond to controls events
       # Text Controls
-      let ctls = @[self.txtQty, self.txtX, self.txtY, self.txtW, self.txtH,
-                  self.txtMinX, self.txtMinY]
-      for ctl in ctls:
-        ctl.wEvent_SetFocus  do (event: wEvent): self.onTextFocus(event)
-        ctl.wEvent_Text      do (event: wEvent): self.onTextEdit(event)
-        ctl.wEvent_TextEnter do (event: wEvent): self.onTextCommit(event)
-        ctl.wEvent_KillFocus do (event: wEvent): self.onKillFocus(event)
-        
+      wireTextCtrl(self, self.txtQty,  int,   (val: int)=>(publish(QtyChanged, val)))
+      wireTextCtrl(self, self.txtX,    float, (val: float)=>(publish(RegionXChanged, val)))
+      wireTextCtrl(self, self.txtY,    float, (val: float)=>(publish(RegionYChanged, val)))
+      wireTextCtrl(self, self.txtW,    float, (val: float)=>(publish(RegionWChanged, val)))
+      wireTextCtrl(self, self.txtH,    float, (val: float)=>(publish(RegionHChanged, val)))
+      wireTextCtrl(self, self.txtMinX, float, (val: float)=>(discard))
+      wireTextCtrl(self, self.txtMinY, float, (val: float)=>(discard))
+
       # Buttons
-      self.bRandomizeAll.wEvent_Button do (): self.onButtonRandomizeAll()
+      self.bRandomizeAll.wEvent_Button  do (): self.onButtonRandomizeAll()
       self.bRandomizePos.wEvent_Button do (): self.onButtonRandomizePos()
       self.bTest.wEvent_Button         do (): self.onButtonTest()
       for btn in @[self.bLeft, self.bRight, self.bUp, self.bDown,
@@ -798,34 +712,31 @@ wClass(wPlacementPanel of wPanel):
       self.slStartTemp.wEvent_Slider do (): self.onTempSlider()
 
       # Checkbox
-      self.cbDrawRegion.wEvent_CheckBox   do (event: wEvent): self.onCheckBoxDrawRegion(event)
-      self.cbDrawRegion.wEvent_MouseEnter do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
-      self.cbDrawRegion.wEvent_MouseLeave do (event: wEvent): self.onCheckboxMouseEnterLeave(event)
       self.cbMonitor.wEvent_Checkbox      do (event: wEvent): self.onMonitorCheckBox(event)
 
-      # Add Pubsub Listeners
-      # A *Request is received only by the owner of the data
-      # In this case, starttemp is owned by the placement dialog
-      # TODO : set up remove listener for when box is destroyed
-      self.qtyListener = psAddListener(QtyChanged, proc(qty: int) = self.txtQty.value = $qty)
+      block: # Add Pubsub Listeners
+        # TODO: respond to qty selected; add spinner
+        # A *Request is received only by the owner of the data
+        # In this case, starttemp is owned by the placement dialog
+        self.qtyListener = psAddListener(QtyChanged, proc(qty: int) = self.txtQty.value = $qty)
 
-      ## Listen for the whole rectangle, sent by Editor when
-      ## dragging region and by Application at startup
-      self.regionListener = psAddListener(RegionChanged, proc(r: WRect) = 
-                                                           self.txtX.setValue($r.x) # trigger wEvent_Text
-                                                           self.txtY.setValue($r.y) # trigger wEvent_Text
-                                                           self.txtW.setValue($r.w) # trigger wEvent_Text
-                                                           self.txtH.setValue($r.h)) # trigger wEvent_Text
-                                              
-      ## List for parts of rectangle, sent by self when editing boxes            
-      self.regionXListener   = psAddListener(RegionXChanged,   proc(x: float) = self.txtX.setValue($x)) # trigger wEvent_Text
-      self.regionYListener   = psAddListener(RegionYChanged,   proc(y: float) = self.txtY.setValue($y)) # trigger wEvent_Text
-      self.regionWListener   = psAddListener(RegionWChanged,   proc(w: float) = self.txtW.setValue($w)) # trigger wEvent_Text
-      self.regionHListener   = psAddListener(RegionHChanged,   proc(h: float) = self.txtH.setValue($h)) # trigger wEvent_Text
-      self.startTempListener = psAddListener(StartTempRequest, proc(t: float) =
-                                                                 self.slStartTemp.value = t.round.int
-                                                                 self.onTempSlider()) # because setting value doesn't trigger wEvent_Slider
-      self.currTempListener  = psAddListener(CurrTempChanged,  proc(t: float) = self.stCurrTempNum.label = $t.round.int)
+        ## Listen for the whole rectangle, sent by Editor when
+        ## dragging region and by Application at startup
+        self.regionListener = psAddListener(RegionChanged, proc(r: WRect) = 
+                                                            self.txtX.setValue($r.x) # trigger wEvent_Text
+                                                            self.txtY.setValue($r.y) # trigger wEvent_Text
+                                                            self.txtW.setValue($r.w) # trigger wEvent_Text
+                                                            self.txtH.setValue($r.h)) # trigger wEvent_Text
+                                                
+        ## List for parts of rectangle, sent by self when editing boxes            
+        self.regionXListener   = psAddListener(RegionXChanged,   proc(x: float) = self.txtX.setValue($x)) # trigger wEvent_Text
+        self.regionYListener   = psAddListener(RegionYChanged,   proc(y: float) = self.txtY.setValue($y)) # trigger wEvent_Text
+        self.regionWListener   = psAddListener(RegionWChanged,   proc(w: float) = self.txtW.setValue($w)) # trigger wEvent_Text
+        self.regionHListener   = psAddListener(RegionHChanged,   proc(h: float) = self.txtH.setValue($h)) # trigger wEvent_Text
+        self.startTempListener = psAddListener(StartTempRequest, proc(t: float) =
+                                                                  self.slStartTemp.value = t.round.int
+                                                                  self.onTempSlider()) # because setting value doesn't trigger wEvent_Slider
+        self.currTempListener  = psAddListener(CurrTempChanged,  proc(t: float) = self.stCurrTempNum.label = $t.round.int)
 
     block: # Initial values
       # Click on the radio buttons to set initial state, set qty and slider
@@ -840,15 +751,12 @@ wClass(wPlacementPanel of wPanel):
       self.rbNone.click()
       self.rbStrat1.click()
 
-      self.txtMinX.setValue($gAppOpts.compactDlgMinSpacingX) # trigger color, but keep local (sent with compact request)
-      self.txtMinY.setValue($gAppOpts.compactDlgMinSpacingY)
       self.rbWiggle.click()
       self.rbHV.click()
       self.slStartTemp.setRange(1, 100)
       publish(StartTempRequest, gAppOpts.compactDlgTempStart)
 
     block: # Update arrow buttons down below after the radio buttons are clicked, so they have the right icon
-      self.cbDrawRegion.setBitmap(iconBitmap("drag", iconSz))
       self.updateCompactButton(self.bLeft,      Normal)
       self.updateCompactButton(self.bRight,     Normal)
       self.updateCompactButton(self.bUp,        Normal)
@@ -908,15 +816,15 @@ when isMainModule:
   try:
     gAppOpts = parseAppOptions()
     wSetSystemDPIAware()
-    let li01  = psAddListener(QtyRequest, proc(qty: int) = localQty=qty; publish(QtyChanged, localQty))
-    let li02  = psAddListener(QtyChanged, proc(qty: int) = echo "Listener says Qty: ", qty)
-    let li03  = psAddListener(RandAll, proc() = echo "Listener says RandAll")
-    let li04  = psAddListener(RandPos, proc() = echo "Listener says RandPos")
-    let li05  = psAddListener(Test, proc() = echo "Listener says Test")
-    let li06  = psAddListener(RegionXRequest, proc(x: float) = localRX = x; publish(RegionXChanged, localRX))
-    let li07  = psAddListener(RegionXChanged, proc(x: float) = echo "Listener says RegionX: ", x)
-    let li08  = psAddListener(RegionYRequest, proc(y: float) = localRY = y; publish(RegionYChanged, localRY))
-    let li09  = psAddListener(RegionYChanged, proc(y: float) = echo "Listener says RegionY: ", y)
+    let li01 = psAddListener(QtyRequest, proc(qty: int) = localQty=qty; publish(QtyChanged, localQty))
+    let li02 = psAddListener(QtyChanged, proc(qty: int) = echo "Listener says Qty: ", qty)
+    let li03 = psAddListener(RandAll, proc() = echo "Listener says RandAll")
+    let li04 = psAddListener(RandPos, proc() = echo "Listener says RandPos")
+    let li05 = psAddListener(Test, proc() = echo "Listener says Test")
+    let li06 = psAddListener(RegionXRequest, proc(x: float) = localRX = x; publish(RegionXChanged, localRX))
+    let li07 = psAddListener(RegionXChanged, proc(x: float) = echo "Listener says RegionX: ", x)
+    let li08 = psAddListener(RegionYRequest, proc(y: float) = localRY = y; publish(RegionYChanged, localRY))
+    let li09 = psAddListener(RegionYChanged, proc(y: float) = echo "Listener says RegionY: ", y)
     let li10 = psAddListener(RegionWRequest, proc(w: float) = localRW = w; publish(RegionWChanged, localRW))
     let li11 = psAddListener(RegionWChanged, proc(w: float) = echo "Listener says RegionW: ", w)
     let li12 = psAddListener(RegionHRequest, proc(h: float) = localRH = h; publish(RegionHChanged, localRH))

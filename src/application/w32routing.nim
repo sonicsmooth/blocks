@@ -36,30 +36,28 @@ const
   idMsgAlgUpdate*       = WM_USER + ord(woAlgUpdate)
   
   # Grid Control Frame
-  idGCFZoom*            = WM_USER + ord(woGridZoom)
-  idGCFSizeX*           = WM_USER + ord(woGridSizeX)
-  idGCFRequestX*        = WM_USER + ord(woGridRequestX)
-  idGCFSizeY*           = WM_USER + ord(woGridSizeY)
-  idGCFRequestY*        = WM_USER + ord(woGridRequestY)
-  idGCFDivisionsSelect* = WM_USER + ord(woGridDivisionsSelect)
-  idGCFDivisionsValue*  = WM_USER + ord(woGridDivisionsValue)
-  idGCFDivisionsReset*  = WM_USER + ord(woGridDivisionsReset)
-  idGCFDensity*         = WM_USER + ord(woGridDensity)
-  idGCFSnap*            = WM_USER + ord(woGridSnap)
-  idGCFDynamic*         = WM_USER + ord(woGridDynamic)
-  idGCFBaseSync*        = WM_USER + ord(woGridBaseSync)
-  idGCFVisible*         = WM_USER + ord(woGridVisible)
-  idGCFDots*            = WM_USER + ord(woGridDots)
-  idGCFLines*           = WM_USER + ord(woGridLines)
+  # idGCFZoom*            = WM_USER + ord(woGridZoom)
+  # idGCFSizeX*           = WM_USER + ord(woGridSizeX)
+  # idGCFRequestX*        = WM_USER + ord(woGridRequestX)
+  # idGCFSizeY*           = WM_USER + ord(woGridSizeY)
+  # idGCFRequestY*        = WM_USER + ord(woGridRequestY)
+  # idGCFDivisionsSelect* = WM_USER + ord(woGridDivisionsSelect)
+  # idGCFDivisionsValue*  = WM_USER + ord(woGridDivisionsValue)
+  # idGCFDivisionsReset*  = WM_USER + ord(woGridDivisionsReset)
+  # idGCFDensity*         = WM_USER + ord(woGridDensity)
+  # idGCFSnap*            = WM_USER + ord(woGridSnap)
+  # idGCFDynamic*         = WM_USER + ord(woGridDynamic)
+  # idGCFBaseSync*        = WM_USER + ord(woGridBaseSync)
+  # idGCFVisible*         = WM_USER + ord(woGridVisible)
+  # idGCFDots*            = WM_USER + ord(woGridDots)
+  # idGCFLines*           = WM_USER + ord(woGridLines)
   idGCFHiding*          = WM_USER + ord(woGridHiding)
   idGCFDestroying*      = WM_USER + ord(woGridDestroying)
   
   # Placement Frame
-  idPLFHiding*    = WM_USER + ord(woPLFHiding)
-  idPLFDestroying*    = WM_USER + ord(woPLFDestroying)
+  idPLFHiding*          = WM_USER + ord(woPLFHiding)
+  idPLFDestroying*      = WM_USER + ord(woPLFDestroying)
 
-
-  
   # Random thread stuff
   ALG_NO_INIT_BMP*  = 0
   ALG_INIT_BMP*     = 10
@@ -88,7 +86,6 @@ proc w32AddListener*(listener: wWindow, msg: int32, callback: MsgProc) =
   listener.connect(msg) do (event: wEvent): callback(listener, event)
 
 proc w32RemoveListener*(listener: wWindow) = 
-  echo "Deregistering ", listener.mHwnd
   var keysToDelete: seq[int32] = @[]
   let handle: HANDLE = listener.mHwnd
   for msg, handles in gEventListeners:
@@ -99,9 +96,6 @@ proc w32RemoveListener*(listener: wWindow) =
   let cnt = keysToDelete.len
   for msg in keysToDelete:
     gEventListeners.del(msg)
-  when defined(debug):
-    echo "Deregistered ", cnt, " listeners"
-    echo uniqueHandles().len, " handles left"
 
 proc w32SendToListeners*(msg: int32, wp: WPARAM, lp: LPARAM) =
   # msg is the message

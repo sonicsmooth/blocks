@@ -6,6 +6,7 @@ import std/[parseutils,
 
 import grid
 import viewport
+import pubsub
 import utils
 
 import uicommon
@@ -177,7 +178,7 @@ wClass(wGridControlPanel of wPanel):
     when defined(debug):
       echo "GridControlPanel onDestroy"
     w32RemoveListener(self)
-    # psRemoveListener(self)
+    psRemoveListener(self)
 
   proc onButtonDone(self: wGridControlpanel) =
     # Post message for asynchronous close; otherwise if we do self.parent.close()
@@ -194,32 +195,30 @@ wClass(wGridControlPanel of wPanel):
       if event.lparam == WindowFromDC(event.wParam):
         return (w, w.value.strip())
 
-  proc colorEdit(self: wGridControlPanel, event: wEvent) =
-    # Gets called when parent panel redraws text box
-    # which is on mouse enter/leave, and when typing
-    # but not on enter key.  For some reason when typing
-    # in the divisions box, the lparam does not match
-    # the mHwnd of the division box, but it does on mouse
-    # enter/leave.  Instead, when typing in the divisions
-    # box, the lparam matches the WindowFromDC of the wParam.
-    # So at no point is the self.cbDivisions.mHwnd used
-    let (matchedCtrl, strval) = self.eventMatchAndStrip(event)
-    if matchedCtrl.isnil or strval.len == 0:
-      return
-    if event.lParam == self.txtX.mHwnd or event.lParam ==
-        self.txtY.mHwnd:
-      var val: WType
-      if not parseNumber(strval, val):
-        errcol(event)
-    elif event.lParam == WindowFromDC(event.wParam):
-      # We are in the divisions combo box, so must use int
-      var val: int
-      if not parseNumber(strval, val):
-        errcol(event)
+  # proc colorEdit(self: wGridControlPanel, event: wEvent) =
+  #   # Gets called when parent panel redraws text box
+  #   # which is on mouse enter/leave, and when typing
+  #   # but not on enter key.  For some reason when typing
+  #   # in the divisions box, the lparam does not match
+  #   # the mHwnd of the division box, but it does on mouse
+  #   # enter/leave.  Instead, when typing in the divisions
+  #   # box, the lparam matches the WindowFromDC of the wParam.
+  #   # So at no point is the self.cbDivisions.mHwnd used
+  #   let (matchedCtrl, strval) = self.eventMatchAndStrip(event)
+  #   if matchedCtrl.isnil or strval.len == 0:
+  #     return
+  #   if event.lParam == self.txtX.mHwnd or event.lParam ==
+  #       self.txtY.mHwnd:
+  #     var val: WType
+  #     if not parseNumber(strval, val):
+  #       errcol(event)
+  #   elif event.lParam == WindowFromDC(event.wParam):
+  #     # We are in the divisions combo box, so must use int
+  #     var val: int
+  #     if not parseNumber(strval, val):
+  #       errcol(event)
 
 
-  # Read state from controls and broadcast message to listeners
-  # TODO: small txt units
   proc onCmdTxtSizeEnter(self: wGridControlPanel, event: wEvent) =
     # Called when enter pressed
     # send pointer to parsed and validated value
@@ -403,19 +402,33 @@ wClass(wGridControlPanel of wPanel):
       self.wEvent_Destroy do(): self.onDestroy()
 
     block: # Respond to controls events
-      self.WM_CTLCOLOREDIT do (event: wEvent): self.colorEdit(event)
-      self.txtX.wEvent_TextEnter        do(event: wEvent): self.onCmdTxtSizeEnter(event)
-      self.txtY.wEvent_TextEnter        do(event: wEvent): self.onCmdTxtSizeEnter(event)
+      # Text and dropdown controls
+      let ctls = [self.txtX, self.txtY, self.cbDivisions]
+      for ctl in ctls:
+        ctl.wEvent_SetFocus  do (event: wEvent): self.onTextFocus(event)
+        ctl.wEvent_KillFocus do (event: wEvent): self.onTextKillFocus(event)
+        ctl.wEvent_Text      do (event: wEvent): self.onTextEdit(event)
+        ctl.wEvent_TextEnter do (event: wEvent): self.onTextCommit(event)
       self.cbDivisions.wEvent_ComboBox  do(event: wEvent): self.onCmdCbDivisionsSelect(event)
-      self.cbDivisions.wEvent_TextEnter do(event: wEvent): self.onCmdCbDivisionsTextEnter(event)
+
+      # Buttons
+      self.bDone.wEvent_Button          do(): self.onButtonDone()
+
+      # Radio buttons
+      self.rbDots.wEvent_RadioButton    do(event: wEvent): self.onCmdDots(event)
+      self.rbLines.wEvent_RadioButton   do(event: wEvent): self.onCmdLines(event)
+
+      # Slider
       self.slDensity.wEvent_Slider      do(event: wEvent): self.onCmdSliderDensity(event)
+
+      # Checkboxes
       self.cbSnap.wEvent_CheckBox       do(event: wEvent): self.onCmdSnap(event)
       self.cbDynamic.wEvent_CheckBox    do(event: wEvent): self.onCmdDynamic(event)
       self.cbBaseSync.wEvent_CheckBox   do(event: wEvent): self.onCmdGridBaseSync(event)
       self.cbVisible.wEvent_CheckBox    do(event: wEvent): self.onCmdGridVisible(event)
-      self.rbDots.wEvent_RadioButton    do(event: wEvent): self.onCmdDots(event)
-      self.rblines.wEvent_RadioButton   do(event: wEvent): self.onCmdLines(event)
-      self.bDone.wEvent_Button          do(): self.onButtonDone()
+
+    block: # Add Pubsub Listeners
+      discard
 
     block: # Update controls from outside messages
       w32AddListener(self, idGCFSizeX,           (w: wWindow, e: wEvent)=>(onGCFSize(w.wGridControlPanel, e)))
